@@ -428,7 +428,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         <div className="ua-cfg-launch-ratings__list">
           {ratings.map((rating) => (
             <div key={rating.id} className={`ua-cfg-launch-rating is-${rating.tone}`}>
-              <span className="ua-cfg-launch-rating__badge">{rating.badge}</span>
+              <span  className="ua-cfg-launch-rating__badge" style={{width: "85px"}}>{rating.badge}</span>
               <input
                 type="text"
                 className="ua-cfg-launch-rating__name"
@@ -472,7 +472,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
           ))}
         </div>
 
-        <div className="ua-cfg-launch-rating-add">
+        <div className="ua-cfg-launch-rating-add" height="30px">
           <input
             type="text"
             placeholder="Rating name · e.g. Outstanding"

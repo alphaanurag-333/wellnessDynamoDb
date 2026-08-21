@@ -4165,7 +4165,7 @@
   padding: 11px 12px 10px;
   box-shadow: var(--shadow);
   position: relative;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .updated-admin .ops-challenge__head {
@@ -4282,7 +4282,7 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   min-height: 0;
 }
 
@@ -4290,11 +4290,34 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* Figma: list grows with items â€” no visible scrollbar chrome */
-  max-height: none;
-  overflow: visible;
+  max-height: 70px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 6px;
   position: relative;
   z-index: 1;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c0d4 #eef1f6;
+}
+
+.updated-admin .ops-challenge__list-items::-webkit-scrollbar {
+  width: 8px;
+}
+
+.updated-admin .ops-challenge__list-items::-webkit-scrollbar-track {
+  background: #eef1f6;
+  border-radius: 8px;
+}
+
+.updated-admin .ops-challenge__list-items::-webkit-scrollbar-thumb {
+  background: #b8c0d4;
+  border-radius: 8px;
+}
+
+.updated-admin .ops-challenge__list-items::-webkit-scrollbar-thumb:hover {
+  background: #9aa3bb;
 }
 
 .updated-admin .ops-challenge__empty {
@@ -16805,7 +16828,7 @@ scrollbar-width: thin;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  margin: 14px 0 10px;
+  margin: 5px 0 5px;
 }
 
 .updated-admin .ua-cp-launch-questions__expand-btn {
@@ -16961,7 +16984,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-launch-qtable {
   width: 100%;
-  min-width: 920px;
+  min-width: 1240px;
   border-collapse: collapse;
   table-layout: fixed;
   font-size: 12px;
@@ -16981,19 +17004,19 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-qtable__col-q {
-  width: 32%;
+  width: 28%;
 }
 
 .updated-admin .ua-cp-launch-qtable__col-reply {
-  width: 28%;
+  width: 22%;
 }
 
 .updated-admin .ua-cp-launch-qtable__col-rating {
-  width: 28%;
+  width: 42%;
 }
 
 .updated-admin .ua-cp-launch-qtable thead th.ua-cp-launch-qtable__col-weight {
-  width: 12%;
+  width: 8%;
   text-align: right;
 }
 
@@ -17004,17 +17027,16 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-qtable__q {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 8px;
   font-weight: 650;
   color: #16233f;
   line-height: 1.45;
 }
 
 .updated-admin .ua-cp-launch-qtable__q-text {
-  flex: 1 1 auto;
   min-width: 0;
   overflow-wrap: break-word;
 }
@@ -17033,7 +17055,15 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-launch-qtable__rating {
   vertical-align: middle;
-  min-width: 320px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-launch-qtable__rating-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
 }
 
 .updated-admin .ua-cp-launch-qtable__weight {
@@ -17052,10 +17082,10 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-launch-qtable__n {
-  flex: 0 0 auto;
   color: #8a97ac;
   font-weight: 700;
   white-space: nowrap;
+  line-height: 1.45;
 }
 
 .updated-admin .ua-cp-launch-qtable__info {
@@ -17063,18 +17093,17 @@ scrollbar-width: thin;
   place-items: center;
   width: 16px;
   height: 16px;
-  margin-left: 0;
+  margin-top: 2px;
   border-radius: 50%;
-  border: 1px solid #cdd5e6;
-  background: #fff;
+  border: 1px solid #d4daf5;
+  background: #eef0fc;
   font-size: 9px;
   font-weight: 800;
   color: #5e6ad2;
-  vertical-align: middle;
   cursor: pointer;
   font-family: inherit;
   padding: 0;
-  flex: 0 0 auto;
+  line-height: 1;
 }
 
 .updated-admin .ua-cp-launch-qtable__info:hover {
@@ -17117,15 +17146,17 @@ scrollbar-width: thin;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 10px;
-  min-height: 30px;
+  margin-top: 0;
+  min-height: 26px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-launch-qtable__score-label,
 .updated-admin .ua-cp-launch-qtable__score-max {
   display: inline-flex;
   align-items: center;
-  height: 30px;
+  height: 26px;
   margin: 0;
   font-size: 11px;
   font-weight: 650;
@@ -17138,8 +17169,8 @@ scrollbar-width: thin;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 30px;
+  width: 48px;
+  height: 26px;
   padding: 0 8px;
   border: 1px solid #e6ebf2;
   border-radius: 8px;
@@ -17155,15 +17186,19 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-launch-ratings {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 5px;
-  width: 100%;
+  flex: 0 0 auto;
+  width: max-content;
 }
 
 .updated-admin .ua-cp-launch-rating {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 26px;
-  padding: 0 9px;
+  padding: 0 8px;
   border: 1px solid #e6ebf2;
   border-radius: 999px;
   background: #fff;
@@ -17665,8 +17700,9 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-launch-qtable__score-plain {
   font-size: 11px;
   color: #9aa6b8;
-  margin-top: 5px;
+  margin-top: 0;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-launch-qtable__reply-text {
@@ -54142,10 +54178,6 @@ scrollbar-width: thin;
     min-width: 0;
   }
 
-  .updated-admin .ua-cp-launch-ratings {
-    flex-wrap: wrap;
-  }
-
   .updated-admin .ua-cp-launch-score--save {
     flex-direction: column;
     align-items: stretch;
@@ -54283,14 +54315,14 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__q {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 8px;
   }
 
   .updated-admin .ua-cp-launch .ua-cp-launch-qtable__q[data-label]::before {
-    flex: 0 0 100%;
+    grid-column: 1 / -1;
     margin-bottom: 6px;
   }
 
@@ -54324,6 +54356,12 @@ scrollbar-width: thin;
     min-width: 0;
   }
 
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__rating-row {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
   .updated-admin .ua-cp-launch .ua-cp-launch-ratings {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -54337,6 +54375,10 @@ scrollbar-width: thin;
     justify-content: center;
     width: 100%;
     min-width: 0;
+  }
+
+  .updated-admin .ua-cp-launch .ua-cp-launch-qtable__score-row {
+    width: 100%;
   }
 
   .updated-admin .ua-cp-topbar {
@@ -56220,10 +56262,6 @@ scrollbar-width: thin;
     min-width: 0;
   }
 
-  .updated-admin .ua-cp-launch-ratings {
-    flex-wrap: wrap;
-  }
-
   .updated-admin .ua-cp-launch-score {
     padding: 14px 18px;
     gap: 12px;
@@ -56563,6 +56601,19 @@ scrollbar-width: thin;
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+  height: 42px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #16233f;
+  background-size: 18px 18px;
+  background-position: 12px 50%;
+  padding-left: 40px;
+}
+
+.updated-admin .ua-cfg-recipes .ua-cfg-dd-search::placeholder {
+  font-size: 14px;
+  color: #8a97ac;
+  opacity: 1;
 }
 
 .updated-admin .ua-cfg-recipes .ua-cfg-rc-filter {
@@ -56604,7 +56655,7 @@ scrollbar-width: thin;
   height: 100%;
   max-width: none;
   max-height: none;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   background-repeat: no-repeat;
 }
@@ -56728,9 +56779,26 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__fields {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(168px, 0.95fr) minmax(140px, 0.85fr) minmax(180px, 1.2fr);
+  align-items: start;
   min-width: 0;
   max-width: 100%;
+}
+
+.updated-admin .ua-cfg-recipes-new .ua-cfg-rc-field .ua-cfg-rc-media-mode {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  margin: 0;
+  align-items: stretch;
+}
+
+.updated-admin .ua-cfg-recipes-new .ua-cfg-rc-media-mode__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 8px;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cfg-recipes-new .ua-cfg-tf-drop,
@@ -56746,6 +56814,115 @@ scrollbar-width: thin;
   box-sizing: border-box;
 }
 
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view,
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet {
+  width: min(640px, calc(100vw - 24px));
+  max-height: min(88vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  resize: none;
+}
+
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: start;
+  gap: 10px 12px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 20px 20px 14px;
+}
+
+.updated-admin .ua-cfg-recipes-view__intro {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__tag {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #8b97ab;
+}
+
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1.25;
+  color: #12263f;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__head p.ua-cfg-recipes-view__meta,
+.updated-admin .ua-cfg-recipes-view__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: #5a6b85;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-tf-view__status {
+  height: 24px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head .ua-cfg-icon-btn {
+  grid-column: 2;
+  grid-row: 1;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-recipes-view__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 20px 16px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media,
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media--photo {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  max-height: min(42vh, 320px);
+  width: 100%;
+  margin: 0 0 14px;
+  display: block;
+  place-items: unset;
+  overflow: hidden;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media img,
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media--photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media-empty {
+  position: absolute;
+  inset: 0;
+  height: auto;
+}
+
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__copy,
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta dd,
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta a,
@@ -56754,18 +56931,80 @@ scrollbar-width: thin;
   word-break: break-word;
 }
 
-.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__foot {
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__copy {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #374151;
+}
+
+.updated-admin .ua-cfg-recipes-view__empty {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-specs {
+  margin: 0 0 16px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-spec {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 20px;
+  margin: 0 0 16px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta div {
+  min-width: 0;
+  gap: 4px;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta dt {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #8b97ab;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta dd {
+  font-size: 14px;
+  line-height: 1.4;
+  color: #12263f;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta a {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__embed,
+.updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__player {
+  margin: 0;
+}
+
+.updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__foot {
+  flex-shrink: 0;
   display: flex;
+  flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: stretch;
   gap: 8px;
+  margin: 0;
+  padding: 14px 20px 18px;
+  border-top: 1px solid #edf1f7;
+  background: #fff;
 }
 
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__foot .ua-cfg-btn {
-  flex: 0 0 auto;
-  height: 32px;
-  min-width: 108px;
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
   padding: 0 14px;
   justify-content: center;
 }
@@ -56903,7 +57142,8 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-edit__media,
-  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__media {
+  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__media,
+  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__fields {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -56911,9 +57151,13 @@ scrollbar-width: thin;
     width: 100%;
   }
 
+  .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__foot .ua-cfg-btn {
-    flex: 0 0 auto;
-    min-width: 108px;
+    flex: 1 1 0;
+    min-width: 0;
   }
 }
 
@@ -56963,7 +57207,12 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-edit__media,
-  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__media {
+  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__media,
+  .updated-admin .ua-cfg-recipes-new.ua-cfg-rc-new .ua-cfg-rc-new__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__meta {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -60822,13 +61071,20 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-hd .ua-cfg-rc-new {
   margin-bottom: 14px;
+  overflow: visible;
+  padding: 12px 14px 14px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new__head {
+  align-items: center;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-hd-item.ua-cfg-rc-item,
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item.ua-cfg-bl-item {
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item .ua-cfg-rc-item__body {
@@ -60839,36 +61095,46 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__head {
   flex-wrap: wrap;
   align-items: flex-start;
+  gap: 6px 12px;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__identity {
   flex: 1 1 100%;
   order: 2;
+  gap: 0;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__actions {
   flex: 1 1 100%;
   order: 1;
   justify-content: flex-end;
-  margin-bottom: 12px;
+  margin-bottom: 2px;
+}
+
+.updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-hd-edit,
+.updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-rc-new__fields,
+.updated-admin .ua-cfg-hd .ua-cfg-hd-edit,
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new__fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+  gap: 8px 12px;
+  width: 100%;
+  min-width: 0;
+  align-items: start;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-edit {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  width: 100%;
-  min-width: 0;
-  padding-top: 2px;
+  padding-top: 0;
 }
 
-.updated-admin .ua-cfg-hd .ua-cfg-rc-new__fields {
-  gap: 14px;
+.updated-admin .ua-cfg-hd .ua-cfg-rc-field--wide,
+.updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot {
+  grid-column: 1 / -1;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-rc-field {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -60901,14 +61167,15 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-hd .ua-cfg-rc-field .ua-cfg-tf-story,
 .updated-admin .ua-cfg-hd .ua-cfg-hd-edit .ua-cfg-bl-edit__desc,
 .updated-admin .ua-cfg-hd .ua-cfg-bl-item__identity .ua-cfg-bl-edit__desc,
-.updated-admin .ua-cfg-hd .ua-cfg-rc-new .ua-cfg-tf-story {
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new .ua-cfg-tf-story,
+.updated-admin .ua-cfg-hd .ua-cfg-rc-item__body .ua-cfg-tf-story {
   display: block;
   width: 100%;
-  min-height: 88px;
-  height: auto;
-  max-height: none;
+  min-height: 64px;
+  height: 64px;
+  max-height: 140px;
   margin: 0;
-  padding: 12px 14px;
+  padding: 8px 12px;
   border: 1px solid #d5dce8;
   border-radius: 10px;
   box-sizing: border-box;
@@ -60920,15 +61187,35 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-type {
   width: 100%;
-  max-width: 220px;
+  max-width: none;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-type .ua-cfg-select__trigger {
   width: 100%;
   height: 40px;
+  padding: 0 12px;
   border: 1px solid #d5dce8;
   border-radius: 10px;
   box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-type .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2316233f' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-type.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-flag {
@@ -60976,29 +61263,67 @@ scrollbar-width: thin;
   width: 100%;
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 0;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor .ua-cfg-rc-specs-editor__row {
-  gap: 8px;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor .ua-cfg-rc-specs-editor__bullet {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 36px;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor .ua-cfg-vh-input {
-  height: 40px;
-  padding: 0 12px;
+  height: 36px;
+  padding: 0 10px;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor > .ua-cfg-tf-add-btn {
   width: auto;
+  height: 32px;
+  justify-self: start;
   justify-content: center;
-  margin-top: 2px;
+  margin-top: 0;
+  margin-left: 18px;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn,
+.updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--outline,
+.updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--primary {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 8.5rem;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  box-sizing: border-box;
+  justify-content: center;
 }
 
 @media (max-width: 720px) {
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-hd-edit,
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-rc-new__fields,
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-edit,
+  .updated-admin .ua-cfg-hd .ua-cfg-rc-new__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .updated-admin .ua-cfg-hd .ua-cfg-hd-type {
     max-width: 100%;
   }
@@ -61012,6 +61337,48 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-hd .ua-cfg-bl-item__actions {
     flex: 1 1 100%;
     justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn,
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn--outline,
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn--primary,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--outline,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--primary {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    align-self: stretch;
+  }
+}
+
+@container ua-cfg-bl (max-width: 640px) {
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn,
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn--outline,
+  .updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-bl-new-foot .ua-cfg-btn--primary,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--outline,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot .ua-cfg-btn--primary {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    align-self: stretch;
   }
 }
 

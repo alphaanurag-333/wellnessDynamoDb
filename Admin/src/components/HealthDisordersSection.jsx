@@ -342,11 +342,11 @@ export function HealthDisordersSection({ onToast }) {
             : `Catalog from HealthDisorder · ${activeCount} of ${items.length} live`
         }
         actions={
-          loading || creating ? null : (
+          loading ? null : (
             <button
               type="button"
               className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
-              disabled={locked}
+              disabled={locked || creating}
               onClick={() => {
                 cancelEdit();
                 setCreating(true);
@@ -410,7 +410,7 @@ export function HealthDisordersSection({ onToast }) {
                 </span>
                 <textarea
                   className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                  rows={3}
+                  rows={2}
                   placeholder="Short description shown with this disorder…"
                   value={draft.description}
                   maxLength={DESCRIPTION_MAX_LEN}
@@ -430,7 +430,7 @@ export function HealthDisordersSection({ onToast }) {
                 />
               </div>
               <div className="ua-cfg-bl-new-foot">
-                <button
+                {/* <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--outline"
                   disabled={locked}
@@ -440,7 +440,7 @@ export function HealthDisordersSection({ onToast }) {
                   }}
                 >
                   Cancel
-                </button>
+                </button> */}
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addItem}>
                   {busy && creating ? "Saving…" : "Add disorder"}
                 </button>
@@ -508,7 +508,7 @@ export function HealthDisordersSection({ onToast }) {
                               </span>
                               <textarea
                                 className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                                rows={3}
+                                rows={2}
                                 placeholder="Enter description"
                                 value={entry.description}
                                 maxLength={DESCRIPTION_MAX_LEN}
