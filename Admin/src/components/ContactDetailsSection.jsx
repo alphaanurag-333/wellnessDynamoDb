@@ -23,95 +23,76 @@ function ContactRow({
   editing,
   draft,
   locked,
-  canMoveUp,
-  canMoveDown,
   onDraftChange,
   onToggle,
   onEdit,
   onSave,
   onCancel,
-  onMoveUp,
-  onMoveDown,
   onDelete,
 }) {
   const isEditing = Boolean(editing);
 
   return (
     <article className={`ua-cfg-ct-row${isEditing ? " is-editing" : ""}`}>
-      <div className="ua-cfg-ct-row__main">
-        <span className="ua-cfg-ct-row__label">{entry.label}</span>
-        {isEditing ? (
-          <input
-            type="text"
-            className="ua-cfg-ct-row__input"
-            value={draft}
-            placeholder="Value"
-            disabled={locked}
-            onChange={(event) => onDraftChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") onSave();
-              if (event.key === "Escape") onCancel();
-            }}
-          />
-        ) : (
-          <strong className="ua-cfg-ct-row__value">{entry.value}</strong>
-        )}
-      </div>
-      <div className="ua-cfg-ct-row__actions">
-      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-        {entry.live ? "LIVE" : "HIDDEN"}
-      </span>
-      <button
-        type="button"
-        className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-        aria-pressed={entry.live}
-        aria-label={`${entry.label} ${entry.live ? "live" : "hidden"}`}
-        disabled={locked}
-        onClick={onToggle}
-      >
-        <span className="ua-toggle__knob" />
-      </button>
+      <span className="ua-cfg-ct-row__label">{entry.label}</span>
       {isEditing ? (
+        <input
+          type="text"
+          className="ua-cfg-ct-row__input"
+          value={draft}
+          placeholder="Value"
+          disabled={locked}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") onSave();
+            if (event.key === "Escape") onCancel();
+          }}
+        />
+      ) : (
+        <strong className="ua-cfg-ct-row__value">{entry.value}</strong>
+      )}
+      <div className="ua-cfg-ct-row__actions">
+        <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+          {entry.live ? "LIVE" : "HIDDEN"}
+        </span>
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+          className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+          aria-pressed={entry.live}
+          aria-label={`${entry.label} ${entry.live ? "live" : "hidden"}`}
           disabled={locked}
-          onClick={onSave}
+          onClick={onToggle}
         >
-          Save
+          <span className="ua-toggle__knob" />
         </button>
-      ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={locked} onClick={onEdit}>
-          Edit
+        {isEditing ? (
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+            disabled={locked}
+            onClick={onSave}
+          >
+            Save
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+            disabled={locked}
+            onClick={onEdit}
+          >
+            Edit
+          </button>
+        )}
+        <button
+          type="button"
+          className="ua-cfg-icon-btn"
+          aria-label={isEditing ? "Cancel" : `Remove ${entry.label}`}
+          disabled={locked}
+          onClick={isEditing ? onCancel : onDelete}
+        >
+          ×
         </button>
-      )}
-      <button
-        type="button"
-        className="ua-cfg-icon-btn"
-        aria-label="Move up"
-        disabled={locked || !canMoveUp}
-        onClick={onMoveUp}
-      >
-        ↑
-      </button>
-      <button
-        type="button"
-        className="ua-cfg-icon-btn"
-        aria-label="Move down"
-        disabled={locked || !canMoveDown}
-        onClick={onMoveDown}
-      >
-        ↓
-      </button>
-      <button
-        type="button"
-        className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-        aria-label={isEditing ? "Cancel" : `Remove ${entry.label}`}
-        disabled={locked}
-        onClick={isEditing ? onCancel : onDelete}
-      >
-        ×
-      </button>
       </div>
     </article>
   );
@@ -206,16 +187,6 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
 
   const locked = loading || busy;
 
-  function moveDetail(index, delta) {
-    if (locked) return;
-    const nextIndex = index + delta;
-    if (nextIndex < 0 || nextIndex >= details.length) return;
-    const copy = [...details];
-    const [row] = copy.splice(index, 1);
-    copy.splice(nextIndex, 0, row);
-    persist(copy, "Contact order saved");
-  }
-
   return (
     <div className="ua-cfg-ct">
     <Panel
@@ -223,7 +194,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       subtitle={
         loading
           ? "Loading contact details…"
-          : "Shown in the website footer. Use ↑ ↓ to reorder. Saved to App Config."
+          : "Shown in the website footer. Toggle live, edit values, or remove a detail. Saved to App Config."
       }
       actions={
         <button
@@ -247,7 +218,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
         <section className="ua-cfg-faq-new ua-cfg-ct-add">
           <div className="ua-cfg-faq-new__head">
             <h4 className="ua-cfg-faq-new__title">
-              <span aria-hidden="true">☎</span> New contact detail
+              <span aria-hidden="true">☎️</span> New contact detail
             </h4>
             <button
               type="button"
@@ -287,15 +258,13 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       ) : null}
 
       <div className="ua-cfg-ct-list">
-        {details.map((entry, index) => (
+        {details.map((entry) => (
           <ContactRow
             key={entry.id}
             entry={entry}
             editing={editingId === entry.id}
             draft={draft}
             locked={locked}
-            canMoveUp={index > 0}
-            canMoveDown={index < details.length - 1}
             onDraftChange={setDraft}
             onToggle={() => {
               persist(
@@ -306,8 +275,6 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
             onEdit={() => startEdit(entry)}
             onSave={() => saveEdit(entry.id)}
             onCancel={cancelEdit}
-            onMoveUp={() => moveDetail(index, -1)}
-            onMoveDown={() => moveDetail(index, 1)}
             onDelete={() => setPendingDelete(entry)}
           />
         ))}

@@ -739,46 +739,48 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                       {programTestimonialLabel(entry.program, concernOptions) || "Program"}
                     </span>
                   </button>
-                  <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                    {entry.live ? "LIVE" : "HIDDEN"}
-                  </span>
-                  <button
-                    type="button"
-                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                    aria-pressed={entry.live}
-                    aria-label={`${String(entry.name || "story")} ${entry.live ? "on" : "off"}`}
-                    disabled={busy}
-                    onClick={() => toggleLive(entry)}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-icon-btn"
-                    aria-label="Move up"
-                    disabled={!canMoveUp || busy}
-                    onClick={() => moveItem(entry.id, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-icon-btn"
-                    aria-label="Move down"
-                    disabled={!canMoveDown || busy}
-                    onClick={() => moveItem(entry.id, 1)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-icon-btn"
-                    aria-label={`Remove ${String(entry.name || "story")}`}
-                    disabled={busy}
-                    onClick={() => setPendingDelete(entry)}
-                  >
-                    ×
-                  </button>
+                  <div className="ua-cfg-pt-row__controls">
+                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                      {entry.live ? "LIVE" : "HIDDEN"}
+                    </span>
+                    <button
+                      type="button"
+                      className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                      aria-pressed={entry.live}
+                      aria-label={`${String(entry.name || "story")} ${entry.live ? "on" : "off"}`}
+                      disabled={busy}
+                      onClick={() => toggleLive(entry)}
+                    >
+                      <span className="ua-toggle__knob" />
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label="Move up"
+                      disabled={!canMoveUp || busy}
+                      onClick={() => moveItem(entry.id, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label="Move down"
+                      disabled={!canMoveDown || busy}
+                      onClick={() => moveItem(entry.id, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      aria-label={`Remove ${String(entry.name || "story")}`}
+                      disabled={busy}
+                      onClick={() => setPendingDelete(entry)}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               );
             })}
