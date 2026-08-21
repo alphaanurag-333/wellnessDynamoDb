@@ -59277,156 +59277,208 @@ scrollbar-width: thin;
   }
 }
 
-/* Health disorders config */
-.updated-admin .ua-cfg-hd-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Health disorders — aligned with blogs / wellnesspedia list UI */
+.updated-admin .ua-cfg-hd.ua-cfg-bl > .ua-cfg-panel:first-child .ua-cfg-panel__head {
+  margin-bottom: 16px;
+  gap: 12px 16px;
+  align-items: center;
 }
 
-.updated-admin .ua-cfg-hd-card {
+.updated-admin .ua-cfg-hd .ua-cfg-panel__actions .ua-cfg-tf-add-btn {
+  min-width: 9.5rem;
+  padding: 0 16px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-list {
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new {
+  margin-bottom: 14px;
+}
+
+.updated-admin .ua-cfg-hd.ua-cfg-bl .ua-cfg-hd-item.ua-cfg-rc-item,
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item.ua-cfg-bl-item {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item .ua-cfg-rc-item__body {
+  min-width: 0;
+  width: 100%;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__identity {
+  flex: 1 1 100%;
+  order: 2;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item.is-editing .ua-cfg-bl-item__actions {
+  flex: 1 1 100%;
+  order: 1;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new__fields {
+  gap: 14px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-field > span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-field .ua-cfg-vh-input,
+.updated-admin .ua-cfg-hd .ua-cfg-hd-edit .ua-cfg-vh-input,
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new .ua-cfg-vh-input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d5dce8;
+  border-radius: 10px;
+  box-sizing: border-box;
   background: #fff;
 }
 
-.updated-admin .ua-cfg-hd-card.is-editing {
-  border-color: #c5cbe8;
-  background: #f8f9fd;
-}
-
-.updated-admin .ua-cfg-hd-card__head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  margin-bottom: 8px;
-}
-
-.updated-admin .ua-cfg-hd-card__title {
+.updated-admin .ua-cfg-hd .ua-cfg-rc-field .ua-cfg-tf-story,
+.updated-admin .ua-cfg-hd .ua-cfg-hd-edit .ua-cfg-bl-edit__desc,
+.updated-admin .ua-cfg-hd .ua-cfg-bl-item__identity .ua-cfg-bl-edit__desc,
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new .ua-cfg-tf-story {
+  display: block;
+  width: 100%;
+  min-height: 88px;
+  height: auto;
+  max-height: none;
   margin: 0;
-  flex: 1;
-  min-width: 140px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #16233f;
+  padding: 12px 14px;
+  border: 1px solid #d5dce8;
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
 }
 
-.updated-admin .ua-cfg-hd-card__type {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+.updated-admin .ua-cfg-hd .ua-cfg-hd-type {
+  width: 100%;
+  max-width: 220px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-type .ua-cfg-select__trigger {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #d5dce8;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-flag {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  max-width: none;
+  overflow: visible;
   text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #eef0fc;
-  color: #4f5fd6;
+  letter-spacing: 0.04em;
+  background: #eef2ff;
+  color: #4338ca;
 }
 
-.updated-admin .ua-cfg-hd-card__type--chronic {
+.updated-admin .ua-cfg-hd .ua-cfg-hd-flag--acute {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-flag--chronic {
   background: #f3e8ff;
   color: #7c3aed;
 }
 
-.updated-admin .ua-cfg-hd-card__desc {
-  margin: 0 0 10px;
-  font-size: 13px;
-  color: var(--muted);
-  line-height: 1.45;
-}
-
-.updated-admin .ua-cfg-hd-card__symptoms {
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-top: 2px;
 }
 
-.updated-admin .ua-cfg-hd-chip {
+.updated-admin .ua-cfg-hd .ua-cfg-hd-chip {
   display: inline-flex;
   align-items: center;
   padding: 4px 8px;
   border-radius: 999px;
   background: #f3f5f9;
-  border: 1px solid var(--border-soft);
+  border: 1px solid #e2e8f0;
   font-size: 11px;
   color: #334155;
 }
 
-.updated-admin .ua-cfg-hd-card__actions,
-.updated-admin .ua-cfg-hd-form__actions {
-  display: flex;
-  flex-wrap: wrap;
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor {
+  width: 100%;
+  min-width: 0;
+  display: grid;
   gap: 8px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor .ua-cfg-rc-specs-editor__row {
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor .ua-cfg-vh-input {
+  height: 40px;
+  padding: 0 12px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor > .ua-cfg-tf-add-btn {
+  width: auto;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-bl-new-foot {
   justify-content: flex-end;
 }
 
-.updated-admin .ua-cfg-hd-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 10px;
-  margin-bottom: 14px;
-  padding: 12px 14px;
-  border: 1px dashed #c5cbe8;
-  border-radius: 12px;
-  background: #f8f9fd;
-}
-
-.updated-admin .ua-cfg-hd-form--inline {
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-}
-
-.updated-admin .ua-cfg-hd-form__title {
-  grid-column: 1;
-  height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0 12px;
-  font-size: 13px;
-  background: #fff;
-}
-
-.updated-admin .ua-cfg-hd-form__type {
-  grid-column: 2;
-  height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0 10px;
-  font-size: 13px;
-  background: #fff;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.updated-admin .ua-cfg-hd-form__desc,
-.updated-admin .ua-cfg-hd-form__symptoms {
-  grid-column: 1 / -1;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-family: inherit;
-  resize: vertical;
-  background: #fff;
-  box-sizing: border-box;
-}
-
-.updated-admin .ua-cfg-hd-form__actions {
-  grid-column: 1 / -1;
-}
-
 @media (max-width: 720px) {
-  .updated-admin .ua-cfg-hd-form {
-    grid-template-columns: minmax(0, 1fr);
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-type {
+    max-width: 100%;
   }
 
-  .updated-admin .ua-cfg-hd-form__title,
-  .updated-admin .ua-cfg-hd-form__type {
-    grid-column: 1;
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-item__head,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-item__actions {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-item__identity,
+  .updated-admin .ua-cfg-hd .ua-cfg-bl-item__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
   }
 }
+
+

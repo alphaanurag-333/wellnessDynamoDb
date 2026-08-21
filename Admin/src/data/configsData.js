@@ -624,17 +624,6 @@ export const CONFIG_GROUPS = {
           on: true,
           tags: ["Text"],
         },
-        {
-          id: "common-health-disorders",
-          name: "Health disorders",
-          note: "Acute & chronic disorder catalog · HealthDisorder table",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
       ],
     },
     {
@@ -681,6 +670,17 @@ export const CONFIG_GROUPS = {
     {
       name: "Wellnesspedia",
       items: [
+        {
+          id: "common-health-disorders",
+          name: "Health disorders",
+          note: "Acute & chronic disorder catalog · HealthDisorder table",
+          owner: "Admin / Support",
+          app: true,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
         {
           id: "common-recipes",
           name: "Healthy recipes",
