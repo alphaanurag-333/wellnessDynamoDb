@@ -1036,7 +1036,7 @@ export function HealthProgressSection({ user, onToast }) {
     const tracker = trackers.find((row) => row.id === id);
     if (!tracker) return;
     if (tracker.featureKey === "menstrualCycle" && !isFemale && !isMock) {
-      onToast?.("Menstrual cycle is only available for female clients");
+      onToast?.("Menstrual cycle is only available for girl clients");
       return;
     }
     const nextEnabled = !tracker.enabled;
@@ -1102,7 +1102,7 @@ export function HealthProgressSection({ user, onToast }) {
                 <span className="ua-cp-hptrack-list__dot" style={{ background: tracker.color }} />
                 <div className="ua-cp-hptrack-list__copy">
                   <strong>{tracker.name}</strong>
-                  <span> · {menstrualLocked ? "Female clients only" : tracker.category}</span>
+                  <span> · {menstrualLocked ? "Girl clients only" : tracker.category}</span>
                 </div>
                 {tracker.enabled ? <span className="ua-cp-hptrack-list__status">Live in app</span> : null}
                 <button

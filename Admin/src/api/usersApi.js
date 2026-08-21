@@ -261,8 +261,34 @@ function titleCaseToken(value) {
 }
 
 function formatGender(value) {
-  return titleCaseToken(value);
+  const raw = String(value || "").toLowerCase().trim();
+  const map = {
+    male: "Boy",
+    female: "Girl",
+    other: "Guess",
+    boy: "Boy",
+    girl: "Girl",
+    guess: "Guess",
+    m: "Boy",
+    f: "Girl",
+  };
+  return map[raw] || titleCaseToken(raw);
 }
+
+/** Map UI label/value back to API gender (male | female | other). */
+export function toApiGender(value) {
+  const raw = String(value || "").toLowerCase().trim();
+  if (raw === "boy" || raw === "male" || raw === "m") return "male";
+  if (raw === "girl" || raw === "female" || raw === "f") return "female";
+  if (raw === "guess" || raw === "other") return "other";
+  return "";
+}
+
+export const GENDER_UI_OPTIONS = [
+  { value: "male", label: "Boy" },
+  { value: "female", label: "Girl" },
+  { value: "other", label: "Guess" },
+];
 
 function formatDietaryPreference(value) {
   return titleCaseToken(value);

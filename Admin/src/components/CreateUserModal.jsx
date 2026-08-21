@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
-import { createUser } from "../api/usersApi.js";
+import { createUser, GENDER_UI_OPTIONS } from "../api/usersApi.js";
 import {
   COUNTRY_OPTIONS,
   INDIA_STATES,
@@ -43,11 +43,6 @@ function maxAllowedDob(yearsBack = DOB_MIN_AGE_YEARS) {
   date.setFullYear(date.getFullYear() - yearsBack);
   return toLocalDateOnly(date);
 }
-const GENDER_OPTIONS = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
-];
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Disabled" },
@@ -372,7 +367,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 disabled={busy}
                 onChange={(e) => patch({ gender: e.target.value })}
               >
-                {GENDER_OPTIONS.map((opt) => (
+                {GENDER_UI_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

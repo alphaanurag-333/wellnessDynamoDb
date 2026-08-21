@@ -199,7 +199,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
     phoneCountryCode,
     whatsappSameAsMobile: whatsappSameAsMobile ?? false,
     dob: dob ?? null,
-    gender: gender ?? "boy",
+    gender: gender ?? "male",
     country: country ?? null,
     state: state ?? null,
     city: city ?? null,
