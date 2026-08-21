@@ -259,7 +259,7 @@ export function FoodWaterHistoryPicker({
 
   return (
     <div className={`ua-cp-food-water-history-wrap ua-cp-hist--${tone}`} ref={wrapRef}>
-      <button
+      <button style={{border:"1px solid rgb(230, 235, 242)"}}
         type="button"
         className="ua-cp-food-water-history"
         onClick={() => setOpen((o) => !o)}

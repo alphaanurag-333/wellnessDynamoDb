@@ -194,14 +194,14 @@ export function CounsellingSection({ user, onToast }) {
   return (
     <div className="ua-cp-section ua-cp-counselling">
       <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
-      <p className="ua-cp-placeholder__sub">
+      <p className="ua-cp-placeholder__sub" style={{marginTop:"0px"}}>
         Client requests a session, you share date and period windows, they pick one, then you confirm a fixed time.
       </p>
 
       {loading ? <p className="ua-cp-counselling__muted">Loading sessions…</p> : null}
 
       {!loading && !activeTrack ? (
-        <div className="ua-cp-counselling__empty">No open counselling request. History is listed below.</div>
+        <div className="ua-cp-counselling__empty" style={{marginTop:"0px", textAlign:"center"}}>No open counselling request. History is listed below.</div>
       ) : null}
 
       {activeTrack ? (
@@ -349,7 +349,7 @@ export function CounsellingSection({ user, onToast }) {
 
       <div className="ua-cp-counselling__history">
         <h3>History</h3>
-        {!tracks.length ? <p className="ua-cp-counselling__muted">No sessions yet.</p> : null}
+        {!tracks.length ? <p className="ua-cp-counselling__muted" style={{textAlign:"center"}}>No sessions yet.</p> : null}
         <ul className="ua-cp-counselling__list">
           {tracks.map((track) => (
             <li key={track.id}>

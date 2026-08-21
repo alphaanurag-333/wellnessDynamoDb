@@ -1366,7 +1366,7 @@ function MockReportAnalysisTab({ onToast }) {
           />
         </div>
         <div className="ua-cp-ip-nutrition__latest">
-          <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span>
+          <span className="ua-cp-ip-tag ua-cp-ip-tag--latest" >Latest</span>
           <span className="ua-cp-ip-nutrition__date">{initialNutrition.latest.date}</span>
           {nutritionEditing ? (
             <textarea
@@ -1510,7 +1510,7 @@ function LiveReportAnalysisTab({
               <div className="ua-cp-ip-upload__body">
                 <strong>
                   Blood report uploaded
-                  {index === 0 ? <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span> : null}
+                  {index === 0 ? <span className="ua-cp-ip-tag ua-cp-ip-tag--latest" style={{color:"white"}}>Latest</span> : null}
                 </strong>
                 <span>Added by client · {formatDisplayDate(report.reportDate)} · {reportAiStatusText(report)}</span>
               </div>
@@ -1767,7 +1767,7 @@ function LiveReportAnalysisTab({
           </div>
           {analysed ? (
             <div className="ua-cp-ip-nutrition__latest">
-              <span className="ua-cp-ip-tag ua-cp-ip-tag--latest">Latest</span>
+              <span className="">Latest</span>
               <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(selected.reportDate)}</span>
               {nutritionEditing ? (
                 <textarea

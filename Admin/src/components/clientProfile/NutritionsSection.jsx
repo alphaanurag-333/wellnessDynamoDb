@@ -1056,9 +1056,9 @@ export function NutritionsSection({ user, onToast }) {
               <div className="ua-cp-order-table__head"><div>Date</div><div>Items</div><div>Amount</div><div>Status</div></div>
               {historyRows.length ? historyRows.map((o) => (
                 <div key={o.id} className="ua-cp-order-table__row">
-                  <div>{o.date}</div>
+                  <div style={{fontWeight:'600',color:"rgb(90, 107, 133)"}}>{o.date}</div>
                   <div><div>{o.items}</div><div className="ua-cp-order-table__sub">{o.type}</div></div>
-                  <div>Rs. {o.amount.toLocaleString("en-IN")}</div>
+                  <div style={{fontWeight:'bold'}}>Rs. {o.amount.toLocaleString("en-IN")}</div>
                   <div><span className={`ua-cp-order-status ua-cp-order-status--${o.tone}`}>{o.status}</span></div>
                 </div>
               )) : (
