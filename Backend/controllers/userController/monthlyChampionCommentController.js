@@ -57,11 +57,19 @@ exports.createMonthlyChampionCommentController = asyncHandler(async (req, res) =
   }
 
   const commenterUserId = req.user.id;
-  const created = await createMonthlyChampionPostComment({
-    monthlyChampionPostId: req.params.postId,
-    commenterUserId,
-    comment,
-  });
+  let created;
+  try {
+    created = await createMonthlyChampionPostComment({
+      monthlyChampionPostId: req.params.postId,
+      commenterUserId,
+      comment,
+    });
+  } catch (err) {
+    if (err?.code === "ALREADY_COMMENTED") {
+      throw new AppError(err.message || "You have already commented on this champion post", 409);
+    }
+    throw err;
+  }
 
   if (post.userId && post.userId !== commenterUserId) {
     const commenter = await getUserById(commenterUserId);
