@@ -48201,18 +48201,28 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-rc-item__actions {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-rc-item__surfaces {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-rc-item__live {
+  display: inline-flex;
   flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -48353,6 +48363,15 @@ scrollbar-width: thin;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__surfaces {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
@@ -54758,6 +54777,18 @@ scrollbar-width: thin;
     margin: 0;
     aspect-ratio: auto;
   }
+
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__identity,
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__surfaces,
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__btns {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 900px) {
@@ -54776,6 +54807,18 @@ scrollbar-width: thin;
     min-height: 135px;
     margin: 0;
     aspect-ratio: auto;
+  }
+
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__identity,
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__surfaces,
+  .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-rc-item__btns {
+    flex: 1 1 auto;
+    justify-content: flex-start;
   }
 }
 
@@ -55012,26 +55055,27 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__head {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px 12px;
   min-width: 0;
 }
 
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__identity {
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
   min-width: 0;
 }
 
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__actions {
   display: flex;
-  flex: 0 0 auto;
-  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__meta {
@@ -55043,10 +55087,21 @@ scrollbar-width: thin;
   max-width: 100%;
 }
 
+.updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__surfaces {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__live,
 .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__btns {
   display: inline-flex;
-  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -55179,6 +55234,18 @@ scrollbar-width: thin;
     margin: 0;
     aspect-ratio: auto;
   }
+
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__identity,
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__surfaces,
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__btns {
+    flex: 1 1 auto;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 900px) {
@@ -55197,6 +55264,18 @@ scrollbar-width: thin;
     min-height: 135px;
     margin: 0;
     aspect-ratio: auto;
+  }
+
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__identity,
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__actions {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__surfaces,
+  .updated-admin .ua-cfg-recipes-item .ua-cfg-rc-item__btns {
+    flex: 1 1 auto;
+    justify-content: flex-start;
   }
 }
 

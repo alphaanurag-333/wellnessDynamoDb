@@ -255,7 +255,8 @@ function SpecsEditor({ value, disabled, onChange }) {
             className="ua-cfg-vh-input"
             value={row}
             disabled={disabled}
-            placeholder={index === 0 ? "e.g. 50 g Protein" : "Add another spec"}
+            placeholder={index === 0 ? "Spec · e.g. 50 g Protein" : "Add another spec"}
+            aria-label={index === 0 ? "Recipe specification" : `Recipe specification ${index + 1}`}
             onChange={(event) => emit(rows.map((entry, i) => (i === index ? event.target.value : entry)))}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
@@ -550,8 +551,8 @@ export function RecipesSection({
   hideGallery = false,
   categories = RECIPE_CATEGORIES,
   galleryOwners = RECIPE_GALLERY_OWNERS,
-  titlePlaceholder = "Title · e.g. Ragi dosa · high fibre",
-  descriptionPlaceholder = "Recipe description shown in the app...",
+  titlePlaceholder = "Enter recipe title",
+  descriptionPlaceholder = "Enter recipe description",
   galleryBadge = "Recipe",
   galleryPlaceholder = "Recipe media",
   itemNoun = "Recipe",
@@ -1469,6 +1470,8 @@ export function RecipesSection({
                         {editing ? (
                           <input
                             className="ua-cfg-vh-input ua-cfg-rc-title"
+                            placeholder={titlePlaceholder}
+                            aria-label="Recipe title"
                             value={asCopyString(entry.title)}
                             disabled={disabled}
                             onChange={(event) => updateItem(entry.id, { title: event.target.value })}
@@ -1482,6 +1485,8 @@ export function RecipesSection({
                               options={categoryOptions}
                               value={asCopyString(entry.category)}
                               disabled={disabled}
+                              ariaLabel="Recipe category"
+                              placeholder="Choose category"
                               onChange={(value) => updateItem(entry.id, {
                                 category: persist ? persistRecipeCategory(value, categoryOptions) : value,
                                 categoryLabel: recipeCategoryLabel(value, categoryOptions),
@@ -1586,6 +1591,8 @@ export function RecipesSection({
                         <textarea
                           className="ua-cfg-tf-story ua-cfg-rc-edit__desc"
                           rows={3}
+                          placeholder={descriptionPlaceholder}
+                          aria-label="Recipe description"
                           value={asCopyString(entry.description)}
                           disabled={disabled}
                           onChange={(event) => updateItem(entry.id, { description: event.target.value })}
@@ -1627,7 +1634,8 @@ export function RecipesSection({
                               {(entry.mediaMode || entry.apiType) !== "video" ? (
                                 <input
                                   className="ua-cfg-vh-input"
-                                  placeholder="YouTube link · youtube.com/watch?v=…"
+                                  placeholder="Paste YouTube link · youtube.com/watch?v=…"
+                                  aria-label="YouTube link"
                                   value={asCopyString(entry.videoLink)}
                                   disabled={disabled}
                                   onChange={(event) => {
