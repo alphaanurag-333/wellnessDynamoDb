@@ -179,7 +179,7 @@ export function ProgramSetupModal({
         </label>
 
         {showAppHeal ? (
-          <label className="ua-cfg-setup-modal__field ua-cfg-setup-modal__field--block">
+          <label style={{marginBottom:"0px"}} className="ua-cfg-setup-modal__field ua-cfg-setup-modal__field--block">
             <span className="ua-cfg-setup-modal__label">App Heal feature validity</span>
             <select
               className="ua-cfg-setup-modal__select"
@@ -192,7 +192,7 @@ export function ProgramSetupModal({
                 </option>
               ))}
             </select>
-            <span className="ua-cfg-setup-modal__hint">
+            <span style={{marginTop:"0px"}} className="ua-cfg-setup-modal__hint">
               Periods are managed by admin in Energy Exchange.
             </span>
           </label>
@@ -222,7 +222,8 @@ export function ProgramSetupModal({
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={saving}>
             Cancel
           </button>
-          <button
+          <button style={{background: "rgb(43, 143, 91)",
+    color: "rgb(255, 255, 255)", border:"1px solid rgb(43, 143, 91)"}}
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary"
             onClick={handleSave}

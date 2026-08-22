@@ -29,6 +29,27 @@ import {
 } from "../api/coachContentApi.js";
 import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
 
+function CaretIcon({ up = false, className = "" }) {
+  return (
+    <svg
+      className={`ua-tm-caret${up ? " ua-tm-caret--up" : ""}${className ? ` ${className}` : ""}`}
+      width="12"
+      height="8"
+      viewBox="0 0 12 8"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M1 1.5L6 6.5L11 1.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function ContentToggle({ live, disabled, onChange }) {
   return (
     <button
@@ -594,7 +615,7 @@ export function TeamMemberPage() {
     <main className="content ua-page-enter ua-tm-page">
       <div className="ua-tm-top">
         <Link to={UPDATED_ADMIN_PATHS.teams} className="ua-back-link">
-          ← Team
+        ‹ Back to Team
         </Link>
         <h1 className="page-head__title">Team member</h1>
       </div>
@@ -649,8 +670,8 @@ export function TeamMemberPage() {
             onClick={() => setProfileOpen((open) => !open)}
             aria-expanded={profileOpen}
           >
-            {profileOpen ? "Hide profile" : "View profile"}{" "}
-            <span className={profileOpen ? "ua-tm-profile__chevron ua-tm-profile__chevron--open" : "ua-tm-profile__chevron"} aria-hidden="true">▾</span>
+            {profileOpen ? "Hide profile" : "View profile"}
+            <CaretIcon className="ua-tm-profile__chevron" up={profileOpen} />
           </button>
         </div>
 
@@ -706,8 +727,8 @@ export function TeamMemberPage() {
                 <div><dt>Full name:</dt><dd title={member.name || undefined}>{member.name || "—"}</dd></div>
                 <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
                 <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
-                <div><dt>Date of birth:</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
-                <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
+                {/* <div><dt>Date of birth:</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
+                <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div> */}
               </dl>
             </div>
             <div className="ua-tm-profile-panel">
@@ -729,7 +750,7 @@ export function TeamMemberPage() {
           <div className="ua-tm-section-head">
             <div className="ua-tm-section-head__title">Clients & team</div>
             <div className="ua-tm-section-head__hint">
-              {member.clientCount ?? 0} <font style={{color:"rgb(154, 166, 184)"}}>
+              {member.clientCount ?? 0} <font style={{color:"rgb(154, 166, 184)", fontWeight:"400"}}>
                 clients assigned — tap a card to view them</font>
             </div>
           </div>
@@ -762,7 +783,7 @@ export function TeamMemberPage() {
         <section className="ua-tm-card">
           <div className="ua-tm-section-head">
             <div className="ua-tm-section-head__title">Content</div>
-            <div className="ua-tm-section-head__hint" style={{color:"rgb(154, 166, 184)"}}>
+            <div className="ua-tm-section-head__hint" style={{color:"rgb(154, 166, 184)",fontWeight:"400"}}>
               {contentLive} of {contentItems.length} live for clients
               {/* {canEditContent ? " — upload, replace or hide any of them" : ""} */}
             </div>
@@ -932,7 +953,7 @@ export function TeamMemberPage() {
               aria-label={permsOpen ? "Collapse permissions" : "Expand permissions"}
               onClick={() => setPermsOpen((open) => !open)}
             >
-              {permsOpen ? "▴" : "▾"}
+              <CaretIcon up={permsOpen} />
             </button>
           </div>
         </div>

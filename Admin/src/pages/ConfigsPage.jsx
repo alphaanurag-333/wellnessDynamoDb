@@ -226,8 +226,8 @@ export function ConfigsPage() {
                     ) : null}
                   </div>
 
-                  <div className="ua-config-item__toggle-slot">
-                    {showToggle ? (
+                  {showToggle ? (
+                    <div className="ua-config-item__toggle-slot">
                       <button
                         type="button"
                         className={`ua-toggle${on ? " ua-toggle--on" : ""}`}
@@ -237,8 +237,8 @@ export function ConfigsPage() {
                       >
                         <span className="ua-toggle__knob" />
                       </button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
 
                   <button
                     type="button"

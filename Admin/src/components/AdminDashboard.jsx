@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchDashboardMediaBlob, fetchDashboardPayments } from "../api/dashboardApi.js";
 import { pushOnboardingReminder } from "../api/onboardingApi.js";
 import { fetchTeamMembers, sendTeamReminder } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -64,6 +65,246 @@ import {
 function asNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+const TRANSPARENT_PIXEL =
+  "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
+function downloadBlob(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function nextPaint() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+const mediaDataUrlCache = new Map();
+
+async function imageSrcToDataUrl(src) {
+  if (!src || src.startsWith("data:")) return src;
+  const cached = mediaDataUrlCache.get(src);
+  if (cached) return cached;
+  try {
+    const blob = await fetchDashboardMediaBlob(src);
+    if (blob && blob.size) {
+      const dataUrl = await blobToDataUrl(blob);
+      if (dataUrl.startsWith("data:image") || dataUrl.startsWith("data:application/octet-stream")) {
+        mediaDataUrlCache.set(src, dataUrl);
+        return dataUrl;
+      }
+    }
+  } catch {
+    /* try direct fetch next */
+  }
+  try {
+    const res = await fetch(src, { mode: "cors", credentials: "omit" });
+    if (!res.ok) return null;
+    const dataUrl = await blobToDataUrl(await res.blob());
+    mediaDataUrlCache.set(src, dataUrl);
+    return dataUrl;
+  } catch {
+    return null;
+  }
+}
+
+async function inlineCrossOriginImages(root) {
+  const imgs = [...root.querySelectorAll("img")];
+  const restores = [];
+  await Promise.all(imgs.map(async (img) => {
+    const original = img.currentSrc || img.getAttribute("src") || img.src;
+    if (!original || original.startsWith("data:") || original.startsWith("blob:")) return;
+    const dataUrl = await imageSrcToDataUrl(original);
+    if (!dataUrl) return;
+    restores.push(() => {
+      img.src = original;
+    });
+    img.src = dataUrl;
+    try {
+      await img.decode();
+    } catch {
+      /* ignore decode errors */
+    }
+  }));
+  await nextPaint();
+  return () => restores.forEach((fn) => fn());
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [header, body] = String(dataUrl).split(",");
+  const mime = /data:([^;]+)/.exec(header)?.[1] || "image/png";
+  const binary = atob(body || "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function canvasToPngBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+          return;
+        }
+        try {
+          resolve(dataUrlToBlob(canvas.toDataURL("image/png")));
+        } catch (err) {
+          reject(err);
+        }
+      }, "image/png");
+    } catch (err) {
+      try {
+        resolve(dataUrlToBlob(canvas.toDataURL("image/png")));
+      } catch (inner) {
+        reject(inner || err);
+      }
+    }
+  });
+}
+
+function safePixelRatio(width, height, maxSide) {
+  const w = Math.max(1, width);
+  const h = Math.max(1, height);
+  return Math.max(0.2, Math.min(2, maxSide / w, maxSide / h));
+}
+
+function skipCaptureNoise(el, { skipImages = false } = {}) {
+  if (!(el instanceof Element)) return true;
+  if (el.classList.contains("page-head__actions") || el.classList.contains("ua-dash-export")) return false;
+  const tag = el.tagName;
+  if (tag === "IFRAME" || tag === "VIDEO" || tag === "CANVAS") return false;
+  if (skipImages && (tag === "IMG" || tag === "IMAGE")) return false;
+  return true;
+}
+
+function unlockOverflow(node) {
+  const restored = [];
+  let current = node;
+  while (current && current !== document.body) {
+    const style = window.getComputedStyle(current);
+    if (style.overflow !== "visible" || style.overflowY !== "visible" || style.overflowX !== "visible") {
+      restored.push({
+        el: current,
+        overflow: current.style.overflow,
+        overflowX: current.style.overflowX,
+        overflowY: current.style.overflowY,
+      });
+      current.style.overflow = "visible";
+      current.style.overflowX = "visible";
+      current.style.overflowY = "visible";
+    }
+    current = current.parentElement;
+  }
+  return () => {
+    restored.forEach((item) => {
+      item.el.style.overflow = item.overflow;
+      item.el.style.overflowX = item.overflowX;
+      item.el.style.overflowY = item.overflowY;
+    });
+  };
+}
+
+async function captureWithHtmlToImage(node, width, height) {
+  const { toCanvas } = await import("html-to-image");
+  const attempts = [
+    { maxSide: 8192, skipImages: false },
+    { maxSide: 4096, skipImages: false },
+    { maxSide: 4096, skipImages: true },
+  ];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const canvas = await toCanvas(node, {
+        pixelRatio: safePixelRatio(width, height, attempt.maxSide),
+        backgroundColor: "#eef1f7",
+        skipFonts: true,
+        cacheBust: false,
+        imagePlaceholder: TRANSPARENT_PIXEL,
+        filter: (el) => skipCaptureNoise(el, attempt),
+      });
+      if (!canvas?.width || !canvas?.height) {
+        lastError = new Error("Empty screenshot canvas");
+        continue;
+      }
+      return await canvasToPngBlob(canvas);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("Could not capture screenshot");
+}
+
+async function captureWithHtml2Canvas(node, width, height) {
+  const mod = await import("html2canvas-pro");
+  const html2canvas = mod.default || mod.html2canvas;
+  const scale = safePixelRatio(width, height, 4096);
+  const canvas = await html2canvas(node, {
+    scale,
+    useCORS: true,
+    allowTaint: false,
+    backgroundColor: "#eef1f7",
+    logging: false,
+    imageTimeout: 4000,
+    width,
+    height,
+    windowWidth: width,
+    windowHeight: height,
+    scrollX: 0,
+    scrollY: 0,
+    ignoreElements: (el) => !skipCaptureNoise(el),
+    onclone: (_doc, cloned) => {
+      cloned.classList.add("is-capturing");
+      cloned.style.width = `${width}px`;
+      cloned.style.height = `${height}px`;
+      cloned.style.maxHeight = "none";
+      cloned.style.overflow = "visible";
+    },
+  });
+  if (!canvas?.width || !canvas?.height) throw new Error("Empty screenshot canvas");
+  return canvasToPngBlob(canvas);
+}
+
+async function capturePageScreenshot(node) {
+  const width = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth, node.clientWidth, 1));
+  const height = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight, node.clientHeight, 1));
+  const restoreOverflow = unlockOverflow(node);
+  const restoreImages = await inlineCrossOriginImages(node);
+  const shell = node.closest(".page-shell");
+  const prevScroll = shell?.scrollTop ?? 0;
+  if (shell) shell.scrollTop = 0;
+  try {
+    try {
+      return await captureWithHtml2Canvas(node, width, height);
+    } catch (first) {
+      try {
+        return await captureWithHtmlToImage(node, width, height);
+      } catch (second) {
+        throw second || first;
+      }
+    }
+  } finally {
+    if (shell) shell.scrollTop = prevScroll;
+    restoreImages();
+    restoreOverflow();
+  }
 }
 
 function pendingChipsForRole(roleId, statistics) {
@@ -421,7 +662,8 @@ export function AdminDashboard({
   onRetry,
 }) {
   const navigate = useNavigate();
-  const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady } = useViewAs();
+  const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady, can } = useViewAs();
+  const canExport = can("console.dash.export");
   // Prefer the selected View-as id for admin; persona is only for custom staff roles.
   const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
@@ -602,6 +844,11 @@ export function AdminDashboard({
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
   const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
+  const [monthPayments, setMonthPayments] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState("");
+  const [exporting, setExporting] = useState(false);
+  const pageRef = useRef(null);
 
   const champMonthOptions = liveCommunity ? (liveLeaderboard?.months || []) : [];
   const champ = liveCommunity
@@ -1061,14 +1308,54 @@ export function AdminDashboard({
     openTeamRemind(onboardingRemindCopy(row));
   }
 
+  async function exportDashboard() {
+    if (exporting || loading || loadError) return;
+    const node = pageRef.current;
+    if (!node) {
+      onToast("Nothing to export");
+      return;
+    }
+    setExporting(true);
+    node.classList.add("is-capturing");
+    onToast("Capturing dashboard…");
+    try {
+      await nextPaint();
+      const blob = await capturePageScreenshot(node);
+      downloadBlob(`dashboard-${new Date().toISOString().slice(0, 10)}.png`, blob);
+      onToast("Dashboard screenshot saved");
+    } catch (err) {
+      console.error("Dashboard export failed", err);
+      onToast("Could not capture screenshot");
+    } finally {
+      node.classList.remove("is-capturing");
+      setExporting(false);
+    }
+  }
+
+  const exportButton = canExport ? (
+    <div className="page-head__actions">
+      <button style={{width:"max-content",color:"rgb(22, 35, 63)"}}
+        type="button"
+        className="btn btn--outline ua-dash-export"
+        aria-label={exporting ? "Exporting dashboard" : "Export dashboard"}
+        title="Export"
+        disabled={exporting || loading || Boolean(loadError)}
+        onClick={exportDashboard}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg> {exporting ? "Capturing…" : "Export report"}
+      </button>
+    </div>
+  ) : null;
+
   if (loading) {
     return (
-      <main className="content ua-page-enter">
+      <main ref={pageRef} className="content ua-page-enter">
         <div className="page-head">
           <div>
             <h1 className="page-head__title">Dashboard</h1>
             <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
           </div>
+          {exportButton}
         </div>
         <BrandLoader variant="page" label="Loading dashboard…" />
       </main>
@@ -1077,12 +1364,13 @@ export function AdminDashboard({
 
   if (loadError) {
     return (
-      <main className="content ua-page-enter">
+      <main ref={pageRef} className="content ua-page-enter">
         <div className="page-head">
           <div>
             <h1 className="page-head__title">Dashboard</h1>
             <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
           </div>
+          {exportButton}
         </div>
         <div className="ua-users-empty">
           <div className="ua-users-empty__title">Couldn’t load dashboard</div>
@@ -1094,14 +1382,15 @@ export function AdminDashboard({
   }
 
   return (
-    <main className="content ua-page-enter">
+    <main ref={pageRef} className="content ua-page-enter">
       <div className="page-head">
         <div>
           <h1 className="page-head__title">Dashboard</h1>
           <p className="page-head__sub">
-            <span className="chip chip--scope">{scopeLabel}</span> Updated just now
+          <span className="chip chip--scope">{scopeLabel}</span>  Updated just now
           </p>
         </div>
+        {exportButton}
       </div>
 
       {isAdminDash && revenueUnavailable ? (

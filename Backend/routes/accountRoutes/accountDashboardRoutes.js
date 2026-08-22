@@ -5,6 +5,7 @@ const {
   getStaffDashboardStatistics,
   listStaffDashboardPayments,
   sendTeamRemindersController,
+  proxyDashboardMedia,
 } = require("../../controllers/adminController/dashboardController");
 const { listPendingTasksController } = require("../../controllers/adminController/pendingTasksController");
 
@@ -43,6 +44,13 @@ router.get(
     support: "nav.dashboard",
   }),
   listPendingTasksController
+);
+
+router.get(
+  "/media",
+  protectAccount,
+  dashboardViewAuth,
+  proxyDashboardMedia
 );
 
 router.post(

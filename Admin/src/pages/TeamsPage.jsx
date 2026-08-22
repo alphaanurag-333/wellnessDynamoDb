@@ -839,7 +839,7 @@ export function TeamsPage() {
         ) : null}
       />
 
-      <SectionLabel hint="Filter by Access Control role">Team</SectionLabel>
+      <SectionLabel hint="">Team</SectionLabel>
       <PillTabs tabs={tabs} active={roleTab} onChange={setRoleTab} />
 
       {loading ? <BrandLoader variant="page" label="Loading team…" /> : null}
