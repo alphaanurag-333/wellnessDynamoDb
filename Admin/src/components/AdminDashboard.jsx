@@ -1791,10 +1791,10 @@ export function AdminDashboard({
            
             <div className="leaderboard__rows leaderboard__rows--compact">
             <div className="leaderboard__table-head">
-              <div>#</div><div>Client</div><div>Score</div><div>Days</div>
+              <div>#</div><div>Clients</div><div>Score</div><div>Days</div>
             </div>
               {activeLeaderboard.map((row, rowIdx) => (
-                <div
+                <div style={{border:"1px solid rgb(242, 214, 117)"}}
                   key={`${row.userId || row.name || "row"}-${row.rank ?? rowIdx}`}
                   className={`leaderboard__row${row.highlight ? " leaderboard__row--highlight" : ""}`}
                   onClick={() => openLeaderboardClient(row)}
@@ -1802,7 +1802,7 @@ export function AdminDashboard({
                   role="button"
                   tabIndex={0}
                 >
-                  <span className="leaderboard__rank">{row.rank}</span>
+                  <span className="leaderboard__rank podium-card__rank rank--1">{row.rank}</span>
                   <div>
                     <div className="leaderboard__name">
                       {row.name}

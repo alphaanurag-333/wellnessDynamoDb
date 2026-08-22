@@ -1073,32 +1073,28 @@ export function UsersPage() {
                     >
                       {tierLabel(u.tier)}
                     </span>
-                    {tierMoves.length || showTierUndo ? (
-                      <div className="ua-users-tier__moves">
-                        {tierMoves.map((move) => (
-                          <button
-                            key={`${rowKey}-${move.direction}-${move.target}`}
-                            type="button"
-                            className={`ua-tier-action ua-tier-action--${move.direction}`}
-                            title={move.title}
-                            disabled={actionBusy}
-                            onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
-                          >
-                            {move.label}
-                          </button>
-                        ))}
-                        {showTierUndo ? (
-                          <button
-                            type="button"
-                            className="ua-tier-action ua-tier-action--undo"
-                            title={`Undo — restore ${tierLabel(tierUndo.fromTier)}`}
-                            disabled={actionBusy}
-                            onClick={() => undoTier(u)}
-                          >
-                            undo
-                          </button>
-                        ) : null}
-                      </div>
+                    {tierMoves.map((move) => (
+                      <button
+                        key={`${rowKey}-${move.direction}-${move.target}`}
+                        type="button"
+                        className={`ua-tier-action ua-tier-action--${move.direction}`}
+                        title={move.title}
+                        disabled={actionBusy}
+                        onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
+                      >
+                        {move.label}
+                      </button>
+                    ))}
+                    {showTierUndo ? (
+                      <button
+                        type="button"
+                        className="ua-tier-action ua-tier-action--undo"
+                        title={`Undo — restore ${tierLabel(tierUndo.fromTier)}`}
+                        disabled={actionBusy}
+                        onClick={() => undoTier(u)}
+                      >
+                        undo
+                      </button>
                     ) : null}
                   </div>
                   <div className="ua-users-coach" onClick={(e) => e.stopPropagation()}>

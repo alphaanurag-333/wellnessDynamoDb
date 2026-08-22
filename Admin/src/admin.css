@@ -4939,7 +4939,7 @@
 
 .updated-admin .leaderboard__foot {
   font-size: 10.5px;
-  color: #a9861a;
+  color: rgb(169, 134, 26);
   margin: 10px 0 0;
   display: flex;
   align-items: center;
@@ -5725,7 +5725,7 @@
   --ua-users-cols:
     32px
     minmax(0, 1.7fr)
-    minmax(0, 0.95fr)
+    140px
     minmax(0, 1fr)
     minmax(0, 1fr)
     minmax(0, 0.7fr)
@@ -5746,7 +5746,7 @@
   --ua-users-cols:
     32px
     minmax(0, 1.7fr)
-    minmax(0, 0.95fr)
+    140px
     minmax(0, 1fr)
     minmax(0, 1fr)
     minmax(0, 0.7fr)
@@ -5774,14 +5774,15 @@
 
 .updated-admin .ua-table--users>div.ua-users-tier {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: center;
-  align-self: stretch;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
+  align-self: center;
   justify-self: start;
   width: 100%;
-  max-width: 100%;
+  max-width: 140px;
   gap: 6px;
   overflow: visible;
 }
@@ -5829,7 +5830,7 @@
 
 .updated-admin .ua-table--users .ua-users-tier {
   width: 100%;
-  max-width: 100%;
+  max-width: 140px;
   overflow: visible;
   justify-self: start;
 }
@@ -6118,23 +6119,21 @@
 
 .updated-admin .ua-users-tier {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
   gap: 6px;
   min-width: 0;
+  max-width: 140px;
   overflow: visible;
   line-height: 1;
   text-align: left;
 }
 
 .updated-admin .ua-users-tier__moves {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  min-width: 0;
+  display: contents;
 }
 
 .updated-admin .ua-table--users.ua-table__head > .ua-users-tier-head {
@@ -6147,10 +6146,10 @@
   display: inline-flex;
   width: auto;
   max-width: 100%;
-  min-width: 0;
-  flex: 0 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: max-content;
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .updated-admin .ua-users-tier__stack {
@@ -6223,10 +6222,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   height: 24px;
   min-height: 24px;
-  min-width: 0;
+  min-width: max-content;
   max-width: 100%;
   padding: 0 10px;
   margin: 0;
@@ -6238,8 +6237,7 @@
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
   font-family: inherit;
   line-height: 1;
   vertical-align: middle;
@@ -22914,6 +22912,7 @@ scrollbar-width: thin;
   max-width: 1120px;
   min-width: 0;
   width: 100%;
+  overflow-x: hidden;
 }
 
 .updated-admin .ua-tm-top {
@@ -22942,6 +22941,8 @@ scrollbar-width: thin;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Food & Water Tracking */
@@ -24509,6 +24510,14 @@ scrollbar-width: thin;
   align-items: center;
   gap: 14px;
   min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0;
+}
+
+.updated-admin .ua-tm-profile__copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .updated-admin .ua-tm-avatar {
@@ -24536,6 +24545,8 @@ scrollbar-width: thin;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-tm-profile__name {
@@ -24544,12 +24555,25 @@ scrollbar-width: thin;
   font-weight: 700;
   color: #1a2333;
   letter-spacing: -0.02em;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-tm-profile__name-row .ua-role-chip,
+.updated-admin .ua-tm-profile__name-row .ua-status-pill {
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-tm-profile__meta {
   margin-top: 6px;
   font-size: 13px;
   color: #7a879c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-tm-profile__view {
@@ -24561,6 +24585,8 @@ scrollbar-width: thin;
   cursor: pointer;
   font-family: inherit;
   padding: 6px 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-tm-profile__view:hover {
@@ -24732,7 +24758,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-tm-profile-panel__rows dd {
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
   color: #15213b;
   font-weight: 700;
@@ -25343,6 +25369,8 @@ scrollbar-width: thin;
   border: 1px solid #e8edf4;
   border-radius: 12px;
   background: #fff;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-tm-content-row__icon {
@@ -25400,7 +25428,10 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-tm-content-row.is-live {
@@ -25448,6 +25479,73 @@ scrollbar-width: thin;
 
 .updated-admin .ua-tm-content-row__btn:disabled {
   opacity: 0.5;
+  cursor: default;
+}
+
+.updated-admin .ua-tm-content-more {
+  display: none;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.updated-admin .ua-tm-content-more__btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e8edf4;
+  border-radius: 8px;
+  background: #f4f6fa;
+  color: #5a6578;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.updated-admin .ua-tm-content-more__btn:hover:not(:disabled) {
+  background: #eef1f6;
+  color: #1a2333;
+}
+
+.updated-admin .ua-tm-content-more__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.updated-admin .ua-tm-content-more__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 8;
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid #e8edf4;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+}
+
+.updated-admin .ua-tm-content-more__item {
+  width: 100%;
+  display: block;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  color: #1a2333;
+  cursor: pointer;
+}
+
+.updated-admin .ua-tm-content-more__item:hover:not(:disabled) {
+  background: #f4f6fa;
+}
+
+.updated-admin .ua-tm-content-more__item:disabled {
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -55620,22 +55718,20 @@ scrollbar-width: thin;
   .updated-admin .ua-users-page .ua-table--users .ua-users-tier,
   .updated-admin .ua-table--users > .ua-users-tier {
     display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    justify-content: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    justify-content: flex-start;
     justify-self: start;
     text-align: left;
     gap: 6px;
     width: 100%;
-    max-width: 100%;
+    max-width: 140px;
   }
 
   .updated-admin .ua-users-page .ua-table--users .ua-users-tier__moves {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
+    display: contents;
   }
 
   .updated-admin .ua-users-page .ua-table--users .ua-users-tier__stack {
@@ -55652,6 +55748,9 @@ scrollbar-width: thin;
     display: inline-flex;
     width: auto;
     max-width: 100%;
+    min-width: max-content;
+    flex: 0 0 auto;
+    overflow: visible;
   }
 
   .updated-admin .ua-table--users>div:has(.ua-user-cell) {
@@ -55795,6 +55894,42 @@ scrollbar-width: thin;
     display: block;
   }
 
+  .updated-admin .ua-tm-profile__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-tm-profile__identity {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-tm-profile__copy {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-tm-profile__name-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-tm-profile__name {
+    width: 100%;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .updated-admin .ua-tm-profile__view {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
   .updated-admin .ua-tm-role-change__controls {
     margin-top: 10px;
     width: 100%;
@@ -55872,7 +56007,16 @@ scrollbar-width: thin;
   .updated-admin .ua-tm-content-row__live,
   .updated-admin .ua-tm-content-row__actions {
     grid-column: 2;
-    justify-self: start;
+    justify-self: stretch;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-tm-content-row__btn--wide {
+    display: none;
+  }
+
+  .updated-admin .ua-tm-content-more {
+    display: inline-flex;
   }
 
 
@@ -57129,7 +57273,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head h3 {
   margin: 0;
   font-size: 18px;
-  font-weight: 650;
+  font-weight: 6leaderboard__row--highlight50;
   line-height: 1.25;
   color: #12263f;
   overflow-wrap: anywhere;
