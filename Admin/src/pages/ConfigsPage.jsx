@@ -8,7 +8,7 @@ function getModalRoot() {
   return document.querySelector(".updated-admin") || document.body;
 }
 
-function FeatureFlagsComingSoonModal({ open, onClose }) {
+function ConfigComingSoonModal({ open, title, copy, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     const previous = document.body.style.overflow;
@@ -39,7 +39,7 @@ function FeatureFlagsComingSoonModal({ open, onClose }) {
         <div className="ua-configs-soon-modal__head">
           <div className="ua-configs-soon-modal__titles">
             <h2 id="configs-soon-title" className="ua-configs-soon-modal__title">
-              Feature flags
+              {title}
             </h2>
             <p className="ua-configs-soon-modal__eyebrow">Coming soon</p>
           </div>
@@ -54,9 +54,7 @@ function FeatureFlagsComingSoonModal({ open, onClose }) {
         </div>
 
         <div className="ua-configs-soon-modal__body">
-          <p className="ua-configs-soon-modal__copy">
-            Feature-flag management is not available yet. You will be able to roll out features by app, web, and audience from here.
-          </p>
+          <p className="ua-configs-soon-modal__copy">{copy}</p>
         </div>
 
         <div className="ua-configs-soon-modal__foot">
@@ -71,9 +69,15 @@ function FeatureFlagsComingSoonModal({ open, onClose }) {
   return createPortal(modal, getModalRoot());
 }
 
+const FEATURE_FLAGS_SOON_COPY =
+  "Feature-flag management is not available yet.";
+
+const GALLERY_SOON_COPY =
+  "Gallery management is not available yet.";
+
 export function ConfigsPage() {
   const navigate = useNavigate();
-  const [comingSoonOpen, setComingSoonOpen] = useState(false);
+  const [comingSoonModal, setComingSoonModal] = useState(null);
   const [tab, setTab] = useState(() => {
     try {
       const saved = window.localStorage.getItem("admin.configs.activeTab");
@@ -95,10 +99,26 @@ export function ConfigsPage() {
 
   function handleTabChange(nextTab) {
     if (nextTab === "flags") {
-      setComingSoonOpen(true);
+      setComingSoonModal({
+        title: "Feature flags",
+        copy: FEATURE_FLAGS_SOON_COPY,
+      });
       return;
     }
     setTab(nextTab);
+  }
+
+  function handleManage(item) {
+    if (item.comingSoon) {
+      setComingSoonModal({
+        title: item.name,
+        copy: item.id === "app-gallery"
+          ? GALLERY_SOON_COPY
+          : `${item.name} is not available yet.`,
+      });
+      return;
+    }
+    navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`);
   }
 
   return (
@@ -136,7 +156,7 @@ export function ConfigsPage() {
                 <button
                   type="button"
                   className="ua-config-manage"
-                  onClick={() => navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`)}
+                  onClick={() => handleManage(item)}
                 >
                   Manage ›
                 </button>
@@ -146,7 +166,12 @@ export function ConfigsPage() {
         </section>
       ))}
 
-      <FeatureFlagsComingSoonModal open={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
+      <ConfigComingSoonModal
+        open={Boolean(comingSoonModal)}
+        title={comingSoonModal?.title ?? ""}
+        copy={comingSoonModal?.copy ?? ""}
+        onClose={() => setComingSoonModal(null)}
+      />
     </main>
   );
 }
