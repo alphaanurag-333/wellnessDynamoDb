@@ -30,6 +30,7 @@
 .updated-admin {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   background: var(--bg);
@@ -53,6 +54,8 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   overflow: visible;
   position: relative;
   z-index: 30;
@@ -284,7 +287,7 @@
 }
 
 .updated-admin .sidebar__footer {
-  padding: 9px 9px 12px;
+  padding: 9px 9px calc(12px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
@@ -293,6 +296,8 @@
   overflow: visible;
   flex-shrink: 0;
   margin-top: auto;
+  background: var(--surface);
+  z-index: 2;
 }
 
 .updated-admin .sidebar--rail .sidebar__footer {
@@ -517,6 +522,8 @@
   flex-direction: column;
   min-width: 0;
   height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
 }
 
@@ -7986,8 +7993,7 @@
 /* Calendar */
 .updated-admin .ua-cal-layout {
   display: grid;
-  /* grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.85fr); */
-  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
   gap: 16px;
   align-items: start;
 }
@@ -9477,12 +9483,24 @@
   color: #8a97ac;
 }
 
+.updated-admin .content.ua-cal-page,
+.updated-admin .ua-cal-page {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cal-days-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-bottom: 18px;
+}
+
 .updated-admin .ua-cal-days-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
-  margin-bottom: 18px;
 }
 
 .updated-admin .ua-cal-day-pill {
@@ -9493,8 +9511,8 @@
   gap: 4px;
   width: 100%;
   min-width: 0;
-  min-height: 92px;
-  padding: 10px 25px 10px;
+  min-height: 82px;
+  padding: 10px 8px;
   border-radius: 14px;
   border: 1px solid #e6ebf2;
   background: #fff;
@@ -53201,10 +53219,75 @@ scrollbar-width: thin;
 
 /* Tablet */
 @media (max-width: 900px) {
-  .updated-admin .ua-cal-days-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .updated-admin .ua-cal-page .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 14px;
   }
 
+  .updated-admin .ua-cal-page .page-head__actions {
+    width: 100%;
+    padding-top: 0;
+  }
+
+  .updated-admin .ua-cal-header-legend {
+    gap: 10px 14px;
+  }
+
+  .updated-admin .ua-cal-nav {
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cal-nav__jump {
+    margin-left: 0;
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .updated-admin .ua-cal-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .updated-admin .ua-cal-days-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    padding-bottom: 2px;
+  }
+
+  .updated-admin .ua-cal-days-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .updated-admin .ua-cal-day-pill {
+    flex: 0 0 74px;
+    width: 74px;
+    min-height: 76px;
+    padding: 8px 6px;
+  }
+
+  .updated-admin .ua-cal-day-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cal-day-toolbar__right {
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cal-grid-body,
+  .updated-admin .ua-cal-week {
+    max-height: min(56vh, 560px);
+  }
 
   .updated-admin .ua-configs-page .page-head {
     position: relative;
@@ -53290,9 +53373,32 @@ scrollbar-width: thin;
     z-index: 80;
     width: min(280px, 86vw);
     max-width: 86vw;
+    height: auto;
+    max-height: none;
     transform: translateX(-105%);
     transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     box-shadow: none;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .updated-admin .sidebar__nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .updated-admin .sidebar__footer {
+    flex: 0 0 auto;
+    margin-top: 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+  }
+
+  .updated-admin .sidebar__logout {
+    min-height: 40px;
   }
 
   .updated-admin .sidebar--mobile-open {
@@ -57110,6 +57216,60 @@ scrollbar-width: thin;
 
   .updated-admin .content {
     padding: 18px 16px 40px;
+  }
+
+  .updated-admin .ua-cal-page .page-head__title {
+    font-size: 22px;
+  }
+
+  .updated-admin .ua-cal-page .page-head__sub {
+    font-size: 12.5px;
+    max-width: none;
+  }
+
+  .updated-admin .ua-cal-nav__range {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+  }
+
+  .updated-admin .ua-cal-nav__today {
+    padding: 0 11px;
+    font-size: 12px;
+  }
+
+  .updated-admin .ua-cal-nav__jump {
+    font-size: 11px;
+  }
+
+  .updated-admin .ua-cal-nav__date {
+    padding: 0 10px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .updated-admin .ua-cal-day-pill {
+    flex-basis: 68px;
+    width: 68px;
+    min-height: 72px;
+  }
+
+  .updated-admin .ua-cal-day-pill__num {
+    font-size: 16px;
+  }
+
+  .updated-admin .ua-cal-day-toolbar .ua-section-label__title {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .updated-admin .ua-cal-drag-hint {
+    display: none;
+  }
+
+  .updated-admin .ua-cal-grid-body,
+  .updated-admin .ua-cal-week {
+    max-height: min(50vh, 480px);
   }
 
   .updated-admin .revenue-cards {

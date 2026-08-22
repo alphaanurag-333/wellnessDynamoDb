@@ -356,24 +356,26 @@ export function CalendarPage() {
         </div>
       </div>
 
-      <div className="ua-cal-days-row" style={{width:"max-content"}}>
-        {days.map((date) => {
-          const key = ymd(date);
-          const tag = dayTag(events.filter((entry) => entry.date === key));
-          const active = sameDay(date, selectedDate);
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`ua-cal-day-pill${active ? " ua-cal-day-pill--active" : ""}`}
-              onClick={() => setSelectedDate(date)}
-            >
-              <span className="ua-cal-day-pill__dow">{DOW[date.getDay()]}</span>
-              <span className="ua-cal-day-pill__num">{String(date.getDate()).padStart(2, "0")}</span>
-              <span className="ua-cal-day-pill__tag">{tag}</span>
-            </button>
-          );
-        })}
+      <div className="ua-cal-days-scroll">
+        <div className="ua-cal-days-row">
+          {days.map((date) => {
+            const key = ymd(date);
+            const tag = dayTag(events.filter((entry) => entry.date === key));
+            const active = sameDay(date, selectedDate);
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`ua-cal-day-pill${active ? " ua-cal-day-pill--active" : ""}`}
+                onClick={() => setSelectedDate(date)}
+              >
+                <span className="ua-cal-day-pill__dow">{DOW[date.getDay()]}</span>
+                <span className="ua-cal-day-pill__num">{String(date.getDate()).padStart(2, "0")}</span>
+                <span className="ua-cal-day-pill__tag">{tag}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="ua-cal-layout">
