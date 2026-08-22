@@ -125,16 +125,58 @@ async function imageSrcToDataUrl(src) {
   }
 }
 
+const CAPTURE_FIX_CSS = `
+  .is-capturing,
+  .is-capturing * {
+    animation: none !important;
+    transition: none !important;
+  }
+  .is-capturing {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+`;
+
+function applyCaptureCloneFix(doc, cloned) {
+  cloned.classList.add("is-capturing");
+  cloned.style.opacity = "1";
+  cloned.style.transform = "none";
+  cloned.style.animation = "none";
+  cloned.style.background = "#eef1f7";
+  cloned.style.maxHeight = "none";
+  cloned.style.overflow = "visible";
+  const style = doc.createElement("style");
+  style.textContent = CAPTURE_FIX_CSS;
+  doc.head.appendChild(style);
+}
+
+async function waitForCaptureReady() {
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+  } catch {
+    /* ignore font readiness errors */
+  }
+  await nextPaint();
+  await nextPaint();
+}
+
 async function inlineCrossOriginImages(root) {
   const imgs = [...root.querySelectorAll("img")];
   const restores = [];
   await Promise.all(imgs.map(async (img) => {
     const original = img.currentSrc || img.getAttribute("src") || img.src;
     if (!original || original.startsWith("data:") || original.startsWith("blob:")) return;
+    img.crossOrigin = "anonymous";
+    img.referrerPolicy = "no-referrer";
     const dataUrl = await imageSrcToDataUrl(original);
     if (!dataUrl) return;
     restores.push(() => {
       img.src = original;
+      img.removeAttribute("crossorigin");
+      img.removeAttribute("referrerpolicy");
     });
     img.src = dataUrl;
     try {
@@ -236,9 +278,16 @@ async function captureWithHtmlToImage(node, width, height) {
         pixelRatio: safePixelRatio(width, height, attempt.maxSide),
         backgroundColor: "#eef1f7",
         skipFonts: true,
-        cacheBust: false,
+        cacheBust: true,
         imagePlaceholder: TRANSPARENT_PIXEL,
         filter: (el) => skipCaptureNoise(el, attempt),
+        style: {
+          animation: "none",
+          transition: "none",
+          opacity: "1",
+          transform: "none",
+          background: "#eef1f7",
+        },
       });
       if (!canvas?.width || !canvas?.height) {
         lastError = new Error("Empty screenshot canvas");
@@ -262,20 +311,18 @@ async function captureWithHtml2Canvas(node, width, height) {
     allowTaint: false,
     backgroundColor: "#eef1f7",
     logging: false,
-    imageTimeout: 4000,
+    imageTimeout: 15000,
     width,
     height,
     windowWidth: width,
     windowHeight: height,
     scrollX: 0,
-    scrollY: 0,
+    scrollY: -window.scrollY,
     ignoreElements: (el) => !skipCaptureNoise(el),
-    onclone: (_doc, cloned) => {
-      cloned.classList.add("is-capturing");
+    onclone: (doc, cloned) => {
+      applyCaptureCloneFix(doc, cloned);
       cloned.style.width = `${width}px`;
       cloned.style.height = `${height}px`;
-      cloned.style.maxHeight = "none";
-      cloned.style.overflow = "visible";
     },
   });
   if (!canvas?.width || !canvas?.height) throw new Error("Empty screenshot canvas");
@@ -285,17 +332,23 @@ async function captureWithHtml2Canvas(node, width, height) {
 async function capturePageScreenshot(node) {
   const width = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth, node.clientWidth, 1));
   const height = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight, node.clientHeight, 1));
+  node.classList.add("is-capturing");
+  node.style.opacity = "1";
+  node.style.transform = "none";
+  node.style.animation = "none";
   const restoreOverflow = unlockOverflow(node);
+  await waitForCaptureReady();
   const restoreImages = await inlineCrossOriginImages(node);
   const shell = node.closest(".page-shell");
   const prevScroll = shell?.scrollTop ?? 0;
   if (shell) shell.scrollTop = 0;
+  window.scrollTo(0, 0);
   try {
     try {
-      return await captureWithHtml2Canvas(node, width, height);
+      return await captureWithHtmlToImage(node, width, height);
     } catch (first) {
       try {
-        return await captureWithHtmlToImage(node, width, height);
+        return await captureWithHtml2Canvas(node, width, height);
       } catch (second) {
         throw second || first;
       }
@@ -304,6 +357,10 @@ async function capturePageScreenshot(node) {
     if (shell) shell.scrollTop = prevScroll;
     restoreImages();
     restoreOverflow();
+    node.classList.remove("is-capturing");
+    node.style.opacity = "";
+    node.style.transform = "";
+    node.style.animation = "";
   }
 }
 
@@ -658,8 +715,11 @@ export function AdminDashboard({
   healthConcerns,
   clients,
   loading,
+  refreshing = false,
+  updatedLabel = "Not loaded yet",
   loadError,
   onRetry,
+  onRefresh,
 }) {
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady, can } = useViewAs();
@@ -1316,10 +1376,8 @@ export function AdminDashboard({
       return;
     }
     setExporting(true);
-    node.classList.add("is-capturing");
     onToast("Capturing dashboard…");
     try {
-      await nextPaint();
       const blob = await capturePageScreenshot(node);
       downloadBlob(`dashboard-${new Date().toISOString().slice(0, 10)}.png`, blob);
       onToast("Dashboard screenshot saved");
@@ -1327,36 +1385,63 @@ export function AdminDashboard({
       console.error("Dashboard export failed", err);
       onToast("Could not capture screenshot");
     } finally {
-      node.classList.remove("is-capturing");
       setExporting(false);
     }
   }
 
   const exportButton = canExport ? (
-    <div className="page-head__actions">
-      <button style={{width:"max-content",color:"rgb(22, 35, 63)"}}
-        type="button"
-        className="btn btn--outline ua-dash-export"
-        aria-label={exporting ? "Exporting dashboard" : "Export dashboard"}
-        title="Export"
-        disabled={exporting || loading || Boolean(loadError)}
-        onClick={exportDashboard}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg> {exporting ? "Capturing…" : "Export report"}
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`btn btn--outline ua-dash-export${exporting ? " ua-dash-export--busy" : ""}`}
+      aria-label={exporting ? "Exporting dashboard" : "Export dashboard"}
+      title="Export dashboard"
+      disabled={exporting || loading || refreshing || Boolean(loadError)}
+      onClick={exportDashboard}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
+      {exporting ? "Capturing…" : "Export report"}
+    </button>
   ) : null;
+
+  function renderDashboardHead(showUpdated = false) {
+    return (
+      <div className="page-head page-head--dashboard">
+        <div className="page-head__intro">
+          <div className="page-head__title-row">
+            <h1 className="page-head__title">Dashboard</h1>
+            <button
+              type="button"
+              className={`ua-dash-refresh${refreshing ? " ua-dash-refresh--spinning" : ""}`}
+              aria-label={refreshing ? "Refreshing dashboard" : "Refresh dashboard"}
+              title={refreshing ? "Refreshing…" : "Refresh dashboard"}
+              disabled={loading || refreshing || !onRefresh}
+              onClick={onRefresh}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </button>
+          </div>
+          <div className="page-head__meta">
+            <span className="chip chip--scope">{scopeLabel}</span>
+            {showUpdated ? (
+              <>
+                <span className="page-head__meta-sep" aria-hidden="true">·</span>
+                <span className="page-head__meta-text">{updatedLabel}</span>
+              </>
+            ) : null}
+          </div>
+        </div>
+        {exportButton ? <div className="page-head__actions">{exportButton}</div> : null}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
       <main ref={pageRef} className="content ua-page-enter">
-        <div className="page-head">
-          <div>
-            <h1 className="page-head__title">Dashboard</h1>
-            <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
-          </div>
-          {exportButton}
-        </div>
+        {renderDashboardHead(false)}
         <BrandLoader variant="page" label="Loading dashboard…" />
       </main>
     );
@@ -1365,13 +1450,7 @@ export function AdminDashboard({
   if (loadError) {
     return (
       <main ref={pageRef} className="content ua-page-enter">
-        <div className="page-head">
-          <div>
-            <h1 className="page-head__title">Dashboard</h1>
-            <p className="page-head__sub"><span className="chip chip--scope">{scopeLabel}</span></p>
-          </div>
-          {exportButton}
-        </div>
+        {renderDashboardHead(false)}
         <div className="ua-users-empty">
           <div className="ua-users-empty__title">Couldn’t load dashboard</div>
           <p className="ua-users-empty__sub">{loadError}</p>
@@ -1382,16 +1461,8 @@ export function AdminDashboard({
   }
 
   return (
-    <main ref={pageRef} className="content ua-page-enter">
-      <div className="page-head">
-        <div>
-          <h1 className="page-head__title">Dashboard</h1>
-          <p className="page-head__sub">
-          <span className="chip chip--scope">{scopeLabel}</span>  Updated just now
-          </p>
-        </div>
-        {exportButton}
-      </div>
+    <main ref={pageRef} className={`content ua-page-enter${refreshing ? " ua-dash-page--refreshing" : ""}`}>
+      {renderDashboardHead(true)}
 
       {isAdminDash && revenueUnavailable ? (
         <div className="ua-dash-data-banner" role="status">

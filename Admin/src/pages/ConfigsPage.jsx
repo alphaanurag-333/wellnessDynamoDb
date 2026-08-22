@@ -1,25 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useOutletContext } from "react-router-dom";import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { useNavigate } from "react-router-dom";import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { PageHeader, PillTabs } from "../components/shared.jsx";
 import { CONFIG_GROUPS, CONFIG_TABS } from "../data/configsData.js";
-
-function buildInitialState() {
-  const toggles = {};
-  const surfaces = {};
-  Object.values(CONFIG_GROUPS)
-    .flat()
-    .forEach((g) => {
-      g.items.forEach((item) => {
-        toggles[item.id] = Boolean(item.on);
-        surfaces[item.id] = {
-          app: Boolean(item.app),
-          web: Boolean(item.web),
-        };
-      });
-    });
-  return { toggles, surfaces };
-}
 
 function getModalRoot() {
   return document.querySelector(".updated-admin") || document.body;
@@ -90,7 +73,6 @@ function FeatureFlagsComingSoonModal({ open, onClose }) {
 
 export function ConfigsPage() {
   const navigate = useNavigate();
-  const { showToast: onToast } = useOutletContext();
   const [comingSoonOpen, setComingSoonOpen] = useState(false);
   const [tab, setTab] = useState(() => {
     try {
@@ -101,8 +83,6 @@ export function ConfigsPage() {
       return "app";
     }
   });
-  const [{ toggles, surfaces }, setState] = useState(buildInitialState);
-
   const groups = CONFIG_GROUPS[tab] ?? [];
 
   useEffect(() => {
@@ -121,32 +101,6 @@ export function ConfigsPage() {
     setTab(nextTab);
   }
 
-  function flipToggle(item) {
-    setState((prev) => {
-      const next = !prev.toggles[item.id];
-      onToast(`${item.name} ${next ? "enabled" : "disabled"}`);
-      return {
-        ...prev,
-        toggles: { ...prev.toggles, [item.id]: next },
-      };
-    });
-  }
-
-  function flipSurface(item, surface) {
-    setState((prev) => {
-      const current = prev.surfaces[item.id] ?? { app: false, web: false };
-      const nextVal = !current[surface];
-      onToast(`${item.name} · ${surface === "app" ? "App" : "Web"} ${nextVal ? "enabled" : "disabled"}`);
-      return {
-        ...prev,
-        surfaces: {
-          ...prev.surfaces,
-          [item.id]: { ...current, [surface]: nextVal },
-        },
-      };
-    });
-  }
-
   return (
     <main className="content ua-page-enter ua-configs-page">
       <PageHeader
@@ -156,7 +110,6 @@ export function ConfigsPage() {
 
       <div className="ua-config-toolbar">
         <PillTabs tabs={CONFIG_TABS} active={tab} onChange={handleTabChange} />
-        <span className="ua-config-toolbar__hint">Tap the App / Web chip on a row to enable it per surface</span>
       </div>
 
       {groups.length === 0 ? (
@@ -171,85 +124,24 @@ export function ConfigsPage() {
         <section key={group.name} className="ua-config-section">
           <div className="ua-config-section__head">{group.name}</div>
           <div className="ua-config-card">
-            {group.items.map((item) => {
-              const on = Boolean(toggles[item.id]);
-              const surf = surfaces[item.id] ?? { app: false, web: false };
-              const showToggle = item.toggleable !== false;
-              const isLive = showToggle ? on : Boolean(item.live);
-              const showAppChip = surf.app || tab === "app" || tab === "common";
-              const showWebChip = surf.web || tab === "web" || tab === "common";
-              const tags = item.tags?.length
-                ? item.tags
-                : item.upload
-                  ? ["Upload"]
-                  : [];
-
-              return (
-                <div key={item.id} className="ua-config-item">
-                  <div className="ua-config-item__main">
-                    <div className="ua-config-item__name">{item.name}</div>
-                    <div className="ua-config-item__note">
-                      {item.note} · {item.owner}
-                    </div>
+            {group.items.map((item) => (
+              <div key={item.id} className="ua-config-item">
+                <div className="ua-config-item__main">
+                  <div className="ua-config-item__name">{item.name}</div>
+                  <div className="ua-config-item__note">
+                    {item.note} · {item.owner}
                   </div>
-
-                  <div className="ua-config-item__chips">
-                    {showAppChip ? (
-                      <button
-                        type="button"
-                        className={`ua-surface-chip ua-surface-chip--app${surf.app ? " is-on" : " is-off"}`}
-                        aria-pressed={surf.app}
-                        onClick={() => flipSurface(item, "app")}
-                      >
-                        App<span className="ua-surface-chip__dot" aria-hidden="true" />
-                      </button>
-                    ) : null}
-                    {showWebChip ? (
-                      <button
-                        type="button"
-                        className={`ua-surface-chip ua-surface-chip--web${surf.web ? " is-on" : " is-off"}`}
-                        aria-pressed={surf.web}
-                        onClick={() => flipSurface(item, "web")}
-                      >
-                        Web<span className="ua-surface-chip__dot" aria-hidden="true" />
-                      </button>
-                    ) : null}
-                    {tags.map((tag) => (
-                      <span key={tag} className="ua-config-type-tag">
-                        {tag}
-                      </span>
-                    ))}
-                    {showToggle ? (
-                      <span className={`ua-config-status${isLive ? " ua-config-status--live" : " ua-config-status--hidden"}`}>
-                        {isLive ? "LIVE" : "HIDDEN"}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {showToggle ? (
-                    <div className="ua-config-item__toggle-slot">
-                      <button
-                        type="button"
-                        className={`ua-toggle${on ? " ua-toggle--on" : ""}`}
-                        aria-pressed={on}
-                        aria-label={`${item.name} ${on ? "on" : "off"}`}
-                        onClick={() => flipToggle(item)}
-                      >
-                        <span className="ua-toggle__knob" />
-                      </button>
-                    </div>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    className="ua-config-manage"
-                    onClick={() => navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`)}
-                  >
-                    Manage ›
-                  </button>
                 </div>
-              );
-            })}
+
+                <button
+                  type="button"
+                  className="ua-config-manage"
+                  onClick={() => navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`)}
+                >
+                  Manage ›
+                </button>
+              </div>
+            ))}
           </div>
         </section>
       ))}

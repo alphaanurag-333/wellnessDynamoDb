@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { fetchActiveConfigDropdown } from "../api/configDropdownApi.js";
 import { fetchDashboardStatistics } from "../api/dashboardApi.js";
@@ -23,23 +23,55 @@ async function loadProgramCategories(token, can) {
   return null;
 }
 
+export function formatDashboardUpdatedLabel(date) {
+  if (!date) return "Not loaded yet";
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 45_000) return "Updated just now";
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `Updated ${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Updated ${hours} hr ago`;
+  return `Updated ${date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
+
 export function DashboardPage() {
   const { showToast } = useOutletContext();
-  const { token, viewAs, dataScope, can } = useViewAs();
+  const { token, dataScope, can } = useViewAs();
   const [statistics, setStatistics] = useState(null);
   const [healthConcerns, setHealthConcerns] = useState(null);
   const [clients, setClients] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
+  const [updatedLabel, setUpdatedLabel] = useState("Not loaded yet");
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
+  const tokenRef = useRef(token);
+  const dataScopeRef = useRef(dataScope);
+  const canRef = useRef(can);
+  const showToastRef = useRef(showToast);
+  tokenRef.current = token;
+  dataScopeRef.current = dataScope;
+  canRef.current = can;
+  showToastRef.current = showToast;
+
+  const loadDashboard = useCallback(async ({ initial = false } = {}) => {
+    if (initial) setLoading(true);
+    else setRefreshing(true);
     setLoadError("");
     try {
+      const activeToken = tokenRef.current;
+      const activeScope = dataScopeRef.current;
+      const activeCan = canRef.current;
       const [statisticsResult, concernsResult, clientsResult] = await Promise.allSettled([
         fetchDashboardStatistics(),
-        loadProgramCategories(token, can),
-        dataScope === "all"
+        loadProgramCategories(activeToken, activeCan),
+        activeScope === "all"
           ? fetchUsers({ page: 1, limit: 200 })
           : fetchScopedUsers({ page: 1, limit: 200 }),
       ]);
@@ -51,19 +83,34 @@ export function DashboardPage() {
           ? clientsResult.value.users
           : null,
       );
+      const updatedAt = new Date();
+      setLastUpdatedAt(updatedAt);
+      setUpdatedLabel(formatDashboardUpdatedLabel(updatedAt));
+      if (!initial) showToastRef.current?.("Dashboard refreshed");
     } catch (error) {
       setStatistics(null);
       setHealthConcerns(null);
       setClients(null);
       setLoadError(error?.message || "Couldn’t load dashboard data.");
+      if (!initial) showToastRef.current?.(error?.message || "Couldn’t refresh dashboard.");
     } finally {
-      setLoading(false);
+      if (initial) setLoading(false);
+      else setRefreshing(false);
     }
-  }, [token, viewAs, dataScope, can]);
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
+    loadDashboard({ initial: true });
   }, [loadDashboard]);
+
+  useEffect(() => {
+    if (!lastUpdatedAt) return undefined;
+    setUpdatedLabel(formatDashboardUpdatedLabel(lastUpdatedAt));
+    const timer = window.setInterval(() => {
+      setUpdatedLabel(formatDashboardUpdatedLabel(lastUpdatedAt));
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [lastUpdatedAt]);
 
   return (
     <AdminDashboard
@@ -72,8 +119,11 @@ export function DashboardPage() {
       healthConcerns={healthConcerns}
       clients={clients}
       loading={loading}
+      refreshing={refreshing}
+      updatedLabel={updatedLabel}
       loadError={loadError}
-      onRetry={loadDashboard}
+      onRetry={() => loadDashboard({ initial: true })}
+      onRefresh={() => loadDashboard({ initial: false })}
     />
   );
 }

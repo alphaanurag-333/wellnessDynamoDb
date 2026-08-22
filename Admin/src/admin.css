@@ -1296,6 +1296,109 @@
   min-width: 0;
 }
 
+.updated-admin .page-head__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.updated-admin .page-head--dashboard {
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.updated-admin .page-head--dashboard .page-head__intro {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.updated-admin .page-head--dashboard .page-head__title-row {
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.updated-admin .page-head--dashboard .page-head__title {
+  margin: 0;
+  line-height: 1.1;
+}
+
+.updated-admin .page-head--dashboard .page-head__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+
+.updated-admin .page-head--dashboard .page-head__meta-text {
+  color: #8a97ac;
+}
+
+.updated-admin .page-head--dashboard .page-head__meta-sep {
+  color: #c5cedb;
+  font-weight: 700;
+}
+
+.updated-admin .page-head--dashboard .page-head__actions {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.updated-admin .page-head--dashboard .ua-dash-refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  margin-top: 1px;
+}
+
+.updated-admin .ua-dash-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  background: #fff;
+  color: #5a6b85;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.updated-admin .ua-dash-refresh:hover:not(:disabled) {
+  background: #f7f9fc;
+  border-color: #cbd5e6;
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-refresh:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.updated-admin .ua-dash-refresh--spinning svg {
+  animation: ua-dash-refresh-spin 0.8s linear infinite;
+}
+
+.updated-admin .ua-dash-page--refreshing {
+  pointer-events: none;
+}
+
+.updated-admin .ua-dash-page--refreshing .page-head,
+.updated-admin .ua-dash-page--refreshing .page-head__actions {
+  pointer-events: auto;
+}
+
+@keyframes ua-dash-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .updated-admin .page-head__actions {
   display: flex;
   align-items: center;
@@ -1317,26 +1420,34 @@
   white-space: nowrap;
 }
 
-.updated-admin .ua-page-enter.is-capturing .page-head__actions {
-  visibility: hidden;
+.updated-admin .ua-dash-export:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-dash-export.ua-dash-export--busy:disabled {
+  cursor: wait;
+}
+
+.updated-admin .content.is-capturing,
+.updated-admin .content.ua-page-enter.is-capturing,
+.updated-admin .ua-page-enter.is-capturing {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.updated-admin .content.is-capturing *,
+.updated-admin .ua-page-enter.is-capturing * {
+  animation: none !important;
+  transition: none !important;
 }
 
 .updated-admin .ua-dash-export:hover:not(:disabled) {
   color: #16233f;
-}
-
-.updated-admin .ua-dash-export:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.updated-admin .page-head:has(.ua-dash-export) {
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.updated-admin .page-head:has(.ua-dash-export) .page-head__actions {
-  margin-left: auto;
 }
 
 .updated-admin .page-head--split {
@@ -53320,7 +53431,7 @@ scrollbar-width: thin;
     align-items: stretch;
   }
 
-  .updated-admin .page-head:has(.ua-dash-export) {
+  .updated-admin .page-head--dashboard {
     flex-direction: row;
     align-items: center;
   }
