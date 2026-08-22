@@ -479,7 +479,8 @@ function AttachPolicyModal({ policy, roles, members, busy, onClose, onSubmit }) 
           <button type="button" className="btn btn--outline" onClick={onClose} disabled={busy}>
             Cancel
           </button>
-          <button
+          <button style={{  border: "1px solid rgb(52, 165, 106)",  background: "rgb(52, 165, 106)",
+    color: "rgb(255, 255, 255)"}}
             type="button"
             className="ua-ac-modal__primary"
             disabled={!targetId || busy}
@@ -1160,7 +1161,7 @@ function RolesPermissionsTab({ onToast }) {
           <div className="ua-ac-stat">
             <div className="ua-ac-stat__label">Permissions</div>
             <div className="ua-ac-stat__value">
-              {granted} <span>/ {TOTAL_PERM_SLOTS}</span>
+              {granted} / {TOTAL_PERM_SLOTS}
             </div>
             <div className="ua-ac-stat__sub">granted by this role</div>
           </div>
@@ -1176,7 +1177,7 @@ function RolesPermissionsTab({ onToast }) {
           <div className="ua-ac-stat">
             <div className="ua-ac-stat__label">Sections</div>
             <div className="ua-ac-stat__value">
-              {openSections} <span>/ {AC_SECTIONS.length}</span>
+              {openSections} / {AC_SECTIONS.length}
             </div>
             <div className="ua-ac-stat__sub">openable in the left nav</div>
           </div>
@@ -1191,7 +1192,7 @@ function RolesPermissionsTab({ onToast }) {
               Tap a section to filter the matrix. The tick opens or closes it in the left navigation.
             </p>
           </div>
-          <button
+          {/* <button
             type="button"
             className={`ua-ac-section${activeSection == null ? " ua-ac-section--filter" : ""}`}
             onClick={() => setActiveSection(null)}
@@ -1200,7 +1201,7 @@ function RolesPermissionsTab({ onToast }) {
             <span className="ua-ac-section__count">
               {granted}/{TOTAL_PERM_SLOTS}
             </span>
-          </button>
+          </button> */}
           {sections.map((sec) => (
             <div
               key={sec.id}
@@ -1956,7 +1957,7 @@ function AuditLogTab() {
 
   return (
     <div className="ua-audit">
-      <p className="ua-page-head__sub">
+      <p className="ua-page-head__sub" style={{maxWidth:"max-content"}}>
         Every access change and staff activity, newest first. Requests, approvals, rejections, direct admin edits and what each member did.
       </p>
       <div className="ua-ac-members-toolbar">
@@ -2134,8 +2135,9 @@ function SimulatorTab() {
             ariaLabel="Preview role"
             placeholder="Choose a role"
           />
-          <span className="ua-sim-scope">scope: {role?.scope || "All"}</span>
-          <span className="ua-sim-meta">
+          <span className="ua-sim-scope" style={{    background: "rgb(246, 236, 254)",
+    color: "rgb(168, 85, 247)"}}>scope: {role?.scope || "All"}</span>
+          <span className="ua-sim-meta" style={{fontWeight:"400"}}>
             {loading ? "Loading…" : `${granted} of ${TOTAL_PERM_SLOTS} actions available · baseline only`}
           </span>
         </div>

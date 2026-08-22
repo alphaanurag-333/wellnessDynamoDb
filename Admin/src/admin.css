@@ -9494,7 +9494,7 @@
   width: 100%;
   min-width: 0;
   min-height: 92px;
-  padding: 14px 8px 12px;
+  padding: 10px 25px 10px;
   border-radius: 14px;
   border: 1px solid #e6ebf2;
   background: #fff;
@@ -9529,7 +9529,7 @@
 }
 
 .updated-admin .ua-cal-day-pill__num {
-  font-size: 22px;
+  font-size: 17px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
@@ -22321,10 +22321,10 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-stat__value {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .updated-admin .ua-ac-stat__value span {
@@ -22381,9 +22381,27 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-section--open {
-  background: #e7f6ee;
-  border-color: #cdeede;
+ 
+  border-color: rgb(220, 239, 228);
+
+ 
+  background: rgb(244, 251, 247);
 }
+.updated-admin .ua-ac-section--open .ua-ac-section__name {
+  color: rgb(31, 122, 77) !important;
+}
+.updated-admin .ua-ac-section--open .ua-ac-section__count {
+  color: rgb(31, 122, 77) !important;
+}
+
+.updated-admin .ua-ac-section .ua-ac-section__count{
+  color: rgb(31, 122, 77) !important; 
+}
+
+.updated-admin .ua-ac-section .ua-ac-section__names{
+  color: rgb(154, 166, 184) !important; 
+}
+
 
 .updated-admin .ua-ac-section--filter {
   box-shadow: inset 0 0 0 1.5px #9aa6e8;
