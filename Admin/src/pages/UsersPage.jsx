@@ -971,7 +971,9 @@ export function UsersPage() {
           </div>
         ) : null}
 
-        <PillTabs tabs={typeTabs} active={typeTab} onChange={setTypeTab} size="lg" />
+        <div className="ua-users-type-tabs">
+          <PillTabs tabs={typeTabs} active={typeTab} onChange={setTypeTab} size="lg" />
+        </div>
       </div>
 
       {isReadOnly ? (
