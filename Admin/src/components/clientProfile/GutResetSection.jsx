@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  GUT_RESET_HISTORY,
   GUT_RESET_PRESETS,
   formatGutDate,
   gutResetSummary,
 } from "../../data/gutResetData.js";
+import { fetchUserGutResets, saveUserGutReset } from "../../api/gutResetApi.js";
+import { todayIsoDate } from "../../utils/adminDateLimits.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const EMPTY_DRAFT = {
@@ -14,7 +15,7 @@ const EMPTY_DRAFT = {
   points: [],
 };
 
-function PresetSelect({ value, onChange }) {
+function PresetSelect({ value, onChange, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -33,6 +34,7 @@ function PresetSelect({ value, onChange }) {
         className={`ua-cp-gut-preset__trigger${open ? " ua-cp-gut-preset__trigger--open" : ""}`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        disabled={disabled}
       >
         {value || "Load preset…"}
         <span className="ua-cp-gut-preset__chev" aria-hidden="true" />
@@ -124,13 +126,45 @@ function HistoryResetCard({ entry, expanded, onToggle }) {
 export function GutResetSection({ user, onToast }) {
   const { canCreate, canEdit } = useClientSectionPermissions("gut");
   const canWrite = canCreate || canEdit;
-  const [history, setHistory] = useState(GUT_RESET_HISTORY);
+  const userId = String(user?.id || "").trim();
+  const [history, setHistory] = useState([]);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [pointDraft, setPointDraft] = useState("");
   const [expandedId, setExpandedId] = useState(null);
+  const [loading, setLoading] = useState(Boolean(userId));
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const summary = useMemo(() => gutResetSummary(history), [history]);
-  const canTrigger = Boolean(draft.startDate && draft.points.length > 0);
+  const canSave = Boolean(draft.startDate && draft.points.length > 0 && !saving && !loading);
+
+  const loadHistory = useCallback(async () => {
+    if (!userId) {
+      setHistory([]);
+      setLoading(false);
+      setLoadError("");
+      return;
+    }
+
+    setLoading(true);
+    setLoadError("");
+
+    try {
+      const rows = await fetchUserGutResets(userId);
+      setHistory(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      setHistory([]);
+      const message = err?.message || "Failed to load gut reset history";
+      setLoadError(message);
+      onToast?.(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast, userId]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   function updatePoint(index, value) {
     setDraft((current) => ({
@@ -146,15 +180,25 @@ export function GutResetSection({ user, onToast }) {
     }));
   }
 
+  function ensureStartDate(current) {
+    return current.startDate ? current : { ...current, startDate: todayIsoDate() };
+  }
+
   function addPoint() {
     const text = pointDraft.trim();
     if (!text) return;
-    setDraft((current) => ({ ...current, points: [...current.points, text] }));
+    setDraft((current) => ensureStartDate({
+      ...current,
+      points: [...current.points, text],
+    }));
     setPointDraft("");
   }
 
   function loadPreset(preset) {
-    setDraft((current) => ({ ...current, points: [...preset.points] }));
+    setDraft((current) => ensureStartDate({
+      ...current,
+      points: [...preset.points],
+    }));
     onToast?.(`Loaded ${preset.label}`);
   }
 
@@ -163,34 +207,47 @@ export function GutResetSection({ user, onToast }) {
     setPointDraft("");
   }
 
-  function triggerPlan() {
-    if (!canTrigger) return;
+  async function savePlan() {
+    if (!canSave || !userId) return;
 
-    const entry = {
-      id: `reset-${Date.now()}`,
-      status: "active",
-      startDate: draft.startDate,
-      fruitVegDate: draft.fruitVegDate,
-      waterFastDate: draft.waterFastDate,
-      author: "Admin desk",
-      points: draft.points.map((point) => point.trim()).filter(Boolean),
-    };
-
-    setHistory((list) => [
-      entry,
-      ...list.map((item) => (item.status === "active" ? { ...item, status: "completed" } : item)),
-    ]);
-    setExpandedId(entry.id);
-    clearDraft();
-    onToast?.("Gut reset plan triggered to app");
+    setSaving(true);
+    try {
+      const rows = await saveUserGutReset(userId, {
+        startDate: draft.startDate,
+        fruitVegDate: draft.fruitVegDate,
+        waterFastDate: draft.waterFastDate,
+        points: draft.points.map((point) => point.trim()).filter(Boolean),
+      });
+      setHistory(Array.isArray(rows) ? rows : []);
+      const newest = Array.isArray(rows) ? rows[0] : null;
+      if (newest?.id) setExpandedId(newest.id);
+      clearDraft();
+      onToast?.("Gut reset plan saved");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to save gut reset plan");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="ua-cp-section ua-cp-gut">
       <div className="ua-cp-gut__head">
         <h2 className="ua-cp-gut__title">Gut reset</h2>
-        <p className="ua-cp-gut__sub">Plan the reset, set the three dates and trigger it to the client app.</p>
+        <p className="ua-cp-gut__sub">Plan the reset, set the three dates and save it to the client app.</p>
       </div>
+
+      {loading ? (
+        <p className="ua-page-head__sub" style={{ margin: "0 0 12px" }}>Loading gut reset history…</p>
+      ) : null}
+      {loadError ? (
+        <div className="ua-cp-proto__error" role="alert">
+          <p>{loadError}</p>
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={loadHistory}>
+            Retry
+          </button>
+        </div>
+      ) : null}
 
       <div className="ua-cp-gut-stats">
         <div className="ua-cp-gut-stat">
@@ -219,10 +276,10 @@ export function GutResetSection({ user, onToast }) {
         <div className="ua-cp-gut-panel__head">
           <div>
             <strong>Plan a reset</strong>
-            <p>Set the three dates and the points. Triggering it pushes the plan to the client&apos;s app.</p>
+            <p>Set the three dates and the points. Saving pushes the plan to the client&apos;s app.</p>
           </div>
-          <span className={`ua-cp-gut-panel__badge${canTrigger ? " ua-cp-gut-panel__badge--ready" : ""}`}>
-            {canTrigger ? "Ready to trigger" : "Draft"}
+          <span className={`ua-cp-gut-panel__badge${canSave ? " ua-cp-gut-panel__badge--ready" : ""}`}>
+            {canSave ? "Ready to save" : "Draft"}
           </span>
         </div>
 
@@ -231,15 +288,15 @@ export function GutResetSection({ user, onToast }) {
         <div className="ua-cp-gut-dates">
           <label className="ua-cp-gut-date">
             <span>Start date</span>
-            <input type="date" data-allow-future="true" value={draft.startDate} onChange={(e) => setDraft((c) => ({ ...c, startDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.startDate} disabled={saving || loading} onChange={(e) => setDraft((c) => ({ ...c, startDate: e.target.value }))} />
           </label>
           <label className="ua-cp-gut-date">
             <span>Fruit &amp; veggie date</span>
-            <input type="date" data-allow-future="true" value={draft.fruitVegDate} onChange={(e) => setDraft((c) => ({ ...c, fruitVegDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.fruitVegDate} disabled={saving || loading} onChange={(e) => setDraft((c) => ({ ...c, fruitVegDate: e.target.value }))} />
           </label>
           <label className="ua-cp-gut-date">
             <span>Water fasting date</span>
-            <input type="date" data-allow-future="true" value={draft.waterFastDate} onChange={(e) => setDraft((c) => ({ ...c, waterFastDate: e.target.value }))} />
+            <input type="date" data-allow-future="true" value={draft.waterFastDate} disabled={saving || loading} onChange={(e) => setDraft((c) => ({ ...c, waterFastDate: e.target.value }))} />
           </label>
         </div>
 
@@ -261,9 +318,10 @@ export function GutResetSection({ user, onToast }) {
                   type="text"
                   className="ua-cp-gut-point__text"
                   value={point}
+                  disabled={saving || loading}
                   onChange={(e) => updatePoint(index, e.target.value)}
                 />
-                <button type="button" className="ua-cp-gut-point__remove" onClick={() => removePoint(index)} aria-label="Remove point">×</button>
+                <button type="button" className="ua-cp-gut-point__remove" disabled={saving || loading} onClick={() => removePoint(index)} aria-label="Remove point">×</button>
               </div>
             ))}
           </div>
@@ -275,31 +333,32 @@ export function GutResetSection({ user, onToast }) {
             className="ua-cp-gut-add__input"
             placeholder="Add a plan point and press Enter"
             value={pointDraft}
+            disabled={saving || loading}
             onChange={(e) => setPointDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addPoint(); }}
           />
           <button
             type="button"
             className={`ua-cp-btn ua-cp-btn--sm ua-cp-gut-add__btn${pointDraft.trim() ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
-            disabled={!pointDraft.trim()}
+            disabled={!pointDraft.trim() || saving || loading}
             onClick={addPoint}
           >
             + Add point
           </button>
-          <PresetSelect value="" onChange={loadPreset} />
+          <PresetSelect value="" onChange={loadPreset} disabled={saving || loading} />
         </div>
 
         <div className="ua-cp-gut-panel__foot">
-          <p>{canTrigger ? "The client gets the plan and all three dates in their app." : "Add a start date and at least one point to trigger."}</p>
+          <p>{canSave ? "The client gets the plan and all three dates in their app." : "Add a start date and at least one point to save."}</p>
           <div className="ua-cp-gut-panel__actions">
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={clearDraft}>Clear</button>
+            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={saving || loading} onClick={clearDraft}>Clear</button>
             <button
               type="button"
-              className={`ua-cp-btn ua-cp-btn--sm${canTrigger ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
-              disabled={!canTrigger}
-              onClick={triggerPlan}
+              className={`ua-cp-btn ua-cp-btn--sm${canSave ? " ua-cp-btn--primary" : " ua-cp-btn--muted"}`}
+              disabled={!canSave}
+              onClick={savePlan}
             >
-              Trigger to user app
+              {saving ? "Saving…" : "Save"}
             </button>
           </div>
         </div>

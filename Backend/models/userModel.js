@@ -994,9 +994,16 @@ function entityTypeBucket(entityType) {
   return "other";
 }
 
-async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
+async function buildReferralOverview({
+  topLimit = 25,
+  recentLimit = 40,
+  restrictToUserIds = null,
+  restrictStaffEntityIds = null,
+} = {}) {
   const safeTop = Math.min(100, Math.max(1, Number(topLimit) || 25));
   const safeRecent = Math.min(100, Math.max(1, Number(recentLimit) || 40));
+  const userIdScope = restrictToUserIds instanceof Set ? restrictToUserIds : null;
+  const staffScope = restrictStaffEntityIds instanceof Set ? restrictStaffEntityIds : null;
 
   const { items } = await listByPartitionKey({
     tableName: TABLE,
@@ -1009,6 +1016,7 @@ async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
   });
 
   const users = items.map(withLegacyId).filter((row) => row && row.status !== "deleted");
+  const pool = userIdScope ? users.filter((row) => userIdScope.has(row.id)) : users;
   const byId = new Map(users.map((row) => [row.id, row]));
 
   let totalWithReferral = 0;
@@ -1020,7 +1028,7 @@ async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
   const staffDirectCounts = new Map(); // entityId -> { count, entityType, code }
   const attributed = [];
 
-  for (const user of users) {
+  for (const user of pool) {
     const referredByUserId = user.referredByUserId ? String(user.referredByUserId).trim() : "";
     const referredByEntityId = user.referredByEntityId ? String(user.referredByEntityId).trim() : "";
     const hasAttribution = Boolean(
@@ -1038,19 +1046,23 @@ async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
     else otherReferred += 1;
 
     if (referredByUserId) {
-      directCounts.set(referredByUserId, (directCounts.get(referredByUserId) || 0) + 1);
+      if (!userIdScope || userIdScope.has(referredByUserId)) {
+        directCounts.set(referredByUserId, (directCounts.get(referredByUserId) || 0) + 1);
+      }
     }
 
     if (referredByEntityId && (bucket === "coach" || bucket === "awc")) {
-      const prev = staffDirectCounts.get(referredByEntityId) || {
-        count: 0,
-        entityType: user.referredByEntityType || null,
-        code: user.referredByCode || null,
-      };
-      prev.count += 1;
-      if (!prev.entityType && user.referredByEntityType) prev.entityType = user.referredByEntityType;
-      if (!prev.code && user.referredByCode) prev.code = user.referredByCode;
-      staffDirectCounts.set(referredByEntityId, prev);
+      if (!staffScope || staffScope.has(referredByEntityId)) {
+        const prev = staffDirectCounts.get(referredByEntityId) || {
+          count: 0,
+          entityType: user.referredByEntityType || null,
+          code: user.referredByCode || null,
+        };
+        prev.count += 1;
+        if (!prev.entityType && user.referredByEntityType) prev.entityType = user.referredByEntityType;
+        if (!prev.code && user.referredByCode) prev.code = user.referredByCode;
+        staffDirectCounts.set(referredByEntityId, prev);
+      }
     }
   }
 
@@ -1106,7 +1118,7 @@ async function buildReferralOverview({ topLimit = 25, recentLimit = 40 } = {}) {
 
   return {
     summary: {
-      totalUsers: users.length,
+      totalUsers: pool.length,
       totalWithReferral,
       peerReferred,
       coachReferred,

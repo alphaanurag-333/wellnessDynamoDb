@@ -724,6 +724,7 @@ export function AdminDashboard({
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady, can } = useViewAs();
   const canExport = can("console.dash.export");
+  const canViewRevenue = can("console.rev.view");
   // Prefer the selected View-as id for admin; persona is only for custom staff roles.
   const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
@@ -927,10 +928,10 @@ export function AdminDashboard({
   const tierTotal = tierData.reduce((sum, item) => sum + item.value, 0);
   const tierGradient = buildTierGradient(tierData);
   const revenueAnalytics = useMemo(
-    () => (isAdminDash && hasAdminStatistics ? resolveRevenueAnalytics(statisticsForView) : null),
-    [isAdminDash, hasAdminStatistics, statisticsForView],
+    () => (canViewRevenue && statisticsForView ? resolveRevenueAnalytics(statisticsForView) : null),
+    [canViewRevenue, statisticsForView],
   );
-  const revenueUnavailable = isAdminDash && !revenueAnalytics;
+  const revenueUnavailable = canViewRevenue && !revenueAnalytics;
   const fyOptions = useMemo(() => revenueAnalytics?.financialYears || [], [revenueAnalytics]);
   const selectedFy = findFinancialYear(revenueAnalytics, selectedFyStartYear);
   const fyMonths = useMemo(() => selectedFy?.months || [], [selectedFy]);
@@ -1464,7 +1465,7 @@ export function AdminDashboard({
     <main ref={pageRef} className={`content ua-page-enter${refreshing ? " ua-dash-page--refreshing" : ""}`}>
       {renderDashboardHead(true)}
 
-      {isAdminDash && revenueUnavailable ? (
+      {canViewRevenue && revenueUnavailable ? (
         <div className="ua-dash-data-banner" role="status">
           <strong>Revenue data unavailable.</strong>
           {" "}
@@ -1975,15 +1976,15 @@ export function AdminDashboard({
                 </div>
                 <div className="champion-split__col">
                   <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
-                  <div className="champion-scroll">
+                  <div className="champion-scroll champion-scroll--plain">
                     {champCoaches.length === 0 ? (
                       <div className="community-card__empty">No coach champion yet</div>
-                    ) : champCoaches.map((c) => (
-                      <div key={c.id || c.name} className="champion-mini champion-mini--plain">
-                        <span className="champion-mini__name">{c.name}</span>
-                        <span className="champion-mini__score">{c.score}</span>
+                    ) : (
+                      <div key={champCoaches[0].id || champCoaches[0].name} className="champion-mini champion-mini--plain">
+                        <span className="champion-mini__name">{champCoaches[0].name}</span>
+                        <span className="champion-mini__score">{champCoaches[0].score}</span>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
@@ -2156,7 +2157,7 @@ export function AdminDashboard({
         )}
       </section>
 
-      {isAdminDash ? (
+      {canViewRevenue ? (
         <>
           <section className="section">
             <div className="section__head">

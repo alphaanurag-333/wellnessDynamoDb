@@ -407,6 +407,11 @@ function buildSupplements(dosages, today) {
   };
 }
 
+function shouldSplitWeightTitle(goalLabel) {
+  const label = String(goalLabel || "").trim();
+  return label.length > 0 && !/^weight$/i.test(label);
+}
+
 function buildHealthProgress(weightLogs, goalLabel) {
   const logs = (weightLogs || []).map(toPublicWeightLog).filter(Boolean);
   if (!logs.length) return null;
@@ -432,16 +437,17 @@ function buildHealthProgress(weightLogs, goalLabel) {
       deltaLabel = "No change";
     }
   }
+  const splitTitle = shouldSplitWeightTitle(goalLabel);
   return {
     id: "weight",
-    name: goalLabel || "Weight",
-    metric: "WEIGHT",
+    name: splitTitle ? String(goalLabel).trim() : "Weight",
+    metric: splitTitle ? "WEIGHT" : "",
     icon: "🔥",
     iconClass: "pgi-fatloss",
     iconBg: "#fff4ef",
     accent: "#ec7a45",
     soft: "#fff8f5",
-    titleSplit: true,
+    titleSplit: splitTitle,
     current: Number.isFinite(currentKg) ? `${formatNumber(currentKg, 1)} kg` : EMPTY,
     val: "",
     delta: deltaLabel,
@@ -554,7 +560,7 @@ async function buildAtAGlanceForUser(userId) {
     }),
     supplements: buildSupplements(dosages, today),
     healthProgressPrograms: (() => {
-      const card = buildHealthProgress(weightLogs, goalLabel || "Weight");
+      const card = buildHealthProgress(weightLogs, goalLabel);
       return card ? [card] : [];
     })(),
     sources,

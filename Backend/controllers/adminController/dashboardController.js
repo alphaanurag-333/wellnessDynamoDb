@@ -1,8 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { resolveStaffActor } = require("../staffAccess");
+const { hasPermission } = require("../../utils/permissions");
+const { resolveStaffActor, getStaffScopeCoachId, listStaffClientIdSet } = require("../staffAccess");
 const {
   getAdminDashboardStats,
+  buildScopedRevenueAnalytics,
+  mergeRevenueIntoStatistics,
+  stripRevenueFromStatistics,
   listDashboardPaymentsPaginated,
   DASHBOARD_PAYMENT_BUCKET_ORDER,
 } = require("../../services/adminDashboardStatsService");
@@ -34,6 +38,29 @@ async function loadRoleStatistics(actor) {
   throw new AppError("Forbidden", 403);
 }
 
+async function attachRevenueIfPermitted(req, actor, statistics) {
+  if (!hasPermission(req.auth, "console.rev.view")) {
+    return stripRevenueFromStatistics(statistics);
+  }
+  if (statistics?.revenueAnalytics) return statistics;
+
+  const scopeCoachId = getStaffScopeCoachId(req);
+  if (!scopeCoachId && actor.role !== "admin" && actor.role !== "support") {
+    return statistics;
+  }
+
+  let restrictToUserIds = null;
+  if (actor.role === "assistant_wellness_coach") {
+    restrictToUserIds = await listStaffClientIdSet(req);
+  }
+
+  const revenueAnalytics = scopeCoachId
+    ? await buildScopedRevenueAnalytics({ coachId: scopeCoachId, restrictToUserIds })
+    : null;
+
+  return mergeRevenueIntoStatistics(statistics, revenueAnalytics);
+}
+
 exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
   const actor = resolveStaffActor(req);
 
@@ -52,9 +79,9 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
         return emptyCommunity();
       }),
     ]);
-    statistics = roleStats;
+    statistics = await attachRevenueIfPermitted(req, actor, roleStats);
     overview = progress || overview;
-    community = communityData || emptyCommunity();
+    community = communityData || community;
   } catch (err) {
     if (err instanceof AppError) throw err;
     throw new AppError(err.message || "Failed to load dashboard statistics", 400);
@@ -80,7 +107,7 @@ exports.getAssistantDashboardStatistics = exports.getStaffDashboardStatistics;
 
 exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
   const actor = resolveStaffActor(req);
-  if (actor.role !== "admin" && actor.role !== "support") {
+  if (!hasPermission(req.auth, "console.rev.view")) {
     throw new AppError("Forbidden", 403);
   }
 
@@ -96,7 +123,24 @@ exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
 
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
-  const result = await listDashboardPaymentsPaginated({ monthKey: month, productBucket: type, page, limit });
+
+  let scopeCoachId = null;
+  let scopeClientIds = null;
+  if (actor.role !== "admin" && actor.role !== "support") {
+    scopeCoachId = getStaffScopeCoachId(req);
+    if (actor.role === "assistant_wellness_coach") {
+      scopeClientIds = await listStaffClientIdSet(req);
+    }
+  }
+
+  const result = await listDashboardPaymentsPaginated({
+    monthKey: month,
+    productBucket: type,
+    page,
+    limit,
+    scopeCoachId,
+    scopeClientIds,
+  });
 
   return res.status(200).json({
     status: true,

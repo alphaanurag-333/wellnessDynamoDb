@@ -26,7 +26,7 @@ function ProgramCard({ program, onOpen }) {
       </span>
       <div className="ua-cp-prog-card__copy">
         <div className="ua-cp-prog-card__title-row">
-          {program.titleSplit ? (
+          {program.titleSplit && program.metric ? (
             <span className="ua-cp-prog-card__name ua-cp-prog-card__name--split">
               <span>{program.name}</span>
               <span className="ua-cp-prog-card__metric">{program.metric}</span>
@@ -34,7 +34,7 @@ function ProgramCard({ program, onOpen }) {
           ) : (
             <>
               <span className="ua-cp-prog-card__name">{program.name}</span>
-              <span className="ua-cp-prog-card__metric">{program.metric}</span>
+              {program.metric ? <span className="ua-cp-prog-card__metric">{program.metric}</span> : null}
             </>
           )}
         </div>

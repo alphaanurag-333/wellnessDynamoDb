@@ -12,8 +12,10 @@ const {
   getAssistantWellnessCoachByIdResolved,
   getWellnessCoachByIdResolved,
 } = require("../../services/accountResolver");
+const { resolveStaffActor, listStaffClientIdSet } = require("../staffAccess");
 
 const STAFF_ENTITY_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+const GLOBAL_REFERRAL_ROLES = new Set(["admin", "support"]);
 
 async function resolveStaffEntity(entityId) {
   const id = String(entityId || "").trim();
@@ -132,15 +134,86 @@ async function enrichStaffReferrers(rows) {
   return out;
 }
 
+function isGlobalReferralViewer(req) {
+  if (req.auth?.isSuperAdmin) return true;
+  const actor = resolveStaffActor(req);
+  return GLOBAL_REFERRAL_ROLES.has(actor.role);
+}
+
+async function resolveReferralTreeScope(req) {
+  if (isGlobalReferralViewer(req)) return null;
+
+  const actor = resolveStaffActor(req);
+  const rosterUserIds = await listStaffClientIdSet(req);
+
+  if (actor.role === "wellness_coach") {
+    return { staffEntityId: actor.id, rosterUserIds };
+  }
+
+  if (actor.role === "assistant_wellness_coach") {
+    return { staffEntityId: actor.id, rosterUserIds };
+  }
+
+  if (actor.role === "trainee") {
+    if (!actor.parentCoachId) {
+      throw new AppError("Trainee is not linked to a wellness coach", 400);
+    }
+    return { staffEntityId: actor.parentCoachId, rosterUserIds };
+  }
+
+  throw new AppError("Forbidden", 403);
+}
+
+async function assertReferralTreeTargetAllowed(req, target, scope) {
+  if (!scope) return;
+
+  if (target.kind === "coach") {
+    if (String(target.staff.id) !== String(scope.staffEntityId)) {
+      throw new AppError("You can only view your own referral tree", 403);
+    }
+    return;
+  }
+
+  const userId = String(target.userId || "").trim();
+  if (!userId || !scope.rosterUserIds?.has(userId)) {
+    throw new AppError("You can only view referral trees for your clients", 403);
+  }
+}
+
 exports.getReferralOverviewController = asyncHandler(async (req, res) => {
   const topLimit = req.query.topLimit != null ? Number(req.query.topLimit) : 25;
   const recentLimit = req.query.recentLimit != null ? Number(req.query.recentLimit) : 40;
-  const data = await buildReferralOverview({ topLimit, recentLimit });
+  const scope = await resolveReferralTreeScope(req);
+  const data = await buildReferralOverview({
+    topLimit,
+    recentLimit,
+    restrictToUserIds: scope?.rosterUserIds || null,
+    restrictStaffEntityIds: scope?.staffEntityId ? new Set([scope.staffEntityId]) : null,
+  });
   const topStaffReferrers = await enrichStaffReferrers(data.topStaffReferrers);
+  if (scope?.staffEntityId) {
+    const ownId = String(scope.staffEntityId);
+    const hasOwn = topStaffReferrers.some((row) => String(row.id) === ownId);
+    if (!hasOwn) {
+      const staff = await resolveStaffEntity(ownId);
+      if (staff) {
+        topStaffReferrers.unshift({
+          id: staff.id,
+          name: staff.name || null,
+          email: staff.email || null,
+          referralCode: staff.referralCode || null,
+          entityType: staff.entityType || null,
+          directCount: 0,
+          missing: false,
+        });
+      }
+    }
+  }
   return res.status(200).json({ status: true, ...data, topStaffReferrers });
 });
 
 exports.getReferralTreeController = asyncHandler(async (req, res) => {
+  const scope = await resolveReferralTreeScope(req);
   const target = await resolveTreeTarget({
     rootUserId: req.query.rootUserId,
     rootEntityId: req.query.rootEntityId,
@@ -154,6 +227,8 @@ exports.getReferralTreeController = asyncHandler(async (req, res) => {
       404
     );
   }
+
+  await assertReferralTreeTargetAllowed(req, target, scope);
 
   const maxDepth = req.query.maxDepth != null ? Number(req.query.maxDepth) : 5;
   const maxNodes = req.query.maxNodes != null ? Number(req.query.maxNodes) : 500;

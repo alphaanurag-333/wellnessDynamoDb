@@ -9,6 +9,8 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import "./referralTree.css";
 
+const COACH_SCOPED_UI = new Set(["wc", "awc", "trainee"]);
+
 function looksLikeUserId(value) {
   const s = String(value || "").trim();
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
@@ -63,10 +65,15 @@ function defaultCollapsed(node, into = new Set()) {
 }
 
 export function ReferralTreePage() {
-  const { can } = useViewAs();
+  const { can, isAdminView, account, sessionUi } = useViewAs();
   const canView = can("console.rt.view");
   const canOpenUser = can("console.cl.view");
   const canSearchUsers = can("console.cl.view");
+  const isCoachScoped = !isAdminView && COACH_SCOPED_UI.has(sessionUi);
+  const ownStaffEntityId =
+    sessionUi === "trainee"
+      ? String(account?.parentAccountId || account?.wellnessCoachId || "").trim() || null
+      : String(account?.id || "").trim() || null;
 
   const [listTab, setListTab] = useState("staff");
   const [query, setQuery] = useState("");
@@ -245,10 +252,18 @@ export function ReferralTreePage() {
 
   const listTabs = useMemo(
     () => [
-      { id: "staff", label: `Staff codes (${topStaffReferrers.length})` },
-      { id: "peer", label: `Peer referrers (${topReferrers.length})` },
+      {
+        id: "staff",
+        label: isCoachScoped ? "My referral code" : `Staff codes (${topStaffReferrers.length})`,
+      },
+      {
+        id: "peer",
+        label: isCoachScoped
+          ? `Client referrers (${topReferrers.length})`
+          : `Peer referrers (${topReferrers.length})`,
+      },
     ],
-    [topStaffReferrers.length, topReferrers.length]
+    [isCoachScoped, topStaffReferrers.length, topReferrers.length]
   );
 
   if (!canView) {
@@ -268,7 +283,9 @@ export function ReferralTreePage() {
         subtitle={
           root
             ? treeSubtitle || "Live referral genealogy"
-            : "Browse staff or peer referral networks, then open a live tree."
+            : isCoachScoped
+              ? "Your referral code network and client-to-client chains on your roster."
+              : "Browse staff or peer referral networks, then open a live tree."
         }
         meta={
           !root && summary ? (
@@ -331,7 +348,9 @@ export function ReferralTreePage() {
                 className="ua-search-wrap__input"
                 placeholder={
                   listTab === "staff"
-                    ? "Paste staff referral code or id…"
+                    ? isCoachScoped
+                      ? "Paste your referral code or id…"
+                      : "Paste staff referral code or id…"
                     : canSearchUsers
                       ? "Search client name or paste referral code…"
                       : "Paste user id or referral code…"
@@ -443,8 +462,12 @@ export function ReferralTreePage() {
                 </h2>
                 <p className="ua-rt-panel__hint">
                   {listTab === "staff"
-                    ? "Coach / assistant code → clients who used it → their sub-referrals."
-                    : "Clients who referred other clients. Click a row to open the peer tree."}
+                    ? isCoachScoped
+                      ? "Clients who joined with your code, plus their sub-referrals."
+                      : "Coach / assistant code → clients who used it → their sub-referrals."
+                    : isCoachScoped
+                      ? "Clients on your roster who referred other clients. Click a row to open the peer tree."
+                      : "Clients who referred other clients. Click a row to open the peer tree."}
                 </p>
               </div>
 
@@ -603,17 +626,23 @@ export function ReferralTreePage() {
                                 {shortLabel(viaLabel, 24)}
                               </button>
                             ) : row.referredByEntityId ? (
-                              <button
-                                type="button"
-                                className="ua-rt-text-btn ua-rt-ellipsis"
-                                title={viaLabel}
-                                onClick={() => {
-                                  setQuery(row.referrerCode || row.referredByCode || row.referredByEntityId);
-                                  loadTree({ rootEntityId: row.referredByEntityId, mode: "coach" });
-                                }}
-                              >
-                                {shortLabel(viaLabel, 24)}
-                              </button>
+                              ownStaffEntityId && String(row.referredByEntityId) === ownStaffEntityId ? (
+                                <button
+                                  type="button"
+                                  className="ua-rt-text-btn ua-rt-ellipsis"
+                                  title={viaLabel}
+                                  onClick={() => {
+                                    setQuery(row.referrerCode || row.referredByCode || row.referredByEntityId);
+                                    loadTree({ rootEntityId: row.referredByEntityId, mode: "coach" });
+                                  }}
+                                >
+                                  {shortLabel(viaLabel, 24)}
+                                </button>
+                              ) : (
+                                <span className="ua-rt-ellipsis" title={viaLabel}>
+                                  {shortLabel(viaLabel, 24)}
+                                </span>
+                              )
                             ) : (
                               <span className="ua-rt-ellipsis" title={viaLabel}>
                                 {shortLabel(viaLabel, 24)}

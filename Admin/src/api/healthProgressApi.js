@@ -78,6 +78,33 @@ export async function fetchWeightLogs(userId) {
   return fetchLogs(userId, "/health-progress/weight");
 }
 
+export async function createCoachWeightLog(userId, payload = {}) {
+  try {
+    const { file, date, weight, unit, ...rest } = payload;
+    if (file instanceof File) {
+      const form = new FormData();
+      if (date) form.append("date", date);
+      if (weight != null) form.append("weight", String(weight));
+      if (unit) form.append("unit", unit);
+      Object.entries(rest).forEach(([key, value]) => {
+        if (value != null) form.append(key, String(value));
+      });
+      form.append("weight_pic", file);
+      const { data } = await api.post(healUserPath(userId, "/health-progress/weight"), form);
+      return data?.log || null;
+    }
+    const { data } = await api.post(healUserPath(userId, "/health-progress/weight"), {
+      date,
+      weight,
+      unit,
+      ...rest,
+    });
+    return data?.log || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchGlucoseLogs(userId) {
   return fetchLogs(userId, "/health-progress/glucose");
 }

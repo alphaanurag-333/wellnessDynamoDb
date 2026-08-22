@@ -26,6 +26,7 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
     loadInbox,
     handleNotifClick,
     handleMarkAllRead,
+    handleDismissNotif,
   } = useInbox();
 
   const [open, setOpen] = useState(false);
@@ -112,29 +113,45 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
         <div className="header__notif-empty">No console events yet</div>
       ) : null}
       {notifications.map((n) => (
-        <button
+        <div
           key={n.id}
-          type="button"
           className={`header__notif-item${n.unread ? " is-unread" : ""}`}
-          onClick={() => closeAndOpen(n.id)}
         >
-          <span className="header__notif-item-icon" aria-hidden="true">{n.icon}</span>
-          <span className="header__notif-item-body">
-            <span className="header__notif-item-meta">
-              <span className="header__notif-item-kind">{n.kind}</span>
-              <span className="header__notif-item-time">{n.time}</span>
+          <button
+            type="button"
+            className="header__notif-item-main"
+            onClick={() => closeAndOpen(n.id)}
+          >
+            <span className="header__notif-item-icon" aria-hidden="true">{n.icon}</span>
+            <span className="header__notif-item-body">
+              <span className="header__notif-item-meta">
+                <span className="header__notif-item-kind">{n.kind}</span>
+                <span className="header__notif-item-time">{n.time}</span>
+              </span>
+              <span className="header__notif-item-title">{n.title}</span>
+              {n.from && n.from !== "System" ? (
+                <span className="header__notif-item-from">From {n.from}</span>
+              ) : null}
             </span>
-            <span className="header__notif-item-title">{n.title}</span>
-            {n.from && n.from !== "System" ? (
-              <span className="header__notif-item-from">From {n.from}</span>
+            {!n.unread ? (
+              <span className="header__notif-item-chevron" aria-hidden="true">›</span>
             ) : null}
-          </span>
+          </button>
           {n.unread ? (
-            <span className="header__notif-item-status" aria-label="Unread" />
-          ) : (
-            <span className="header__notif-item-chevron" aria-hidden="true">›</span>
-          )}
-        </button>
+            <button
+              type="button"
+              className="header__notif-item-dismiss"
+              title="Dismiss notification"
+              aria-label="Dismiss notification"
+              onClick={(event) => {
+                event.stopPropagation();
+                handleDismissNotif(n.id);
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
       ))}
     </>
   );

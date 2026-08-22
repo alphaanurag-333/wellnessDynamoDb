@@ -48,6 +48,7 @@
     "table:access-audit-log": "node --use-system-ca tables/createAccessAuditLogTable.js",
     "table:protocol-settings": "node --use-system-ca tables/createUserProtocolSettingTable.js",
     "migrate:protocol-settings": "node --use-system-ca migration/migrateAll.js --only=44-user-protocol-setting",
+    "migrate:gut-reset": "node --use-system-ca migration/migrateAll.js --only=56-user-gut-reset",
     "migrate:access-permission-requests": "node --use-system-ca migration/migrateAll.js --only=41-access-permission-requests",
     "migrate:access-policies": "node --use-system-ca migration/migrateAll.js --only=43-access-policies",
     "migrate:access-audit-log": "node --use-system-ca migration/migrateAll.js --only=42-access-audit-log",
