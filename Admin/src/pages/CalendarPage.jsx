@@ -356,7 +356,7 @@ export function CalendarPage() {
         </div>
       </div>
 
-      <div className="ua-cal-days-row">
+      <div className="ua-cal-days-row" style={{width:"max-content"}}>
         {days.map((date) => {
           const key = ymd(date);
           const tag = dayTag(events.filter((entry) => entry.date === key));
