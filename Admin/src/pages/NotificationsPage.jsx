@@ -75,7 +75,7 @@ function kindColor(kindKey) {
   return map[kindKey] || { color: "#5e6ad2", bg: "#eef0fc" };
 }
 
-function NotifRow({ notif, onMarkRead, onClick }) {
+function NotifRow({ notif, onDismiss, onClick }) {
   const { color, bg } = kindColor(notif.kindKey);
   return (
     <div
@@ -103,10 +103,11 @@ function NotifRow({ notif, onMarkRead, onClick }) {
         <button
           type="button"
           className="npage__row-readbtn"
-          title="Mark as read"
-          onClick={(e) => { e.stopPropagation(); onMarkRead(notif.id); }}
+          title="Dismiss notification"
+          aria-label="Dismiss notification"
+          onClick={(e) => { e.stopPropagation(); onDismiss(notif.id); }}
         >
-          ✓
+          ×
         </button>
       )}
     </div>
@@ -181,6 +182,17 @@ export function NotificationsPage() {
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, unread: true } : n)),
       );
+    }
+  }
+
+  async function handleDismiss(id) {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await markAdminInboxItemRead(id);
+      loadInbox({ silent: true });
+    } catch (err) {
+      showToast?.(err?.message || "Could not dismiss notification");
+      load(1, false);
     }
   }
 
@@ -271,7 +283,7 @@ export function NotificationsPage() {
                 <NotifRow
                   key={n.id}
                   notif={n}
-                  onMarkRead={handleMarkRead}
+                  onDismiss={handleDismiss}
                   onClick={handleRowClick}
                 />
               ))}

@@ -5,7 +5,7 @@
 const express = require("express");
 const { protectAccount, requireActiveRole } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
-const { optionalMealPhotoFile, optionalUserFile, optionalSupplementBillFile } = require("../../middleware/authMultipart");
+const { optionalMealPhotoFile, optionalUserFile, optionalSupplementBillFile, optionalHealthProgressWeightPicFile } = require("../../middleware/authMultipart");
 const { CLINICAL_ROLES } = require("../../controllers/staffAccess");
 const {
   listHealUsersForStaffController,
@@ -100,6 +100,7 @@ const {
   getCoachHealthProgressSettingsController,
   updateCoachHealthProgressSettingsController,
   listCoachWeightLogsController,
+  createCoachWeightLogController,
   listCoachGlucoseLogsController,
   listCoachBloodPressureLogsController,
   listCoachMenstrualCycleLogsController,
@@ -142,6 +143,10 @@ const {
   getStaffUserProtocolSettingsController,
   saveStaffUserProtocolSettingsController,
 } = require("../../controllers/adminController/protocolSettingsController");
+const {
+  getStaffUserGutResetsController,
+  saveStaffUserGutResetController,
+} = require("../../controllers/adminController/gutResetController");
 const { getStaffHealUserWaterTrackingController } = require("../../controllers/waterTrackingHistoryController");
 const { getStaffHealUserStepsTrackingController } = require("../../controllers/stepsTrackingHistoryController");
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");
@@ -316,6 +321,7 @@ const hpWrite = staff("console.body.edit", { admin: "users.clientHub.tracking.he
 router.get("/:userId/health-progress-settings", hp, getCoachHealthProgressSettingsController);
 router.patch("/:userId/health-progress-settings", hpWrite, updateCoachHealthProgressSettingsController);
 router.get("/:userId/health-progress/weight", hp, listCoachWeightLogsController);
+router.post("/:userId/health-progress/weight", hpWrite, optionalHealthProgressWeightPicFile, createCoachWeightLogController);
 router.get("/:userId/health-progress/glucose", hp, listCoachGlucoseLogsController);
 router.get("/:userId/health-progress/blood-pressure", hp, listCoachBloodPressureLogsController);
 router.get("/:userId/health-progress/menstrual-cycle", hp, listCoachMenstrualCycleLogsController);
@@ -375,6 +381,11 @@ const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.m
 const protocolWrite = staff("console.diet.edit", { admin: "users.edit", coach: "nav.my-users" });
 router.get("/:userId/protocol-settings", protocol, getStaffUserProtocolSettingsController);
 router.post("/:userId/protocol-settings", protocolWrite, saveStaffUserProtocolSettingsController);
+
+const gutReset = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });
+const gutResetWrite = staff(["console.diet.edit", "console.diet.create"], { admin: "users.edit", coach: "nav.my-users" });
+router.get("/:userId/gut-resets", gutReset, getStaffUserGutResetsController);
+router.post("/:userId/gut-resets", gutResetWrite, saveStaffUserGutResetController);
 
 router.get("/:userId/coach-insight", insight, getCoachUserCoachInsightController);
 router.put("/:userId/coach-insight", staff("console.diet.edit", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" }), upsertCoachUserCoachInsightController);

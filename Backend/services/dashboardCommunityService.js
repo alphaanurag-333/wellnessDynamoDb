@@ -1,10 +1,6 @@
 const { getUserById, TABLE: USER_TABLE } = require("../models/userModel");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
-const {
-  listMonthlyChampionPostsByMonth,
-  findLatestMonthWithChampions,
-  monthLabel,
-} = require("../models/monthlyChampionPostModel");
+const { monthLabel } = require("../models/monthlyChampionPostModel");
 const { computeUserAveragesForMonth } = require("./monthlyChampionScoreService");
 const { listScopedUsers } = require("./pendingTasksService");
 const { listByPartitionKey } = require("../utils/dynamoList");
@@ -14,8 +10,8 @@ const { computeDobMonthDay, pad2, isLeapYear } = require("../utils/dobMonthDay")
 
 const IST_TZ = "Asia/Kolkata";
 const BIRTHDAY_LIMIT = 10;
-const CLIENT_CARD_LIMIT = 3;
-const COACH_CARD_LIMIT = 2;
+const CLIENT_CARD_LIMIT = 2;
+const COACH_CARD_LIMIT = 1;
 const LEADERBOARD_LIMIT = 10;
 const COACH_RANK_SAMPLE = 40;
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -249,95 +245,46 @@ function toLeaderboardRow(row, user, rank) {
   };
 }
 
-function buildCoachCards(ranked, usersById, coachNames, limit = COACH_CARD_LIMIT) {
-  const byCoach = new Map();
-  for (const row of ranked || []) {
-    const user = usersById.get(row.userId);
-    const coachId = String(user?.parentCoachId || "").trim();
-    if (!coachId) continue;
-    const bucket = byCoach.get(coachId) || { coachId, scores: [] };
-    bucket.scores.push(Number(row.averageScore) || 0);
-    byCoach.set(coachId, bucket);
-  }
+function buildTopClientCoach(topClientRows, usersById, coachNames) {
+  if (!topClientRows?.length) return [];
 
-  return [...byCoach.values()]
-    .map((bucket) => {
-      const total = bucket.scores.reduce((sum, n) => sum + n, 0);
-      const averageScore = bucket.scores.length ? total / bucket.scores.length : 0;
-      return {
-        id: bucket.coachId,
-        name: coachNames.get(bucket.coachId) || "Wellness coach",
-        score: formatScoreDisplay(averageScore),
-        averageScore: formatScoreNumber(averageScore),
-      };
-    })
-    .filter((row) => row.name)
-    .sort((a, b) => b.averageScore - a.averageScore)
-    .slice(0, limit);
-}
+  const topUser = usersById.get(topClientRows[0].userId);
+  const coachId = String(topUser?.parentCoachId || "").trim();
+  if (!coachId) return [];
 
-async function rankingsFromChampionPosts(monthYear, allowedIds) {
-  if (!monthYear) return { monthYear: null, rows: [] };
-  const { monthlyChampionPosts } = await listMonthlyChampionPostsByMonth({
-    monthYear,
-    status: "active",
-    page: 1,
-    limit: 50,
-  });
-  const rows = (monthlyChampionPosts || [])
-    .filter((post) => !allowedIds || allowedIds.has(String(post.userId || "").trim()))
-    .map((post) => ({
-      userId: String(post.userId || "").trim(),
-      totalScore: inferredTotalScore(post),
-      averageScore: Number(post.averageScore) || 0,
-      daysSubmitted: Number(post.daysSubmitted) || 0,
-    }))
-    .filter((row) => row.userId)
-    .sort((a, b) => (Number(b.totalScore) || 0) - (Number(a.totalScore) || 0) || (Number(b.averageScore) || 0) - (Number(a.averageScore) || 0));
-  return { monthYear, rows };
+  const coachedTopRows = topClientRows.filter(
+    (row) => String(usersById.get(row.userId)?.parentCoachId || "").trim() === coachId,
+  );
+  const scores = coachedTopRows.map((row) => Number(row.averageScore) || 0);
+  const averageScore = scores.length ? scores.reduce((sum, n) => sum + n, 0) / scores.length : 0;
+
+  return [{
+    id: coachId,
+    name: coachNames.get(coachId) || "Wellness coach",
+    score: formatScoreDisplay(averageScore),
+    averageScore: formatScoreNumber(averageScore),
+  }];
 }
 
 async function loadChampionRankings(allowedIds) {
-  const liveMonth = currentMonthYear();
-  let monthYear = liveMonth;
-  let rows = [];
-  let source = "live";
+  const monthYear = currentMonthYear();
 
-  // Prefer MonthlyChampionPost (same source as APK / public feed) so dashboard
-  // matches what clients see after the monthly job runs.
   try {
-    const latest = await findLatestMonthWithChampions();
-    if (latest) {
-      const fromPosts = await rankingsFromChampionPosts(latest, allowedIds);
-      if (fromPosts.rows.length) {
-        monthYear = fromPosts.monthYear || latest;
-        rows = fromPosts.rows;
-        source = "posts";
-      }
-    }
+    const averaged = await computeUserAveragesForMonth(monthYear);
+    const rows = (averaged || [])
+      .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
+      .map((row) => ({
+        userId: String(row.userId).trim(),
+        totalScore: inferredTotalScore(row),
+        averageScore: Number(row.averageScore) || 0,
+        daysSubmitted: Number(row.daysSubmitted) || 0,
+      }));
+    return { monthYear, rows, source: "live" };
   } catch (err) {
-    console.warn("[dashboardCommunity] champion posts failed:", err?.message || err);
+    console.warn("[dashboardCommunity] live rankings failed:", err?.message || err);
   }
 
-  if (!rows.length) {
-    try {
-      const averaged = await computeUserAveragesForMonth(liveMonth);
-      rows = (averaged || [])
-        .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
-        .map((row) => ({
-          userId: String(row.userId).trim(),
-          totalScore: inferredTotalScore(row),
-          averageScore: Number(row.averageScore) || 0,
-          daysSubmitted: Number(row.daysSubmitted) || 0,
-        }));
-      monthYear = liveMonth;
-      source = "live";
-    } catch (err) {
-      console.warn("[dashboardCommunity] live rankings failed:", err?.message || err);
-    }
-  }
-
-  return { monthYear, rows, source };
+  return { monthYear: null, rows: [], source: "none" };
 }
 
 async function loadChampionsAndLeaderboard(allowedIds) {
@@ -346,10 +293,10 @@ async function loadChampionsAndLeaderboard(allowedIds) {
   const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
   const usersById = await enrichUsers(sample.map((row) => row.userId));
   const ranked = sample.filter((row) => usersById.has(row.userId));
+  const topClients = ranked.slice(0, CLIENT_CARD_LIMIT);
   const coachNames = await loadCoachNames(
-    ranked.map((row) => usersById.get(row.userId)?.parentCoachId).filter(Boolean),
+    topClients.map((row) => usersById.get(row.userId)?.parentCoachId).filter(Boolean),
   );
-
   const leaderboardRows = ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => (
     toLeaderboardRow(row, usersById.get(row.userId), index + 1)
   ));
@@ -358,8 +305,8 @@ async function loadChampionsAndLeaderboard(allowedIds) {
     champions: {
       monthYear,
       monthLabel: monthLbl,
-      clients: ranked.slice(0, CLIENT_CARD_LIMIT).map((row) => toClientCard(row, usersById.get(row.userId))),
-      coaches: buildCoachCards(ranked, usersById, coachNames),
+      clients: topClients.map((row) => toClientCard(row, usersById.get(row.userId))),
+      coaches: buildTopClientCoach(topClients, usersById, coachNames).slice(0, COACH_CARD_LIMIT),
     },
     leaderboard: {
       monthYear,

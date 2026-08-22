@@ -1,9 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { uploadFileFromRequest } = require("../../utils/s3");
 const {
   readUserIdParam,
   readPagination,
   parseCoachSettingsUpdate,
+  parseRecordedAt,
+  handleValidationError,
   resolveHealthProgressSettings,
   loadTargetUser,
   assertCoachCanAccessUser,
@@ -12,8 +15,10 @@ const {
   updateUser,
   toPublicUser,
   isFemaleUser,
+  toNumberOrNull,
 } = require("../helpers/healthProgressControllerHelpers");
 const {
+  createWeightLog,
   listWeightLogsByUser,
   toPublicWeightLog,
 } = require("../../models/healthProgressWeightModel");
@@ -81,6 +86,44 @@ exports.listCoachWeightLogsController = asyncHandler(async (req, res) => {
     message: "Weight history fetched",
     logs: result.items.map(toPublicWeightLog),
     pagination: result.pagination,
+  });
+});
+
+exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  const body = req.body || {};
+  const rawWeight = toNumberOrNull(body.weightKg ?? body.weight_kg ?? body.weight);
+  if (rawWeight == null) throw new AppError("weight is required", 400);
+
+  const unit = String(body.unit || body.weightUnit || "kg").toLowerCase();
+  const weightKg = unit === "lbs" || unit === "lb"
+    ? Number((rawWeight * 0.453592).toFixed(2))
+    : rawWeight;
+  if (!Number.isFinite(weightKg) || weightKg <= 0) {
+    throw new AppError("weight must be a positive number", 400);
+  }
+
+  const weightPicKey = await uploadFileFromRequest(
+    req,
+    "users/health-progress/weight"
+  );
+
+  let log;
+  try {
+    log = await createWeightLog({
+      userId,
+      weightKg,
+      weightPicKey: weightPicKey || null,
+      recordedAt: parseRecordedAt(body),
+    });
+  } catch (err) {
+    handleValidationError(err);
+  }
+
+  return res.status(201).json({
+    status: true,
+    message: "Weight entry saved",
+    log: toPublicWeightLog(log),
   });
 });
 

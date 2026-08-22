@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  createCoachWeightLog,
   fetchBloodPressureLogs,
   fetchConditionLogs,
   fetchGlucoseLogs,
@@ -13,6 +14,7 @@ import {
   CLIENT_HEALTH_TRACKERS,
   CLIENT_TRACKING_FILTER_OPTIONS,
 } from "../../data/healthProgressData.js";
+import { todayIsoDate } from "../../utils/adminDateLimits.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 const BODY_PART_LABELS = {
@@ -457,9 +459,25 @@ function ConditionHistoryModal({ open, condition, photos, onClose }) {
   );
 }
 
-function FatLossPanel({ logs }) {
+function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
   const [range, setRange] = useState("all");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [recordedDate, setRecordedDate] = useState(todayIsoDate);
+  const [weightValue, setWeightValue] = useState("");
+  const [weightUnit, setWeightUnit] = useState("lbs");
+  const [weightPhotoFile, setWeightPhotoFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const dateInputRef = useRef(null);
+  const photoInputRef = useRef(null);
+
+  const weightPhotoPreview = useMemo(() => {
+    if (!weightPhotoFile) return "";
+    return URL.createObjectURL(weightPhotoFile);
+  }, [weightPhotoFile]);
+
+  useEffect(() => () => {
+    if (weightPhotoPreview) URL.revokeObjectURL(weightPhotoPreview);
+  }, [weightPhotoPreview]);
 
   const photos = useMemo(() => (
     sortByDateDesc(logs)
@@ -472,6 +490,8 @@ function FatLossPanel({ logs }) {
         url: row.weightPicUrl,
       }))
   ), [logs]);
+
+  const latestPhoto = photos[0] || null;
 
   const series = useMemo(() => {
     const filtered = applyRange(sortByDateAsc(logs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
@@ -497,20 +517,191 @@ function FatLossPanel({ logs }) {
     };
   }, [logs, range]);
 
+  function openDatePicker() {
+    const input = dateInputRef.current;
+    if (!input) return;
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+      return;
+    }
+    input.focus();
+    input.click();
+  }
+
+  function onPhotoSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      onToast?.("Choose an image file");
+      event.target.value = "";
+      return;
+    }
+    setWeightPhotoFile(file);
+  }
+
+  function clearSelectedPhoto() {
+    setWeightPhotoFile(null);
+    if (photoInputRef.current) photoInputRef.current.value = "";
+  }
+
+  async function submitWeight(event) {
+    event.preventDefault();
+    const weight = Number(weightValue);
+    if (!Number.isFinite(weight) || weight <= 0) {
+      onToast?.("Enter a valid weight");
+      return;
+    }
+    if (isMock) {
+      onToast?.("Demo profiles cannot add weight entries.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createCoachWeightLog(userId, {
+        date: recordedDate,
+        weight,
+        unit: weightUnit,
+        file: weightPhotoFile || undefined,
+      });
+      setWeightValue("");
+      clearSelectedPhoto();
+      onToast?.("Weight entry saved");
+      await onWeightAdded?.();
+    } catch (err) {
+      onToast?.(err.message || "Could not save weight entry");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <>
-      <div className="ua-cp-hptrack-weight-form">
-        <button type="button" className="ua-cp-hptrack-weight-form__pics" onClick={() => setHistoryOpen(true)}>
-          <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </span>
-          <strong>View weight pics</strong>
-          <span>{photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "No photos yet"}</span>
+      <form className="ua-cp-hptrack-weight-form" onSubmit={submitWeight}>
+        <button
+          type="button"
+          className={`ua-cp-hptrack-weight-form__pics${latestPhoto ? " ua-cp-hptrack-weight-form__pics--has-photo" : ""}`}
+          onClick={() => setHistoryOpen(true)}
+        >
+          {latestPhoto ? (
+            <>
+              <img
+                className="ua-cp-hptrack-weight-form__pics-img"
+                src={latestPhoto.url}
+                alt={`Weight photo from ${latestPhoto.date}`}
+              />
+              <span className="ua-cp-hptrack-weight-form__pics-overlay">
+                <strong>View weight pics</strong>
+                <span>Tap to view history</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+              <strong>View weight pics</strong>
+              <span>{photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "Tap to view history"}</span>
+            </>
+          )}
         </button>
-      </div>
+
+        <div className="ua-cp-hptrack-weight-form__fields">
+          <label className="ua-cp-hptrack-field">
+            <span>Date</span>
+            <div className="ua-cp-hptrack-date-field">
+              <div className="ua-cp-hptrack-date-field__picker">
+                <span className="ua-cp-hptrack-date-field__text">{formatDisplayDate(recordedDate)}</span>
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  className="ua-cp-hptrack-date-field__input"
+                  value={recordedDate}
+                  onChange={(e) => setRecordedDate(e.target.value || todayIsoDate())}
+                  required
+                />
+              </div>
+              <button
+                type="button"
+                className="ua-cp-hptrack-date-field__calendar"
+                aria-label="Open date picker"
+                onClick={openDatePicker}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="ua-cp-hptrack-date-field__file"
+                onChange={onPhotoSelected}
+              />
+              <button
+                type="button"
+                className={`ua-cp-hptrack-date-field__camera${weightPhotoFile ? " ua-cp-hptrack-date-field__camera--active" : ""}`}
+                aria-label={weightPhotoFile ? "Change weight photo" : "Add weight photo"}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </button>
+            </div>
+            {weightPhotoPreview ? (
+              <div className="ua-cp-hptrack-date-field__preview">
+                <img src={weightPhotoPreview} alt="Selected weight photo preview" />
+                <button type="button" onClick={clearSelectedPhoto}>Remove photo</button>
+              </div>
+            ) : null}
+          </label>
+
+          <label className="ua-cp-hptrack-field">
+            <span>Weight</span>
+            <div className="ua-cp-hptrack-weight-input">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                min="0"
+                placeholder="--"
+                value={weightValue}
+                onChange={(e) => setWeightValue(e.target.value)}
+                required
+              />
+              <div className="ua-cp-hptrack-unit-toggle" role="group" aria-label="Weight unit">
+                <button
+                  type="button"
+                  className={weightUnit === "kg" ? "ua-cp-hptrack-unit-toggle__btn--active" : ""}
+                  aria-pressed={weightUnit === "kg"}
+                  onClick={() => setWeightUnit("kg")}
+                >
+                  kg
+                </button>
+                <button
+                  type="button"
+                  className={weightUnit === "lbs" ? "ua-cp-hptrack-unit-toggle__btn--active" : ""}
+                  aria-pressed={weightUnit === "lbs"}
+                  onClick={() => setWeightUnit("lbs")}
+                >
+                  lbs
+                </button>
+              </div>
+            </div>
+          </label>
+
+          <button type="submit" className="ua-cp-btn ua-cp-hptrack-submit" disabled={submitting || isMock}>
+            {submitting ? "Saving…" : "Submit"}
+          </button>
+        </div>
+      </form>
 
       <WeightPhotoHistoryModal
         open={historyOpen}
@@ -888,9 +1079,17 @@ function ConditionPanel({ logs }) {
   );
 }
 
-function TrackerDetail({ tracker, logs }) {
+function TrackerDetail({ tracker, logs, userId, isMock, onToast, onWeightAdded }) {
   switch (tracker.id) {
-    case "fatloss": return <FatLossPanel logs={logs.weight} />;
+    case "fatloss": return (
+      <FatLossPanel
+        logs={logs.weight}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        onWeightAdded={onWeightAdded}
+      />
+    );
     case "glucose": return <GlucosePanel logs={logs.glucose} />;
     case "menstrual": return <MenstrualPanel logs={logs.menstrual} />;
     case "bp": return <BpPanel logs={logs.bp} />;
@@ -1102,6 +1301,16 @@ export function HealthProgressSection({ user, onToast }) {
     }
   }
 
+  async function refreshWeightLogs() {
+    if (!userId || isMock) return;
+    try {
+      const rows = await fetchWeightLogs(userId);
+      setLogs((prev) => ({ ...prev, weight: rows || [] }));
+    } catch (err) {
+      onToast?.(err.message || "Could not refresh weight logs");
+    }
+  }
+
   return (
     <div className="ua-cp-section ua-cp-hptrack">
       <div className="ua-cp-hptrack__head">
@@ -1172,7 +1381,14 @@ export function HealthProgressSection({ user, onToast }) {
         {visibleDetailTrackers.map((tracker) => (
           <section key={tracker.id} className="ua-cp-hptrack-detail">
             <TrackerSectionHeader tracker={tracker} />
-            <TrackerDetail tracker={tracker} logs={logs} />
+            <TrackerDetail
+              tracker={tracker}
+              logs={logs}
+              userId={userId}
+              isMock={isMock}
+              onToast={onToast}
+              onWeightAdded={refreshWeightLogs}
+            />
           </section>
         ))}
       </div>

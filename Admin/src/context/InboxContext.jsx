@@ -73,6 +73,23 @@ export function InboxProvider({ children, onToast }) {
     }
   }, [loadInbox, onToast]);
 
+  const handleDismissNotif = useCallback(
+    async (id) => {
+      const note = notifications.find((item) => item.id === id);
+      if (!note) return;
+
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+
+      try {
+        if (note.unread) await markAdminInboxItemRead(id);
+      } catch (err) {
+        onToast?.(err?.message || "Could not dismiss notification");
+        loadInbox({ silent: true });
+      }
+    },
+    [loadInbox, notifications, onToast],
+  );
+
   const value = useMemo(
     () => ({
       notifications,
@@ -81,6 +98,7 @@ export function InboxProvider({ children, onToast }) {
       loadInbox,
       handleNotifClick,
       handleMarkAllRead,
+      handleDismissNotif,
     }),
     [
       notifications,
@@ -89,6 +107,7 @@ export function InboxProvider({ children, onToast }) {
       loadInbox,
       handleNotifClick,
       handleMarkAllRead,
+      handleDismissNotif,
     ],
   );
 

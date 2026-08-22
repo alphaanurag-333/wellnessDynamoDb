@@ -29,7 +29,13 @@ router.get(
 router.get(
   "/payments",
   protectAccount,
-  dashboardViewAuth,
+  authorizeStaff("console.rev.view", {
+    admin: "dashboard.view",
+    wellness_coach: "nav.dashboard",
+    assistant_wellness_coach: "nav.dashboard",
+    trainee: "nav.dashboard",
+    support: "nav.dashboard",
+  }),
   listStaffDashboardPayments
 );
 

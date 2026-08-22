@@ -12583,6 +12583,10 @@
   background: #f8fafc;
 }
 
+.updated-admin .ua-cp-supp-table__head > div:last-child {
+  text-align: right;
+}
+
 .updated-admin .ua-cp-supp-table__row {
   border-bottom: 1px solid var(--border-soft);
   font-size: 13px;
@@ -22789,18 +22793,19 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-legend__swatch--inherited {
-  background: var(--brand-green-solid);
-  border-color: var(--brand-green-solid);
+  background: #dfe3eb;
+  border-color: #dfe3eb;
 }
 
 .updated-admin .ua-ac-legend__swatch--added {
   background: var(--brand-green-solid);
-  border-color: var(--brand-green-solid);
+  border-color: #dcfce7;
+  box-shadow: 0 0 0 2px #dcfce7;
 }
 
 .updated-admin .ua-ac-legend__swatch--removed {
-  background: #fdeaea;
-  border-color: #e8a0a0;
+  background: #fff;
+  border-color: #fca5a5;
 }
 
 .updated-admin .ua-ac-matrix__scroll {
@@ -22932,14 +22937,19 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-ac-switch--on,
-.updated-admin .ua-ac-switch--added,
-.updated-admin .ua-ac-switch--inherited {
+.updated-admin .ua-ac-switch--added {
   background: var(--brand-green-solid);
   justify-content: flex-end;
 }
 
+.updated-admin .ua-ac-switch--inherited {
+  background: #d8dee8;
+  justify-content: flex-end;
+}
+
 .updated-admin .ua-ac-switch--removed {
-  background: #e8a0a0;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px #fca5a5;
   justify-content: flex-start;
 }
 
@@ -27898,6 +27908,45 @@ scrollbar-width: thin;
   margin-bottom: 2px;
 }
 
+.updated-admin .ua-cp-hptrack-weight-form__pics--has-photo {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.updated-admin .ua-cp-hptrack-weight-form__pics-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.updated-admin .ua-cp-hptrack-weight-form__pics-overlay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 148px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(255, 248, 242, 0.15) 0%, rgba(255, 248, 242, 0.92) 100%);
+  text-align: center;
+}
+
+.updated-admin .ua-cp-hptrack-weight-form__pics-overlay strong {
+  font-size: 13px;
+  color: #c2661d;
+}
+
+.updated-admin .ua-cp-hptrack-weight-form__pics-overlay span {
+  font-size: 11px;
+  color: #8a97ac;
+}
+
 .updated-admin .ua-cp-hptrack-weight-form__fields {
   display: flex;
   flex-direction: column;
@@ -27962,6 +28011,7 @@ scrollbar-width: thin;
   padding: 0;
 }
 
+.updated-admin .ua-cp-hptrack-date-field__calendar,
 .updated-admin .ua-cp-hptrack-date-field__camera {
   display: inline-flex;
   align-items: center;
@@ -27976,9 +28026,44 @@ scrollbar-width: thin;
   flex-shrink: 0;
 }
 
+.updated-admin .ua-cp-hptrack-date-field__calendar:hover,
 .updated-admin .ua-cp-hptrack-date-field__camera:hover {
   color: #c2661d;
   background: #fff8f2;
+}
+
+.updated-admin .ua-cp-hptrack-date-field__camera--active {
+  color: #c2661d;
+  background: #fff4eb;
+}
+
+.updated-admin .ua-cp-hptrack-date-field__file {
+  display: none;
+}
+
+.updated-admin .ua-cp-hptrack-date-field__preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.updated-admin .ua-cp-hptrack-date-field__preview img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid #fce4d6;
+}
+
+.updated-admin .ua-cp-hptrack-date-field__preview button {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c2661d;
+  cursor: pointer;
 }
 
 .updated-admin .ua-cp-hptrack-weight-input {

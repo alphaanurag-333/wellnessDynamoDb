@@ -41,7 +41,8 @@ export function formatDashboardUpdatedLabel(date) {
 
 export function DashboardPage() {
   const { showToast } = useOutletContext();
-  const { token, dataScope, can } = useViewAs();
+  const { token, dataScope, can, viewAs, permissions } = useViewAs();
+  const permissionKey = permissions.join("|");
   const [statistics, setStatistics] = useState(null);
   const [healthConcerns, setHealthConcerns] = useState(null);
   const [clients, setClients] = useState(null);
@@ -101,7 +102,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadDashboard({ initial: true });
-  }, [loadDashboard]);
+  }, [loadDashboard, viewAs, dataScope, permissionKey]);
 
   useEffect(() => {
     if (!lastUpdatedAt) return undefined;

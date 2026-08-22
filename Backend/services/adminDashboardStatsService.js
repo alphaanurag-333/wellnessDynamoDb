@@ -1,4 +1,5 @@
-const { TABLE: USER_TABLE, getUserById } = require("../models/userModel");
+const { TABLE: USER_TABLE, getUserById, listUsersByParentCoachId } = require("../models/userModel");
+const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { TABLE: COACH_TABLE, getWellnessCoachById } = require("../models/wellnessCoachModel");
 const { countAccountsByRoleKey } = require("../models/accountModel");
 const { TABLE: PROGRAM_TABLE } = require("../models/programCatalogModel");
@@ -791,6 +792,8 @@ async function listDashboardPaymentsPaginated({
   productBucket = "consultancy",
   page = 1,
   limit = 25,
+  scopeCoachId = null,
+  scopeClientIds = null,
 } = {}) {
   const key = String(monthKey || "").trim();
   const bucketKey = normalizeDashboardPaymentBucket(productBucket);
@@ -804,7 +807,19 @@ async function listDashboardPaymentsPaginated({
     };
   }
 
-  const monthRows = await listDashboardPaymentsForBucketMonth(key, bucketKey);
+  let monthRows = await listDashboardPaymentsForBucketMonth(key, bucketKey);
+  const coachKey = String(scopeCoachId || "").trim();
+  const hasScope = coachKey || (scopeClientIds instanceof Set && scopeClientIds.size);
+  if (hasScope) {
+    const { usersById } = await loadDashboardPaymentContext(monthRows);
+    monthRows = monthRows.filter((row) =>
+      transactionMatchesRevenueScope(row, {
+        coachId: coachKey,
+        clientIds: scopeClientIds,
+        usersById,
+      }),
+    );
+  }
   const paged = paginateItems(monthRows, page, limit, 200);
   const { coachNames, usersById } = await loadDashboardPaymentContext(paged.items);
   const payments = paged.items.map((row) => toPaymentRow(row, coachNames, usersById));
@@ -837,9 +852,128 @@ async function listDashboardPaymentsForMonth(monthKey) {
     .sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
 }
 
+function transactionMatchesRevenueScope(row, { coachId, clientIds, usersById } = {}) {
+  const userId = String(row.userId || row.userSnapshot?.id || "").trim();
+  const parentId = String(row.parentCoachId || "").trim();
+  const coachKey = String(coachId || "").trim();
+
+  if (coachKey && parentId === coachKey) return true;
+  if (clientIds instanceof Set && userId && clientIds.has(userId)) return true;
+
+  const user = usersById.get(userId);
+  if (coachKey && user?.parentCoachId === coachKey) return true;
+  if (clientIds instanceof Set && userId && clientIds.has(userId)) return true;
+  return false;
+}
+
+function countPayingClients(clients) {
+  return (clients || []).filter((user) => {
+    const tier = normalizeUserTier(user?.userTier);
+    return tier === "heal" || tier === "consultancy_only" || tier === "maintenance";
+  }).length;
+}
+
+function buildClientAnalytics(clients, coachId) {
+  const coachKey = String(coachId || "").trim();
+  const usersById = new Map();
+  const clientIds = new Set();
+  const onboardedByMonth = {};
+
+  for (const user of clients || []) {
+    const id = String(user.id || "").trim();
+    if (!id) continue;
+    clientIds.add(id);
+    usersById.set(id, {
+      name: String(user.name || "").trim(),
+      parentCoachId: String(user.parentCoachId || coachKey || "").trim(),
+      assignedCoachId: String(user.assignedCoachId || "").trim(),
+      assignedCoachType: String(user.assignedCoachType || "").trim(),
+      primaryHealthConcern: String(user.primaryHealthConcern?.id || user.primaryHealthConcern || "").trim(),
+    });
+    const monthKey = monthKeyFromDate(user.createdAt);
+    if (monthKey) onboardedByMonth[monthKey] = (onboardedByMonth[monthKey] || 0) + 1;
+  }
+
+  return { usersById, clientIds, onboardedByMonth, payingClientCount: countPayingClients(clients) };
+}
+
+/**
+ * Revenue analytics scoped to a coach roster (optionally narrowed to assigned clients).
+ */
+async function buildScopedRevenueAnalytics({ coachId, restrictToUserIds } = {}) {
+  const coachKey = String(coachId || "").trim();
+  if (!coachKey) return null;
+
+  const { users } = await listUsersByParentCoachId(coachKey, { userTier: "client", unpaginated: true });
+  let clients = users || [];
+  if (restrictToUserIds instanceof Set && restrictToUserIds.size) {
+    clients = clients.filter((user) => restrictToUserIds.has(String(user.id || "").trim()));
+  }
+
+  const { usersById, clientIds, onboardedByMonth, payingClientCount } = buildClientAnalytics(clients, coachKey);
+  const paidTransactions = await listPaidTransactionsForAnalytics();
+  const scopedTransactions = (paidTransactions || []).filter((row) =>
+    transactionMatchesRevenueScope(row, { coachId: coachKey, clientIds, usersById }),
+  );
+  const coachNames = await loadCoachNamesById([coachKey]);
+
+  return buildRevenueAnalytics({
+    paidTransactions: scopedTransactions,
+    onboardedByMonth,
+    payingClientCount,
+    coachNames,
+    usersById,
+  });
+}
+
+function mergeRevenueIntoStatistics(statistics, revenueAnalytics) {
+  if (!revenueAnalytics) return statistics;
+  const currentFy = revenueAnalytics.financialYears.find(
+    (fy) => fy.fyStartYear === revenueAnalytics.currentFyStartYear,
+  );
+  return {
+    ...statistics,
+    revenueAnalytics,
+    revenueAndPayouts: revenueAnalytics.totalRevenue,
+    charts: {
+      ...(statistics.charts || {}),
+      revenueByMonth: currentFy
+        ? currentFy.months.map((row) => ({
+            month: row.month,
+            label: row.label,
+            revenue: row.total,
+            program: row.program,
+            consultancy: row.consultancy,
+            app: row.app,
+          }))
+        : statistics.charts?.revenueByMonth,
+      revenueByProduct: revenueAnalytics.products,
+    },
+  };
+}
+
+function stripRevenueFromStatistics(statistics) {
+  if (!statistics) return statistics;
+  const next = { ...statistics };
+  delete next.revenueAnalytics;
+  delete next.revenueAndPayouts;
+  delete next.consultancyRevenue;
+  delete next.programRevenue;
+  if (next.charts) {
+    next.charts = { ...next.charts };
+    delete next.charts.revenueByMonth;
+    delete next.charts.revenueByProduct;
+  }
+  return next;
+}
+
 module.exports = {
   getAdminDashboardStats,
   buildRevenueAnalytics,
+  buildScopedRevenueAnalytics,
+  mergeRevenueIntoStatistics,
+  stripRevenueFromStatistics,
+  transactionMatchesRevenueScope,
   listDashboardPaymentsForMonth,
   listDashboardPaymentsPaginated,
   DASHBOARD_PAYMENT_BUCKETS,
