@@ -65,7 +65,7 @@ export function PageHeader({
 
 export function PillTabs({ tabs, active, onChange, size = "sm" }) {
   return (
-    <div className={`ua-pill-tabs ua-pill-tabs--${size}`} role="tablist">
+    <div style={{marginBottom:"10px",maxWidth:"max-content"}} className={`ua-pill-tabs ua-pill-tabs--${size}`} role="tablist">
       {tabs.map((tab) => (
         <button
           key={tab.id}

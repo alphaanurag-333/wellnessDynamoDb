@@ -1303,6 +1303,42 @@
   gap: 8px;
 }
 
+.updated-admin .ua-dash-export {
+  width: auto;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #16233f;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-page-enter.is-capturing .page-head__actions {
+  visibility: hidden;
+}
+
+.updated-admin .ua-dash-export:hover:not(:disabled) {
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.updated-admin .page-head:has(.ua-dash-export) {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.updated-admin .page-head:has(.ua-dash-export) .page-head__actions {
+  margin-left: auto;
+}
+
 .updated-admin .page-head--split {
   position: relative;
   align-items: center;
@@ -1575,8 +1611,8 @@
 .updated-admin .ua-back-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
+  gap: 0px;
+  height: 30px;
   padding: 0 11px 0 8px;
   margin-bottom: 10px;
   border: 1px solid var(--border);
@@ -8780,7 +8816,7 @@
 }
 
 .updated-admin .ua-config-section {
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .updated-admin .ua-config-section__head {
@@ -8789,7 +8825,11 @@
   letter-spacing: 0.04em;
   color: rgb(138, 151, 172);
   text-transform: uppercase;
-  margin: 2px 0px 9px;
+  margin: 0 0 6px;
+}
+
+.updated-admin .ua-config-section + .ua-config-section .ua-config-section__head {
+  margin-top: 8px;
 }
 
 .updated-admin .ua-config-card {
@@ -8797,15 +8837,14 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   box-shadow: var(--shadow);
 }
 
 .updated-admin .ua-config-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, auto) 44px 92px;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 12px 16px;
   border-bottom: 1px solid #f1f4f9;
 }
@@ -8815,7 +8854,7 @@
 }
 
 .updated-admin .ua-config-item__main {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -8842,14 +8881,19 @@
   justify-content: flex-end;
   gap: 6px;
   min-height: 26px;
+  flex: 0 1 auto;
 }
 
 .updated-admin .ua-config-item__toggle-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  flex: 0 0 auto;
   min-height: 26px;
+}
+
+.updated-admin .ua-config-item__toggle-slot:not(:has(.ua-toggle)) {
+  display: none;
 }
 
 .updated-admin .ua-surface-chip {
@@ -8934,8 +8978,9 @@
 }
 
 .updated-admin .ua-config-manage {
-  justify-self: end;
-  width: 92px;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 92px;
   height: 30px;
   padding: 0px 12px;
   border-radius: 8px;
@@ -20891,6 +20936,8 @@ scrollbar-width: thin;
   gap: 12px;
   margin: 0 0 18px;
   flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-commit__head-copy {
@@ -20916,10 +20963,24 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   gap: 9px;
-  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 240px;
+  justify-content: flex-end;
+}
+
+.updated-admin .ua-commit__coach-select-wrap {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 280px;
 }
 
 .updated-admin .ua-commit__coach-select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   height: 38px;
   padding: 0 32px 0 12px;
   border: 1px solid #e6ebf2;
@@ -20934,6 +20995,14 @@ scrollbar-width: thin;
   color: #16233f;
   cursor: pointer;
   outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-commit__head-actions .ua-btn-orange {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-commit__layout {
@@ -21050,12 +21119,18 @@ scrollbar-width: thin;
   font-size: 15px;
   font-weight: 750;
   color: #16233f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-commit__featured-note {
   font-size: 12px;
   color: #8a97ac;
   margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-commit__featured-empty {
@@ -21142,7 +21217,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-commit__list-title span {
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
   color: #9aa6b8;
@@ -21202,6 +21277,10 @@ scrollbar-width: thin;
   font-size: 13px;
   font-weight: 700;
   color: #16233f;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-commit__list-meta {
@@ -21376,6 +21455,9 @@ scrollbar-width: thin;
   font-weight: 700;
   color: #16233f;
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-commit__signature-meta {
@@ -21469,6 +21551,9 @@ scrollbar-width: thin;
   padding: 22px 22px 18px;
   box-shadow: 0 24px 64px rgba(16, 35, 63, 0.22);
   animation: ua-popscale 0.24s cubic-bezier(0.2, 1.1, 0.3, 1) both;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .updated-admin .ua-confirm-dialog__tag {
@@ -21486,6 +21571,9 @@ scrollbar-width: thin;
   color: #16233f;
   line-height: 1.35;
   margin-bottom: 8px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-confirm-dialog__body {
@@ -21493,6 +21581,9 @@ scrollbar-width: thin;
   color: #5a6b85;
   line-height: 1.5;
   margin: 0 0 18px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-confirm-dialog__actions {
@@ -22927,7 +23018,7 @@ scrollbar-width: thin;
   background: #fff;
   border: 1px solid #e8edf4;
   border-radius: 16px;
-  padding: 20px 22px;
+  padding: 18px 20px;
   margin-bottom: 16px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
   min-width: 0;
@@ -24587,22 +24678,29 @@ scrollbar-width: thin;
   padding: 6px 2px;
   flex-shrink: 0;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.2;
 }
 
 .updated-admin .ua-tm-profile__view:hover {
   color: #3f4ab8;
 }
 
-.updated-admin .ua-tm-profile__chevron {
-  display: inline-block;
-  margin-left: 4px;
-  font-size: 10px;
-  line-height: 1;
+.updated-admin .ua-tm-caret {
+  display: block;
+  flex-shrink: 0;
   transition: transform 0.18s ease;
 }
 
-.updated-admin .ua-tm-profile__chevron--open {
-  transform: none;
+.updated-admin .ua-tm-caret--up {
+  transform: rotate(180deg);
+}
+
+.updated-admin .ua-tm-profile__chevron {
+  width: 11px;
+  height: 7px;
 }
 
 .updated-admin .ua-tm-role-change {
@@ -24710,7 +24808,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-tm-profile-panel {
   min-width: 0;
-  padding: 20px 22px 8px;
+  padding: 15px 15px 8px;
   
   
 
@@ -24808,7 +24906,7 @@ scrollbar-width: thin;
   border: 1px solid #e8edf4;
   border-radius: 12px;
   background: #fbfcfe;
-  padding: 12px 12px 10px;
+  padding: 10px 12px 10px;
   cursor: pointer;
   font-family: inherit;
   position: relative;
@@ -25719,7 +25817,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-tm-perms__intro {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: 12px;
   color: #8a97ac;
   max-width: 520px;
   line-height: 1.45;
@@ -25759,10 +25857,14 @@ scrollbar-width: thin;
   border: 1px solid #e6ebf2;
   background: #f7f9fc;
   color: #5b6b82;
-  font-size: 12px;
   cursor: pointer;
   font-family: inherit;
-  line-height: 1;
+  padding: 0;
+}
+
+.updated-admin .ua-tm-perms__fold .ua-tm-caret {
+  width: 14px;
+  height: 9px;
 }
 
 .updated-admin .ua-tm-perms__fold:hover {
@@ -32244,6 +32346,12 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pricing {
   min-width: 0;
   max-width: 100%;
+  overflow-x: auto;
+}
+
+.updated-admin .ua-cfg-pricing.bordercss {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .updated-admin .ua-cfg-pricing__head,
@@ -32260,24 +32368,33 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-pricing__head > span {
+  white-space: nowrap;
+}
+
 .updated-admin .ua-cfg-pricing__head--discount,
 .updated-admin .ua-cfg-pricing__row--discount {
-  grid-template-columns: minmax(180px, 1fr) 120px 90px 100px 32px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(96px, 120px) minmax(72px, 90px) minmax(88px, 110px) 32px;
 }
 
 .updated-admin .ua-cfg-pricing__head--days,
 .updated-admin .ua-cfg-pricing__row--days {
-  grid-template-columns: minmax(180px, 1fr) 120px 90px 32px;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 120px) minmax(72px, 90px) 32px;
 }
 
 .updated-admin .ua-cfg-pricing__head--days.ua-cfg-pricing__head--type,
 .updated-admin .ua-cfg-pricing__row--days.ua-cfg-pricing__row--type {
-  grid-template-columns: minmax(160px, 1fr) 120px 120px 90px 32px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(108px, 130px) minmax(96px, 120px) minmax(72px, 90px) 32px;
 }
 
 .updated-admin .ua-cfg-pricing__head--type:not(.ua-cfg-pricing__head--days),
 .updated-admin .ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) {
-  grid-template-columns: minmax(160px, 1fr) 120px 120px 32px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(108px, 130px) minmax(96px, 120px) 32px;
+}
+
+.updated-admin .ua-cfg-pricing__head--discount.ua-cfg-pricing__head--type:not(.ua-cfg-pricing__head--days),
+.updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) {
+  grid-template-columns: minmax(0, 1.4fr) minmax(108px, 132px) minmax(92px, 118px) minmax(72px, 88px) minmax(88px, 110px) 32px;
 }
 
 .updated-admin .ua-cfg-pricing__name-btn,
@@ -32314,7 +32431,8 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pricing__amount-btn {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  justify-self: end;
+  justify-self: stretch;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -32352,7 +32470,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pricing__amount-input {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: left;
 }
 
 .updated-admin .ua-cfg-pricing__name-input:focus,
@@ -32420,6 +32538,10 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) {
   grid-template-columns: minmax(160px, 1fr) 130px 160px auto;
+}
+
+.updated-admin .ua-cfg-pricing-new__row--discount.ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 140px) minmax(120px, 150px) minmax(110px, 140px) minmax(110px, 140px) auto;
 }
 
 .updated-admin .ua-cfg-pricing-new__type {
@@ -33566,7 +33688,7 @@ scrollbar-width: thin;
   width: min(460px, calc(100vw - 32px));
   max-height: calc(100vh - 40px);
   overflow: auto;
-  padding: 22px 24px 20px;
+  padding: 10px 20px 20px;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 20px 50px rgba(22, 35, 63, 0.18);
@@ -33600,7 +33722,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-setup-modal__title {
   margin: 0;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 800;
   color: #16233f;
   line-height: 1.3;
@@ -33608,7 +33730,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-setup-modal__sub {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 11px;
   color: #8a97ac;
   line-height: 1.45;
 }
@@ -33635,8 +33757,8 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
-  padding: 12px 14px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
   border: 1px solid #e3e9f2;
   border-radius: 12px;
   background: #fafbfd;
@@ -33652,7 +33774,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-setup-modal__amount-value {
   flex: 1;
-  font-size: 18px;
+  font-size: 13px;
   font-weight: 800;
   color: #16233f;
   text-align: center;
@@ -33749,10 +33871,11 @@ scrollbar-width: thin;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 4px 0 18px;
-  padding: 14px 16px;
+  margin: 4px 0 12px;
+  padding: 10px 16px;
   border-radius: 12px;
-  background: #ecfdf5;
+  background: rgb(241, 250, 245);
+  border: 1px solid rgb(205, 238, 222);
 }
 
 .updated-admin .ua-cfg-setup-modal__net-label {
@@ -33764,7 +33887,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-setup-modal__net-value {
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
   color: #15803d;
   letter-spacing: -0.02em;
@@ -52163,7 +52286,16 @@ scrollbar-width: thin;
 
 /* Desktop */
 @media (max-width: 1200px) {
+  .updated-admin .ua-cfg-pricing__head--discount.ua-cfg-pricing__head--type:not(.ua-cfg-pricing__head--days),
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) {
+    grid-template-columns: minmax(0, 1.3fr) minmax(104px, 124px) minmax(84px, 108px) minmax(64px, 80px) minmax(80px, 100px) 32px;
+    gap: 8px;
+  }
 
+  .updated-admin .ua-cfg-pricing-new__row--discount.ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) {
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 130px) minmax(110px, 140px) minmax(100px, 130px) minmax(100px, 130px) auto;
+    gap: 8px;
+  }
 
   .updated-admin .revenue-cards {
     grid-template-columns: repeat(2, 1fr);
@@ -52184,7 +52316,14 @@ scrollbar-width: thin;
 
 /* Small desktop */
 @media (max-width: 1100px) {
+  .updated-admin .ua-cfg-pricing-new__row--discount.ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
 
+  .updated-admin .ua-cfg-pricing-new__row--discount.ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) > .ua-cfg-pricing-new__name,
+  .updated-admin .ua-cfg-pricing-new__row--discount.ua-cfg-pricing-new__row--type:not(.ua-cfg-pricing-new__row--days) > .ua-cfg-btn {
+    grid-column: 1 / -1;
+  }
 
   .updated-admin .insights-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -52637,6 +52776,15 @@ scrollbar-width: thin;
     grid-template-columns: 1fr;
   }
 
+  .updated-admin .ua-commit__head-actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-commit__coach-select-wrap {
+    max-width: none;
+  }
+
   .updated-admin .ua-profile-modal__grid {
     grid-template-columns: 1fr;
   }
@@ -52751,35 +52899,28 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-configs-page .ua-config-item {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "main main"
-      "chips chips"
-      "toggle manage";
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px 12px;
+    gap: 10px 8px;
     padding: 14px;
   }
 
   .updated-admin .ua-configs-page .ua-config-item__main {
-    grid-area: main;
+    flex: 1 1 100%;
   }
 
   .updated-admin .ua-configs-page .ua-config-item__chips {
-    grid-area: chips;
     justify-content: flex-start;
+    margin-left: auto;
   }
 
   .updated-admin .ua-configs-page .ua-config-item__toggle-slot {
-    grid-area: toggle;
-    justify-content: flex-start;
+    display: flex;
     width: auto;
   }
 
   .updated-admin .ua-configs-page .ua-config-manage {
-    grid-area: manage;
-    justify-self: end;
     width: auto;
     min-width: 92px;
   }
@@ -52970,6 +53111,11 @@ scrollbar-width: thin;
   .updated-admin .page-head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .updated-admin .page-head:has(.ua-dash-export) {
+    flex-direction: row;
+    align-items: center;
   }
 
   .updated-admin .page-head--split {
@@ -53725,6 +53871,74 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-pricing__row--discount > :nth-child(5) {
     grid-area: del;
     align-self: start;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+    grid-template-areas:
+      "name name name"
+      "type type del"
+      "amount discount del"
+      "valid valid del";
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(1) {
+    grid-area: name;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(2) {
+    grid-area: type;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(3) {
+    grid-area: amount;
+    justify-self: stretch;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(4) {
+    grid-area: discount;
+    justify-self: stretch;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(5) {
+    grid-area: valid;
+    justify-self: stretch;
+  }
+
+  .updated-admin .ua-cfg-pricing__row--discount.ua-cfg-pricing__row--type:not(.ua-cfg-pricing__row--days) > :nth-child(6) {
+    grid-area: del;
+    align-self: start;
+  }
+
+  .updated-admin .ua-cfg-pricing__row [data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgb(138, 151, 172);
+    margin-bottom: 2px;
+  }
+
+  .updated-admin .ua-cfg-pricing__row > :nth-child(1)[data-label]::before {
+    display: none;
+  }
+
+  .updated-admin .ua-cfg-pricing__amount-btn,
+  .updated-admin .ua-cfg-pricing__name-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    white-space: normal;
+  }
+
+  .updated-admin .ua-cfg-pricing__type {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
   }
 
   .updated-admin .ua-cfg-pricing__row--days {

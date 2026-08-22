@@ -293,17 +293,17 @@ function ClientLookupPanel({
         <div className="ua-cfg-lookup__grid">
           <div className="ua-cfg-lookup__cell">
             <span className="ua-cfg-lookup__label">Name</span>
-            <span className="ua-cfg-lookup__text">{client.name}</span>
+            <span style={{textAlign:"start"}} className="ua-cfg-lookup__text">{client.name}</span>
             <span className="ua-cfg-lookup__auto">Auto</span>
           </div>
           <div className="ua-cfg-lookup__cell">
             <span className="ua-cfg-lookup__label">Email</span>
-            <span className="ua-cfg-lookup__text">{client.email}</span>
+            <span style={{textAlign:"start"}} className="ua-cfg-lookup__text">{client.email}</span>
             <span className="ua-cfg-lookup__auto">Auto</span>
           </div>
           <div className="ua-cfg-lookup__cell">
             <span className="ua-cfg-lookup__label">Mobile</span>
-            <span className="ua-cfg-lookup__text">{client.mobile}</span>
+            <span style={{textAlign:"start"}} className="ua-cfg-lookup__text">{client.mobile}</span>
             <span className="ua-cfg-lookup__auto">Auto</span>
           </div>
           <div className="ua-cfg-lookup__cell ua-cfg-lookup__cell--program">
@@ -593,6 +593,7 @@ function PricingEditableCell({
   inputRef,
   disabled = false,
   numeric = false,
+  label,
 }) {
   const classPrefix = numeric ? "ua-cfg-pricing__amount" : "ua-cfg-pricing__name";
   if (editing) {
@@ -603,6 +604,7 @@ function PricingEditableCell({
         inputMode={numeric ? "numeric" : "text"}
         className={`${classPrefix}-input`}
         value={value}
+        data-label={label}
         aria-label={`Edit ${field} for ${row.name}`}
         onChange={(event) => {
           const next = event.target.value;
@@ -629,6 +631,7 @@ function PricingEditableCell({
       className={`${classPrefix}-btn`}
       onClick={onStart}
       disabled={disabled}
+      data-label={label}
       aria-label={`Edit ${field} for ${row.name}`}
     >
       {display}
@@ -836,7 +839,10 @@ function PricingPanel({
       title={title}
       subtitle="Admin sets the amount, the discount %, and how long that discount stays valid."
       actions={(
-        <button
+        <button style={{
+          border: "1px dashed rgb(203, 213, 230)",
+          background:" rgb(255, 255, 255)",
+          color: "rgb(94, 106, 210)"}} 
           type="button"
           className="ua-cfg-btn ua-cfg-btn--outline"
           disabled={saving}
@@ -885,6 +891,7 @@ function PricingPanel({
               row={row}
               field="name"
               display={row.name}
+              label="Program"
               editing={editingCell?.id === row.id && editingCell?.field === "name"}
               value={editValue}
               onStart={() => startEdit(row, "name")}
@@ -895,7 +902,7 @@ function PricingPanel({
               disabled={saving}
             />
             {includeType ? (
-              <label className="ua-cfg-pricing__type">
+              <label className="ua-cfg-pricing__type" data-label="Type">
                 <select
                   value={subscriptionTypeFromRow(row)}
                   aria-label={`Type for ${row.name}`}
@@ -909,7 +916,7 @@ function PricingPanel({
               </label>
             ) : null}
             {includeProgramType ? (
-              <label className="ua-cfg-pricing__type">
+              <label className="ua-cfg-pricing__type" data-label="Type">
                 <select
                   value={programTypeFromRow(row)}
                   aria-label={`Program type for ${row.name}`}
@@ -926,6 +933,7 @@ function PricingPanel({
               row={row}
               field="amount"
               display={formatRupee(row.amount)}
+              label="Amount (Rs.)"
               editing={editingCell?.id === row.id && editingCell?.field === "amount"}
               value={editValue}
               onStart={() => startEdit(row, "amount")}
@@ -941,6 +949,7 @@ function PricingPanel({
                 row={row}
                 field="discountPercent"
                 display={`${row.discountPercent}%`}
+                label="Discount"
                 editing={editingCell?.id === row.id && editingCell?.field === "discountPercent"}
                 value={editValue}
                 onStart={() => startEdit(row, "discountPercent")}
@@ -957,6 +966,7 @@ function PricingPanel({
                 row={row}
                 field="validityHours"
                 display={`${row.validityHours} hours`}
+                label="Valid for"
                 editing={editingCell?.id === row.id && editingCell?.field === "validityHours"}
                 value={editValue}
                 onStart={() => startEdit(row, "validityHours")}
@@ -973,6 +983,7 @@ function PricingPanel({
                 row={row}
                 field="days"
                 display={row.days ? `${row.days} days` : "—"}
+                label="Days"
                 editing={editingCell?.id === row.id && editingCell?.field === "days"}
                 value={editValue}
                 onStart={() => startEdit(row, "days")}

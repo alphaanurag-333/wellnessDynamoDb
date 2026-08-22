@@ -611,19 +611,22 @@ export function CommitmentLettersPage() {
         </div>
         <div className="ua-commit__head-actions">
           {isAdminLibrary ? (
-            <select
-              className="ua-commit__coach-select"
-              value={coachId || ""}
-              onChange={(e) => {
-                navigate(UPDATED_ADMIN_PATHS.commitmentLetters(e.target.value), { replace: true });
-              }}
-            >
-              {coaches.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.name}
-                </option>
-              ))}
-            </select>
+            <div className="ua-commit__coach-select-wrap">
+              <select
+                className="ua-commit__coach-select"
+                value={coachId || ""}
+                title={coaches.find((row) => row.id === coachId)?.name || undefined}
+                onChange={(e) => {
+                  navigate(UPDATED_ADMIN_PATHS.commitmentLetters(e.target.value), { replace: true });
+                }}
+              >
+                {coaches.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : null}
           {canEdit ? (
             <OrangeButton disabled={busy} onClick={() => startUpload("new")}>
@@ -710,7 +713,8 @@ export function CommitmentLettersPage() {
                   </div>
                   {canEdit ? (
                     <div className="ua-commit__featured-actions">
-                      <button
+                      <button style={{    border: "1px solid rgb(220, 223, 247)",    background: "rgb(238, 240, 252)",
+    color: "rgb(94, 106, 210)"}}
                         type="button"
                         className="ua-commit__btn ua-commit__btn--orange"
                         disabled={busy}
@@ -750,7 +754,8 @@ export function CommitmentLettersPage() {
                     <button type="button" className="ua-commit__btn ua-commit__btn--ghost" onClick={() => viewLetter(letter)}>
                       View
                     </button>
-                    <button type="button" className="ua-commit__btn ua-commit__btn--orange" onClick={() => downloadOne(letter)}>
+                    <button style={{    border: "1px solid rgb(220, 223, 247)",    background: "rgb(238, 240, 252)",
+    color: "rgb(94, 106, 210)"}} type="button" className="ua-commit__btn ua-commit__btn--orange" onClick={() => downloadOne(letter)}>
                       Download
                     </button>
                     {canEdit && !letter.live && letter.signed ? (

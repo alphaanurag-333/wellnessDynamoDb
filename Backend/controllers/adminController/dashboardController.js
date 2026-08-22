@@ -7,6 +7,11 @@ const { getAssistantDashboardStats } = require("../../services/assistantDashboar
 const { getProgramProgressOverview } = require("../../services/programProgressService");
 const { getDashboardCommunity, emptyCommunity } = require("../../services/dashboardCommunityService");
 const { sendTeamReminders } = require("../../services/teamReminderService");
+const {
+  getStoredObjectBuffer,
+  parseKeyFromS3PublicUrl,
+  normalizeStoredMedia,
+} = require("../../utils/s3");
 
 async function loadRoleStatistics(actor) {
   if (actor.role === "admin" || actor.role === "support") {
@@ -103,4 +108,22 @@ exports.sendTeamRemindersController = asyncHandler(async (req, res) => {
     sentCount: count,
     recipients: sent,
   });
+});
+
+exports.proxyDashboardMedia = asyncHandler(async (req, res) => {
+  resolveStaffActor(req);
+  const raw = String(req.query.url || "").trim();
+  if (!raw) throw new AppError("url is required", 400);
+
+  const s3Key = parseKeyFromS3PublicUrl(raw) || (
+    !/^https?:\/\//i.test(raw) && !raw.startsWith("/")
+      ? normalizeStoredMedia(raw)
+      : null
+  );
+  if (!s3Key) throw new AppError("Unsupported media url", 400);
+
+  const { buffer, contentType } = await getStoredObjectBuffer(s3Key);
+  res.setHeader("Content-Type", contentType || "application/octet-stream");
+  res.setHeader("Cache-Control", "private, max-age=300");
+  return res.status(200).send(buffer);
 });

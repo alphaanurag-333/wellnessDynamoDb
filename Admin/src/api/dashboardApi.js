@@ -119,6 +119,23 @@ async function fetchPaymentsFromTransactionLists(month) {
   return [...merged.values()].sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
 }
 
+export async function fetchDashboardMediaBlob(url) {
+  try {
+    const { data, headers } = await api.get("/account/dashboard/media", {
+      headers: authHeader(),
+      params: { url },
+      responseType: "blob",
+    });
+    const type = String(headers?.["content-type"] || data?.type || "");
+    if (!data || type.includes("json") || type.includes("text/html")) {
+      throw new Error("Could not load media");
+    }
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchDashboardPayments(month) {
   let dedicated = null;
   try {
