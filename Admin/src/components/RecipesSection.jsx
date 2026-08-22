@@ -364,14 +364,14 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", it
                 ) : "—"}
               </dd>
             </div>
-            <div>
+            {/* <div>
               <dt>Created</dt>
               <dd>{formatRecipeDate(entry.createdAt)}</dd>
             </div>
             <div>
               <dt>Updated</dt>
               <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-            </div>
+            </div> */}
           </dl>
           {embed ? (
             <div className="ua-cfg-rc-view__embed">

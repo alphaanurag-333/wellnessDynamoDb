@@ -343,8 +343,8 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
             <p className="ua-cfg-rc-view__copy ua-cfg-recipes-view__empty">No description yet.</p>
           )}
           {showSpecs ? <SpecChips specs={entry.videoSpecification} /> : null}
-          <dl className="ua-cfg-rc-view__meta">
-            <div>
+          {/* <dl className="ua-cfg-rc-view__meta"> */}
+            {/* <div>
               <dt>Type</dt>
               <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
             </div>
@@ -355,16 +355,23 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
                   <a href={mediaHref} target="_blank" rel="noreferrer">{mediaHref}</a>
                 ) : "—"}
               </dd>
-            </div>
-            <div>
+            </div> */}
+           
+            {/* <div>
               <dt>Created</dt>
               <dd>{formatRecipeDate(entry.createdAt)}</dd>
             </div>
             <div>
               <dt>Updated</dt>
               <dd>{formatRecipeDate(entry.updatedAt)}</dd>
+            </div> */}
+          {/* </dl> */}
+          <div style={{marginBottom: "8px",fontSize:'14px'}}>
+              Type : {isVideo ? "Uploaded video" : "YouTube link"}
             </div>
-          </dl>
+          <div style={{marginBottom: "10px",fontSize:'14px'}}>{isVideo ? "Video" : "YouTube"} : {mediaHref ? (
+                  <a href={mediaHref} target="_blank" rel="noreferrer">{mediaHref}</a>
+                ) : "—"} </div>
           {embed ? (
             <div className="ua-cfg-rc-view__embed">
               <iframe title={asCopyString(entry.title) || `${itemNoun} video`} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
@@ -398,7 +405,7 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
       <p className="ua-cfg-tf-drop__label">{label}</p>
       <button
         type="button"
@@ -1150,7 +1157,7 @@ export function YogaSection({
         }
       >
         {creating ? (
-          <section className="ua-cfg-rc-new ua-cfg-recipes-new">
+          <section className="ua-cfg-rc-new ua-cfg-recipes-new ua-cfg-yoga-new">
             <div className="ua-cfg-rc-new__head">
               <strong><span aria-hidden="true">🧘</span> New practice</strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
@@ -1199,6 +1206,26 @@ export function YogaSection({
                     }))}
                   />
                 </label>
+                <label className="ua-cfg-rc-field">
+                  <span>YouTube link</span>
+                  <input
+                    className="ua-cfg-vh-input"
+                    placeholder="https://youtube.com/…"
+                    value={asCopyString(draft.videoLink)}
+                    disabled={disabled}
+                    onChange={(event) => setDraft((prev) => {
+                      revokeBlobUrl(prev.videoPreview);
+                      return {
+                        ...prev,
+                        videoLink: event.target.value,
+                        videoFile: null,
+                        videoName: "",
+                        videoPreview: "",
+                        video: false,
+                      };
+                    })}
+                  />
+                </label>
                 {!categoryOptions.length ? (
                   <p className="ua-cfg-panel__sub ua-cfg-rc-new__hint">{copy?.dropdownHint || "Add categories in Configs → Dropdowns first."}</p>
                 ) : null}
@@ -1218,26 +1245,6 @@ export function YogaSection({
                       ...prev,
                       description: clampRecipeText(event.target.value, YOGA_DESCRIPTION_MAX_LEN),
                     }))}
-                  />
-                </label>
-                <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
-                  <span>YouTube link</span>
-                  <input
-                    className="ua-cfg-vh-input"
-                    placeholder="https://youtube.com/…"
-                    value={asCopyString(draft.videoLink)}
-                    disabled={disabled}
-                    onChange={(event) => setDraft((prev) => {
-                      revokeBlobUrl(prev.videoPreview);
-                      return {
-                        ...prev,
-                        videoLink: event.target.value,
-                        videoFile: null,
-                        videoName: "",
-                        videoPreview: "",
-                        video: false,
-                      };
-                    })}
                   />
                 </label>
                 <div className="ua-cfg-rc-new__foot">

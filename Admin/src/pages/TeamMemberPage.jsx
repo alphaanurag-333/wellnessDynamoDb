@@ -44,6 +44,52 @@ function ContentToggle({ live, disabled, onChange }) {
   );
 }
 
+function ContentRowMoreMenu({ disabled, children }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDoc(event) {
+      if (!wrapRef.current?.contains(event.target)) setOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="ua-tm-content-more" ref={wrapRef}>
+      <button
+        type="button"
+        className="ua-tm-content-more__btn"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <circle cx="3" cy="8" r="1.5" />
+          <circle cx="8" cy="8" r="1.5" />
+          <circle cx="13" cy="8" r="1.5" />
+        </svg>
+      </button>
+      {open ? (
+        <div className="ua-tm-content-more__menu" role="menu" onClick={() => setOpen(false)}>
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function downloadContentFile(url, filename) {
   if (!url) return false;
   const a = document.createElement("a");
@@ -569,7 +615,7 @@ export function TeamMemberPage() {
             </span>
             <div className="ua-tm-profile__copy">
               <div className="ua-tm-profile__name-row">
-                <h2 className="ua-tm-profile__name">{member.name}</h2>
+                <h2 className="ua-tm-profile__name" title={member.name || undefined}>{member.name}</h2>
                 <span
                   className="ua-role-chip"
                   style={{
@@ -588,7 +634,10 @@ export function TeamMemberPage() {
                   {member.displayStatus}
                 </span>
               </div>
-              <div className="ua-tm-profile__meta">
+              <div
+                className="ua-tm-profile__meta"
+                title={[member.email, member.meta].filter(Boolean).join(" · ") || undefined}
+              >
                 {member.email}
                 {member.meta ? <span> · {member.meta}</span> : null}
               </div>
@@ -633,7 +682,7 @@ export function TeamMemberPage() {
               ariaLabel="Assigned role"
               placeholder="Choose role"
             />
-            <button
+            <button style={{backgroundColor:"rgb(94, 106, 210)",border:"1px solid rgb(94, 106, 210)"}}
               type="button"
               className="ua-tm-role-change__save"
               disabled={
@@ -654,7 +703,7 @@ export function TeamMemberPage() {
             <div className="ua-tm-profile-panel">
               <div className="ua-tm-profile-panel__title">Personal details</div>
               <dl className="ua-tm-profile-panel__rows">
-                <div><dt>Full name:</dt><dd>{member.name || "—"}</dd></div>
+                <div><dt>Full name:</dt><dd title={member.name || undefined}>{member.name || "—"}</dd></div>
                 <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
                 <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
                 <div><dt>Date of birth:</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
@@ -722,6 +771,34 @@ export function TeamMemberPage() {
             {contentItems.map((item) => {
               const busy = contentBusyKey === item.id;
               const hasMedia = Boolean(item.hasMedia ?? item.url);
+              function handleView() {
+                if (item.kind === "letter") {
+                  navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
+                  return;
+                }
+                if (item.url) {
+                  window.open(item.url, "_blank", "noopener,noreferrer");
+                  return;
+                }
+                onToast("No intro video uploaded yet");
+              }
+              function handleDownload() {
+                if (!item.downloadUrl) {
+                  onToast(
+                    item.kind === "letter"
+                      ? "No commitment letter to download"
+                      : "No intro video to download",
+                  );
+                  return;
+                }
+                if (downloadContentFile(item.downloadUrl, contentDownloadName(item))) {
+                  onToast(
+                    item.kind === "letter"
+                      ? "Commitment letter download started"
+                      : "Intro video download started",
+                  );
+                }
+              }
               return (
                 <div key={item.id} className={`ua-tm-content-row${item.live ? " is-live" : ""}`}>
                   <div
@@ -754,54 +831,50 @@ export function TeamMemberPage() {
                       type="button"
                       className="ua-tm-content-row__btn ua-tm-content-row__btn--view"
                       disabled={busy}
-                      onClick={() => {
-                        if (item.kind === "letter") {
-                          navigate(UPDATED_ADMIN_PATHS.commitmentLetters(member.id));
-                          return;
-                        }
-                        if (item.url) {
-                          window.open(item.url, "_blank", "noopener,noreferrer");
-                          return;
-                        }
-                        onToast("No intro video uploaded yet");
-                      }}
+                      onClick={handleView}
                     >
                       View
                     </button>
                     <button
                       type="button"
-                      className="ua-tm-content-row__btn ua-tm-content-row__btn--download"
+                      className="ua-tm-content-row__btn ua-tm-content-row__btn--download ua-tm-content-row__btn--wide"
                       disabled={busy || !item.downloadUrl}
-                      onClick={() => {
-                        if (!item.downloadUrl) {
-                          onToast(
-                            item.kind === "letter"
-                              ? "No commitment letter to download"
-                              : "No intro video to download",
-                          );
-                          return;
-                        }
-                        if (downloadContentFile(item.downloadUrl, contentDownloadName(item))) {
-                          onToast(
-                            item.kind === "letter"
-                              ? "Commitment letter download started"
-                              : "Intro video download started",
-                          );
-                        }
-                      }}
+                      onClick={handleDownload}
                     >
                       Download
                     </button>
                     {canEditContent ? (
                       <button
                         type="button"
-                        className="ua-tm-content-row__btn ua-tm-content-row__btn--primary"
+                        className="ua-tm-content-row__btn ua-tm-content-row__btn--primary ua-tm-content-row__btn--wide"
                         disabled={busy}
                         onClick={() => startContentUpload(item)}
                       >
                         {busy ? "Saving…" : hasMedia ? "Replace" : "Upload"}
                       </button>
                     ) : null}
+                    <ContentRowMoreMenu disabled={busy}>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="ua-tm-content-more__item"
+                        disabled={busy || !item.downloadUrl}
+                        onClick={handleDownload}
+                      >
+                        Download
+                      </button>
+                      {canEditContent ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="ua-tm-content-more__item"
+                          disabled={busy}
+                          onClick={() => startContentUpload(item)}
+                        >
+                          {busy ? "Saving…" : hasMedia ? "Replace" : "Upload"}
+                        </button>
+                      ) : null}
+                    </ContentRowMoreMenu>
                     {canEditContent ? (
                       <ContentToggle
                         live={Boolean(item.live)}

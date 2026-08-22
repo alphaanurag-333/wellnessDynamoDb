@@ -264,7 +264,7 @@ export function listTierMoveOptions(tier, ageDays) {
           : "Convert this client from SEEK to HEAL when payment did not go through",
     });
   }
-  if (canDowngradeTier(t, ageDays)) {
+  if (canDowngradeTier(t, ageDays) && t !== "Seek to Heal") {
     const target = prevTier(t);
     options.push({
       direction: "down",

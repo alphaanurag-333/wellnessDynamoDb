@@ -100,7 +100,7 @@ function EditReviewModal({ review, busy, onClose, onSave }) {
           </label>
         </div>
         <div className="ua-cfg-cr-edit__foot">
-          <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Cancel</button>
           <button
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary"

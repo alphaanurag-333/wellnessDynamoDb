@@ -95,14 +95,14 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-rc-view__body">
-          <div className="ua-cfg-rc-view__media">
+          <div className="ua-cfg-rc-view__media" style={{aspectRatio: "0/4"}}>
             {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
           </div>
           <dl className="ua-cfg-rc-view__meta">
-            <div>
+            {/* <div>
               <dt>Type</dt>
               <dd>{displayTypeLabel(entry.type)}</dd>
-            </div>
+            </div> */}
             <div>
               <dt>{isAudio ? "Audio" : isVideo ? "Video" : "YouTube"}</dt>
               <dd>
@@ -113,18 +113,18 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
                 ) : "—"}
               </dd>
             </div>
-            <div>
+            {/* <div>
               <dt>Time</dt>
               <dd>{entry.duration || "—"}</dd>
-            </div>
-            <div>
+            </div> */}
+            {/* <div>
               <dt>Created</dt>
               <dd>{formatRecipeDate(entry.createdAt)}</dd>
             </div>
             <div>
               <dt>Updated</dt>
               <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-            </div>
+            </div> */}
           </dl>
           {embed ? (
             <div className="ua-cfg-rc-view__embed">
@@ -181,7 +181,7 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+      <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
       <p className="ua-cfg-tf-drop__label">{label}</p>
       <button
         type="button"
