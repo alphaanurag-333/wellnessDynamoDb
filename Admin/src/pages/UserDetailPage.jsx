@@ -328,6 +328,10 @@ export function UserDetailPage() {
           showAllTags={showAllTags}
           onToggleTags={() => setShowAllTags(true)}
           compact={profileDefinition.mode === "compact"}
+          onUserUpdated={(updatedRow) => {
+            setUser(profileFromListUser(updatedRow, userId));
+          }}
+          onToast={onToast}
         />
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">

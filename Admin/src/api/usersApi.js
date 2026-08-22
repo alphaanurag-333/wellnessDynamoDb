@@ -737,6 +737,25 @@ export async function updateUserPersonalDetails(id, payload) {
   }
 }
 
+/** PATCH /account/users/:id — upload or replace profile photo (multipart field: file). */
+export async function updateUserProfileImage(id, profileFile) {
+  if (!(profileFile instanceof File)) {
+    throw new Error("Profile image file is required");
+  }
+  const form = new FormData();
+  form.append("file", profileFile);
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(id)}`,
+      form,
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function deleteUser(id) {
   try {
     await api.delete(`/account/users/${encodeURIComponent(id)}`, { headers: authHeader() });
