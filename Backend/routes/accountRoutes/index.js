@@ -30,7 +30,7 @@ const {
   patchAccountTotpHandler,
   regenerateAccountTotpHandler,
 } = require("../../controllers/accountController/accountAdminController");
-const { optionalCoachContentFiles } = require("../../middleware/authMultipart");
+const { optionalCoachContentFiles, optionalUserFile } = require("../../middleware/authMultipart");
 
 const adminSopRoutes = require("../adminRoutes/adminSopRoutes");
 const adminAppConfigRoutes = require("../adminRoutes/adminAppConfigRoutes");
@@ -124,8 +124,8 @@ router.post(
 );
 router.route("/accounts/:id")
   .get(protectAccount, requireActiveRole("admin"), getAccountHandler)
-  .patch(protectAccount, requireActiveRole("admin"), updateAccountHandler)
-  .put(protectAccount, requireActiveRole("admin"), updateAccountHandler)
+  .patch(protectAccount, requireActiveRole("admin"), optionalUserFile, updateAccountHandler)
+  .put(protectAccount, requireActiveRole("admin"), optionalUserFile, updateAccountHandler)
   .delete(protectAccount, requireActiveRole("admin"), deleteAccountHandler);
 router.post(
   "/accounts/:id/delete",

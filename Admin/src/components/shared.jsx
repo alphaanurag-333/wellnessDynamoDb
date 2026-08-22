@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
@@ -136,15 +136,28 @@ export function CfgSelect({
   ariaLabel,
   className = "",
   placeholder = "Select…",
+  searchable = false,
+  searchPlaceholder = "Search…",
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const ref = useRef(null);
+  const searchRef = useRef(null);
   const selected = options.find((row) => String(row.value) === String(value));
   const isPlaceholder = value === undefined || value === null || String(value) === "";
   const label = selected?.label || placeholder;
 
+  const visibleOptions = useMemo(() => {
+    if (!searchable || !query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter((entry) => String(entry.label || "").toLowerCase().includes(q));
+  }, [options, query, searchable]);
+
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      setQuery("");
+      return undefined;
+    }
     function onPointerDown(event) {
       if (ref.current && !ref.current.contains(event.target)) setOpen(false);
     }
@@ -153,14 +166,22 @@ export function CfgSelect({
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKey);
+    if (searchable) {
+      const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
+      return () => {
+        window.clearTimeout(timer);
+        document.removeEventListener("mousedown", onPointerDown);
+        document.removeEventListener("keydown", onKey);
+      };
+    }
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, searchable]);
 
   return (
-    <div className={`ua-cfg-select${open ? " is-open" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
+    <div className={`ua-cfg-select${open ? " is-open" : ""}${searchable ? " ua-cfg-select--searchable" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
       <button
         type="button"
         className="ua-cfg-select__trigger"
@@ -174,29 +195,69 @@ export function CfgSelect({
         <span className="ua-cfg-select__chev" aria-hidden="true" />
       </button>
       {open ? (
-        <ul className="ua-cfg-select__menu" role="listbox">
-          {options.length ? options.map((entry) => {
-            const isOn = String(entry.value) === String(value);
-            return (
-              <li key={entry.id || String(entry.value)}>
-                <button
-                  type="button"
-                  className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
-                  role="option"
-                  aria-selected={isOn}
-                  onClick={() => {
-                    onChange(entry.value);
-                    setOpen(false);
-                  }}
-                >
-                  {entry.label}
-                </button>
-              </li>
-            );
-          }) : (
-            <li><span className="ua-cfg-select__empty">No options</span></li>
-          )}
-        </ul>
+        searchable ? (
+          <div className="ua-cfg-select__menu-wrap">
+            <div className="ua-cfg-select__search-wrap">
+              <input
+                ref={searchRef}
+                type="search"
+                className="ua-cfg-select__search"
+                value={query}
+                placeholder={searchPlaceholder}
+                aria-label={`${ariaLabel || "Options"} search`}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => event.stopPropagation()}
+              />
+            </div>
+            <ul className="ua-cfg-select__menu" role="listbox">
+              {visibleOptions.length ? visibleOptions.map((entry) => {
+                const isOn = String(entry.value) === String(value);
+                return (
+                  <li key={entry.id || String(entry.value)}>
+                    <button
+                      type="button"
+                      className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
+                      role="option"
+                      aria-selected={isOn}
+                      onClick={() => {
+                        onChange(entry.value);
+                        setOpen(false);
+                      }}
+                    >
+                      {entry.label}
+                    </button>
+                  </li>
+                );
+              }) : (
+                <li><span className="ua-cfg-select__empty">No matches</span></li>
+              )}
+            </ul>
+          </div>
+        ) : (
+          <ul className="ua-cfg-select__menu" role="listbox">
+            {options.length ? options.map((entry) => {
+              const isOn = String(entry.value) === String(value);
+              return (
+                <li key={entry.id || String(entry.value)}>
+                  <button
+                    type="button"
+                    className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
+                    role="option"
+                    aria-selected={isOn}
+                    onClick={() => {
+                      onChange(entry.value);
+                      setOpen(false);
+                    }}
+                  >
+                    {entry.label}
+                  </button>
+                </li>
+              );
+            }) : (
+              <li><span className="ua-cfg-select__empty">No options</span></li>
+            )}
+          </ul>
+        )
       ) : null}
     </div>
   );

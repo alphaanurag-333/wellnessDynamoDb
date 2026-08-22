@@ -15,7 +15,12 @@ const {
   updateAccount,
   deleteAccount,
 } = require("../../models/accountModel");
-const { uploadMulterFile, deleteStoredMedia } = require("../../utils/s3");
+const {
+  uploadMulterFile,
+  uploadFileFromRequest,
+  deleteStoredMedia,
+  parseMediaKeyFromBody,
+} = require("../../utils/s3");
 const {
   normalizeCoachContent,
   introHasMedia,
@@ -33,7 +38,13 @@ const {
   generateUniqueReferralCode,
   registerReferralCode,
 } = require("../../models/referralCodeModel");
-const { generateTotpSecret, buildOtpauthUrl } = require("../../utils/totp");
+const {
+  assertValidPersonName,
+  assertValidDateOfBirth,
+  assertValidLocationCountry,
+  assertValidLocationState,
+  assertValidLocationCity,
+} = require("../../utils/personFieldValidation");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
@@ -278,10 +289,21 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     consoleRoleId,
     parentAccountId,
     totpRequired: totpRequiredRaw,
+    dateOfBirth,
+    dob,
+    country,
+    state,
+    city,
+    bio,
   } = req.body || {};
 
-  if (!name || !String(name).trim()) throw new AppError("name is required", 400);
+  assertValidPersonName(name);
   if (!email || !String(email).trim()) throw new AppError("email is required", 400);
+  const normalizedName = String(name).trim();
+  const normalizedDob = assertValidDateOfBirth(dateOfBirth ?? dob);
+  const normalizedCountry = assertValidLocationCountry(country);
+  const normalizedState = assertValidLocationState(state);
+  const normalizedCity = assertValidLocationCity(city);
 
   const { accountRoleKey, consoleRole } = await resolveCreateRoleTarget({
     rawRole,
@@ -331,11 +353,16 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
   const totpRequired = Boolean(totpRequiredRaw);
 
   const account = await createAccount({
-    name: String(name).trim(),
+    name: normalizedName,
     email: normalized,
     password: passwordHash,
     phone: phone ? normalizePhone(phone) : null,
     phoneCountryCode: phoneCountryCode ? normalizeCountryCode(phoneCountryCode) : "+91",
+    dateOfBirth: normalizedDob,
+    country: normalizedCountry,
+    state: normalizedState,
+    city: normalizedCity,
+    bio: bio != null && String(bio).trim() ? String(bio).trim().slice(0, 500) : null,
     status: "active",
     approvalStatus: accountRoleKey === "wellness_coach" ? "approved" : undefined,
     defaultRoleKey: accountRoleKey,
@@ -390,12 +417,12 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
     throw new AppError("This account cannot be edited here", 403);
   }
 
-  const { name, email, phone, phoneCountryCode } = req.body || {};
+  const { name, email, phone, phoneCountryCode, profileImage, dateOfBirth, dob, country, state, city, bio } =
+    req.body || {};
   const updates = {};
 
   if (name !== undefined) {
-    if (!String(name).trim()) throw new AppError("name is required", 400);
-    updates.name = String(name).trim();
+    updates.name = assertValidPersonName(name);
   }
 
   if (email !== undefined) {
@@ -421,6 +448,38 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
     if (existingPhone && existingPhone.id !== account.id) {
       throw new AppError("An account already exists with this phone number", 409);
     }
+  }
+
+  if (dateOfBirth !== undefined || dob !== undefined) {
+    updates.dateOfBirth = assertValidDateOfBirth(dateOfBirth ?? dob);
+  }
+  if (country !== undefined) {
+    updates.country = assertValidLocationCountry(country);
+  }
+  if (state !== undefined) {
+    updates.state = assertValidLocationState(state);
+  }
+  if (city !== undefined) {
+    updates.city = assertValidLocationCity(city);
+  }
+  if (bio !== undefined) {
+    updates.bio = bio == null || String(bio).trim() === "" ? null : String(bio).trim().slice(0, 500);
+  }
+
+  if (profileImage !== undefined) {
+    const key = parseMediaKeyFromBody(profileImage, "profileImage");
+    if (key === null && account.profileImage) {
+      await deleteStoredMedia(account.profileImage);
+    }
+    updates.profileImage = key;
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, "account");
+  if (uploadedKey) {
+    if (account.profileImage && account.profileImage !== uploadedKey) {
+      await deleteStoredMedia(account.profileImage);
+    }
+    updates.profileImage = uploadedKey;
   }
 
   if (Object.keys(updates).length === 0) {

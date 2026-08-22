@@ -122,6 +122,13 @@ function stripNullGsiKeys(item) {
   return item;
 }
 
+function normalizeAccountDateOfBirth(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 /**
  * Derive denormalized fields from memberships and strip null sparse GSI keys.
  * Mutates and returns `item`.
@@ -202,6 +209,7 @@ function buildAccountItem(input, { id, now } = {}) {
     country: normalizeNullableString(input.country),
     state: normalizeNullableString(input.state),
     city: normalizeNullableString(input.city),
+    dateOfBirth: normalizeAccountDateOfBirth(input.dateOfBirth ?? input.dob),
     fcmId: normalizeNullableString(input.fcmId),
     status: normalizeStatus(input.status),
     approvalStatus:
@@ -307,6 +315,9 @@ function sanitizeUpdateField(key, value) {
   }
   if (key === "profileImage") {
     return normalizeNullableMediaField(value, "profileImage");
+  }
+  if (key === "dateOfBirth" || key === "dob") {
+    return normalizeAccountDateOfBirth(value);
   }
   if (key === "specializationId" || key === "parentAccountId" || key === "roleId") {
     return normalizeNullableString(value);

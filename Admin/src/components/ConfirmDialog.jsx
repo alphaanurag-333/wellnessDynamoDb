@@ -21,7 +21,7 @@ export function ConfirmDialog({
       >
         {tag ? <div className="ua-confirm-dialog__tag">{tag}</div> : null}
         <div id="confirm-dialog-title" className="ua-confirm-dialog__title">{title}</div>
-        {body ? <p className="ua-confirm-dialog__body">{body}</p> : null}
+        {body ? <div className="ua-confirm-dialog__body">{body}</div> : null}
         <div className="ua-confirm-dialog__actions">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onCancel}>
             {cancelLabel}

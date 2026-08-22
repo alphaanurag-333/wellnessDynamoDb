@@ -273,33 +273,20 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     <div className="ua-cfg-cf">
       <Panel
         title="Where this is live"
-        subtitle="Turn it on for the app, the website, or both."
+        subtitle="One switch controls visibility on both the app and website."
         actions={(
-          <div className="ua-cfg-bn-surfaces">
-            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${mapped?.live ? " is-on" : ""}`}>
-              <span>App {mapped?.live ? "Enabled" : "Off"}</span>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
-                aria-pressed={Boolean(mapped?.live)}
-                disabled={loading || busy || !exists}
-                onClick={toggleLive}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
-            </div>
-            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${mapped?.live ? " is-on" : ""}`}>
-              <span>Web {mapped?.live ? "Enabled" : "Off"}</span>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
-                aria-pressed={Boolean(mapped?.live)}
-                disabled={loading || busy || !exists}
-                onClick={toggleLive}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
-            </div>
+          <div className={`ua-cfg-cf-live${mapped?.live ? " is-on" : ""}`}>
+            <span>{mapped?.live ? "Live" : "Hidden"}</span>
+            <button
+              type="button"
+              className={`ua-toggle ua-toggle--sm${mapped?.live ? " ua-toggle--on" : ""}`}
+              aria-pressed={Boolean(mapped?.live)}
+              aria-label={mapped?.live ? "Hide co-founder message" : "Make co-founder message live"}
+              disabled={loading || busy || !exists}
+              onClick={toggleLive}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
           </div>
         )}
       />

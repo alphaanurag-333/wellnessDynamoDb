@@ -95,6 +95,23 @@ export async function updateTeamMember(id, payload) {
   }
 }
 
+/** PATCH /account/accounts/:id — upload or replace profile photo (multipart field: file). */
+export async function updateTeamMemberProfileImage(id, profileFile) {
+  if (!(profileFile instanceof File)) {
+    throw new Error("Profile image file is required");
+  }
+  const form = new FormData();
+  form.append("file", profileFile);
+  try {
+    const { data } = await api.patch(`/account/accounts/${encodeURIComponent(id)}`, form, {
+      headers: authHeader(),
+    });
+    return data.account;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function deleteTeamMember(id) {
   try {
     const { data } = await api.post(

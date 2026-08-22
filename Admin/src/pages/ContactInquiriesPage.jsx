@@ -44,12 +44,15 @@ function formatInquiryDate(value) {
   });
 }
 
-function clipInquiryMessage(value, wordLimit = MESSAGE_WORD_LIMIT) {
+function clipInquiryMessage(value, wordLimit = MESSAGE_WORD_LIMIT, maxChars = 280) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "—";
   const words = text.split(" ");
-  if (words.length <= wordLimit) return text;
-  return `${words.slice(0, wordLimit).join(" ")}…`;
+  const clipped = words.length > wordLimit
+    ? `${words.slice(0, wordLimit).join(" ")}…`
+    : text;
+  if (clipped.length <= maxChars) return clipped;
+  return `${clipped.slice(0, maxChars)}…`;
 }
 
 function initialsFor(name) {
@@ -435,8 +438,20 @@ export function ContactInquiriesPage() {
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         tag="Delete inquiry"
-        title={pendingDelete ? `Delete message from ${inquiryFullName(pendingDelete)}?` : ""}
-        body="This removes the website contact submission. You can’t undo this."
+        title="Delete this inquiry?"
+        body={pendingDelete ? (
+          <>
+            <p className="ua-confirm-dialog__lead">
+              From <strong>{clipInquiryMessage(inquiryFullName(pendingDelete), 6, 80)}</strong>
+            </p>
+            {pendingDelete.message ? (
+              <div className="ua-confirm-dialog__preview" title={pendingDelete.message}>
+                {clipInquiryMessage(pendingDelete.message, 24, 280)}
+              </div>
+            ) : null}
+            <p>This removes the website contact submission. You can’t undo this.</p>
+          </>
+        ) : null}
         confirmLabel="Delete"
         confirmTone="danger"
         onCancel={() => setPendingDelete(null)}

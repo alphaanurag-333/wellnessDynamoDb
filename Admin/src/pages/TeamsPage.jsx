@@ -30,21 +30,52 @@ import {
   EMAIL_MAX_LEN,
   PERSON_NAME_MAX_LEN,
   PHONE_NATIONAL_LEN,
+  DOB_MAX_AGE_YEARS,
+  DOB_MIN_AGE_YEARS,
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
+  maxAllowedDobIso,
+  minAllowedDobIso,
+  parseDateOfBirthIso,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
+  validateDateOfBirth,
   validateEmail,
   validatePersonName,
   validatePhoneDigits,
 } from "../utils/personFieldValidation.js";
+import { COUNTRY_OPTIONS, INDIA_STATES, citiesForState } from "../data/indiaLocations.js";
 import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
 
 const SYSTEM_TEAM_ROLE_KEYS = SYSTEM_TEAM_UI_KEYS;
 const PAGE_SIZE = 20;
 const ALL_TAB_ID = "all";
+const TEAM_BIO_MAX_LEN = 500;
 const ROLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function TeamMemberAvatar({ name, profileImage, colorIndex }) {
+  const [broken, setBroken] = useState(false);
+  const showPhoto = Boolean(profileImage) && !broken;
+  const color = STAFF_AVATARS[colorIndex % STAFF_AVATARS.length];
+  return (
+    <span
+      className={`ua-avatar ua-avatar--staff${showPhoto ? " ua-avatar--photo" : ""}`}
+      style={
+        showPhoto
+          ? { borderColor: color }
+          : { background: color, borderColor: color }
+      }
+      aria-hidden={showPhoto ? undefined : true}
+    >
+      {showPhoto ? (
+        <img src={profileImage} alt="" onError={() => setBroken(true)} />
+      ) : (
+        staffInitials(name)
+      )}
+    </span>
+  );
+}
 
 const ACTION_ICON = {
   width: 14,
@@ -238,6 +269,11 @@ function CreateMemberModal({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [dob, setDob] = useState("");
+  const [country, setCountry] = useState("");
+  const [state, setState] = useState("");
+  const [city, setCity] = useState("");
+  const [bio, setBio] = useState("");
   const [consoleRoleId, setConsoleRoleId] = useState("");
   const [parentAccountId, setParentAccountId] = useState("");
   const [totpRequired, setTotpRequired] = useState(false);
@@ -265,6 +301,11 @@ function CreateMemberModal({
     setName(sanitizePersonName(member.name || ""));
     setPhone(nationalPhoneDigits(member.phone));
     setEmail(sanitizeEmailInput(member.email || ""));
+    setDob(parseDateOfBirthIso(member.dateOfBirth) || "");
+    setCountry(member.country || "");
+    setState(member.state || "");
+    setCity(member.city || "");
+    setBio(String(member.bio || "").slice(0, TEAM_BIO_MAX_LEN));
     setConsoleRoleId(member.consoleRoleId || "");
     setParentAccountId(member.parentAccountId || "");
     setTotpRequired(Boolean(member.totpRequired));
@@ -278,6 +319,11 @@ function CreateMemberModal({
     setName("");
     setPhone("");
     setEmail("");
+    setDob("");
+    setCountry("");
+    setState("");
+    setCity("");
+    setBio("");
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
@@ -291,6 +337,8 @@ function CreateMemberModal({
 
   const selectedRole = creatableRoles.find((r) => r.id === consoleRoleId) || null;
   const baseUiKey = selectedRole ? resolveBaseUiRoleKey(selectedRole, creatableRoles) : null;
+  const indiaSelected = country === "India";
+  const cityOptions = useMemo(() => citiesForState(state), [state]);
   const needsParent = baseUiKey === "awc" || baseUiKey === "trainee";
   const parentRoleKey =
     baseUiKey === "trainee" ? "assistant_wellness_coach" : "wellness_coach";
@@ -332,6 +380,15 @@ function CreateMemberModal({
       const emailErr = validateEmail(email);
       if (emailErr) next.email = emailErr;
     }
+    const dobErr = validateDateOfBirth(dob, { required: true });
+    if (dobErr) next.dob = dobErr;
+    if (!country) next.country = "Country is required.";
+    if (!String(state || "").trim()) next.state = "State / region is required.";
+    if (!String(city || "").trim()) next.city = "City is required.";
+    const bioText = String(bio || "").trim();
+    if (bioText.length > TEAM_BIO_MAX_LEN) {
+      next.bio = `Bio must be at most ${TEAM_BIO_MAX_LEN} characters.`;
+    }
     if (!consoleRoleId) next.role = "Pick a role.";
     if (needsParent && !parentAccountId) {
       next.parent = `Pick a ${baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"} this person reports to.`;
@@ -350,6 +407,11 @@ function CreateMemberModal({
           name: name.trim(),
           phone: phone.trim(),
           phoneCountryCode: member.phoneCountryCode || "+91",
+          dateOfBirth: dob,
+          country: country.trim(),
+          state: state.trim(),
+          city: city.trim(),
+          bio: String(bio || "").trim() || null,
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
@@ -388,6 +450,11 @@ function CreateMemberModal({
         email: email.trim(),
         phone: phone.trim(),
         phoneCountryCode: "+91",
+        dateOfBirth: dob,
+        country: country.trim(),
+        state: state.trim(),
+        city: city.trim(),
+        bio: String(bio || "").trim() || null,
         consoleRoleId,
         roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
@@ -461,77 +528,229 @@ function CreateMemberModal({
         </div>
         <form className="ua-teams-create__form" onSubmit={handleSubmit} noValidate>
           <div className="ua-teams-create__body">
+            <div className="ua-teams-create__section">Personal</div>
+            <div className="ua-teams-create__grid">
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Full name <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
+                  placeholder="e.g. Anita Rao"
+                  value={name}
+                  maxLength={PERSON_NAME_MAX_LEN}
+                  autoComplete="name"
+                  onKeyDown={blockPersonNameDigitKeyDown}
+                  onChange={(event) => {
+                    setName(sanitizePersonName(event.target.value));
+                    clearError("name");
+                  }}
+                  autoFocus
+                />
+                {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : (
+                  <span className="ua-teams-create__hint">Letters only · max {PERSON_NAME_MAX_LEN} chars</span>
+                )}
+              </label>
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Date of birth <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  className={`ua-teams-create__input${errors.dob ? " is-invalid" : ""}`}
+                  type="date"
+                  value={dob}
+                  min={minAllowedDobIso()}
+                  max={maxAllowedDobIso()}
+                  onChange={(event) => {
+                    let next = event.target.value;
+                    const dobMax = maxAllowedDobIso();
+                    const dobMin = minAllowedDobIso();
+                    if (next && next > dobMax) next = dobMax;
+                    if (next && next < dobMin) next = dobMin;
+                    setDob(next);
+                    clearError("dob");
+                  }}
+                />
+                {errors.dob ? <span className="ua-teams-create__error">{errors.dob}</span> : (
+                  <span className="ua-teams-create__hint">
+                    {DOB_MIN_AGE_YEARS}–{DOB_MAX_AGE_YEARS} years
+                  </span>
+                )}
+              </label>
+            </div>
             <label className="ua-teams-create__field">
-              <span className="ua-teams-create__label">
-                Full name <span aria-hidden="true">*</span>
-              </span>
-              <input
-                className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
-                placeholder="e.g. Anita Rao"
-                value={name}
-                maxLength={PERSON_NAME_MAX_LEN}
-                autoComplete="name"
-                onKeyDown={blockPersonNameDigitKeyDown}
+              <span className="ua-teams-create__label">Bio</span>
+              <textarea
+                className={`ua-teams-create__bio${errors.bio ? " is-invalid" : ""}`}
+                rows={3}
+                value={bio}
+                maxLength={TEAM_BIO_MAX_LEN}
+                placeholder="Short bio shown on their profile (optional)"
                 onChange={(event) => {
-                  setName(sanitizePersonName(event.target.value));
-                  clearError("name");
-                }}
-                autoFocus
-              />
-              {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : (
-                <span className="ua-teams-create__hint">Letters only · max {PERSON_NAME_MAX_LEN} characters</span>
-              )}
-            </label>
-            <label className="ua-teams-create__field">
-              <span className="ua-teams-create__label">
-                Mobile number <span aria-hidden="true">*</span>
-              </span>
-              <input
-                className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}`}
-                placeholder="10-digit mobile"
-                inputMode="numeric"
-                autoComplete="tel"
-                value={phone}
-                maxLength={PHONE_NATIONAL_LEN}
-                onKeyDown={blockIndianMobileFirstDigitKeyDown}
-                onChange={(event) => {
-                  setPhone(sanitizePhoneDigits(event.target.value));
-                  clearError("phone");
+                  setBio(event.target.value.slice(0, TEAM_BIO_MAX_LEN));
+                  clearError("bio");
                 }}
               />
-              {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : (
-                <span className="ua-teams-create__hint">Exactly {PHONE_NATIONAL_LEN} digits, starting with 6–9</span>
-              )}
-            </label>
-            <label className="ua-teams-create__field">
-              <span className="ua-teams-create__label">
-                Email address <span aria-hidden="true">*</span>
-              </span>
-              <input
-                className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
-                placeholder="name@company.com"
-                type="email"
-                autoComplete="email"
-                value={email}
-                maxLength={EMAIL_MAX_LEN}
-                readOnly={isEdit}
-                aria-readonly={isEdit ? "true" : undefined}
-                onChange={isEdit ? undefined : (event) => {
-                  setEmail(sanitizeEmailInput(event.target.value));
-                  clearError("email");
-                }}
-              />
-              {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : (
+              {errors.bio ? <span className="ua-teams-create__error">{errors.bio}</span> : (
                 <span className="ua-teams-create__hint">
-                  {isEdit ? "Email is used to sign in and cannot be changed" : `Max ${EMAIL_MAX_LEN} characters`}
+                  Optional · max {TEAM_BIO_MAX_LEN} characters
                 </span>
               )}
             </label>
+
+            <div className="ua-teams-create__section">Contact</div>
+            <div className="ua-teams-create__grid ua-teams-create__grid--contact">
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Mobile number <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}`}
+                  placeholder="10-digit mobile"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={phone}
+                  maxLength={PHONE_NATIONAL_LEN}
+                  onKeyDown={blockIndianMobileFirstDigitKeyDown}
+                  onChange={(event) => {
+                    setPhone(sanitizePhoneDigits(event.target.value));
+                    clearError("phone");
+                  }}
+                />
+                {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : (
+                  <span className="ua-teams-create__hint">10 digits, starts 6–9</span>
+                )}
+              </label>
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Email address <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
+                  placeholder="name@company.com"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  maxLength={EMAIL_MAX_LEN}
+                  readOnly={isEdit}
+                  aria-readonly={isEdit ? "true" : undefined}
+                  onChange={isEdit ? undefined : (event) => {
+                    setEmail(sanitizeEmailInput(event.target.value));
+                    clearError("email");
+                  }}
+                />
+                {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : (
+                  <span className="ua-teams-create__hint">
+                    {isEdit ? "Cannot be changed" : `Max ${EMAIL_MAX_LEN} chars`}
+                  </span>
+                )}
+              </label>
+            </div>
+
+            <div className="ua-teams-create__section">Location</div>
+            <label className="ua-teams-create__field">
+              <span className="ua-teams-create__label">
+                Country <span aria-hidden="true">*</span>
+              </span>
+              <CfgSelect
+                searchable
+                searchPlaceholder="Search countries…"
+                className={`ua-teams-create__select${errors.country ? " is-invalid" : ""}`}
+                options={COUNTRY_OPTIONS.map((name) => ({ value: name, label: name }))}
+                value={country}
+                disabled={busy}
+                onChange={(value) => {
+                  setCountry(value);
+                  setState("");
+                  setCity("");
+                  clearError("country");
+                  clearError("state");
+                  clearError("city");
+                }}
+                ariaLabel="Country"
+                placeholder="Select country"
+              />
+              {errors.country ? <span className="ua-teams-create__error">{errors.country}</span> : null}
+            </label>
+            <div className="ua-teams-create__grid">
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  State / region <span aria-hidden="true">*</span>
+                </span>
+                {indiaSelected ? (
+                  <CfgSelect
+                    searchable
+                    searchPlaceholder="Search states…"
+                    className={`ua-teams-create__select${errors.state ? " is-invalid" : ""}`}
+                    options={INDIA_STATES.map((name) => ({ value: name, label: name }))}
+                    value={state}
+                    disabled={busy || !country}
+                    onChange={(value) => {
+                      setState(value);
+                      setCity("");
+                      clearError("state");
+                      clearError("city");
+                    }}
+                    ariaLabel="State"
+                    placeholder="Select state"
+                  />
+                ) : (
+                  <input
+                    className={`ua-teams-create__input${errors.state ? " is-invalid" : ""}`}
+                    placeholder="State or region"
+                    value={state}
+                    disabled={busy || !country}
+                    onChange={(event) => {
+                      setState(event.target.value);
+                      clearError("state");
+                    }}
+                  />
+                )}
+                {errors.state ? <span className="ua-teams-create__error">{errors.state}</span> : null}
+              </label>
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  City <span aria-hidden="true">*</span>
+                </span>
+                {indiaSelected ? (
+                  <CfgSelect
+                    searchable
+                    searchPlaceholder="Search cities…"
+                    className={`ua-teams-create__select${errors.city ? " is-invalid" : ""}`}
+                    options={cityOptions.map((name) => ({ value: name, label: name }))}
+                    value={city}
+                    disabled={busy || !state}
+                    onChange={(value) => {
+                      setCity(value);
+                      clearError("city");
+                    }}
+                    ariaLabel="City"
+                    placeholder={state ? "Select city" : "Pick state first"}
+                  />
+                ) : (
+                  <input
+                    className={`ua-teams-create__input${errors.city ? " is-invalid" : ""}`}
+                    placeholder="City"
+                    value={city}
+                    disabled={busy || !country}
+                    onChange={(event) => {
+                      setCity(event.target.value);
+                      clearError("city");
+                    }}
+                  />
+                )}
+                {errors.city ? <span className="ua-teams-create__error">{errors.city}</span> : null}
+              </label>
+            </div>
+
+            <div className="ua-teams-create__section">Role</div>
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
                 Role <span aria-hidden="true">*</span>
               </span>
               <CfgSelect
+                searchable
+                searchPlaceholder="Search roles…"
                 className={`ua-teams-create__select${errors.role ? " is-invalid" : ""}`}
                 options={creatableRoles.map((role) => ({ value: role.id, label: role.name }))}
                 value={consoleRoleId}
@@ -552,6 +771,8 @@ function CreateMemberModal({
                   <span aria-hidden="true">*</span>
                 </span>
                 <CfgSelect
+                  searchable
+                  searchPlaceholder="Search coaches…"
                   className={`ua-teams-create__select${errors.parent ? " is-invalid" : ""}`}
                   options={eligibleParents.map((coach) => ({
                     value: coach.id,
@@ -885,12 +1106,11 @@ export function TeamsPage() {
                   tabIndex={0}
                 >
                   <div className="ua-user-cell">
-                    <span
-                      className="ua-avatar ua-avatar--staff"
-                      style={{ background: STAFF_AVATARS[i % STAFF_AVATARS.length] }}
-                    >
-                      {staffInitials(s.name)}
-                    </span>
+                    <TeamMemberAvatar
+                      name={s.name}
+                      profileImage={s.profileImage}
+                      colorIndex={i}
+                    />
                     <div className="ua-user-cell__meta">
                       <div className="ua-user-cell__name">{s.name}</div>
                       <div className="ua-user-cell__sub ua-user-cell__email">{s.email}</div>

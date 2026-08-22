@@ -22,8 +22,13 @@ import {
 import {
   PERSON_NAME_MAX_LEN,
   blockPersonNameDigitKeyDown,
+  maxAllowedDobIso,
+  minAllowedDobIso,
+  parseDateOfBirthIso,
   sanitizePersonName,
+  validateDateOfBirth,
   validatePersonName,
+  validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
@@ -189,19 +194,43 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       return;
     }
 
-    const phoneParts = parsePhoneDisplay(form.phone);
-    if (form.phone.trim() && phoneParts.phone.length !== 10) {
-      onToast("Phone must be a 10-digit mobile number");
+    const dobError = validateDateOfBirth(form.dob, { required: true });
+    if (dobError) {
+      onToast(dobError);
       return;
+    }
+
+    const apiGender = toApiGender(form.gender);
+    if (!apiGender) {
+      onToast("Select a gender");
+      return;
+    }
+
+    const phoneParts = parsePhoneDisplay(form.phone);
+    if (form.phone.trim()) {
+      const phoneError = validatePhoneDigits(phoneParts.phone, {
+        label: "Phone",
+        countryCode: phoneParts.phoneCountryCode,
+      });
+      if (phoneError) {
+        onToast(phoneError);
+        return;
+      }
     }
 
     const whatsappParts = parsePhoneDisplay(form.whatsapp);
-    if (form.whatsapp.trim() && whatsappParts.phone.length !== 10) {
-      onToast("WhatsApp must be a 10-digit mobile number");
-      return;
+    if (form.whatsapp.trim()) {
+      const whatsappError = validatePhoneDigits(whatsappParts.phone, {
+        label: "WhatsApp",
+        countryCode: whatsappParts.phoneCountryCode,
+      });
+      if (whatsappError) {
+        onToast(whatsappError);
+        return;
+      }
     }
 
-    const dobIso = dobToInputValue(form.dob);
+    const dobIso = parseDateOfBirthIso(form.dob) || dobToInputValue(form.dob);
     const { state, country } = parseStateField(form.state, user.country);
     const sameWhatsapp = !form.whatsapp.trim() || phonesEqual(form.phone, form.whatsapp);
     const whatsappUnchanged = phonesEqual(form.whatsapp, user.whatsapp)
@@ -218,10 +247,8 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       addressLine1: String(form.address || "").trim() || null,
       state: state || null,
       country: country || null,
+      gender: apiGender,
     };
-
-    const apiGender = toApiGender(form.gender);
-    if (apiGender) payload.gender = apiGender;
 
     if (phoneParts.phone) {
       payload.phone = phoneParts.phone;
@@ -305,7 +332,8 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           type="date"
           className="ua-cp-field__input ua-cp-field__input--date"
           value={dobToInputValue(form.dob)}
-          max={new Date().toISOString().slice(0, 10)}
+          min={minAllowedDobIso()}
+          max={maxAllowedDobIso()}
           disabled={saveBusy}
           onChange={(e) => setForm((prev) => ({ ...prev, dob: inputValueToDob(e.target.value) }))}
         />

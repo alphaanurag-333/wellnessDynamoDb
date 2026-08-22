@@ -16,7 +16,9 @@ import {
   fetchTeamMember,
   saveTeamMemberPermissions,
   setAccessMemberRole,
+  updateTeamMemberProfileImage,
 } from "../api/teamsApi.js";
+import { accountUpdateMe } from "../api/accountApi.js";
 import {
   formatIntroVideoMeta,
   saveCoachIntroLive,
@@ -28,6 +30,71 @@ import {
   validateIntroVideoFile,
 } from "../api/coachContentApi.js";
 import { resolveBaseUiRoleKey, SYSTEM_TEAM_UI_KEYS } from "../utils/liveRoles.js";
+import { parseDateOfBirthIso } from "../utils/personFieldValidation.js";
+
+const PROFILE_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
+const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+function TeamMemberAvatar({ name, profileImage, background, editable, uploading, onPickPhoto }) {
+  const hasPhoto = Boolean(profileImage);
+  const actionLabel = uploading
+    ? "Uploading profile photo"
+    : hasPhoto
+      ? "Replace profile photo"
+      : "Upload profile photo";
+
+  const editBadge = editable ? (
+    <span className="ua-tm-avatar__edit" aria-hidden="true">
+      {uploading ? (
+        <span className="ua-tm-avatar__spinner" />
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+      )}
+    </span>
+  ) : null;
+
+  if (editable) {
+    return (
+      <button
+        type="button"
+        className={`ua-tm-avatar ua-tm-avatar--editable${hasPhoto ? "" : " ua-tm-avatar--initials"}${uploading ? " is-uploading" : ""}`}
+        onClick={onPickPhoto}
+        disabled={uploading}
+        aria-label={actionLabel}
+        title={uploading ? "Uploading…" : hasPhoto ? "Replace photo" : "Upload photo"}
+      >
+        <span
+          className="ua-tm-avatar__media"
+          style={hasPhoto ? undefined : { background }}
+        >
+          {hasPhoto ? (
+            <img src={profileImage} alt="" />
+          ) : (
+            staffInitials(name)
+          )}
+        </span>
+        {editBadge}
+      </button>
+    );
+  }
+
+  return (
+    <span
+      className="ua-tm-avatar"
+      style={hasPhoto ? undefined : { background }}
+      aria-hidden={hasPhoto ? undefined : true}
+    >
+      {hasPhoto ? (
+        <img src={profileImage} alt="" />
+      ) : (
+        staffInitials(name)
+      )}
+    </span>
+  );
+}
 
 function CaretIcon({ up = false, className = "" }) {
   return (
@@ -266,6 +333,24 @@ function formatProfileDate(value) {
   }).format(date);
 }
 
+function formatMemberDob(value) {
+  const iso = parseDateOfBirthIso(value);
+  if (!iso) return "—";
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function memberBio(member) {
+  const text = String(member?.bio || "").trim();
+  return text || "—";
+}
+
 function memberLocation(member) {
   return [member.city, member.state, member.country].filter(Boolean).join(", ") || "—";
 }
@@ -315,10 +400,11 @@ export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
   const { showToast: onToast } = useOutletContext();
-  const { account, isSuperAdmin, isAdminView, viewAs, sessionUi } = useViewAs();
+  const { account, isSuperAdmin, isAdminView, viewAs, sessionUi, can } = useViewAs();
   const navigate = useNavigate();
   const permsRef = useRef(null);
   const videoRef = useRef(null);
+  const photoFileRef = useRef(null);
   const actorIsWc = viewAs === "wc" || sessionUi === "wc";
   const requestsApproval = !isSuperAdmin && actorIsWc;
 
@@ -337,6 +423,7 @@ export function TeamMemberPage() {
   const [permActs, setPermActs] = useState(PERM_ACTS);
   const [totalSlots, setTotalSlots] = useState(TOTAL_PERM_SLOTS);
   const [contentBusyKey, setContentBusyKey] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const catalogRef = useRef(PERM_CATALOG);
 
   const load = useCallback(async () => {
@@ -484,6 +571,40 @@ export function TeamMemberPage() {
 
   const isOwnProfile = Boolean(account?.id && memberId && account.id === memberId);
   const canEditContent = Boolean(isAdminView) || isOwnProfile;
+  const canEditPhoto = Boolean(member) && !member.isSuperAdmin && (isSuperAdmin || isOwnProfile || can("console.tm.edit"));
+
+  async function handlePhotoSelected(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !member?.id || !canEditPhoto || uploadingPhoto) return;
+    if (!PROFILE_IMAGE_TYPES.has(file.type)) {
+      onToast("Use JPEG, PNG, GIF, or WebP");
+      return;
+    }
+    if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+      onToast("Profile image must be 25 MB or smaller");
+      return;
+    }
+
+    const hadPhoto = Boolean(member.profileImage);
+    setUploadingPhoto(true);
+    try {
+      let profileImage = null;
+      if (isOwnProfile && !isSuperAdmin) {
+        const updated = await accountUpdateMe({}, file);
+        profileImage = updated?.profileImage || null;
+      } else {
+        const updated = await updateTeamMemberProfileImage(member.id, file);
+        profileImage = updated?.profileImage || null;
+      }
+      setMember((current) => (current ? { ...current, profileImage } : current));
+      onToast(hadPhoto ? "Profile photo updated" : "Profile photo uploaded");
+    } catch (err) {
+      onToast(err?.message || "Could not upload profile photo");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
 
   function mapContentFromAccount(nextAccount, previous = []) {
     const intro = nextAccount?.coach_content?.intro || {};
@@ -634,19 +755,26 @@ export function TeamMemberPage() {
       </div>
 
       <section className="ua-tm-card ua-tm-profile">
+        <input
+          ref={photoFileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          hidden
+          onChange={handlePhotoSelected}
+        />
         <div className="ua-tm-profile__row">
           <div className="ua-tm-profile__identity">
-            <span
-              className="ua-tm-avatar"
-              style={member.profileImage ? undefined : { background: avatarColor }}
-              aria-hidden={member.profileImage ? undefined : true}
-            >
-              {member.profileImage ? (
-                <img src={member.profileImage} alt="" />
-              ) : (
-                staffInitials(member.name)
-              )}
-            </span>
+            <TeamMemberAvatar
+              name={member.name}
+              profileImage={member.profileImage}
+              background={avatarColor}
+              editable={canEditPhoto}
+              uploading={uploadingPhoto}
+              onPickPhoto={() => {
+                if (!canEditPhoto || uploadingPhoto) return;
+                photoFileRef.current?.click();
+              }}
+            />
             <div className="ua-tm-profile__copy">
               <div className="ua-tm-profile__name-row">
                 <h2
@@ -745,8 +873,18 @@ export function TeamMemberPage() {
                 <div><dt>Full name:</dt><dd title={member.name || undefined}>{member.name || "—"}</dd></div>
                 <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
                 <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
-                {/* <div><dt>Date of birth:</dt><dd>{formatProfileDate(member.dateOfBirth)}</dd></div>
-                <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div> */}
+                <div><dt>Date of birth:</dt><dd>{formatMemberDob(member.dateOfBirth)}</dd></div>
+                <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
+                <div className="ua-tm-profile-panel__row--bio">
+                  <dt>Bio:</dt>
+                  <dd>
+                    {member.bio ? (
+                      <p className="ua-tm-profile-panel__bio">{member.bio}</p>
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
+                </div>
               </dl>
             </div>
             <div className="ua-tm-profile-panel">

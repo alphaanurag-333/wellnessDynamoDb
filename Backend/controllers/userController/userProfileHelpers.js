@@ -1,5 +1,10 @@
 const AppError = require("../../utils/AppError");
 const { assertValidIndianMobile, assertValidMobile } = require("../../utils/phoneValidation");
+const {
+  assertValidDateOfBirth,
+  assertValidPersonName,
+  parseDateOfBirthIso,
+} = require("../../utils/personFieldValidation");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
@@ -168,6 +173,7 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   const profileImage = parseProfileImageFromBody(body.profileImage);
 
   if (!name) throw new AppError("name is required", 400);
+  assertValidPersonName(name);
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
   assertValidMobile(phone, { field: "phone", countryCode: phoneCountryCode });
@@ -179,17 +185,8 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   if (gender && !USER_ALLOWED_GENDERS.includes(gender)) {
     throw new AppError("gender is invalid", 400);
   }
-  if (dob) {
-    const dobDate = String(dob).slice(0, 10);
-    const max = new Date();
-    max.setHours(0, 0, 0, 0);
-    max.setFullYear(max.getFullYear() - 5);
-    const y = max.getFullYear();
-    const m = String(max.getMonth() + 1).padStart(2, "0");
-    const d = String(max.getDate()).padStart(2, "0");
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dobDate) && dobDate > `${y}-${m}-${d}`) {
-      throw new AppError("Date of birth must be at least 5 years ago", 400);
-    }
+  if (body.dob !== undefined && body.dob !== null && String(body.dob).trim() !== "") {
+    assertValidDateOfBirth(body.dob);
   }
 
   const fields = {
@@ -368,9 +365,7 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   const updates = {};
 
   if (body.name !== undefined) {
-    const name = String(body.name || "").trim();
-    if (!name) throw new AppError("name cannot be empty", 400);
-    updates.name = name;
+    updates.name = assertValidPersonName(body.name);
   }
   if (body.email !== undefined) {
     const email = normalizeEmail(body.email);
@@ -464,7 +459,15 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
       }
     }
   }
-  if (body.dob !== undefined) updates.dob = normalizeDob(body.dob);
+  if (body.dob !== undefined) {
+    if (body.dob === null || String(body.dob).trim() === "") {
+      updates.dob = null;
+    } else {
+      assertValidDateOfBirth(body.dob);
+      const isoDate = parseDateOfBirthIso(body.dob) || String(body.dob).slice(0, 10);
+      updates.dob = normalizeDob(isoDate);
+    }
+  }
   if (body.gender !== undefined) {
     const gender = normalizeGender(body.gender);
     if (!USER_ALLOWED_GENDERS.includes(gender)) throw new AppError("gender is invalid", 400);

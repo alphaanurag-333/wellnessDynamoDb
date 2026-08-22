@@ -10,16 +10,21 @@ import {
   phoneLengthForDial,
 } from "../data/indiaLocations.js";
 import {
+  DOB_MAX_AGE_YEARS,
+  DOB_MIN_AGE_YEARS,
   EMAIL_MAX_LEN,
   PERSON_NAME_MAX_LEN,
   PINCODE_LEN,
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
+  maxAllowedDobIso,
+  minAllowedDobIso,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
   sanitizePincode,
+  validateDateOfBirth,
   validateEmail,
   validatePersonName,
   validatePhoneDigits,
@@ -28,21 +33,6 @@ import {
 
 const IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
-const DOB_MIN_AGE_YEARS = 5;
-
-function toLocalDateOnly(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function maxAllowedDob(yearsBack = DOB_MIN_AGE_YEARS) {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setFullYear(date.getFullYear() - yearsBack);
-  return toLocalDateOnly(date);
-}
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Disabled" },
@@ -52,7 +42,7 @@ function emptyForm() {
   return {
     name: "",
     email: "",
-    dob: maxAllowedDob(),
+    dob: maxAllowedDobIso(),
     gender: "male",
     whatsappSameAsMobile: true,
     phoneCountryCode: "+91",
@@ -184,15 +174,12 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
 
   function validate() {
     const next = {};
-    const nameErr = validatePersonName(form.name);
+    const nameErr = validatePersonName(sanitizePersonName(form.name).trim());
     if (nameErr) next.name = nameErr;
     const emailErr = validateEmail(form.email);
     if (emailErr) next.email = emailErr;
-    const dobMax = maxAllowedDob();
-    if (!form.dob) next.dob = "Date of birth is required.";
-    else if (form.dob > dobMax) {
-      next.dob = `Date of birth must be at least ${DOB_MIN_AGE_YEARS} years ago.`;
-    }
+    const dobErr = validateDateOfBirth(form.dob, { required: true });
+    if (dobErr) next.dob = dobErr;
     if (!form.gender) next.gender = "Gender is required.";
     const phoneErr = validatePhoneDigits(form.phone, { countryCode: form.phoneCountryCode });
     if (phoneErr) next.phone = phoneErr;
@@ -224,7 +211,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     if (busy || !validate()) return;
 
     const payload = {
-      name: form.name.trim(),
+      name: sanitizePersonName(form.name).trim(),
       email: form.email.trim(),
       dob: form.dob,
       gender: form.gender,
@@ -348,19 +335,24 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
             <Field
               label="Date of birth"
               required
-              hint={`Must be at least ${DOB_MIN_AGE_YEARS} years ago.`}
+              hint={`Must be at least ${DOB_MIN_AGE_YEARS} years ago and within ${DOB_MAX_AGE_YEARS} years.`}
               error={errors.dob}
             >
               <input
                 className="ua-create-user__input"
                 type="date"
                 value={form.dob}
-                max={maxAllowedDob()}
+                min={minAllowedDobIso()}
+                max={maxAllowedDobIso()}
                 disabled={busy}
                 onChange={(e) => {
                   const next = e.target.value;
-                  const dobMax = maxAllowedDob();
-                  patch({ dob: next && next > dobMax ? dobMax : next });
+                  const dobMax = maxAllowedDobIso();
+                  const dobMin = minAllowedDobIso();
+                  let safe = next;
+                  if (safe && safe > dobMax) safe = dobMax;
+                  if (safe && safe < dobMin) safe = dobMin;
+                  patch({ dob: safe });
                 }}
               />
             </Field>

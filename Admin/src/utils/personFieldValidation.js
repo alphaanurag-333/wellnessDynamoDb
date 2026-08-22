@@ -1,10 +1,79 @@
 export const PERSON_NAME_MAX_LEN = 35;
 export const PHONE_NATIONAL_LEN = 10;
 export const EMAIL_MAX_LEN = 50;
+export const DOB_MIN_AGE_YEARS = 5;
+export const DOB_MAX_AGE_YEARS = 100;
 
 export const PERSON_NAME_ALLOWED_PATTERN = /^[\p{L}][\p{L}\s'.\-]*$/u;
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function toLocalDateOnly(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function maxAllowedDobIso(yearsBack = DOB_MIN_AGE_YEARS) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(date.getFullYear() - yearsBack);
+  return toLocalDateOnly(date);
+}
+
+export function minAllowedDobIso(yearsBack = DOB_MAX_AGE_YEARS) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(date.getFullYear() - yearsBack);
+  return toLocalDateOnly(date);
+}
+
+/** Parse YYYY-MM-DD or display DOB ("12 Mar 1991") into a calendar ISO date. */
+export function parseDateOfBirthIso(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const display = raw.match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (!display) return "";
+  const month = MONTHS_SHORT.findIndex((m) => m.toLowerCase() === display[2].toLowerCase());
+  if (month < 0) return "";
+  const day = String(Number(display[1])).padStart(2, "0");
+  const mon = String(month + 1).padStart(2, "0");
+  return `${display[3]}-${mon}-${day}`;
+}
+
+export function isValidCalendarDate(iso) {
+  const match = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+export function validateDateOfBirth(
+  value,
+  { label = "Date of birth", required = true, minAgeYears = DOB_MIN_AGE_YEARS, maxAgeYears = DOB_MAX_AGE_YEARS } = {},
+) {
+  const iso = parseDateOfBirthIso(value);
+  if (!iso) return required ? `${label} is required.` : "";
+  if (!isValidCalendarDate(iso)) return `Enter a valid ${label.toLowerCase()}.`;
+  const minIso = minAllowedDobIso(maxAgeYears);
+  const maxIso = maxAllowedDobIso(minAgeYears);
+  if (iso < minIso) {
+    return `${label} is too far in the past (maximum age is ${maxAgeYears} years).`;
+  }
+  if (iso > maxIso) {
+    return `${label} must be at least ${minAgeYears} years ago.`;
+  }
+  return "";
+}
 
 export function sanitizePersonName(raw, maxLen = PERSON_NAME_MAX_LEN) {
   const collapsed = String(raw ?? "").replace(/\s{2,}/g, " ");
