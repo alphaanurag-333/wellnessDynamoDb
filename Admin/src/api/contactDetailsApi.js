@@ -1,5 +1,4 @@
 import api, { normalizeApiError } from "../api.js";
-import { CONTACT_DETAILS } from "../data/contactConfigData.js";
 
 function appConfigBase() {
   return "/admin/app-config";
@@ -30,7 +29,7 @@ export function mapWebContactDetails(config = {}) {
   const email = String(config.app_email || "").trim();
   if (phone) seeded.push({ id: "ct-phone", label: "Phone", value: phone, live: true });
   if (email) seeded.push({ id: "ct-support", label: "Support email", value: email, live: true });
-  return seeded.length ? seeded : CONTACT_DETAILS.map((row) => ({ ...row }));
+  return seeded;
 }
 
 export async function getWebContactDetails() {

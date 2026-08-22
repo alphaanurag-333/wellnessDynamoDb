@@ -46,14 +46,41 @@ function FieldHint({ id, error, hint, counter }) {
   return null;
 }
 
-const FALLBACK_COMPANY_ADDRESS = "Vijay Nagar, Indore, Madhya Pradesh, India";
-
 function mapsUrl(address) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
+function isEmailDetail(label, value) {
+  return /email|mail/i.test(String(label || "")) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function isPhoneDetail(label) {
+  return /phone|mobile|whatsapp|tel/i.test(String(label || ""));
+}
+
+function detailHref(label, value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  if (isEmailDetail(label, text)) return { href: `mailto:${text}` };
+  if (isPhoneDetail(label)) {
+    const digits = text.replace(/[^\d+]/g, "");
+    if (!digits) return null;
+    if (/whatsapp/i.test(String(label || ""))) {
+      return { href: `https://wa.me/${digits.replace(/^\+/, "")}`, external: true };
+    }
+    return { href: `tel:${digits}` };
+  }
+  return null;
+}
+
+function DetailIcon({ label, value }) {
+  if (isEmailDetail(label, value)) return <Mail size={18} />;
+  if (isPhoneDetail(label)) return <Phone size={18} />;
+  return <MapPin size={18} />;
+}
+
 export default function ContactUsSection() {
-  const { contact, appName } = useSiteConfig();
+  const { contact } = useSiteConfig();
   const [formData, setFormData] = useState(INITIAL_CONTACT_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -212,10 +239,8 @@ export default function ContactUsSection() {
     : "Phone number";
 
   const locations = (contact.locations || []).filter((row) => String(row.address || "").trim());
-  const companyAddress = String(contact.address || "").trim() || FALLBACK_COMPANY_ADDRESS;
-  const addressRows = locations.length
-    ? locations
-    : [{ id: "company", name: appName || "Company address", address: companyAddress }];
+  const details = (contact.details || []).filter((row) => String(row.value || "").trim());
+  const hasContactDetails = Boolean(locations.length || details.length);
 
   return (
     <section className="wellness-toolkit wellnesspedia-page contact-section">
@@ -261,11 +286,12 @@ export default function ContactUsSection() {
           )}
         </div>
 
-        <div className="contact-layout">
+        <div className={`contact-layout${hasContactDetails ? "" : " contact-layout--form-only"}`}>
+          {hasContactDetails ? (
           <aside className="contact-card contact-card--details">
             <h3 className="contact-office__heading">Get in touch</h3>
-            <div className="contact-office" aria-label="Company address">
-              {addressRows.map((location) => (
+            <div className="contact-office" aria-label="Contact details">
+              {locations.map((location) => (
                 <a
                   key={location.id}
                   className="contact-office__row"
@@ -277,35 +303,45 @@ export default function ContactUsSection() {
                     <MapPin size={18} />
                   </span>
                   <span>
-                    <strong>{location.name || "Company address"}</strong>
+                    {location.name ? <strong>{location.name}</strong> : null}
                     <em>{location.address}</em>
                   </span>
                 </a>
               ))}
-              {contact.email ? (
-                <a className="contact-office__row" href={`mailto:${contact.email}`}>
-                  <span className="contact-office__icon" aria-hidden="true">
-                    <Mail size={18} />
-                  </span>
-                  <span>
-                    <strong>Email</strong>
-                    <em>{contact.email}</em>
-                  </span>
-                </a>
-              ) : null}
-              {contact.phone ? (
-                <a className="contact-office__row" href={`tel:${contact.phone.replace(/\s/g, "")}`}>
-                  <span className="contact-office__icon" aria-hidden="true">
-                    <Phone size={18} />
-                  </span>
-                  <span>
-                    <strong>Phone</strong>
-                    <em>{contact.phone}</em>
-                  </span>
-                </a>
-              ) : null}
+              {details.map((row) => {
+                const link = detailHref(row.label, row.value);
+                const content = (
+                  <>
+                    <span className="contact-office__icon" aria-hidden="true">
+                      <DetailIcon label={row.label} value={row.value} />
+                    </span>
+                    <span>
+                      {row.label ? <strong>{row.label}</strong> : null}
+                      <em>{row.value}</em>
+                    </span>
+                  </>
+                );
+                if (link?.href) {
+                  return (
+                    <a
+                      key={row.id}
+                      className="contact-office__row"
+                      href={link.href}
+                      {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                    >
+                      {content}
+                    </a>
+                  );
+                }
+                return (
+                  <div key={row.id} className="contact-office__row contact-office__row--static">
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           </aside>
+          ) : null}
 
           <div className="contact-card contact-card--form">
             <h3 className="contact-office__heading">Send a message</h3>
