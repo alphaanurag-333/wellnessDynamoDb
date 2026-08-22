@@ -39779,10 +39779,10 @@ scrollbar-width: thin;
 
 .updated-admin .pending-summary {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   flex-wrap: wrap;
   gap: 10px;
-  margin: -45px 0 18px;
+  margin: 0 0 18px;
   position: relative;
   z-index: 1;
 }
@@ -39980,11 +39980,11 @@ scrollbar-width: thin;
 
 .updated-admin .pending-task-card__identity span {
   width: fit-content;
-  padding: 2px 5px;
+  padding: 3px 5px;
   border-radius: 4px;
   background: var(--pending-soft);
   color: var(--pending-accent);
-  font-size: 7px;
+  font-size: 8.5px;
   font-weight: 800;
 }
 
@@ -40004,7 +40004,7 @@ scrollbar-width: thin;
 .updated-admin .pending-task-card__link {
   margin-top: 5px;
   color: #5e6ad2;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
 }
 

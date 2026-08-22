@@ -54,6 +54,7 @@ export function PageHeader({
         </div>
         {isSplit && subtitle ? <p className="page-head__sub">{subtitle}</p> : null}
       </div>
+      
       {showActions ? (
         <div className="page-head__actions">
           {actions}

@@ -160,6 +160,18 @@ function roleChipMeta(role, fallbackKey = "wc") {
   };
 }
 
+const NAME_DISPLAY_LIMIT = 12;
+
+function shortDisplayName(name, max = NAME_DISPLAY_LIMIT) {
+  const text = String(name || "").replace(/\s+/g, " ").trim();
+  if (text.length <= max) return { short: text, full: text, truncated: false };
+  return {
+    short: `${text.slice(0, max)}…`,
+    full: text,
+    truncated: true,
+  };
+}
+
 function memberHas(grants, featureId, action) {
   if (grants == null) return true;
   return Boolean(grants?.[featureId]?.includes(action));
@@ -603,6 +615,7 @@ export function TeamMemberPage() {
   const showClients = member.primaryRoleKey === "wc" || member.primaryRoleKey === "awc";
   const contentItems = Array.isArray(member.content) ? member.content : [];
   const contentLive = contentItems.filter((item) => item.live).length;
+  const displayName = shortDisplayName(member.name);
   const roleOptions = teamRoles.length
     ? teamRoles
     : SYSTEM_TEAM_ROLE_KEYS.map((id) => ({
@@ -636,7 +649,12 @@ export function TeamMemberPage() {
             </span>
             <div className="ua-tm-profile__copy">
               <div className="ua-tm-profile__name-row">
-                <h2 className="ua-tm-profile__name" title={member.name || undefined}>{member.name}</h2>
+                <h2
+                  className="ua-tm-profile__name"
+                  title={displayName.truncated ? displayName.full : undefined}
+                >
+                  {displayName.short}
+                </h2>
                 <span
                   className="ua-role-chip"
                   style={{
