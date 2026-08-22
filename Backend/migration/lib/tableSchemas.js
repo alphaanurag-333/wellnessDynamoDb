@@ -283,8 +283,19 @@ const TABLE_DEFINITIONS = [
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "order", AttributeType: "N" },
     ],
-    GlobalSecondaryIndexes: [statusCreatedAtIndex()],
+    GlobalSecondaryIndexes: [
+      statusCreatedAtIndex(),
+      {
+        IndexName: "StatusOrderIndex",
+        KeySchema: [
+          { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "order", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+    ],
     ...PAY_PER_REQUEST,
   },
   {

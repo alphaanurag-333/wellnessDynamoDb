@@ -16,8 +16,8 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const RECIPE_MEDIA_FIELDS = ["thumbnail", "video"];
@@ -55,12 +55,14 @@ function toPublicHealthRecipe(item) {
   const resolved = resolveMediaFields(rest, RECIPE_MEDIA_FIELDS);
   resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
   resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  resolved.order = normalizeOrder(resolved.order, 9999);
   return resolved;
 }
 
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "type") return normalizeType(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "videoSpecification") return normalizeVideoSpecification(value);
@@ -87,6 +89,7 @@ async function createHealthRecipe({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -102,6 +105,7 @@ async function createHealthRecipe({
     status: normalizeStatus(status),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -226,11 +230,17 @@ async function listHealthRecipes({
     filterExpression = appendFilter(filterExpression, part.expression);
   }
 
+  const hasTypeFilter = Boolean(normalizedType);
+  const hasCategoryFilter = Boolean(normalizedCategory);
+  const hasSearch = Boolean(searchFilter.search);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyName: "status",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -257,11 +267,14 @@ async function listHealthRecipes({
           );
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn:
+      !normalizedStatus || hasTypeFilter || hasCategoryFilter || hasSearch || hasVisibilityFilter
+        ? sortByOrderAsc
+        : undefined,
   });
 
   return {
@@ -274,6 +287,7 @@ module.exports = {
   HEALTH_RECIPE_ALLOWED_STATUS,
   HEALTH_RECIPE_ALLOWED_TYPE,
   normalizeStatus,
+  normalizeOrder,
   normalizeType,
   normalizeVisibleFlag,
   normalizeVideoSpecification,

@@ -27,6 +27,7 @@ import {
   YOGA_PAGE_SIZE,
   YOGA_TITLE_MAX_LEN,
 } from "../data/yogaConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
@@ -716,15 +717,25 @@ export function YogaSection({
     });
   }
 
-  function moveItem(index, direction) {
-    if (persist) return;
-    const next = index + direction;
-    if (next < 0 || next >= items.length) return;
-    setItems((prev) => {
-      const copy = [...prev];
-      const [row] = copy.splice(index, 1);
-      copy.splice(next, 0, row);
-      return copy;
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems: (next) => {
+        setItems(next);
+        itemsRef.current = next;
+      },
+      index,
+      direction,
+      listAll: async () => {
+        const { items: rows } = await adminListYoga(null, { page: 1, limit: 200 });
+        return withCategoryLabels(rows || [], categoryOptionsRef.current);
+      },
+      updateItem: (id, fields) => adminUpdateYoga(null, id, fields),
+      reload: loadItems,
+      onToast,
     });
   }
 
@@ -1081,6 +1092,7 @@ export function YogaSection({
 
   const liveCount = items.filter((entry) => entry.live).length;
   const hasListFilters = Boolean(debouncedQuery || categoryFilter);
+  const canReorder = !hasListFilters;
   const filtered = useMemo(() => {
     return (gallery || []).filter((entry) => {
       const matchesSearch = asCopyString(entry.title).toLowerCase().includes(search.trim().toLowerCase());
@@ -1129,7 +1141,7 @@ export function YogaSection({
         subtitle={
           loading
             ? copy?.loading || "Loading…"
-            : `${pagination.total || items.length} ${(pagination.total || items.length) === 1 ? copy?.noun : copy?.nouns} · ${liveCount} live on this page${hasListFilters ? " · filtered" : ""}`
+            : `${pagination.total || items.length} ${(pagination.total || items.length) === 1 ? copy?.noun : copy?.nouns} · ${liveCount} live on this page${canReorder ? " · use arrows to reorder" : hasListFilters ? " · filtered" : ""}`
         }
         actions={
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn" disabled={disabled} onClick={() => setCreating(true)}>
@@ -1271,7 +1283,7 @@ export function YogaSection({
           <p className="ua-cfg-panel__sub">{copy?.fetching || "Fetching…"}</p>
         ) : items.length ? (
           <div className={`ua-cfg-rc-list${loading && persist ? " is-loading" : ""}`}>
-            {items.map((entry) => {
+            {items.map((entry, index) => {
               const editing = editingId === entry.id;
               return (
                 <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-rc-item--lib ua-cfg-recipes-item${editing ? " is-editing" : ""}${entry.type === "VIDEO" || entry.type === "YT" ? " is-video" : " is-text"}`}>
@@ -1401,6 +1413,28 @@ export function YogaSection({
                           ) : (
                             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); }}>Edit</button>
                           )}
+                          <div className="ua-cfg-tf-item__moves">
+                            <button
+                              type="button"
+                              className="ua-cfg-icon-btn"
+                              aria-label="Move up"
+                              disabled={disabled || !canReorder || index === 0}
+                              onClick={() => moveItem(index, -1)}
+                              title={canReorder ? "Move up" : "Clear search and filters to reorder"}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="ua-cfg-icon-btn"
+                              aria-label="Move down"
+                              disabled={disabled || !canReorder || index === items.length - 1}
+                              onClick={() => moveItem(index, 1)}
+                              title={canReorder ? "Move down" : "Clear search and filters to reorder"}
+                            >
+                              ↓
+                            </button>
+                          </div>
                           <button
                             type="button"
                             className="ua-cfg-icon-btn"

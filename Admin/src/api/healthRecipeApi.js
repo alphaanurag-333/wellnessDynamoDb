@@ -24,6 +24,7 @@ function appendFields(fd, fields) {
   if (fields.videoSpecification !== undefined) {
     fd.append("videoSpecification", JSON.stringify(Array.isArray(fields.videoSpecification) ? fields.videoSpecification : []));
   }
+  if (fields.order !== undefined) fd.append("order", String(fields.order));
 }
 
 function fieldsToPayload(fields) {
@@ -41,6 +42,7 @@ function fieldsToPayload(fields) {
   if (fields.videoSpecification !== undefined) {
     payload.videoSpecification = Array.isArray(fields.videoSpecification) ? fields.videoSpecification : [];
   }
+  if (fields.order !== undefined) payload.order = fields.order;
   return payload;
 }
 

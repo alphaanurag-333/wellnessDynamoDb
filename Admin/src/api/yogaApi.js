@@ -21,6 +21,7 @@ function appendFields(fd, fields) {
   else if (fields.live !== undefined) fd.append("status", fields.live ? "active" : "inactive");
   if (fields.webVisible !== undefined) fd.append("webVisible", String(Boolean(fields.webVisible)));
   if (fields.appVisible !== undefined) fd.append("appVisible", String(Boolean(fields.appVisible)));
+  if (fields.order !== undefined) fd.append("order", String(fields.order));
 }
 
 function fieldsToPayload(fields) {
@@ -35,6 +36,7 @@ function fieldsToPayload(fields) {
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
   if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
+  if (fields.order !== undefined) payload.order = fields.order;
   return payload;
 }
 

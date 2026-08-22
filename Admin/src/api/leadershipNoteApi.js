@@ -19,6 +19,7 @@ export function mapLeadershipNote(row) {
     badge: String(row.badge || "").trim(),
     message: String(row.message || "").trim(),
     profileImage: row.profileImage || "",
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
     webVisible: row.webVisible !== false,
@@ -34,6 +35,7 @@ function appendFields(form, fields) {
   if (fields.title !== undefined) form.append("title", String(fields.title || "").trim());
   if (fields.badge !== undefined) form.append("badge", String(fields.badge || "").trim());
   if (fields.message !== undefined) form.append("message", String(fields.message || "").trim());
+  if (fields.order !== undefined) form.append("order", String(fields.order));
   if (fields.status !== undefined) form.append("status", String(fields.status));
   else if (fields.live !== undefined) form.append("status", fields.live ? "active" : "inactive");
   if (fields.webVisible !== undefined) form.append("webVisible", String(Boolean(fields.webVisible)));
@@ -47,6 +49,7 @@ function jsonFields(fields) {
   if (fields.title !== undefined) payload.title = String(fields.title || "").trim();
   if (fields.badge !== undefined) payload.badge = String(fields.badge || "").trim();
   if (fields.message !== undefined) payload.message = String(fields.message || "").trim();
+  if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);

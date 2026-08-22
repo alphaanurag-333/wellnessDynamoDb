@@ -154,6 +154,9 @@ exports.updateLeadershipNoteController = asyncHandler(async (req, res) => {
   if (req.body.appVisible !== undefined) {
     updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
+  if (req.body.order !== undefined) {
+    updates.order = req.body.order;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

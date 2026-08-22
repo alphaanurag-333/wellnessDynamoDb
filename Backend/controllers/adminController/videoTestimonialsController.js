@@ -145,6 +145,9 @@ exports.updateVideoTestimonialController = asyncHandler(async (req, res) => {
   if (nextType === "video" && !String(nextVideo || "").trim()) {
     throw new AppError("video is required when type is video", 400);
   }
+  if (req.body.order !== undefined) {
+    updates.order = req.body.order;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

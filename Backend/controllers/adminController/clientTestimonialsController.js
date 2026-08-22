@@ -73,9 +73,12 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
     }
     updates.status = status;
   }
+  if (req.body.order !== undefined) {
+    updates.order = req.body.order;
+  }
 
   if (Object.keys(updates).length === 0) {
-    throw new AppError("Only description, rating, and status can be updated", 400);
+    throw new AppError("Only description, rating, status, and order can be updated", 400);
   }
 
   let clientTestimonial;

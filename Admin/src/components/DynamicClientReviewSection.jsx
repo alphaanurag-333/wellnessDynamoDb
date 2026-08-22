@@ -7,6 +7,7 @@ import {
 import { TESTIMONIAL_PAGE_SIZE } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 
@@ -279,6 +280,28 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
     }
   }
 
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items: published,
+      setItems: setPublished,
+      index,
+      direction,
+      listAll: async () => {
+        const result = await adminListClientTestimonials(null, { page: 1, limit: 200, status: "active" });
+        return result.items || [];
+      },
+      updateItem: (id, fields) => adminUpdateClientTestimonial(null, id, fields),
+      reload: loadItems,
+      onToast,
+      blockedMessage: "Clear search to reorder reviews",
+    });
+  }
+
+  const hasListFilter = Boolean(query);
+  const canReorder = !hasListFilter;
   const liveCount = useMemo(() => published.length, [published]);
   const viewing = [...queue, ...published].find((row) => row.id === viewingId) || null;
 
@@ -358,11 +381,11 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
 
       <Panel
         title="Live on site"
-        subtitle={`${pagination.total} total · ${liveCount} published · submitted in-app, admin only approves`}
+        subtitle={`${pagination.total} total · ${liveCount} published · submitted in-app, admin only approves${canReorder ? " · use arrows to reorder" : ""}`}
       >
         {published.length ? (
           <div className={`ua-cfg-cr-live__list${loading ? " is-loading" : ""}`}>
-            {published.map((entry) => (
+            {published.map((entry, index) => (
               <article key={entry.id} className="ua-cfg-cr-row ua-cfg-cr-row--live">
                 <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
                 <div className="ua-cfg-cr-row__copy">
@@ -385,6 +408,28 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                   >
                     <span className="ua-toggle__knob" />
                   </button>
+                  <div className="ua-cfg-tf-item__moves">
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      disabled={busy || !canReorder || index === 0}
+                      onClick={() => moveItem(index, -1)}
+                      aria-label="Move up"
+                      title={canReorder ? "Move up" : "Clear search to reorder"}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      disabled={busy || !canReorder || index === published.length - 1}
+                      onClick={() => moveItem(index, 1)}
+                      aria-label="Move down"
+                      title={canReorder ? "Move down" : "Clear search to reorder"}
+                    >
+                      ↓
+                    </button>
+                  </div>
                   <div className="ua-cfg-cr-row__btns">
                     <button
                       type="button"

@@ -17,6 +17,7 @@ import {
 } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
@@ -499,6 +500,27 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
     }
   }
 
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems,
+      index,
+      direction,
+      listAll: async () => {
+        const result = await adminListRealPeopleTestimonials(null, { page: 1, limit: 200 });
+        return result.items || [];
+      },
+      updateItem: (id, fields) => adminUpdateRealPeopleTestimonial(null, id, fields),
+      reload: loadItems,
+      onToast,
+    });
+  }
+
+  const hasListFilter = Boolean(query || concernFilter);
+  const canReorder = !hasListFilter;
   const liveCount = useMemo(() => items.filter((row) => row.live).length, [items]);
   const concernLabel = (id) => concernOptions.find((row) => row.value === id)?.label || "";
   const viewing = items.find((row) => row.id === viewingId) || null;
@@ -507,7 +529,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
     <div className="ua-cfg-rp">
       <Panel
         title="Real People Real Healing"
-        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern + testimonial data points from Dropdowns`}
+        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern + testimonial data points from Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}
         actions={(
           <button
             type="button"
@@ -628,7 +650,7 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
 
         {items.length ? (
           <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
-            {items.map((entry) => {
+            {items.map((entry, index) => {
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               return (
@@ -737,6 +759,28 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
                               <span className="ua-toggle__knob" />
                             </button>
                           </div>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === 0}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title={canReorder ? "Move up" : "Clear filters to reorder"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === items.length - 1}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title={canReorder ? "Move down" : "Clear filters to reorder"}
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-rp-item__btns">
                           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>

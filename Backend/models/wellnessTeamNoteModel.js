@@ -16,9 +16,14 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
+const {
+  ORDER_MIN,
+  ORDER_MAX,
+  normalizeOrder,
+  sortByOrderAsc,
+} = require("../utils/displayOrder");
 
 const TABLE = "WellnessTeamNotes";
 const STATUS = new Set(["active", "inactive"]);
@@ -47,6 +52,7 @@ function toPublicWellnessTeamNote(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
   if (!row) return null;
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
+  row.order = normalizeOrder(row.order, 9999);
   row.webVisible = normalizeVisibleFlag(row.webVisible, true);
   row.appVisible = normalizeVisibleFlag(row.appVisible, true);
   return row;
@@ -59,6 +65,7 @@ function sanitizeUpdateField(key, value) {
     return String(value ?? "").trim();
   }
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   return value;
 }
@@ -74,6 +81,7 @@ async function createWellnessTeamNote({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
@@ -87,6 +95,7 @@ async function createWellnessTeamNote({
     message: String(message || "").trim(),
     profileImage: imageKey,
     status: normalizeStatus(status),
+    order: normalizeOrder(order),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
@@ -185,6 +194,9 @@ async function listWellnessTeamNotes({
     appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
 
   const designationValue = String(designation || "").trim();
+  const hasSearch = Boolean(searchFilter.search);
+  const hasDesignationFilter = Boolean(designationValue);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...(searchFilter.exprNames || {}) };
@@ -208,8 +220,9 @@ async function listWellnessTeamNotes({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -243,11 +256,13 @@ async function listWellnessTeamNotes({
           );
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: !normalizedStatus || hasSearch || hasDesignationFilter || hasVisibilityFilter
+      ? sortByOrderAsc
+      : undefined,
   });
 
   return {
@@ -260,7 +275,10 @@ module.exports = {
   TABLE,
   DEFAULT_BADGE,
   normalizeStatus,
+  normalizeOrder,
   normalizeVisibleFlag,
+  ORDER_MIN,
+  ORDER_MAX,
   createWellnessTeamNote,
   getWellnessTeamNoteById,
   getWellnessTeamNoteRecordById,

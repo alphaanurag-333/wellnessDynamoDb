@@ -22,6 +22,7 @@ export function mapRealPeopleTestimonial(row) {
     healthConcernTitle: String(row.healthConcernTitle || row.heading || "").trim(),
     profileImage: row.profileImage || "",
     dataPoints: Array.isArray(row.dataPoints) ? row.dataPoints : [],
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
     webVisible: row.webVisible !== false,
@@ -41,6 +42,7 @@ function appendFields(form, fields) {
   if (fields.dataPoints !== undefined) {
     form.append("dataPoints", JSON.stringify(pointsToPayload(fields.dataPoints)));
   }
+  if (fields.order !== undefined) form.append("order", String(fields.order));
   if (fields.status !== undefined) form.append("status", String(fields.status));
   else if (fields.live !== undefined) form.append("status", fields.live ? "active" : "inactive");
   if (fields.webVisible !== undefined) form.append("webVisible", String(Boolean(fields.webVisible)));
@@ -54,6 +56,7 @@ function jsonFields(fields) {
   if (fields.stars !== undefined) payload.stars = fields.stars;
   if (fields.healthConcernId !== undefined) payload.healthConcernId = String(fields.healthConcernId || "").trim();
   if (fields.dataPoints !== undefined) payload.dataPoints = pointsToPayload(fields.dataPoints);
+  if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);

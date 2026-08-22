@@ -49,6 +49,7 @@ export function mapYoga(row, categoryOptions = []) {
     thumbnail: row.thumbnail || "",
     videoLink: String(row.ytLink || "").trim(),
     video: row.video || "",
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

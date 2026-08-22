@@ -11,8 +11,8 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
@@ -45,11 +45,13 @@ function toPublicYoga(item) {
   const resolved = resolveMediaFields(row, YOGA_MEDIA_FIELDS);
   resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
   resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  resolved.order = normalizeOrder(resolved.order, 9999);
   return resolved;
 }
 
 function sanitizeUpdateField(key, value) {
   if (key === "status") return normalizeStatus(value);
+  if (key === "order") return normalizeOrder(value);
   if (key === "type") return normalizeType(value);
   if (key === "webVisible" || key === "appVisible") return normalizeVisibleFlag(value, true);
   if (key === "thumbnail" || key === "video") {
@@ -73,6 +75,7 @@ async function createYoga({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -87,6 +90,7 @@ async function createYoga({
     status: normalizeStatus(status),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -195,10 +199,16 @@ async function listYoga({
     filterExpression = appendFilter(filterExpression, part.expression);
   }
 
+  const hasTypeFilter = Boolean(normalizedType && TYPE.has(normalizedType));
+  const hasCategoryFilter = Boolean(normalizedCategory);
+  const hasSearch = Boolean(searchFilter.search);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -225,11 +235,14 @@ async function listYoga({
           );
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn:
+      !normalizedStatus || hasTypeFilter || hasCategoryFilter || hasSearch || hasVisibilityFilter
+        ? sortByOrderAsc
+        : undefined,
   });
 
   return {
@@ -242,6 +255,7 @@ module.exports = {
   YOGA_ALLOWED_STATUS,
   YOGA_ALLOWED_TYPE,
   normalizeStatus,
+  normalizeOrder,
   normalizeType,
   normalizeVisibleFlag,
   createYoga,

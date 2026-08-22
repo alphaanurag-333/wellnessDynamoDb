@@ -8,6 +8,7 @@ import {
 import { adminGetConfigDropdown } from "../api/configDropdownApi.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
@@ -496,6 +497,28 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
     }
   }
 
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems,
+      index,
+      direction,
+      listAll: async () => {
+        const result = await adminListLeadershipNotes(null, { page: 1, limit: 200 });
+        return result.items || [];
+      },
+      updateItem: (id, fields) => adminUpdateLeadershipNote(null, id, fields),
+      reload: loadItems,
+      onToast,
+      blockedMessage: "Clear search to reorder notes",
+    });
+  }
+
+  const hasListFilter = Boolean(query);
+  const canReorder = !hasListFilter;
   const liveCount = useMemo(() => items.filter((row) => row.live).length, [items]);
   const viewing = items.find((row) => row.id === viewingId) || null;
   const designationOptions = titleOptions.length
@@ -506,7 +529,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
     <div className="ua-cfg-rc ua-cfg-ld">
       <Panel
         title="Leadership notes"
-        subtitle={loading ? "Loading notes…" : `${pagination.total} total · ${liveCount} live on this page`}
+        subtitle={loading ? "Loading notes…" : `${pagination.total} total · ${liveCount} live on this page${canReorder ? " · use arrows to reorder" : ""}`}
         actions={(
           <button
             type="button"
@@ -556,7 +579,7 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
 
         {items.length ? (
           <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
-            {items.map((item) => {
+            {items.map((item, index) => {
               const isEditing = editingId === item.id;
               const photo = item.profileImage;
               const updated = item.updatedAt ? formatRecipeDate(item.updatedAt) : "";
@@ -673,6 +696,28 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
                               <span className="ua-toggle__knob" />
                             </button>
                           </div>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === 0}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title={canReorder ? "Move up" : "Clear search to reorder"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === items.length - 1}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title={canReorder ? "Move down" : "Clear search to reorder"}
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-ld-item__btns">
                           <button

@@ -8,6 +8,7 @@ import {
 import { TESTIMONIAL_PAGE_SIZE } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate, youtubeEmbedUrl } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
@@ -401,6 +402,28 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
     }
   }
 
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems,
+      index,
+      direction,
+      listAll: async () => {
+        const result = await adminListVideoTestimonials(null, { page: 1, limit: 200 });
+        return result.items || [];
+      },
+      updateItem: (id, fields) => adminUpdateVideoTestimonial(null, id, fields),
+      reload: loadItems,
+      onToast,
+      blockedMessage: "Clear search to reorder videos",
+    });
+  }
+
+  const hasListFilter = Boolean(query);
+  const canReorder = !hasListFilter;
   const liveCount = useMemo(() => items.filter((row) => row.live).length, [items]);
   const viewing = items.find((row) => row.id === viewingId) || null;
 
@@ -408,7 +431,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
     <div className="ua-cfg-vh">
       <Panel
         title="Voice of Healing"
-        subtitle={loading ? "Loading videos…" : `${pagination.total} total · ${liveCount} live on this page · cover image plus a YouTube link or uploaded video`}
+        subtitle={loading ? "Loading videos…" : `${pagination.total} total · ${liveCount} live on this page · cover image plus a YouTube link or uploaded video${canReorder ? " · use arrows to reorder" : ""}`}
         actions={(
           <button
             type="button"
@@ -490,7 +513,7 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
 
         {items.length ? (
           <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
-            {items.map((entry) => {
+            {items.map((entry, index) => {
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               const embed = youtubeEmbedUrl(entry.ytLink);
@@ -582,6 +605,28 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
                               <span className="ua-toggle__knob" />
                             </button>
                           </div>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === 0}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title={canReorder ? "Move up" : "Clear search to reorder"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === items.length - 1}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title={canReorder ? "Move down" : "Clear search to reorder"}
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-vh-item__btns">
                           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>

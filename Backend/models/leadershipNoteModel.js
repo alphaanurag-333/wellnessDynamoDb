@@ -16,8 +16,8 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TABLE = "LeadershipNotes";
@@ -49,6 +49,7 @@ function toPublicLeadershipNote(item) {
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
   row.webVisible = normalizeVisibleFlag(row.webVisible, true);
   row.appVisible = normalizeVisibleFlag(row.appVisible, true);
+  row.order = normalizeOrder(row.order, 9999);
   return row;
 }
 
@@ -59,6 +60,7 @@ function sanitizeUpdateField(key, value) {
     return String(value ?? "").trim();
   }
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   return value;
 }
@@ -74,6 +76,7 @@ async function createLeadershipNote({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
@@ -89,6 +92,7 @@ async function createLeadershipNote({
     status: normalizeStatus(status),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -182,6 +186,8 @@ async function listLeadershipNotes({
     webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
   const wantAppVisible =
     appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+  const hasSearch = Boolean(searchFilter.search);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...(searchFilter.exprNames || {}) };
@@ -198,8 +204,9 @@ async function listLeadershipNotes({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -226,11 +233,11 @@ async function listLeadershipNotes({
           );
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: !normalizedStatus || hasSearch || hasVisibilityFilter ? sortByOrderAsc : undefined,
   });
 
   return {
@@ -243,6 +250,7 @@ module.exports = {
   TABLE,
   DEFAULT_BADGE,
   normalizeStatus,
+  normalizeOrder,
   normalizeVisibleFlag,
   createLeadershipNote,
   getLeadershipNoteById,

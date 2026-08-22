@@ -16,9 +16,9 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
   paginateItems,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 
 const TABLE = "ClientTestimonials";
 const STATUS = new Set(["active", "inactive"]);
@@ -73,6 +73,7 @@ function toPublicClientTestimonial(item) {
   if (!row) return null;
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
   row.status = normalizeStatus(row.status, "inactive");
+  row.order = normalizeOrder(row.order, 9999);
   return row;
 }
 
@@ -83,6 +84,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "description") return sanitizeDescription(value);
   if (field === "rating") return sanitizeRating(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "userId") return String(value || "").trim();
   if (field === "managedByCoachId") return value ? String(value).trim() : null;
   if (field === "assignedCoachType") return value ? String(value).trim() : null;
@@ -103,6 +105,7 @@ async function createClientTestimonial({
   assignedCoachType,
   assignedCoachId,
   submittedByRole = "user",
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const imageRaw = profileImage ?? profile_image;
@@ -120,6 +123,7 @@ async function createClientTestimonial({
     assignedCoachType: assignedCoachType ? String(assignedCoachType).trim() : undefined,
     assignedCoachId: assignedCoachId ? String(assignedCoachId).trim() : undefined,
     submittedByRole: String(submittedByRole || "user").trim(),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -259,19 +263,20 @@ async function listClientTestimonials({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyName: "status",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page: queryPage,
     limit: queryLimit,
     maxLimit: queryMaxLimit,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: !normalizedStatus || usePostFilter ? sortByOrderAsc : undefined,
   });
 
   const mapped = items.map((row) => toPublicClientTestimonial(row));
@@ -293,6 +298,7 @@ async function listClientTestimonials({
 module.exports = {
   TABLE,
   normalizeStatus,
+  normalizeOrder,
   createClientTestimonial,
   getClientTestimonialById,
   getClientTestimonialRecordById,

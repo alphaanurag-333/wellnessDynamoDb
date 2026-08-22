@@ -5,6 +5,7 @@ import {
   adminListHealthDisorders,
   adminUpdateHealthDisorder,
 } from "../api/healthDisorderApi.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 
@@ -329,6 +330,26 @@ export function HealthDisordersSection({ onToast }) {
     }
   }
 
+  async function moveItem(index, direction) {
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems,
+      index,
+      direction,
+      listAll: async () => {
+        const result = await adminListHealthDisorders(null, { page: 1, limit: 200 });
+        return result?.healthDisorders || [];
+      },
+      updateItem: (id, fields) => adminUpdateHealthDisorder(null, id, fields),
+      reload: () => load(page),
+      onToast,
+    });
+  }
+
+  const canReorder = true;
   const locked = loading || busy;
   const totalCount = pagination.total || items.length;
 
@@ -339,7 +360,7 @@ export function HealthDisordersSection({ onToast }) {
         subtitle={
           loading
             ? "Loading health disorders…"
-            : `Catalog from HealthDisorder · ${activeCount} of ${items.length} live`
+            : `Catalog from HealthDisorder · ${activeCount} of ${items.length} live · use arrows to reorder`
         }
         actions={
           loading ? null : (
@@ -453,7 +474,7 @@ export function HealthDisordersSection({ onToast }) {
           <p className="ua-cfg-panel__sub">Fetching health disorders…</p>
         ) : items.length ? (
           <div className="ua-cfg-rc-list">
-            {items.map((entry) => {
+            {items.map((entry, index) => {
               const editing = editingId === entry.id;
               const live = entry.status === "active";
               return (
@@ -558,6 +579,28 @@ export function HealthDisordersSection({ onToast }) {
                               <span className="ua-toggle__knob" />
                             </button>
                           </div>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={locked || index === 0}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title="Move up"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={locked || index === items.length - 1}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title="Move down"
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-bl-item__btns">
                           {editing ? (

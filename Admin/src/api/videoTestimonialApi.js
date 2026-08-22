@@ -20,6 +20,7 @@ export function mapVideoTestimonial(row) {
     ytLink: String(row.ytLink || "").trim(),
     video: row.video || "",
     type,
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
     webVisible: row.webVisible !== false,
@@ -33,6 +34,7 @@ function appendFields(form, fields) {
   if (fields.name !== undefined) form.append("name", String(fields.name || "").trim());
   if (fields.ytLink !== undefined) form.append("ytLink", String(fields.ytLink || "").trim());
   if (fields.type !== undefined) form.append("type", String(fields.type || "link"));
+  if (fields.order !== undefined) form.append("order", String(fields.order));
   if (fields.status !== undefined) form.append("status", String(fields.status));
   else if (fields.live !== undefined) form.append("status", fields.live ? "active" : "inactive");
   if (fields.webVisible !== undefined) form.append("webVisible", String(Boolean(fields.webVisible)));
@@ -44,6 +46,7 @@ function jsonFields(fields) {
   if (fields.name !== undefined) payload.name = String(fields.name || "").trim();
   if (fields.ytLink !== undefined) payload.ytLink = String(fields.ytLink || "").trim();
   if (fields.type !== undefined) payload.type = String(fields.type || "link");
+  if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);

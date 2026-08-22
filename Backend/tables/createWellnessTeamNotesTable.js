@@ -11,6 +11,7 @@ async function createWellnessTeamNotesTable() {
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
+      { AttributeName: "order", AttributeType: "N" },
     ],
     GlobalSecondaryIndexes: [
       {
@@ -18,6 +19,14 @@ async function createWellnessTeamNotesTable() {
         KeySchema: [
           { AttributeName: "status", KeyType: "HASH" },
           { AttributeName: "createdAt", KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "StatusOrderIndex",
+        KeySchema: [
+          { AttributeName: "status", KeyType: "HASH" },
+          { AttributeName: "order", KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" },
       },

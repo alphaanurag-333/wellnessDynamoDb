@@ -33,6 +33,7 @@ export function mapHealthDisorder(row) {
     description: String(row.description || "").trim(),
     symptoms: normalizeSymptoms(row.symptoms),
     type,
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     status: row.status === "inactive" ? "inactive" : "active",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -90,6 +91,7 @@ export async function adminUpdateHealthDisorder(token, id, fields) {
   if (fields.type !== undefined) {
     payload.type = String(fields.type || "acute").toLowerCase() === "chronic" ? "chronic" : "acute";
   }
+  if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) {
     payload.status = fields.status === "inactive" ? "inactive" : "active";
   } else if (fields.on !== undefined) {

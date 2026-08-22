@@ -26,6 +26,7 @@ import {
   withCategoryLabels,
   youtubeEmbedUrl,
 } from "../data/recipesConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
@@ -754,8 +755,29 @@ export function RecipesSection({
     });
   }
 
-  function moveItem(index, direction) {
-    if (persist) return;
+  async function moveItem(index, direction) {
+    if (persist) {
+      await moveConfigListItem({
+        canReorder,
+        busy,
+        setBusy,
+        items,
+        setItems: (next) => {
+          setItems(next);
+          itemsRef.current = next;
+        },
+        index,
+        direction,
+        listAll: async () => {
+          const { items: rows } = await adminListHealthRecipes(null, { page: 1, limit: 200 });
+          return withCategoryLabels(rows || [], categoryOptionsRef.current);
+        },
+        updateItem: (id, fields) => adminUpdateHealthRecipe(null, id, fields),
+        reload: loadItems,
+        onToast,
+      });
+      return;
+    }
     const next = index + direction;
     if (next < 0 || next >= items.length) return;
     setItems((prev) => {
@@ -1180,6 +1202,7 @@ export function RecipesSection({
 
   const liveCount = items.filter((entry) => entry.live).length;
   const hasListFilters = Boolean(debouncedQuery || categoryFilter);
+  const canReorder = persist && !hasListFilters;
   const filtered = useMemo(() => {
     return (gallery || []).filter((entry) => {
       const matchesSearch = asCopyString(entry.title).toLowerCase().includes(search.trim().toLowerCase());
@@ -1229,7 +1252,7 @@ export function RecipesSection({
           persist
             ? loading
               ? copy?.loading || "Loading…"
-              : `${pagination.total || items.length} ${(pagination.total || items.length) === 1 ? copy?.noun : copy?.nouns} · ${liveCount} live on this page${hasListFilters ? " · filtered" : ""}`
+              : `${pagination.total || items.length} ${(pagination.total || items.length) === 1 ? copy?.noun : copy?.nouns} · ${liveCount} live on this page${canReorder ? " · use arrows to reorder" : hasListFilters ? " · filtered" : ""}`
             : "Admin and Support upload · coaches choose what each client sees."
         }
         actions={
@@ -1614,12 +1637,35 @@ export function RecipesSection({
                           ) : (
                             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={disabled} onClick={() => { setViewingId(null); setEditingId(entry.id); updateItem(entry.id, { mediaMode: entry.mediaMode || entry.apiType || "ytlink" }); }}>Edit</button>
                           )}
-                          {!persist ? (
+                          {persist ? (
+                            <div className="ua-cfg-tf-item__moves">
+                              <button
+                                type="button"
+                                className="ua-cfg-icon-btn"
+                                aria-label="Move up"
+                                disabled={disabled || !canReorder || index === 0}
+                                onClick={() => moveItem(index, -1)}
+                                title={canReorder ? "Move up" : "Clear search and filters to reorder"}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="ua-cfg-icon-btn"
+                                aria-label="Move down"
+                                disabled={disabled || !canReorder || index === items.length - 1}
+                                onClick={() => moveItem(index, 1)}
+                                title={canReorder ? "Move down" : "Clear search and filters to reorder"}
+                              >
+                                ↓
+                              </button>
+                            </div>
+                          ) : (
                             <>
                               <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => moveItem(index, -1)}>↑</button>
                               <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1} onClick={() => moveItem(index, 1)}>↓</button>
                             </>
-                          ) : null}
+                          )}
                           <button
                             type="button"
                             className="ua-cfg-icon-btn"

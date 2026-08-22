@@ -19,6 +19,7 @@ export function mapClientTestimonial(row) {
     description: String(row.description || "").trim(),
     rating: Number.isFinite(rating) ? rating : 5,
     profileImage: row.profileImage || "",
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status === "active",
     status: row.status === "active" ? "active" : "inactive",
     createdAt: row.createdAt,
@@ -56,6 +57,7 @@ export async function adminUpdateClientTestimonial(token, id, fields) {
     payload.description = String(fields.description ?? fields.quote ?? "").trim();
   }
   if (fields.rating !== undefined) payload.rating = fields.rating;
+  if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   try {

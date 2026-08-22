@@ -10,8 +10,8 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 
 const TABLE = "HealthDisorder";
 const STATUS = new Set(["active", "inactive"]);
@@ -37,11 +37,19 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function toPublicHealthDisorder(item) {
+  const row = withLegacyId(item);
+  if (!row) return null;
+  row.order = normalizeOrder(row.order, 9999);
+  return row;
+}
+
 function sanitizeUpdateField(key, value) {
   if (key === "title" || key === "description") return String(value).trim();
   if (key === "symptoms") return normalizeSymptoms(value);
   if (key === "type") return normalizeType(value);
   if (key === "status") return normalizeStatus(value);
+  if (key === "order") return normalizeOrder(value);
   return value;
 }
 
@@ -51,6 +59,7 @@ async function createHealthDisorder({
   symptoms = [],
   type = "acute",
   status = "active",
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -60,6 +69,7 @@ async function createHealthDisorder({
     symptoms: normalizeSymptoms(symptoms),
     type: normalizeType(type),
     status: normalizeStatus(status),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -69,7 +79,7 @@ async function createHealthDisorder({
     Item: item,
     ConditionExpression: "attribute_not_exists(id)",
   }));
-  return withLegacyId(item);
+  return toPublicHealthDisorder(item);
 }
 
 async function getHealthDisorderById(id) {
@@ -77,7 +87,7 @@ async function getHealthDisorderById(id) {
     TableName: TABLE,
     Key: { id },
   }));
-  return withLegacyId(Item || null);
+  return toPublicHealthDisorder(Item || null);
 }
 
 async function updateHealthDisorder(id, updates) {
@@ -106,7 +116,7 @@ async function updateHealthDisorder(id, updates) {
     ConditionExpression: "attribute_exists(id)",
     ReturnValues: "ALL_NEW",
   }));
-  return withLegacyId(Attributes || null);
+  return toPublicHealthDisorder(Attributes || null);
 }
 
 async function deleteHealthDisorder(id) {
@@ -131,24 +141,28 @@ async function listHealthDisorders({ page = 1, limit = 10, status, type, search 
     filterExpression = appendFilter(filterExpression, "#type = :type");
   }
 
+  const hasTypeFilter = Boolean(normalizedType && TYPES.has(normalizedType));
+  const hasSearch = Boolean(searchFilter.search);
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: !normalizedStatus || hasTypeFilter || hasSearch ? sortByOrderAsc : undefined,
   });
 
   return {
-    healthDisorders: items.map(withLegacyId),
+    healthDisorders: items.map(toPublicHealthDisorder),
     pagination,
   };
 }
@@ -156,6 +170,7 @@ async function listHealthDisorders({ page = 1, limit = 10, status, type, search 
 module.exports = {
   normalizeStatus,
   normalizeType,
+  normalizeOrder,
   normalizeSymptoms,
   createHealthDisorder,
   getHealthDisorderById,

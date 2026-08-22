@@ -183,6 +183,7 @@ export function mapHealthRecipe(row, categoryOptions = []) {
     videoLink: String(row.ytLink || "").trim(),
     video: row.video || "",
     videoSpecification: parseRecipeSpecs(row.videoSpecification),
+    order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

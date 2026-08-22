@@ -1,7 +1,17 @@
 const { QueryCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
+const { sortByOrderAsc } = require("./displayOrder");
 
 const DEFAULT_STATUS_PARTITIONS = ["active", "inactive"];
+const STATUS_ORDER_INDEX = "StatusOrderIndex";
+const STATUS_CREATED_AT_INDEX = "StatusCreatedAtIndex";
+
+function isMissingGsiError(err) {
+  return (
+    err?.name === "ValidationException"
+    && String(err?.message || "").includes("does not have the specified index")
+  );
+}
 
 function normalizePageLimit(page, limit, maxLimit = 200) {
   const safePage = Math.max(1, Number(page) || 1);
@@ -192,7 +202,26 @@ async function mergePartitionResults(partitions, { page, limit, maxLimit, sortFn
  * List rows using a status (or similar) GSI partition key.
  * When status is omitted, queries each value in statusPartitions and merges (avoids full-table Scan).
  */
-async function listByPartitionKey({
+async function listByPartitionKey(params) {
+  try {
+    return await listByPartitionKeyImpl(params);
+  } catch (err) {
+    if (params.indexName !== STATUS_ORDER_INDEX || !isMissingGsiError(err)) {
+      throw err;
+    }
+    return listByPartitionKeyImpl({
+      ...params,
+      indexName: STATUS_CREATED_AT_INDEX,
+      sortKeyName: undefined,
+      sortKeyFrom: undefined,
+      sortKeyTo: undefined,
+      scanIndexForward: false,
+      sortFn: typeof params.sortFn === "function" ? params.sortFn : sortByOrderAsc,
+    });
+  }
+}
+
+async function listByPartitionKeyImpl({
   tableName,
   indexName,
   partitionKeyName = "status",

@@ -69,13 +69,20 @@ function sleep(ms) {
 
 async function waitForGsiActive(tableName, indexName, { timeoutMs = 15 * 60 * 1000, pollMs = 5000 } = {}) {
   const started = Date.now();
+  let sawIndex = false;
 
   while (Date.now() - started < timeoutMs) {
     const { Table } = await client.send(new DescribeTableCommand({ TableName: tableName }));
     const gsi = (Table.GlobalSecondaryIndexes || []).find((g) => g.IndexName === indexName);
     if (!gsi) {
-      throw new Error(`GSI ${indexName} not found on ${tableName}`);
+      if (sawIndex) {
+        throw new Error(`GSI ${indexName} disappeared from ${tableName}`);
+      }
+      console.log(`  [${tableName}] waiting for ${indexName} to appear...`);
+      await sleep(pollMs);
+      continue;
     }
+    sawIndex = true;
     if (gsi.IndexStatus === "ACTIVE") {
       return;
     }

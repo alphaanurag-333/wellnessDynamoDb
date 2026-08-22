@@ -16,8 +16,8 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
@@ -48,6 +48,7 @@ function toPublicVideoTestimonial(item) {
   const resolved = resolveMediaFields(row, VIDEO_TESTIMONIAL_MEDIA);
   resolved.webVisible = normalizeVisibleFlag(resolved.webVisible, true);
   resolved.appVisible = normalizeVisibleFlag(resolved.appVisible, true);
+  resolved.order = normalizeOrder(resolved.order, 9999);
   return resolved;
 }
 
@@ -55,6 +56,7 @@ function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "type") return normalizeType(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "profileImage" || field === "video") {
     if (value == null || String(value).trim() === "") return "";
@@ -74,6 +76,7 @@ async function createVideoTestimonial({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const item = {
@@ -86,6 +89,7 @@ async function createVideoTestimonial({
     status: normalizeStatus(status),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -176,6 +180,9 @@ async function listVideoTestimonials({
     webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
   const wantAppVisible =
     appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+  const hasTypeFilter = Boolean(normalizedType);
+  const hasSearch = Boolean(searchFilter.search);
+  const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
@@ -199,8 +206,9 @@ async function listVideoTestimonials({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -225,11 +233,14 @@ async function listVideoTestimonials({
             .includes(term);
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn:
+      !normalizedStatus || hasTypeFilter || hasSearch || hasVisibilityFilter
+        ? sortByOrderAsc
+        : undefined,
   });
 
   return {
@@ -241,6 +252,7 @@ async function listVideoTestimonials({
 module.exports = {
   normalizeType,
   normalizeStatus,
+  normalizeOrder,
   normalizeVisibleFlag,
   createVideoTestimonial,
   getVideoTestimonialById,

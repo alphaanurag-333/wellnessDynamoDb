@@ -489,6 +489,51 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
     }
   }
 
+  async function moveItem(index, direction) {
+    if (!canReorder) {
+      onToast("Clear search and filters to reorder profiles");
+      return;
+    }
+    const next = index + direction;
+    if (next < 0 || next >= items.length || busy) return;
+
+    const currentId = items[index]?.id;
+    if (!currentId) return;
+
+    const optimistic = [...items];
+    const [moved] = optimistic.splice(index, 1);
+    optimistic.splice(next, 0, moved);
+    setItems(optimistic);
+
+    setBusy(true);
+    try {
+      const result = await adminListWellnessTeamNotes(null, { page: 1, limit: 200 });
+      const allItems = result.items || [];
+      const globalIndex = allItems.findIndex((row) => row.id === currentId);
+      if (globalIndex < 0) throw new Error("Profile not found");
+
+      const globalNext = globalIndex + direction;
+      if (globalNext < 0 || globalNext >= allItems.length) {
+        await loadItems();
+        return;
+      }
+
+      const reordered = [...allItems];
+      const [row] = reordered.splice(globalIndex, 1);
+      reordered.splice(globalNext, 0, row);
+
+      await Promise.all(
+        reordered.map((item, idx) => adminUpdateWellnessTeamNote(null, item.id, { order: (idx + 1) * 10 })),
+      );
+      await loadItems();
+    } catch (error) {
+      await loadItems();
+      onToast(error?.message || "Could not reorder");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function deleteItem() {
     if (!pendingDelete) return;
     const item = pendingDelete;
@@ -515,12 +560,17 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
     ...titleOptions.map((label) => ({ value: label, label })),
   ];
   const hasListFilter = Boolean(query || statusFilter || designationFilter);
+  const canReorder = !hasListFilter;
 
   return (
     <div className="ua-cfg-rc ua-cfg-ld ua-cfg-wt">
       <Panel
         title="Wellness team profiles"
-        subtitle={loading ? "Loading profiles…" : `${pagination.total} total · ${liveCount} live on this page`}
+        subtitle={
+          loading
+            ? "Loading profiles…"
+            : `${pagination.total} total · ${liveCount} live on this page${canReorder ? " · use arrows to reorder" : ""}`
+        }
         actions={(
           <button
             type="button"
@@ -588,7 +638,7 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
 
         {items.length ? (
           <div className={`ua-cfg-rc-list${loading ? " is-loading" : ""}`}>
-            {items.map((item) => {
+            {items.map((item, index) => {
               const isEditing = editingId === item.id;
               const photo = item.profileImage;
               const updated = item.updatedAt ? formatRecipeDate(item.updatedAt) : "";
@@ -705,6 +755,28 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
                               <span className="ua-toggle__knob" />
                             </button>
                           </div>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === 0}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title={canReorder ? "Move up" : "Clear filters to reorder"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || index === items.length - 1}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title={canReorder ? "Move down" : "Clear filters to reorder"}
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-ld-item__btns">
                           <button

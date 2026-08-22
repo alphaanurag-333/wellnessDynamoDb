@@ -17,9 +17,9 @@ const {
   listByPartitionKey,
   buildContainsFilter,
   appendFilter,
-  sortByCreatedAtDesc,
   paginateItems,
 } = require("../utils/dynamoList");
+const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
 const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 const {
   enrichRealPeopleTestimonial,
@@ -95,6 +95,7 @@ function toPublicRealPeopleTestimonial(item) {
   }
   row.webVisible = normalizeVisibleFlag(row.webVisible, true);
   row.appVisible = normalizeVisibleFlag(row.appVisible, true);
+  row.order = normalizeOrder(row.order, 9999);
   return row;
 }
 
@@ -106,6 +107,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "stars" || field === "rating") return sanitizeStars(value);
   if (field === "healthConcernId") return sanitizeHealthConcernId(value);
   if (field === "status") return normalizeStatus(value);
+  if (field === "order") return normalizeOrder(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "dataPoints") return normalizeDataPoints(value);
   return value;
@@ -124,6 +126,7 @@ async function createRealPeopleTestimonial({
   status = "active",
   webVisible = true,
   appVisible = true,
+  order = 0,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
@@ -140,6 +143,7 @@ async function createRealPeopleTestimonial({
     status: normalizeStatus(status, "active"),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
+    order: normalizeOrder(order),
     createdAt: now,
     updatedAt: now,
   };
@@ -254,11 +258,12 @@ async function listRealPeopleTestimonials({
     appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
   const useHealthConcernFilter = Boolean(normalizedHealthConcernId);
   const useVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
-  const queryPage = useHealthConcernFilter || searchFilter.search ? 1 : page;
+  const hasSearch = Boolean(searchFilter.search);
+  const queryPage = useHealthConcernFilter || hasSearch ? 1 : page;
   const queryLimit =
-    useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : limit;
+    useHealthConcernFilter || hasSearch ? Number.MAX_SAFE_INTEGER : limit;
   const queryMaxLimit =
-    useHealthConcernFilter || searchFilter.search ? Number.MAX_SAFE_INTEGER : 200;
+    useHealthConcernFilter || hasSearch ? Number.MAX_SAFE_INTEGER : 200;
 
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...(searchFilter.exprNames || {}) };
@@ -275,9 +280,10 @@ async function listRealPeopleTestimonials({
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
-    indexName: "StatusCreatedAtIndex",
+    indexName: "StatusOrderIndex",
     partitionKeyName: "status",
     partitionKeyValue: normalizedStatus || undefined,
+    sortKeyName: "order",
     filterExpression,
     exprNames,
     exprValues,
@@ -304,11 +310,14 @@ async function listRealPeopleTestimonials({
           );
         }
       : undefined,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page: queryPage,
     limit: queryLimit,
     maxLimit: queryMaxLimit,
-    sortFn: sortByCreatedAtDesc,
+    sortFn:
+      !normalizedStatus || hasSearch || useHealthConcernFilter || useVisibilityFilter
+        ? sortByOrderAsc
+        : undefined,
   });
 
   let realPeopleTestimonials = await enrichRealPeopleTestimonials(
@@ -361,6 +370,7 @@ async function listRealPeopleTestimonials({
 module.exports = {
   TABLE,
   normalizeStatus,
+  normalizeOrder,
   normalizeVisibleFlag,
   createRealPeopleTestimonial,
   getRealPeopleTestimonialById,

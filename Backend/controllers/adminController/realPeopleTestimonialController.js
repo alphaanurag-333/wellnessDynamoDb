@@ -159,6 +159,9 @@ exports.updateRealPeopleTestimonialController = asyncHandler(async (req, res) =>
     }
     updates.profileImage = uploadedKey;
   }
+  if (req.body.order !== undefined) {
+    updates.order = req.body.order;
+  }
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
