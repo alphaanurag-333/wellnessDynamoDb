@@ -160,6 +160,42 @@ export function paymentsForMonth(analytics, monthKey) {
   return [];
 }
 
+export const DASHBOARD_PAYMENT_TABS = [
+  { id: "consultancy", label: "PWC" },
+  { id: "program", label: "Program fees" },
+  { id: "app", label: "App subscription" },
+];
+
+export function dashboardPaymentTabLabel(tabId) {
+  return DASHBOARD_PAYMENT_TABS.find((tab) => tab.id === tabId)?.label || tabId;
+}
+
+export const PAYMENT_PRODUCT_TAB_ORDER = DASHBOARD_PAYMENT_TABS.map((tab) => tab.id);
+
+export const PAYMENT_PRODUCT_LABELS = Object.fromEntries(
+  DASHBOARD_PAYMENT_TABS.map((tab) => [tab.id, tab.label]),
+);
+
+export function paymentProductTypeKey(row) {
+  return String(row?.productType || "").trim().toLowerCase() || "other";
+}
+
+export function paymentProductTypeLabel(key) {
+  if (PAYMENT_PRODUCT_LABELS[key]) return PAYMENT_PRODUCT_LABELS[key];
+  if (!key || key === "other") return "Other";
+  return key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function sortPaymentProductTypes(a, b) {
+  const order = PAYMENT_PRODUCT_TAB_ORDER;
+  const ai = order.indexOf(a);
+  const bi = order.indexOf(b);
+  if (ai !== -1 && bi !== -1) return ai - bi;
+  if (ai !== -1) return -1;
+  if (bi !== -1) return 1;
+  return a.localeCompare(b);
+}
+
 const PLACEHOLDER_USER = new Set(["", "client"]);
 const PLACEHOLDER_COACH = new Set(["", "—", "-", "not assigned"]);
 const PLACEHOLDER_PROGRAM = new Set(["", "—", "pwc", "wellness program", "app user", "energy exchange", "consultancy"]);

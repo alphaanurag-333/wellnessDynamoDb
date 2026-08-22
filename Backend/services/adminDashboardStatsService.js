@@ -8,7 +8,9 @@ const { ROLE_KEY_META, UI_TO_ACCOUNT_ROLE } = require("../config/consolePermissi
 const {
   sumPaidTransactionTotals,
   listPaidTransactionsForAnalytics,
+  listAllTransactions,
 } = require("../models/consultancyTransactionModel");
+const { paginateItems } = require("../utils/dynamoList");
 const { DEFAULT_FY_START_MONTH } = require("./energyExchangePricingService");
 const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
@@ -112,6 +114,26 @@ const PRODUCT_BUCKETS = [
   { key: "consultancy", name: "PWC", barName: "PWC", color: "#0d9488" },
   { key: "app", name: "App users", barName: "App users", color: "#ec7a45" },
 ];
+
+const DASHBOARD_PAYMENT_BUCKETS = {
+  consultancy: {
+    key: "consultancy",
+    label: "PWC",
+    productTypes: ["consultancy"],
+  },
+  program: {
+    key: "program",
+    label: "Program fees",
+    productTypes: ["program"],
+  },
+  app: {
+    key: "app",
+    label: "App subscription",
+    productTypes: ["subscription", "energy_exchange"],
+  },
+};
+
+const DASHBOARD_PAYMENT_BUCKET_ORDER = ["consultancy", "program", "app"];
 
 function roundMoney(value) {
   return Math.round(((Number(value) || 0) + Number.EPSILON) * 100) / 100;
@@ -683,13 +705,24 @@ async function getAdminDashboardStats() {
   };
 }
 
-async function listDashboardPaymentsForMonth(monthKey) {
-  const key = String(monthKey || "").trim();
-  const paidTransactions = await listPaidTransactionsForAnalytics();
-  const monthRows = (paidTransactions || []).filter((row) => transactionMonthKey(row) === key);
+function monthDateBounds(monthKey) {
+  const [year, month] = String(monthKey || "").split("-").map(Number);
+  if (!year || !month) return null;
+  const from = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const to = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  return { from, to };
+}
+
+function normalizeDashboardPaymentBucket(value) {
+  const key = String(value || "consultancy").trim().toLowerCase();
+  return DASHBOARD_PAYMENT_BUCKETS[key] ? key : null;
+}
+
+async function loadDashboardPaymentContext(rows) {
   const userIds = [
     ...new Set(
-      monthRows
+      (rows || [])
         .map((row) => String(row.userId || row.userSnapshot?.id || "").trim())
         .filter(Boolean),
     ),
@@ -715,13 +748,90 @@ async function listDashboardPaymentsForMonth(monthKey) {
     }),
   );
   const coachIds = [
-    ...monthRows.map((row) => row.parentCoachId),
+    ...(rows || []).map((row) => row.parentCoachId),
     ...[...usersById.values()].flatMap((user) => [
       user.parentCoachId,
       user.assignedCoachType === "wellness_coach" ? user.assignedCoachId : "",
     ]),
   ];
   const coachNames = await loadCoachNamesById(coachIds);
+  return { coachNames, usersById };
+}
+
+async function listDashboardPaymentsForBucketMonth(monthKey, productBucket) {
+  const bucketKey = normalizeDashboardPaymentBucket(productBucket);
+  const bucket = DASHBOARD_PAYMENT_BUCKETS[bucketKey];
+  const bounds = monthDateBounds(monthKey);
+  if (!bucket || !bounds) return [];
+
+  const merged = [];
+  let page = 1;
+  let pages = 1;
+  do {
+    const chunk = await listAllTransactions({
+      page,
+      limit: 200,
+      paymentStatus: "paid",
+      productTypes: bucket.productTypes,
+      fromDate: bounds.from,
+      toDate: bounds.to,
+    });
+    merged.push(...(chunk.transactions || []));
+    pages = chunk.pagination?.pages || 1;
+    page += 1;
+  } while (page <= pages);
+
+  return merged
+    .filter((row) => transactionMonthKey(row) === monthKey)
+    .sort((a, b) => String(b.paidAt || b.createdAt || "").localeCompare(String(a.paidAt || a.createdAt || "")));
+}
+
+async function listDashboardPaymentsPaginated({
+  monthKey,
+  productBucket = "consultancy",
+  page = 1,
+  limit = 25,
+} = {}) {
+  const key = String(monthKey || "").trim();
+  const bucketKey = normalizeDashboardPaymentBucket(productBucket);
+  if (!/^\d{4}-\d{2}$/.test(key) || !bucketKey) {
+    return {
+      payments: [],
+      pagination: { page: 1, limit, total: 0, pages: 1, hasMore: false },
+      summary: { count: 0, totalAmount: 0 },
+      type: productBucket,
+      month: key,
+    };
+  }
+
+  const monthRows = await listDashboardPaymentsForBucketMonth(key, bucketKey);
+  const paged = paginateItems(monthRows, page, limit, 200);
+  const { coachNames, usersById } = await loadDashboardPaymentContext(paged.items);
+  const payments = paged.items.map((row) => toPaymentRow(row, coachNames, usersById));
+  const totalAmount = roundMoney(
+    monthRows.reduce((sum, row) => sum + (Number(row.totalAmount) || 0), 0),
+  );
+
+  return {
+    payments,
+    pagination: {
+      ...paged.pagination,
+      hasMore: paged.pagination.page < paged.pagination.pages,
+    },
+    summary: {
+      count: monthRows.length,
+      totalAmount,
+    },
+    type: bucketKey,
+    month: key,
+  };
+}
+
+async function listDashboardPaymentsForMonth(monthKey) {
+  const key = String(monthKey || "").trim();
+  const paidTransactions = await listPaidTransactionsForAnalytics();
+  const monthRows = (paidTransactions || []).filter((row) => transactionMonthKey(row) === key);
+  const { coachNames, usersById } = await loadDashboardPaymentContext(monthRows);
   return monthRows
     .map((row) => toPaymentRow(row, coachNames, usersById))
     .sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
@@ -731,4 +841,7 @@ module.exports = {
   getAdminDashboardStats,
   buildRevenueAnalytics,
   listDashboardPaymentsForMonth,
+  listDashboardPaymentsPaginated,
+  DASHBOARD_PAYMENT_BUCKETS,
+  DASHBOARD_PAYMENT_BUCKET_ORDER,
 };

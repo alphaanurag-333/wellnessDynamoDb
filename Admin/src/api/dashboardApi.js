@@ -119,19 +119,22 @@ async function fetchPaymentsFromTransactionLists(month) {
   return [...merged.values()].sort((a, b) => String(b.paidAt || "").localeCompare(String(a.paidAt || "")));
 }
 
-export async function fetchDashboardPayments(month) {
-  let dedicated = null;
+export async function fetchDashboardPayments({ month, type = "consultancy", page = 1, limit = 25 } = {}) {
   try {
     const { data } = await api.get("/account/dashboard/payments", {
       headers: authHeader(),
-      params: { month },
+      params: { month, type, page, limit },
     });
-    if (Array.isArray(data?.payments)) dedicated = data.payments;
+    return {
+      payments: Array.isArray(data?.payments) ? data.payments : [],
+      pagination: data?.pagination || { page, limit, total: 0, pages: 1, hasMore: false },
+      summary: data?.summary || { count: 0, totalAmount: 0 },
+      type: data?.type || type,
+      month: data?.month || month,
+    };
   } catch (error) {
     const status = error?.response?.status;
     if (status === 401 || status === 403) normalizeApiError(error);
+    throw error;
   }
-  if (dedicated?.length) return dedicated;
-  const listed = await fetchPaymentsFromTransactionLists(month);
-  return listed.length ? listed : dedicated || [];
 }

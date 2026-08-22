@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchDashboardPayments } from "../api/dashboardApi.js";
 import { pushOnboardingReminder } from "../api/onboardingApi.js";
 import { fetchTeamMembers, sendTeamReminder } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -59,7 +58,6 @@ import {
   PRODUCT_COLORS,
   findFinancialYear,
   formatRevenue,
-  enrichLivePayments,
   resolveRevenueAnalytics,
 } from "../data/revenueAnalytics.js";
 
@@ -604,9 +602,6 @@ export function AdminDashboard({
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
   const [paymentsModalOpen, setPaymentsModalOpen] = useState(false);
-  const [monthPayments, setMonthPayments] = useState([]);
-  const [paymentsLoading, setPaymentsLoading] = useState(false);
-  const [paymentsError, setPaymentsError] = useState("");
 
   const champMonthOptions = liveCommunity ? (liveLeaderboard?.months || []) : [];
   const champ = liveCommunity
@@ -659,29 +654,6 @@ export function AdminDashboard({
     const month = liveLeaderboard?.monthYear;
     if (month) setChampMonth(month);
   }, [liveLeaderboard?.monthYear]);
-
-  useEffect(() => {
-    if (!paymentsModalOpen || !selectedMonthKey) return undefined;
-    let cancelled = false;
-    setPaymentsLoading(true);
-    setPaymentsError("");
-    fetchDashboardPayments(selectedMonthKey)
-      .then((rows) => {
-        if (cancelled) return;
-        setMonthPayments(enrichLivePayments(rows, { clients, healthConcerns }));
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        setMonthPayments([]);
-        setPaymentsError(error?.message || "Couldn’t load payments for this month.");
-      })
-      .finally(() => {
-        if (!cancelled) setPaymentsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [paymentsModalOpen, selectedMonthKey, clients, healthConcerns]);
 
   const selectedMonthRow = fyMonths.find((row) => row.month === selectedMonthKey) || fyMonths.at(-1) || null;
   const previousMonthRow = selectedMonthRow
@@ -2078,10 +2050,10 @@ export function AdminDashboard({
 
       <PaymentsModal
         open={paymentsModalOpen}
+        monthKey={selectedMonthKey}
         monthLabel={selectedMonthRow?.displayLabel}
-        payments={monthPayments}
-        loading={paymentsLoading}
-        error={paymentsError}
+        clients={clients}
+        healthConcerns={healthConcerns}
         onClose={() => setPaymentsModalOpen(false)}
         onOpenClient={openPaymentClient}
       />

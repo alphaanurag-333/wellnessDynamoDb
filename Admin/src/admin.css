@@ -2600,6 +2600,8 @@
 /* Dashboard payments modal */
 .updated-admin .ua-payments-modal {
   width: 760px;
+  height: min(560px, 82vh);
+  min-height: min(560px, 82vh);
 }
 
 .updated-admin .ua-payments-modal__icon {
@@ -2613,9 +2615,73 @@
   color: #5e6ad2;
 }
 
+.updated-admin .ua-payments-modal__head {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+
+.updated-admin .ua-payments-modal__tabs {
+  flex: 1 1 220px;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.updated-admin .ua-payments-modal__tabs .ua-pill-tabs {
+  margin: 0;
+  max-width: 100%;
+}
+
 .updated-admin .ua-payments-modal__body {
   padding: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.updated-admin .ua-payments-modal__content {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.updated-admin .ua-payments-modal__state {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 18px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted-light);
+  background: #fff;
+}
+
+.updated-admin .ua-payments-modal__state--message {
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.updated-admin .ua-payments-modal__spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #e8edf4;
+  border-top-color: #5e6ad2;
+  border-radius: 50%;
+  animation: ua-payments-spin 0.75s linear infinite;
+}
+
+@keyframes ua-payments-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .updated-admin .ua-payments-modal__table-head,
@@ -2697,6 +2763,45 @@
   font-weight: 750;
   color: #2e7d32;
   text-align: right;
+}
+
+.updated-admin .ua-payments-modal__loadmore {
+  display: flex;
+  justify-content: center;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.updated-admin .ua-payments-modal__loadmore-btn {
+  min-width: 120px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.updated-admin .ua-payments-modal__loadmore-btn:hover:not(:disabled) {
+  border-color: #cbd5e6;
+  background: #f7f9fc;
+}
+
+.updated-admin .ua-payments-modal__loadmore-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.updated-admin .ua-payments-modal__end {
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--border-soft);
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted-light);
 }
 
 .updated-admin .ua-payments-modal__table-head > div:last-child {
@@ -52009,7 +52114,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-preview-content-web__table,
 .updated-admin .ua-prog-cat-modal__body,
 .updated-admin .ua-prog-progress-modal__body,
-.updated-admin .ua-payments-modal__body,
+.updated-admin .ua-payments-modal__content,
 .updated-admin .leaderboard {
   overflow-x: auto;
   max-width: 100%;

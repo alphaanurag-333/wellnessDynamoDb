@@ -1,7 +1,11 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { resolveStaffActor } = require("../staffAccess");
-const { getAdminDashboardStats, listDashboardPaymentsForMonth } = require("../../services/adminDashboardStatsService");
+const {
+  getAdminDashboardStats,
+  listDashboardPaymentsPaginated,
+  DASHBOARD_PAYMENT_BUCKET_ORDER,
+} = require("../../services/adminDashboardStatsService");
 const { getCoachDashboardStats } = require("../../services/coachDashboardStatsService");
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
@@ -80,12 +84,23 @@ exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
     throw new AppError("month must be YYYY-MM", 400);
   }
 
-  const payments = await listDashboardPaymentsForMonth(month);
+  const type = String(req.query.type || req.query.productType || "consultancy").trim().toLowerCase();
+  if (!DASHBOARD_PAYMENT_BUCKET_ORDER.includes(type)) {
+    throw new AppError("type must be consultancy, program, or app", 400);
+  }
+
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
+  const result = await listDashboardPaymentsPaginated({ monthKey: month, productBucket: type, page, limit });
+
   return res.status(200).json({
     status: true,
     message: "Dashboard payments fetched",
-    month,
-    payments,
+    month: result.month,
+    type: result.type,
+    payments: result.payments,
+    pagination: result.pagination,
+    summary: result.summary,
   });
 });
 

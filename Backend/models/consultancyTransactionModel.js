@@ -259,11 +259,35 @@ async function listTransactionsByUserId(userId, { page = 1, limit = 20, paymentS
   });
 }
 
+function appendProductTypeFilter(filterParts, extraNames, extraValues, { productType, productTypes } = {}) {
+  const types = Array.isArray(productTypes) && productTypes.length
+    ? productTypes.map((value) => normalizeProductType(value)).filter(Boolean)
+    : productType
+      ? [normalizeProductType(productType)]
+      : [];
+  if (!types.length) return;
+
+  extraNames["#productType"] = "productType";
+  if (types.length === 1) {
+    filterParts.push("#productType = :productType");
+    extraValues[":productType"] = types[0];
+    return;
+  }
+
+  const orParts = types.map((value, index) => {
+    const token = `:productType${index}`;
+    extraValues[token] = value;
+    return `#productType = ${token}`;
+  });
+  filterParts.push(`(${orParts.join(" OR ")})`);
+}
+
 async function listAllTransactions({
   page = 1,
   limit = 20,
   paymentStatus,
   productType,
+  productTypes,
   referralCode,
   coachId,
   fromDate,
@@ -275,11 +299,7 @@ async function listAllTransactions({
   const extraNames = {};
   const extraValues = {};
 
-  if (productType) {
-    filterParts.push("#productType = :productType");
-    extraNames["#productType"] = "productType";
-    extraValues[":productType"] = normalizeProductType(productType);
-  }
+  appendProductTypeFilter(filterParts, extraNames, extraValues, { productType, productTypes });
   if (referralCode) {
     filterParts.push("referralCodeUsed = :referralCodeUsed");
     extraValues[":referralCodeUsed"] = String(referralCode).trim().toUpperCase();
