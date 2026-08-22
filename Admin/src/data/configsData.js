@@ -666,7 +666,7 @@ export const CONFIG_GROUPS = {
           note: "Acute & chronic disorder catalog · HealthDisorder table",
           owner: "Admin / Support",
           app: true,
-          web: true,
+          web: false,
           live: true,
           on: true,
           tags: ["Text"],

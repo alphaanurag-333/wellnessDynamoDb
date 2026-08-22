@@ -27,6 +27,11 @@ export const BANNER_COPY = [
   },
 ];
 
+export const BANNER_SURFACE_EDITOR = {
+  appOn: true,
+  webOn: true,
+};
+
 export function emptyBannerEditor() {
   return {
     id: "",

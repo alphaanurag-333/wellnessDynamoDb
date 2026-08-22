@@ -8,6 +8,7 @@ import {
 import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const PAGE_SIZE = 10;
 const TITLE_MAX_LEN = 100;
@@ -132,8 +133,7 @@ function SymptomsEditor({ value, disabled, onChange }) {
   );
 }
 
-export function HealthDisordersSection({ onToast }) {
-  const [items, setItems] = useState([]);
+export function HealthDisordersSection({ items, setItems, editor, setEditor, onToast }) {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -355,6 +355,15 @@ export function HealthDisordersSection({ onToast }) {
 
   return (
     <div className="ua-cfg-bl ua-cfg-hd">
+      <SectionSurfacePanel
+        sectionId="health-disorders"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+        title="App visibility"
+        subtitle="Shown in the mobile app Wellnesspedia screen. Not used on the website yet."
+        showWeb={false}
+      />
       <Panel
         title="Health disorders"
         subtitle={

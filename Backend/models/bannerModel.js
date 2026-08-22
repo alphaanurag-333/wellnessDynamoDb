@@ -278,12 +278,21 @@ async function deleteBanner(id) {
   }));
 }
 
-async function listBanners({ page = 1, limit = 10, status, search, bannerType } = {}) {
+function matchesPlatform(item, platform) {
+  const channel = String(platform || "").trim().toLowerCase();
+  if (channel !== "app" && channel !== "web") return true;
+  if (channel === "app") return parseBool(item.appOn, true);
+  return parseBool(item.webOn, true);
+}
+
+async function listBanners({ page = 1, limit = 10, status, search, bannerType, platform } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedType = normalizeBannerType(bannerType, "");
+  const normalizedPlatform = String(platform || "").trim().toLowerCase();
+  const needsPlatformFilter = normalizedPlatform === "app" || normalizedPlatform === "web";
   const searchFilter = buildContainsFilter(["title", "description"], search);
   const realSearch = String(searchFilter.search || "").trim().toLowerCase();
-  const needsMemoryFilter = Boolean(normalizedType) || Boolean(realSearch);
+  const needsMemoryFilter = Boolean(normalizedType) || Boolean(realSearch) || needsPlatformFilter;
 
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
@@ -297,6 +306,7 @@ async function listBanners({ page = 1, limit = 10, status, search, bannerType } 
     searchFn: needsMemoryFilter
       ? (item) => {
           if (normalizedType && resolveBannerType(item) !== normalizedType) return false;
+          if (needsPlatformFilter && !matchesPlatform(item, normalizedPlatform)) return false;
           if (!realSearch) return true;
           return ["title", "description"].some((field) => fieldMatchesTerm(item, field, realSearch));
         }

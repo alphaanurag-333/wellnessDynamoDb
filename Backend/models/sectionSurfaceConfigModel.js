@@ -5,6 +5,7 @@ const TABLE = "SectionSurfaceConfig";
 
 /** Allowed section keys → DynamoDB id */
 const SECTION_CONFIG_IDS = Object.freeze({
+  banner: "banner-config",
   transformation: "transformation-config",
   "real-people": "real-people-config",
   voice: "voice-config",
@@ -13,6 +14,8 @@ const SECTION_CONFIG_IDS = Object.freeze({
   recipes: "recipes-config",
   yoga: "yoga-config",
   "client-review": "client-review-config",
+  faq: "faq-config",
+  "health-disorders": "health-disorders-config",
 });
 
 function parseBool(value, fallback = true) {

@@ -31,6 +31,8 @@ export function SectionSurfacePanel({
   onToast,
   title = "Where this is live",
   subtitle = "Turn it on for the app, the website, or both.",
+  showApp = true,
+  showWeb = true,
 }) {
   const [local, setLocal] = useState({ appOn: true, webOn: true });
   const [busy, setBusy] = useState(false);
@@ -105,6 +107,8 @@ export function SectionSurfacePanel({
           webOn={surface.webOn}
           busy={busy}
           onPatch={patchConfig}
+          showApp={showApp}
+          showWeb={showWeb}
         />
       )}
     />

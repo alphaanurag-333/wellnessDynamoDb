@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   fetchCofounderMessage,
+  fetchFaqs,
   fetchLeadershipNotes,
   fetchWellnessTeamNotes,
   fetchStaticPageBySlugSafe,
@@ -28,10 +29,7 @@ import {
   Target,
   Eye,
   Sparkles,
-  Gauge,
-  Tags,
-  CreditCard,
-  Brain,
+  HelpCircle,
 } from "lucide-react";
 import { FiArrowRight } from "react-icons/fi";
 import Methodology from "./Methodology.jsx";
@@ -101,39 +99,8 @@ const AboutUsSection = () => {
     { title: "Stress Management", icon: <Dumbbell size={18} /> },
   ];
 
-  const faqData = [
-    {
-      id: 1,
-      icon: <Gauge size={18} />,
-      question: "Our approach includes the following.",
-      answer:
-        "Our healing process starts with understanding your health history, lifestyle, nutrition, sleep, stress levels and long-term wellness goals. Every recommendation is personalized to your body and lifestyle.",
-    },
-    {
-      id: 2,
-      icon: <Tags size={18} />,
-      question:
-        "Delve deep into health history, current lifestyle and aspired health goals.",
-      answer:
-        "We carefully analyze your reports, eating habits, stress levels, exercise routine and medical history before preparing your wellness roadmap.",
-    },
-    {
-      id: 3,
-      icon: <CreditCard size={18} />,
-      question: "There is no one-size-fits-all solution.",
-      answer:
-        "Each individual receives a customized wellness plan that combines nutrition, diagnostics, therapy and sustainable lifestyle changes.",
-    },
-    // {
-    //   id: 4,
-    //   icon: <Brain size={18} />,
-    //   question:
-    //     "Healing is a continuous journey.",
-    //   answer:
-    //     "Regular follow-ups, continuous monitoring and personalized guidance help you achieve long-lasting health improvements.",
-    // },
-  ];
-
+  const [faqItems, setFaqItems] = useState([]);
+  const [faqItemsLoading, setFaqItemsLoading] = useState(true);
   const [cofounderMessage, setCofounderMessage] = useState(null);
   const [leadershipNotes, setLeadershipNotes] = useState([]);
   const [leadershipNotesLoading, setLeadershipNotesLoading] = useState(true);
@@ -142,6 +109,35 @@ const AboutUsSection = () => {
   const [aboutPage, setAboutPage] = useState(null);
   const [pillarPages, setPillarPages] = useState({});
   const [aboutPagesLoaded, setAboutPagesLoaded] = useState(false);
+
+  const faqData = faqItems.map((item, index) => ({
+    id: item.id || `faq-${index}`,
+    icon: <HelpCircle size={18} />,
+    question: String(item.question || "").trim(),
+    answer: String(item.answer || "").trim(),
+  })).filter((item) => item.question && item.answer);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setFaqItemsLoading(true);
+      try {
+        const response = await fetchFaqs({ page: 1, limit: 50, platform: "web" });
+        if (!cancelled) {
+          setFaqItems(Array.isArray(response?.faqs) ? response.faqs : []);
+        }
+      } catch {
+        if (!cancelled) setFaqItems([]);
+      } finally {
+        if (!cancelled) setFaqItemsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -453,6 +449,7 @@ const AboutUsSection = () => {
   </div>
 </div>
 
+              {faqItemsLoading ? null : faqData.length ? (
               <div
                 className="accordion aboutFaqAccordion"
                 id="aboutFaqAccordion"
@@ -493,6 +490,7 @@ const AboutUsSection = () => {
                   </div>
                 ))}
               </div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -144,8 +144,10 @@ function ContentPreviewWeb({ title, rows = [] }) {
   );
 }
 
-function FaqPreviewPhone({ items = [] }) {
-  const shown = items.filter((entry) => entry.shown && entry.appVisible !== false);
+function FaqPreviewPhone({ items = [], sectionEnabled = true }) {
+  const shown = sectionEnabled
+    ? items.filter((entry) => entry.shown && entry.appVisible !== false)
+    : [];
   return (
     <div className="ua-cfg-faq-live__phone-wrap">
       <div className="ua-cfg-bn-preview__phone ua-cfg-faq-live__phone">
@@ -181,8 +183,10 @@ function FaqPreviewPhone({ items = [] }) {
   );
 }
 
-function FaqPreviewWeb({ items }) {
-  const shown = items.filter((entry) => entry.shown && entry.webVisible !== false);
+function FaqPreviewWeb({ items, sectionEnabled = true }) {
+  const shown = sectionEnabled
+    ? items.filter((entry) => entry.shown && entry.webVisible !== false)
+    : [];
 
   return (
     <div className="ua-cfg-pt-live-preview ua-cfg-faq-live__web">
@@ -248,13 +252,17 @@ function SubscriptionPreview({ fySettings, surface, item }) {
   );
 }
 
-function FaqPreview({ items, surface }) {
+function FaqPreview({ items, surface, sectionEnabled = true }) {
   return (
     <div className={`ua-cfg-faq-live ua-cfg-faq-live--${surface}`}>
       <span className={`ua-cfg-bn-preview__label ${surface === "app" ? "is-app" : "is-web"}`}>
         {surface === "app" ? "App" : "Website"}
       </span>
-      {surface === "web" ? <FaqPreviewWeb items={items} /> : <FaqPreviewPhone items={items} />}
+      {surface === "web" ? (
+        <FaqPreviewWeb items={items} sectionEnabled={sectionEnabled} />
+      ) : (
+        <FaqPreviewPhone items={items} sectionEnabled={sectionEnabled} />
+      )}
     </div>
   );
 }
@@ -1363,7 +1371,10 @@ function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" })
   );
 }
 
-function BannerPreview({ editor = {}, surface, item }) {
+function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
+  const sectionWebOn = surfaceEditor.webOn !== false;
+  const sectionAppOn = surfaceEditor.appOn !== false;
+  const surfaceOn = surface === "app" ? sectionAppOn : sectionWebOn;
   const placement = bannerPlacementById(editor.placement);
   const image = surface === "app"
     ? (editor.mobilePreview || editor.mobileImage || editor.imagePreview || editor.image)
@@ -1371,7 +1382,7 @@ function BannerPreview({ editor = {}, surface, item }) {
   const headline = typeof editor.headline === "string" ? editor.headline : "Banner";
   const body = asCopyString(editor.body);
 
-  const bodyNode = (
+  const bodyNode = surfaceOn ? (
     <div className="ua-cfg-ft-preview">
       <div className="ua-cfg-ft-preview__bar">
         <span className="ua-cfg-pt-live-preview__brand">IR</span>
@@ -1382,6 +1393,10 @@ function BannerPreview({ editor = {}, surface, item }) {
         {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
       </div>
       {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}
+    </div>
+  ) : (
+    <div className="ua-cfg-ft-preview">
+      <p className="ua-cfg-panel__sub">Banners are disabled on this surface.</p>
     </div>
   );
 
@@ -1808,8 +1823,19 @@ function renderPreviewBody(item, surface, previewState) {
   switch (item.id) {
     case "app-language-disable":
       return <LanguagePreview hindiOn={previewState.hindiOn} surface={surface} item={item} />;
-    case "app-faq":
-      return <FaqPreview items={previewState.faqItems ?? []} surface={surface} />;
+    case "app-faq": {
+      const faqEditor = previewState.faqEditor ?? {};
+      const sectionEnabled = surface === "app"
+        ? faqEditor.appOn !== false
+        : faqEditor.webOn !== false;
+      return (
+        <FaqPreview
+          items={previewState.faqItems ?? []}
+          surface={surface}
+          sectionEnabled={sectionEnabled}
+        />
+      );
+    }
     case "app-program":
       return <ProgramPreview rows={previewState.programRows ?? []} surface={surface} item={item} />;
     case "app-subscriptions":
@@ -2081,6 +2107,7 @@ function renderPreviewBody(item, surface, previewState) {
       return (
         <BannerPreview
           editor={previewState.bannerEditor}
+          surfaceEditor={previewState.bannerSurfaceEditor}
           surface={surface}
           item={item}
         />

@@ -19,7 +19,7 @@ function buildSurfaceConfirm(field, nextValue) {
   };
 }
 
-export function SectionSurfaceToggles({ appOn, webOn, busy, onPatch }) {
+export function SectionSurfaceToggles({ appOn, webOn, busy, onPatch, showApp = true, showWeb = true }) {
   const [pending, setPending] = useState(null);
 
   function requestPatch(field) {
@@ -37,30 +37,34 @@ export function SectionSurfaceToggles({ appOn, webOn, busy, onPatch }) {
   return (
     <>
       <div className="ua-cfg-bn-surfaces">
-        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${appOn ? " is-on" : ""}`}>
-          <span>App {appOn ? "Enabled" : "Disabled"}</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${appOn ? " ua-toggle--on" : ""}`}
-            aria-pressed={appOn}
-            disabled={busy}
-            onClick={() => requestPatch("appOn")}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
-        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${webOn ? " is-on" : ""}`}>
-          <span>Web {webOn ? "Enabled" : "Disabled"}</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${webOn ? " ua-toggle--on" : ""}`}
-            aria-pressed={webOn}
-            disabled={busy}
-            onClick={() => requestPatch("webOn")}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
+        {showApp ? (
+          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${appOn ? " is-on" : ""}`}>
+            <span>App {appOn ? "Enabled" : "Disabled"}</span>
+            <button
+              type="button"
+              className={`ua-toggle ua-toggle--sm${appOn ? " ua-toggle--on" : ""}`}
+              aria-pressed={appOn}
+              disabled={busy}
+              onClick={() => requestPatch("appOn")}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+          </div>
+        ) : null}
+        {showWeb ? (
+          <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${webOn ? " is-on" : ""}`}>
+            <span>Web {webOn ? "Enabled" : "Disabled"}</span>
+            <button
+              type="button"
+              className={`ua-toggle ua-toggle--sm${webOn ? " ua-toggle--on" : ""}`}
+              aria-pressed={webOn}
+              disabled={busy}
+              onClick={() => requestPatch("webOn")}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <ConfirmDialog

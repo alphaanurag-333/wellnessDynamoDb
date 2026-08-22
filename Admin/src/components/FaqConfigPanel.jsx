@@ -7,6 +7,7 @@ import {
   adminUpdateFaq,
 } from "../api/faqApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -191,7 +192,7 @@ function applyOrder(items, fromId, toId) {
   return next.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
 }
 
-export function FaqConfigPanel({ items, setItems, onToast }) {
+export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) {
   const shownCount = items.filter((item) => item.shown).length;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -419,7 +420,14 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
   }
 
   return (
-    <Panel
+    <>
+      <SectionSurfacePanel
+        sectionId="faq"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
+      <Panel
       className="ua-cfg-faq-shell"
       title="Questions & answers"
       subtitle={
@@ -563,5 +571,6 @@ export function FaqConfigPanel({ items, setItems, onToast }) {
         </div>
       )}
     </Panel>
+    </>
   );
 }

@@ -150,10 +150,14 @@ function toPublicSiteMonthlyChampion(post, user) {
 
 exports.getActiveBanners = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("banner", platform))) {
+    return res.status(200).json(emptyPagedList("banners", page, limit));
+  }
   const rawType = String(req.query.bannerType || req.query.type || "main").trim().toLowerCase();
   const bannerType = /^[a-z0-9_]{1,64}$/.test(rawType) ? rawType : "main";
   const data = resolveListMedia(
-    await listBanners({ page, limit, status: "active", bannerType }),
+    await listBanners({ page, limit, status: "active", bannerType, platform }),
     "banners",
     ["image", "mobileImage"]
   );
@@ -162,7 +166,10 @@ exports.getActiveBanners = asyncHandler(async (req, res) => {
 
 exports.getActiveFaqs = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("faq", platform))) {
+    return res.status(200).json(emptyPagedList("faqs", page, limit));
+  }
   const data = await listFaqs({ page, limit, status: "active", platform });
   return res.status(200).json({ status: true, faqs: data.faqs, pagination: data.pagination });
 });
@@ -324,6 +331,10 @@ exports.getActiveHealthConcerns = asyncHandler(async (req, res) => {
 
 exports.getActiveHealthDisorders = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("health-disorders", platform))) {
+    return res.status(200).json(emptyPagedList("healthDisorders", page, limit));
+  }
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
   const data = await listHealthDisorders({
     page,

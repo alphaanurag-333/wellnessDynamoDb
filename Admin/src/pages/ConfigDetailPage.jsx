@@ -73,7 +73,7 @@ import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
 import { CONTACT_PAGE_BLOCKS } from "../data/contactConfigData.js";
 import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
 import { createDefaultLogoSlots } from "../data/logoConfigData.js";
-import { emptyBannerEditor } from "../data/bannerConfigData.js";
+import { BANNER_SURFACE_EDITOR, emptyBannerEditor } from "../data/bannerConfigData.js";
 import { TRANSFORMATION_EDITOR } from "../data/transformationConfigData.js";
 import { CLIENT_REVIEW_EDITOR } from "../data/clientReviewConfigData.js";
 import { REAL_PEOPLE_EDITOR } from "../data/realPeopleConfigData.js";
@@ -1347,6 +1347,9 @@ export function ConfigDetailPage() {
 
   const [hindiOn, setHindiOn] = useState(false);
   const [faqItems, setFaqItems] = useState([]);
+  const [faqEditor, setFaqEditor] = useState({ appOn: true, webOn: true });
+  const [hdItems, setHdItems] = useState([]);
+  const [hdEditor, setHdEditor] = useState({ appOn: true, webOn: true });
   const [programRows, setProgramRows] = useState([]);
   const [subRows, setSubRows] = useState([]);
   const [fySubscriptionSettings, setFySubscriptionSettings] = useState(APP_SUBSCRIPTION_FY_DEFAULTS);
@@ -1405,6 +1408,7 @@ export function ConfigDetailPage() {
   const [logoSlots, setLogoSlots] = useState(createDefaultLogoSlots);
   const [locations, setLocations] = useState([]);
   const [bannerEditor, setBannerEditor] = useState(() => emptyBannerEditor());
+  const [bannerSurfaceEditor, setBannerSurfaceEditor] = useState(BANNER_SURFACE_EDITOR);
   const [bannerItems, setBannerItems] = useState([]);
   const [championItems, setChampionItems] = useState([]);
   const [birthdayPosts, setBirthdayPosts] = useState([]);
@@ -1595,7 +1599,7 @@ export function ConfigDetailPage() {
           : item.id === "app-onboarding-video"
             ? onboardingCoaches.some((entry) => entry.live)
         : item.id === "app-faq"
-          ? faqItems.some((entry) => entry.shown)
+          ? (faqEditor.appOn || faqEditor.webOn) && faqItems.some((entry) => entry.shown)
           : item.id === "app-medical-questionnaire"
             ? medicalQuestions.some((entry) => entry.shown)
             : item.id === "app-health-progress"
@@ -1654,7 +1658,8 @@ export function ConfigDetailPage() {
               : item.id === "web-location"
                 ? locations.some((entry) => entry.live)
               : item.id === "common-banner"
-                ? bannerItems.some((entry) => entry.shown && (entry.appOn || entry.webOn))
+                ? (bannerSurfaceEditor.appOn || bannerSurfaceEditor.webOn)
+                  && bannerItems.some((entry) => entry.shown && (entry.appOn || entry.webOn))
               : item.id === "common-champion"
                 ? championItems.some((entry) => entry.live)
               : item.id === "common-birthday"
@@ -1681,7 +1686,7 @@ export function ConfigDetailPage() {
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
               : item.id === "common-health-disorders"
-                ? true
+                ? hdEditor.appOn && hdItems.some((entry) => entry.status === "active")
               : item.id === "common-recipes"
                 ? (rcEditor.appOn || rcEditor.webOn) && rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
@@ -1706,7 +1711,15 @@ export function ConfigDetailPage() {
           />
         );
       case "app-faq":
-        return <FaqConfigPanel items={faqItems} setItems={setFaqItems} onToast={onToast} />;
+        return (
+          <FaqConfigPanel
+            items={faqItems}
+            setItems={setFaqItems}
+            editor={faqEditor}
+            setEditor={setFaqEditor}
+            onToast={onToast}
+          />
+        );
       case "app-program":
         if (coachCheckoutLoading) {
           return (
@@ -2097,6 +2110,8 @@ export function ConfigDetailPage() {
             setEditor={setBannerEditor}
             items={bannerItems}
             setItems={setBannerItems}
+            surfaceEditor={bannerSurfaceEditor}
+            setSurfaceEditor={setBannerSurfaceEditor}
             onToast={onToast}
           />
         );
@@ -2214,7 +2229,15 @@ export function ConfigDetailPage() {
           />
         );
       case "common-health-disorders":
-        return <HealthDisordersSection onToast={onToast} />;
+        return (
+          <HealthDisordersSection
+            items={hdItems}
+            setItems={setHdItems}
+            editor={hdEditor}
+            setEditor={setHdEditor}
+            onToast={onToast}
+          />
+        );
       case "common-recipes":
         return (
           <RecipesSection
@@ -2298,6 +2321,7 @@ export function ConfigDetailPage() {
         previewState={{
           hindiOn,
           faqItems,
+          faqEditor,
           programRows,
           subscriptionRows: subRows,
           fySubscriptionSettings,
@@ -2338,6 +2362,7 @@ export function ConfigDetailPage() {
           logoSlots,
           locations,
           bannerEditor,
+          bannerSurfaceEditor,
           bannerItems,
           championItems,
           birthdayPosts,

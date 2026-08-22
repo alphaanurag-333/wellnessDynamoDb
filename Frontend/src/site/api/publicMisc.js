@@ -9,6 +9,24 @@ export async function getPublicAppConfig() {
   }
 }
 
+export async function fetchFaqs(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/faqs", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchHealthDisorders(params = {}) {
+  try {
+    const { data } = await api.get("/public/misc/health-disorders", { params });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchClientTestimonials(params = {}) {
   try {
     const { data } = await api.get("/public/misc/client-testimonials", { params });

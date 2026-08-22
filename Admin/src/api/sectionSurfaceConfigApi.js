@@ -2,6 +2,7 @@ import api, { authHeader, normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
 
 export const SECTION_SURFACE_IDS = Object.freeze([
+  "banner",
   "transformation",
   "real-people",
   "voice",
@@ -10,6 +11,8 @@ export const SECTION_SURFACE_IDS = Object.freeze([
   "recipes",
   "yoga",
   "client-review",
+  "faq",
+  "health-disorders",
 ]);
 
 function tokenOrStored(token) {
