@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { coverLayout, cropImageToFile } from "../utils/cropImage.js";
 
 const CROP_RATIOS = ["Original", "1:1", "4:5", "3:4", "4:3", "16:9"];
 
 function cropAspectCss(ratio, originalAspectCss) {
-  if (ratio === "Original") return originalAspectCss;
+  if (ratio === "Original") {
+    return originalAspectCss && originalAspectCss !== "auto" ? originalAspectCss : undefined;
+  }
   return ratio.replace(":", " / ");
 }
 
@@ -12,7 +14,7 @@ export function ImageCropModal({
   open,
   label = "image",
   file,
-  previewUrl,
+  previewUrl: previewUrlProp = "",
   busy = false,
   defaultRatio = "Original",
   originalAspectCss = "16 / 9",
@@ -26,18 +28,64 @@ export function ImageCropModal({
   const [zoom, setZoom] = useState(100);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [cropping, setCropping] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (!open || !file) {
+      setLocalPreviewUrl("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(file);
+    setLocalPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [open, file]);
 
   useEffect(() => {
     if (!open) return undefined;
     setRatio(defaultRatio);
     setZoom(100);
     setPan({ x: 0, y: 0 });
+    setImageSize({ width: 0, height: 0 });
     setCropping(false);
     return undefined;
-  }, [open, previewUrl, defaultRatio]);
+  }, [open, file, defaultRatio]);
 
+  const previewUrl = localPreviewUrl || previewUrlProp;
   const zoomFactor = zoom / 100;
+  const naturalAspectCss =
+    imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : originalAspectCss;
+  const viewportAspectCss = cropAspectCss(ratio, naturalAspectCss);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    if (!open || !viewport) return undefined;
+
+    const updateSize = () => {
+      setViewportSize({
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [open, viewportAspectCss, imageSize.width, imageSize.height]);
+
+  const layout =
+    imageSize.width && viewportSize.width
+      ? coverLayout(
+          imageSize.width,
+          imageSize.height,
+          viewportSize.width,
+          viewportSize.height,
+          zoomFactor,
+          pan,
+        )
+      : null;
 
   function clampPanTo(nextPan, nextZoom = zoomFactor) {
     const viewport = viewportRef.current;
@@ -99,8 +147,6 @@ export function ImageCropModal({
 
   if (!open) return null;
   const disabled = busy || cropping;
-  const naturalAspectCss =
-    imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : originalAspectCss;
 
   return (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -143,7 +189,7 @@ export function ImageCropModal({
           <div
             ref={viewportRef}
             className="ua-cfg-mv-upload-modal__crop-inner ua-cfg-lg-crop-viewport"
-            style={{ aspectRatio: cropAspectCss(ratio, naturalAspectCss) }}
+            style={viewportAspectCss ? { aspectRatio: viewportAspectCss } : undefined}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
@@ -151,6 +197,7 @@ export function ImageCropModal({
           >
             {previewUrl ? (
               <img
+                key={previewUrl}
                 className="ua-cfg-lg-crop-preview"
                 src={previewUrl}
                 alt=""
@@ -161,9 +208,16 @@ export function ImageCropModal({
                     height: event.currentTarget.naturalHeight,
                   });
                 }}
-                style={{
-                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomFactor})`,
-                }}
+                style={
+                  layout
+                    ? {
+                        width: layout.renderedW,
+                        height: layout.renderedH,
+                        left: (viewportSize.width - layout.renderedW) / 2 + layout.pan.x,
+                        top: (viewportSize.height - layout.renderedH) / 2 + layout.pan.y,
+                      }
+                    : undefined
+                }
               />
             ) : null}
             <span className="ua-cfg-mv-upload-modal__grid" aria-hidden="true" />

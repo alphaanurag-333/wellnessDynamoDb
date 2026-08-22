@@ -304,10 +304,6 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
     if (draft.newPreview?.startsWith("blob:")) URL.revokeObjectURL(draft.newPreview);
   }, [draft.oldPreview, draft.newPreview]);
 
-  useEffect(() => () => {
-    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
-  }, [cropPending?.previewUrl]);
-
   function patchItem(id, patch) {
     setItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
