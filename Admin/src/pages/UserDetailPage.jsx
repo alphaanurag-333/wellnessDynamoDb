@@ -110,6 +110,8 @@ export function UserDetailPage() {
   const demoRouteBlocked = isMockNumericId(userId);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(userId) && !isMockNumericId(userId));
+  const [refreshing, setRefreshing] = useState(false);
+  const [sectionEpoch, setSectionEpoch] = useState(0);
   const [loadError, setLoadError] = useState(() => (
     isMockNumericId(userId)
       ? "Demo profile URLs are disabled. Real clients use UUID ids from the API."
@@ -276,6 +278,25 @@ export function UserDetailPage() {
     }
   }
 
+  async function refreshProfile() {
+    if (!userId || isMockNumericId(userId) || loading || refreshing) return;
+    setRefreshing(true);
+    try {
+      const row = await fetchUser(userId);
+      if (!row) {
+        onToast?.("User not found");
+        return;
+      }
+      setUser(profileFromListUser(row, userId));
+      setSectionEpoch((n) => n + 1);
+      onToast?.("Profile refreshed");
+    } catch (err) {
+      onToast?.(err?.message || "Couldn’t refresh profile");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   const showBack =
     sectionHistory.current.length > 0 ||
     section !== profileDefinition.defaultSection;
@@ -291,6 +312,8 @@ export function UserDetailPage() {
         menuHidden={menuHidden}
         onToggleMenu={() => setMenuHidden((h) => !h)}
         onSave={() => onToast("Profile saved")}
+        refreshing={refreshing}
+        onRefresh={refreshProfile}
       />
       {loadError ? (
         <p className="ua-page-head__sub" style={{ padding: "8px 16px", color: "#b42318" }}>{loadError}</p>
@@ -322,7 +345,7 @@ export function UserDetailPage() {
                     ‹ Back
                   </button>
                 ) : null}
-                <ClientProfileSectionGate section={section} label={activeMenuItem?.label}>
+                <ClientProfileSectionGate key={`${section}-${sectionEpoch}`} section={section} label={activeMenuItem?.label}>
                   {renderSection(section, user, onToast, setSection, (updatedRow) => {
                     setUser(profileFromListUser(updatedRow, userId));
                   }, { showBack, onBack: goBack })}

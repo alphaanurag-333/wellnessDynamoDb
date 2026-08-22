@@ -190,18 +190,21 @@ export function CounsellingSection({ user, onToast }) {
   }
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
+  const showShareBlock = canManage && (activeTrack?.status === "requested" || activeTrack?.status === "periods_offered");
 
   return (
     <div className="ua-cp-section ua-cp-counselling">
-      <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
-      <p className="ua-cp-placeholder__sub" style={{marginTop:"0px"}}>
-        Client requests a session, you share date and period windows, they pick one, then you confirm a fixed time.
-      </p>
+      <header className="ua-cp-counselling__head">
+        <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
+        <p className="ua-cp-placeholder__sub">
+          Client requests a session, you share date and period windows, they pick one, then you confirm a fixed time.
+        </p>
+      </header>
 
       {loading ? <p className="ua-cp-counselling__muted">Loading sessions…</p> : null}
 
       {!loading && !activeTrack ? (
-        <div className="ua-cp-counselling__empty" style={{marginTop:"0px", textAlign:"center"}}>No open counselling request. History is listed below.</div>
+        <div className="ua-cp-counselling__empty">No open counselling request. History is listed below.</div>
       ) : null}
 
       {activeTrack ? (
@@ -212,17 +215,21 @@ export function CounsellingSection({ user, onToast }) {
             </span>
             <span className="ua-cp-counselling__muted">Requested {formatWhen(activeTrack.createdAt)}</span>
           </div>
-          {activeTrack.concern ? <p className="ua-cp-counselling__concern">{activeTrack.concern}</p> : null}
 
-          {canManage && (activeTrack.status === "requested" || activeTrack.status === "periods_offered") ? (
+          {activeTrack.concern ? (
+            <p className="ua-cp-counselling__concern">{activeTrack.concern}</p>
+          ) : null}
+
+          {showShareBlock ? (
             <div className="ua-cp-counselling__block">
               <h3>Share availability</h3>
-              <div className="ua-cp-counselling__row">
+              <div className="ua-cp-counselling__row ua-cp-counselling__row--single">
                 <label>
-                  Date
+                  <span className="ua-cp-counselling__field-label">Date</span>
                   <input type="date" data-allow-future="true" value={offerDate} onChange={(e) => setOfferDate(e.target.value)} />
                 </label>
               </div>
+              <p className="ua-cp-counselling__periods-label">Period windows</p>
               <div className="ua-cp-counselling__chips">
                 {PERIODS.map((period) => {
                   const on = offerPeriods.includes(period.key);
@@ -245,14 +252,16 @@ export function CounsellingSection({ user, onToast }) {
                   );
                 })}
               </div>
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={addPendingOffer} disabled={busy}>
-                Add to list
-              </button>
+              <div className="ua-cp-counselling__offer-actions">
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={addPendingOffer} disabled={busy}>
+                  Add to list
+                </button>
+              </div>
               {pendingOffers.length ? (
-                <ul className="ua-cp-counselling__list">
+                <ul className="ua-cp-counselling__list ua-cp-counselling__pending">
                   {pendingOffers.map((row) => (
                     <li key={`${row.date}-${row.period}`}>
-                      {formatOffer(row)}
+                      <span>{formatOffer(row)}</span>
                       <button
                         type="button"
                         className="ua-cp-counselling__remove"
@@ -265,17 +274,19 @@ export function CounsellingSection({ user, onToast }) {
                 </ul>
               ) : null}
               <label className="ua-cp-counselling__notes">
-                Note to client (optional)
-                <textarea rows={2} value={coachNotes} onChange={(e) => setCoachNotes(e.target.value)} />
+                <span className="ua-cp-counselling__field-label">Note to client (optional)</span>
+                <textarea rows={3} value={coachNotes} onChange={(e) => setCoachNotes(e.target.value)} />
               </label>
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={shareAvailability} disabled={busy}>
-                {busy ? "Sharing…" : "Share with client"}
-              </button>
+              <div className="ua-cp-counselling__cta">
+                <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={shareAvailability} disabled={busy}>
+                  {busy ? "Sharing…" : "Share with client"}
+                </button>
+              </div>
             </div>
           ) : null}
 
           {activeTrack.status === "periods_offered" ? (
-            <p className="ua-cp-counselling__muted">Waiting for the client to pick a period.</p>
+            <p className="ua-cp-counselling__wait">Waiting for the client to pick a period.</p>
           ) : null}
 
           {canEdit && activeTrack.status === "period_selected" && selectedOffer ? (
@@ -286,7 +297,7 @@ export function CounsellingSection({ user, onToast }) {
               </p>
               <div className="ua-cp-counselling__row">
                 <label>
-                  Start time
+                  <span className="ua-cp-counselling__field-label">Start time</span>
                   <input
                     type="time"
                     value={fixedTime}
@@ -296,7 +307,7 @@ export function CounsellingSection({ user, onToast }) {
                   />
                 </label>
                 <label>
-                  Duration (minutes)
+                  <span className="ua-cp-counselling__field-label">Duration (minutes)</span>
                   <input
                     type="number"
                     min={15}
@@ -307,58 +318,65 @@ export function CounsellingSection({ user, onToast }) {
                   />
                 </label>
               </div>
-              <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={confirmTime} disabled={busy}>
-                {busy ? "Confirming…" : "Confirm time & create Zoom"}
-              </button>
+              <div className="ua-cp-counselling__cta">
+                <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={confirmTime} disabled={busy}>
+                  {busy ? "Confirming…" : "Confirm time & create Zoom"}
+                </button>
+              </div>
             </div>
           ) : null}
 
           {activeTrack.status === "scheduled" ? (
             <div className="ua-cp-counselling__block">
               <h3>Scheduled</h3>
-              <p>{formatWhen(activeTrack.scheduledAt)}</p>
+              <p className="ua-cp-counselling__scheduled-time">{formatWhen(activeTrack.scheduledAt)}</p>
               {activeTrack.zoomJoinUrl || activeTrack.meetingLink ? (
                 <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={activeTrack.zoomStartUrl || activeTrack.zoomJoinUrl || activeTrack.meetingLink} target="_blank" rel="noreferrer">
                   Open Zoom
                 </a>
               ) : null}
               {canEdit || canDelete ? (
-              <div className="ua-cp-counselling__actions">
-                {canEdit ? (
-                <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => patchStatus("completed")} disabled={busy}>
-                  Mark completed
-                </button>
-                ) : null}
-                {canDelete ? (
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
-                  Cancel
-                </button>
-                ) : null}
-              </div>
+                <div className="ua-cp-counselling__actions">
+                  {canEdit ? (
+                    <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => patchStatus("completed")} disabled={busy}>
+                      Mark completed
+                    </button>
+                  ) : null}
+                  {canDelete ? (
+                    <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
 
           {canDelete && activeTrack.status !== "scheduled" ? (
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
-              Cancel request
-            </button>
+            <div className="ua-cp-counselling__foot">
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => patchStatus("cancelled")} disabled={busy}>
+                Cancel request
+              </button>
+            </div>
           ) : null}
         </div>
       ) : null}
 
       <div className="ua-cp-counselling__history">
         <h3>History</h3>
-        {!tracks.length ? <p className="ua-cp-counselling__muted" style={{textAlign:"center"}}>No sessions yet.</p> : null}
-        <ul className="ua-cp-counselling__list">
-          {tracks.map((track) => (
-            <li key={track.id}>
-              <strong>{STATUS_LABEL[track.status] || track.status}</strong>
-              <span>{formatWhen(track.scheduledAt || track.createdAt)}</span>
-              {track.concern ? <span>{track.concern}</span> : null}
-            </li>
-          ))}
-        </ul>
+        {!tracks.length ? (
+          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No sessions yet.</p>
+        ) : (
+          <div className="ua-cp-counselling__history-list">
+            {tracks.map((track) => (
+              <div key={track.id} className="ua-cp-counselling__history-row">
+                <strong>{STATUS_LABEL[track.status] || track.status}</strong>
+                <span>{formatWhen(track.scheduledAt || track.createdAt)}</span>
+                <span>{track.concern || "Counselling session"}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10187,6 +10187,22 @@
   place-items: center;
   cursor: pointer;
   font-family: inherit;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.updated-admin .ua-cp-topbar__icon:hover:not(:disabled) {
+  background: #f7f9fc;
+  border-color: #cbd5e6;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-topbar__icon:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-topbar__icon--refresh.is-spinning svg {
+  animation: ua-dash-refresh-spin 0.8s linear infinite;
 }
 
 .updated-admin .ua-cp-topbar__badge {
@@ -53576,7 +53592,13 @@ scrollbar-width: thin;
 
   .updated-admin .page-head--dashboard {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 10px 12px;
+  }
+
+  .updated-admin .page-head--dashboard .page-head__actions {
+    margin-left: auto;
   }
 
   .updated-admin .page-head--split {
@@ -56891,6 +56913,29 @@ scrollbar-width: thin;
 
 /* Large phone */
 @media (max-width: 640px) {
+  .updated-admin .page-head--dashboard {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .updated-admin .page-head--dashboard .page-head__title-row {
+    margin-bottom: 4px;
+  }
+
+  .updated-admin .page-head--dashboard .page-head__meta {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .page-head--dashboard .page-head__actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .updated-admin .page-head--dashboard .ua-dash-export {
+    width: 100%;
+  }
+
   .updated-admin .ua-cfg-privacy .ua-cfg-panel__copy,
   .updated-admin .ua-cfg-privacy .ua-cfg-panel__actions {
     flex: 1 1 100%;

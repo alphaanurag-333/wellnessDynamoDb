@@ -31,6 +31,8 @@ export function ClientProfileTopbar({
   menuHidden,
   onToggleMenu,
   onSave,
+  onRefresh,
+  refreshing = false,
 }) {
   const navigate = useNavigate();
   const { can } = useViewAs();
@@ -50,6 +52,19 @@ export function ClientProfileTopbar({
       </button>
       <div className="ua-cp-topbar__title">Client profile</div>
       <div className="ua-cp-topbar__actions">
+          <button
+            type="button"
+            className={`ua-cp-topbar__icon ua-cp-topbar__icon--refresh${refreshing ? " is-spinning" : ""}`}
+            aria-label={refreshing ? "Refreshing profile" : "Refresh profile"}
+            title={refreshing ? "Refreshing…" : "Refresh"}
+            disabled={refreshing || !onRefresh}
+            onClick={onRefresh}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+          </button>
           {canEditPii ? (
             <button type="button" className="ua-cp-topbar__icon ua-cp-topbar__icon--save" title="Save profile" onClick={onSave} aria-label="Save">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
