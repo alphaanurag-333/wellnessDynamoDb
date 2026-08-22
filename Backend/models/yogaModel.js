@@ -239,10 +239,7 @@ async function listYoga({
     page,
     limit,
     maxLimit: 200,
-    sortFn:
-      !normalizedStatus || hasTypeFilter || hasCategoryFilter || hasSearch || hasVisibilityFilter
-        ? sortByOrderAsc
-        : undefined,
+    sortFn: sortByOrderAsc,
   });
 
   return {

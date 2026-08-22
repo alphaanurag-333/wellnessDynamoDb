@@ -22,6 +22,8 @@ export function mapClientTestimonial(row) {
     order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     live: row.status === "active",
     status: row.status === "active" ? "active" : "inactive",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -58,6 +60,8 @@ export async function adminUpdateClientTestimonial(token, id, fields) {
   }
   if (fields.rating !== undefined) payload.rating = fields.rating;
   if (fields.order !== undefined) payload.order = fields.order;
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   if (fields.status !== undefined) payload.status = String(fields.status);
   else if (fields.live !== undefined) payload.status = fields.live ? "active" : "inactive";
   try {

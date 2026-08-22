@@ -30,6 +30,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
 
@@ -1227,7 +1228,14 @@ export function RecipesSection({
 
   return (
     <div className="ua-cfg-rc ua-cfg-recipes">
-      {!persist ? (
+      {persist ? (
+        <SectionSurfacePanel
+          sectionId="recipes"
+          editor={editor}
+          setEditor={setEditor}
+          onToast={onToast}
+        />
+      ) : (
         <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
           <div className="ua-cfg-bn-surfaces">
             <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
@@ -1244,7 +1252,7 @@ export function RecipesSection({
             </div>
           </div>
         </Panel>
-      ) : null}
+      )}
 
       <Panel
         title={persist ? "Recipes" : "Library items"}

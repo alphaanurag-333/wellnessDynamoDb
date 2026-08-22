@@ -76,9 +76,15 @@ exports.updateClientTestimonialController = asyncHandler(async (req, res) => {
   if (req.body.order !== undefined) {
     updates.order = req.body.order;
   }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = req.body.webVisible;
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = req.body.appVisible;
+  }
 
   if (Object.keys(updates).length === 0) {
-    throw new AppError("Only description, rating, status, and order can be updated", 400);
+    throw new AppError("Only description, rating, status, order, webVisible, and appVisible can be updated", 400);
   }
 
   let clientTestimonial;

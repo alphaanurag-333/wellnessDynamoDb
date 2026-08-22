@@ -19,6 +19,7 @@ import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const EMPTY_DRAFT = {
   description: "",
@@ -219,7 +220,7 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
   );
 }
 
-export function DynamicTransformationSection({ items, setItems, onToast }) {
+export function DynamicTransformationSection({ items, setItems, editor, setEditor, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -497,6 +498,12 @@ export function DynamicTransformationSection({ items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-tf">
+      <SectionSurfacePanel
+        sectionId="transformation"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Transformations"
         subtitle={loading ? "Loading transformations…" : `${pagination.total} total · ${liveCount} live on this page · data points from Configs → Dropdowns`}

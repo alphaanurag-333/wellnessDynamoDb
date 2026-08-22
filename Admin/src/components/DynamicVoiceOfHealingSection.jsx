@@ -12,6 +12,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const EMPTY_DRAFT = {
   name: "",
@@ -172,7 +173,7 @@ function VoiceViewModal({ entry, onClose, onEdit }) {
   );
 }
 
-export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
+export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEditor, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -429,6 +430,12 @@ export function DynamicVoiceOfHealingSection({ items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-vh">
+      <SectionSurfacePanel
+        sectionId="voice"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Voice of Healing"
         subtitle={loading ? "Loading videos…" : `${pagination.total} total · ${liveCount} live on this page · cover image plus a YouTube link or uploaded video${canReorder ? " · use arrows to reorder" : ""}`}

@@ -10,6 +10,7 @@ import { asCopyString } from "../data/bannerConfigData.js";
 import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const RATING_OPTIONS = [5, 4, 3, 2, 1].map((value) => ({
   value,
@@ -160,7 +161,15 @@ function ReviewViewModal({ entry, onClose, onEdit }) {
   );
 }
 
-export function DynamicClientReviewSection({ queue, setQueue, published, setPublished, onToast }) {
+export function DynamicClientReviewSection({
+  queue,
+  setQueue,
+  published,
+  setPublished,
+  editor,
+  setEditor,
+  onToast,
+}) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -264,6 +273,24 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
     }
   }
 
+  function patchPublished(id, patch) {
+    setPublished((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+  }
+
+  async function toggleSurface(item, field) {
+    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
+    const next = !item[field];
+    const prev = item[field];
+    patchPublished(item.id, { [field]: next });
+    try {
+      const saved = await adminUpdateClientTestimonial(null, item.id, { [field]: next });
+      patchPublished(item.id, saved);
+    } catch (error) {
+      patchPublished(item.id, { [field]: prev });
+      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
+    }
+  }
+
   async function deleteItem() {
     if (!pendingDelete) return;
     const item = pendingDelete;
@@ -307,6 +334,12 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
 
   return (
     <div className="ua-cfg-cr">
+      <SectionSurfacePanel
+        sectionId="client-review"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Review queue"
         actions={(
@@ -396,18 +429,48 @@ export function DynamicClientReviewSection({ queue, setQueue, published, setPubl
                   {asCopyString(entry.quote) ? <p className="ua-cfg-cr-row__quote">{asCopyString(entry.quote)}</p> : null}
                 </div>
                 <div className="ua-cfg-cr-row__actions">
-                  <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                    {entry.live ? "LIVE" : "HIDDEN"}
-                  </span>
-                  <button
-                    type="button"
-                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                    aria-pressed={entry.live}
-                    disabled={busy}
-                    onClick={() => hide(entry)}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
+                  <div className="ua-cfg-rp-item__surfaces">
+                    <div className="ua-cfg-rp-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.webVisible ? " is-on" : ""}`}>WEB</span>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${entry.webVisible ? " ua-toggle--on" : ""}`}
+                        aria-pressed={entry.webVisible}
+                        aria-label={entry.webVisible ? "Hide on web" : "Show on web"}
+                        disabled={busy}
+                        onClick={() => toggleSurface(entry, "webVisible")}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                    <div className="ua-cfg-rp-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.appVisible ? " is-on" : ""}`}>APP</span>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${entry.appVisible ? " ua-toggle--on" : ""}`}
+                        aria-pressed={entry.appVisible}
+                        aria-label={entry.appVisible ? "Hide on app" : "Show on app"}
+                        disabled={busy}
+                        onClick={() => toggleSurface(entry, "appVisible")}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                    <div className="ua-cfg-rp-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                        {entry.live ? "LIVE" : "HIDDEN"}
+                      </span>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                        aria-pressed={entry.live}
+                        disabled={busy}
+                        onClick={() => hide(entry)}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                  </div>
                   <div className="ua-cfg-tf-item__moves">
                     <button
                       type="button"

@@ -12,6 +12,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const PAGE_SIZE = 10;
 const DEFAULT_BADGE = "A NOTE FROM LEADERSHIP";
@@ -249,7 +250,7 @@ function NoteForm({
   );
 }
 
-export function DynamicLeadershipSection({ items, setItems, onToast }) {
+export function DynamicLeadershipSection({ items, setItems, editor, setEditor, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -527,6 +528,12 @@ export function DynamicLeadershipSection({ items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-rc ua-cfg-ld">
+      <SectionSurfacePanel
+        sectionId="leadership"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Leadership notes"
         subtitle={loading ? "Loading notes…" : `${pagination.total} total · ${liveCount} live on this page${canReorder ? " · use arrows to reorder" : ""}`}

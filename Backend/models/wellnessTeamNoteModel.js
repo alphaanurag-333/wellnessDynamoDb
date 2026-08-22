@@ -260,9 +260,7 @@ async function listWellnessTeamNotes({
     page,
     limit,
     maxLimit: 200,
-    sortFn: !normalizedStatus || hasSearch || hasDesignationFilter || hasVisibilityFilter
-      ? sortByOrderAsc
-      : undefined,
+    sortFn: sortByOrderAsc,
   });
 
   return {

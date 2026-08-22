@@ -129,7 +129,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
 
     (async () => {
       try {
-        const data = await fetchClientTestimonials({ page: 1, limit: 12 });
+        const data = await fetchClientTestimonials({ page: 1, limit: 12, platform: "web" });
         if (cancelled) return;
         const rows = Array.isArray(data?.clientTestimonials) ? data.clientTestimonials : [];
         setItems(rows.map(mapTestimonial).filter(Boolean));

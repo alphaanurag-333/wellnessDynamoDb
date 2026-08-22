@@ -31,6 +31,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
 
@@ -712,10 +713,6 @@ export function YogaSection({
     return undefined;
   }, [categoryOptions, persist, setItems]);
 
-  function patch(next) {
-    setEditor((prev) => ({ ...prev, ...next }));
-  }
-
   function updateItem(id, next) {
     setItems((prev) => {
       const copy = prev.map((entry) => (entry.id === id ? { ...entry, ...next } : entry));
@@ -1124,24 +1121,12 @@ export function YogaSection({
 
   return (
     <div className="ua-cfg-rc ua-cfg-recipes">
-      {!persist ? (
-        <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
-          <div className="ua-cfg-bn-surfaces">
-            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
-              <span>App {editor.appOn ? "Enabled" : "Disabled"}</span>
-              <button type="button" className={`ua-toggle ua-toggle--sm${editor.appOn ? " ua-toggle--on" : ""}`} aria-pressed={editor.appOn} onClick={() => patch({ appOn: !editor.appOn })}>
-                <span className="ua-toggle__knob" />
-              </button>
-            </div>
-            <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn ? " is-on" : ""}`}>
-              <span>Web {editor.webOn ? "Enabled" : "Disabled"}</span>
-              <button type="button" className={`ua-toggle ua-toggle--sm${editor.webOn ? " ua-toggle--on" : ""}`} aria-pressed={editor.webOn} onClick={() => patch({ webOn: !editor.webOn })}>
-                <span className="ua-toggle__knob" />
-              </button>
-            </div>
-          </div>
-        </Panel>
-      ) : null}
+      <SectionSurfacePanel
+        sectionId="yoga"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
 
       <Panel
         title="Yoga & Pranayam"

@@ -14,6 +14,7 @@ import {
   adminUpdateBlogPost,
 } from "../api/blogApi.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { SectionSurfaceToggles } from "./SectionSurfaceToggles.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 
@@ -150,39 +151,6 @@ function BlogViewModal({ entry, onClose, onEdit }) {
             Edit post
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function SurfaceToggles({ editor, busy, onPatch }) {
-  const appOn = editor?.appOn !== false;
-  const webOn = editor?.webOn !== false;
-  return (
-    <div className="ua-cfg-bn-surfaces">
-      <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${appOn ? " is-on" : ""}`}>
-        <span>App {appOn ? "Enabled" : "Disabled"}</span>
-        <button
-          type="button"
-          className={`ua-toggle ua-toggle--sm${appOn ? " ua-toggle--on" : ""}`}
-          aria-pressed={appOn}
-          disabled={busy}
-          onClick={() => onPatch({ appOn: !appOn })}
-        >
-          <span className="ua-toggle__knob" />
-        </button>
-      </div>
-      <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${webOn ? " is-on" : ""}`}>
-        <span>Web {webOn ? "Enabled" : "Disabled"}</span>
-        <button
-          type="button"
-          className={`ua-toggle ua-toggle--sm${webOn ? " ua-toggle--on" : ""}`}
-          aria-pressed={webOn}
-          disabled={busy}
-          onClick={() => onPatch({ webOn: !webOn })}
-        >
-          <span className="ua-toggle__knob" />
-        </button>
       </div>
     </div>
   );
@@ -471,7 +439,14 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       <Panel
         title="Where this is live"
         subtitle="Turn it on for the app, the website, or both."
-        actions={<SurfaceToggles editor={editor} busy={busy} onPatch={patchConfig} />}
+        actions={(
+          <SectionSurfaceToggles
+            appOn={editor?.appOn !== false}
+            webOn={editor?.webOn !== false}
+            busy={busy}
+            onPatch={patchConfig}
+          />
+        )}
       />
 
       {summary}

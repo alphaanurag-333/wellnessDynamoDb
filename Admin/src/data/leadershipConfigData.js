@@ -1,8 +1,8 @@
 export const LEADERSHIP_TITLES = [];
 
 export const LEADERSHIP_EDITOR = {
-  appOn: false,
-  webOn: false,
+  appOn: true,
+  webOn: true,
   name: "",
   title: "",
   description: "",

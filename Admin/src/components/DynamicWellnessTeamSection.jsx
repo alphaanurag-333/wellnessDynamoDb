@@ -11,6 +11,7 @@ import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const PAGE_SIZE = 10;
 const DEFAULT_BADGE = "OUR WELLNESS TEAM";
@@ -253,7 +254,7 @@ function NoteForm({
   );
 }
 
-export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
+export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [page, setPage] = useState(1);
@@ -564,6 +565,12 @@ export function DynamicWellnessTeamSection({ items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-rc ua-cfg-ld ua-cfg-wt">
+      <SectionSurfacePanel
+        sectionId="wellness-team"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Wellness team profiles"
         subtitle={

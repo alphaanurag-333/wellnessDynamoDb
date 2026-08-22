@@ -314,10 +314,7 @@ async function listRealPeopleTestimonials({
     page: queryPage,
     limit: queryLimit,
     maxLimit: queryMaxLimit,
-    sortFn:
-      !normalizedStatus || hasSearch || useHealthConcernFilter || useVisibilityFilter
-        ? sortByOrderAsc
-        : undefined,
+    sortFn: sortByOrderAsc,
   });
 
   let realPeopleTestimonials = await enrichRealPeopleTestimonials(

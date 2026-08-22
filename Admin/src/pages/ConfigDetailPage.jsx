@@ -82,6 +82,8 @@ import {
   COFOUNDER_EDITOR,
 } from "../data/cofounderConfigData.js";
 import { editorFromCofounder } from "../api/cofounderMessageApi.js";
+import { LEADERSHIP_EDITOR } from "../data/leadershipConfigData.js";
+import { WELLNESS_TEAM_EDITOR } from "../data/wellnessTeamConfigData.js";
 import { ABOUT_BLOCKS } from "../data/aboutConfigData.js";
 import {
   RECIPES_EDITOR,
@@ -1407,18 +1409,20 @@ export function ConfigDetailPage() {
   const [championItems, setChampionItems] = useState([]);
   const [birthdayPosts, setBirthdayPosts] = useState([]);
   const [birthdayQueue, setBirthdayQueue] = useState([]);
-  const [tfEditor] = useState(TRANSFORMATION_EDITOR);
+  const [tfEditor, setTfEditor] = useState(TRANSFORMATION_EDITOR);
   const [tfItems, setTfItems] = useState([]);
-  const [crEditor] = useState(CLIENT_REVIEW_EDITOR);
+  const [crEditor, setCrEditor] = useState(CLIENT_REVIEW_EDITOR);
   const [crQueue, setCrQueue] = useState([]);
   const [crPublished, setCrPublished] = useState([]);
-  const [rpEditor] = useState(REAL_PEOPLE_EDITOR);
+  const [rpEditor, setRpEditor] = useState(REAL_PEOPLE_EDITOR);
   const [rpItems, setRpItems] = useState([]);
-  const [voiceEditor] = useState(VOICE_EDITOR);
+  const [voiceEditor, setVoiceEditor] = useState(VOICE_EDITOR);
   const [voiceItems, setVoiceItems] = useState([]);
   const [cfRecord, setCfRecord] = useState(null);
   const cfEditor = useMemo(() => editorFromCofounder(cfRecord, COFOUNDER_EDITOR), [cfRecord]);
+  const [ldEditor, setLdEditor] = useState(LEADERSHIP_EDITOR);
   const [ldItems, setLdItems] = useState([]);
+  const [wtEditor, setWtEditor] = useState(WELLNESS_TEAM_EDITOR);
   const [wtItems, setWtItems] = useState([]);
   const [aboutBlocks, setAboutBlocks] = useState(ABOUT_BLOCKS);
   const [grStats, setGrStats] = useState([]);
@@ -1657,19 +1661,19 @@ export function ConfigDetailPage() {
                 ? birthdayPosts.some((entry) => entry.live)
                   || birthdayQueue.some((entry) => entry.status === "sent")
               : item.id === "common-transformation"
-                ? tfItems.some((entry) => entry.live)
+                ? (tfEditor.appOn || tfEditor.webOn) && tfItems.some((entry) => entry.live)
               : item.id === "common-client-review"
-                ? crPublished.some((entry) => entry.live)
+                ? (crEditor.appOn || crEditor.webOn) && crPublished.some((entry) => entry.live)
               : item.id === "common-real-people"
-                ? rpItems.some((entry) => entry.live)
+                ? (rpEditor.appOn || rpEditor.webOn) && rpItems.some((entry) => entry.live)
               : item.id === "common-voice"
-                ? voiceItems.some((entry) => entry.live)
+                ? (voiceEditor.appOn || voiceEditor.webOn) && voiceItems.some((entry) => entry.live)
               : item.id === "common-cofounder"
                 ? Boolean(cfRecord?.live)
               : item.id === "common-leadership"
-                ? ldItems.some((entry) => entry.live)
+                ? (ldEditor.appOn || ldEditor.webOn) && ldItems.some((entry) => entry.live)
               : item.id === "common-wellness-team"
-                ? wtItems.some((entry) => entry.live)
+                ? (wtEditor.appOn || wtEditor.webOn) && wtItems.some((entry) => entry.live)
               : item.id === "common-about"
                 ? aboutBlocks.some((entry) => entry.shown)
               : item.id === "common-google-review"
@@ -1679,9 +1683,9 @@ export function ConfigDetailPage() {
               : item.id === "common-health-disorders"
                 ? true
               : item.id === "common-recipes"
-                ? rcItems.some((entry) => entry.live)
+                ? (rcEditor.appOn || rcEditor.webOn) && rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
-                ? ygItems.some((entry) => entry.live)
+                ? (ygEditor.appOn || ygEditor.webOn) && ygItems.some((entry) => entry.live)
               : item.id === "common-blogs"
                 ? blEditor.appOn || blEditor.webOn || blPosts.some((entry) => entry.live)
               : item.id === "feature-flags"
@@ -2119,6 +2123,8 @@ export function ConfigDetailPage() {
           <DynamicTransformationSection
             items={tfItems}
             setItems={setTfItems}
+            editor={tfEditor}
+            setEditor={setTfEditor}
             onToast={onToast}
           />
         );
@@ -2129,6 +2135,8 @@ export function ConfigDetailPage() {
             setQueue={setCrQueue}
             published={crPublished}
             setPublished={setCrPublished}
+            editor={crEditor}
+            setEditor={setCrEditor}
             onToast={onToast}
           />
         );
@@ -2137,6 +2145,8 @@ export function ConfigDetailPage() {
           <DynamicRealPeopleSection
             items={rpItems}
             setItems={setRpItems}
+            editor={rpEditor}
+            setEditor={setRpEditor}
             onToast={onToast}
           />
         );
@@ -2145,6 +2155,8 @@ export function ConfigDetailPage() {
           <DynamicVoiceOfHealingSection
             items={voiceItems}
             setItems={setVoiceItems}
+            editor={voiceEditor}
+            setEditor={setVoiceEditor}
             onToast={onToast}
           />
         );
@@ -2161,6 +2173,8 @@ export function ConfigDetailPage() {
           <DynamicLeadershipSection
             items={ldItems}
             setItems={setLdItems}
+            editor={ldEditor}
+            setEditor={setLdEditor}
             onToast={onToast}
             onOpenPreview={() => setPreviewOpen(true)}
           />
@@ -2170,6 +2184,8 @@ export function ConfigDetailPage() {
           <DynamicWellnessTeamSection
             items={wtItems}
             setItems={setWtItems}
+            editor={wtEditor}
+            setEditor={setWtEditor}
             onToast={onToast}
           />
         );
@@ -2336,7 +2352,9 @@ export function ConfigDetailPage() {
           voiceItems,
           cfEditor,
           cfRecord,
+          ldEditor,
           ldItems,
+          wtEditor,
           wtItems,
           aboutBlocks,
           grStats,

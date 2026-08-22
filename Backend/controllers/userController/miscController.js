@@ -20,6 +20,11 @@ const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
 const { getBlogConfig } = require("../../models/blogConfigModel");
+const {
+  SECTION_CONFIG_IDS,
+  resolveConfigId,
+  getSectionSurfaceConfig,
+} = require("../../models/sectionSurfaceConfigModel");
 const { listBlogPosts } = require("../../models/blogPostModel");
 const { listBlogMedia } = require("../../models/blogMediaModel");
 const { listTransformations } = require("../../models/transformationModel");
@@ -71,6 +76,41 @@ function readPaging(query, defaultLimit = 50) {
 function readSearch(query) {
   const s = String(query.search || "").trim();
   return s || undefined;
+}
+
+function readPlatform(query) {
+  const platform = String(query?.platform || "").trim().toLowerCase();
+  return platform === "app" || platform === "web" ? platform : undefined;
+}
+
+function emptyPagedList(listKey, page, limit) {
+  return {
+    status: true,
+    [listKey]: [],
+    pagination: { page, limit, total: 0, pages: 0 },
+  };
+}
+
+/**
+ * Section-level App/Web kill switch (SectionSurfaceConfig).
+ * Missing config = enabled (matches admin defaults).
+ * Returns true when the section should be served for this platform.
+ */
+async function isSectionSurfaceEnabled(section, platform) {
+  if (platform !== "app" && platform !== "web") return true;
+  const config = await getSectionSurfaceConfig(section);
+  if (!config) return true;
+  if (platform === "app") return config.appOn !== false;
+  return config.webOn !== false;
+}
+
+/** BlogConfig uses the same appOn/webOn semantics as SectionSurfaceConfig. */
+async function isBlogSurfaceEnabled(platform) {
+  if (platform !== "app" && platform !== "web") return true;
+  const config = await getBlogConfig();
+  if (!config) return true;
+  if (platform === "app") return config.appOn !== false;
+  return config.webOn !== false;
 }
 
 /** Minimal user fields safe for unauthenticated public site responses. */
@@ -176,8 +216,12 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
 
 exports.getActiveClientTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("client-review", platform))) {
+    return res.status(200).json(emptyPagedList("clientTestimonials", page, limit));
+  }
   const data = resolveListMedia(
-    await listClientTestimonials({ page, limit, status: "active" }),
+    await listClientTestimonials({ page, limit, status: "active", platform }),
     "clientTestimonials",
     ["profileImage"]
   );
@@ -206,7 +250,10 @@ exports.getActiveProgramTestimonials = asyncHandler(async (req, res) => {
 exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const healthConcernId = String(req.query.healthConcernId || "").trim() || undefined;
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("real-people", platform))) {
+    return res.status(200).json(emptyPagedList("realPeopleTestimonials", page, limit));
+  }
   const data = resolveListMedia(
     await listRealPeopleTestimonials({
       page,
@@ -227,7 +274,10 @@ exports.getActiveRealPeopleTestimonials = asyncHandler(async (req, res) => {
 
 exports.getActiveVideoTestimonials = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("voice", platform))) {
+    return res.status(200).json(emptyPagedList("videoTestimonials", page, limit));
+  }
   const data = resolveListMedia(
     await listVideoTestimonials({ page, limit, status: "active", platform }),
     "videoTestimonials",
@@ -312,7 +362,10 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
   const category = String(req.query.category || "").trim() || undefined;
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("yoga", platform))) {
+    return res.status(200).json(emptyPagedList("yoga", page, limit));
+  }
   const data = resolveListMedia(
     await listYoga({
       page,
@@ -342,9 +395,28 @@ exports.getBlogConfig = asyncHandler(async (_req, res) => {
   });
 });
 
+exports.getSectionSurfaceConfig = asyncHandler(async (req, res) => {
+  const section = String(req.params.section || "").trim().toLowerCase();
+  if (!resolveConfigId(section)) {
+    throw new AppError(
+      `Unknown section. Allowed: ${Object.keys(SECTION_CONFIG_IDS).join(", ")}`,
+      400
+    );
+  }
+  const config = await getSectionSurfaceConfig(section);
+  return res.status(200).json({
+    status: true,
+    message: config ? "Section surface config fetched" : "Section surface config not available",
+    data: config,
+  });
+});
+
 exports.getActiveBlogPosts = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isBlogSurfaceEnabled(platform))) {
+    return res.status(200).json(emptyPagedList("posts", page, limit));
+  }
   const data = resolveListMedia(
     await listBlogPosts({
       page,
@@ -386,7 +458,10 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const type = String(req.query.type || "").trim().toLowerCase() || undefined;
   const category = String(req.query.category || "").trim() || undefined;
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("recipes", platform))) {
+    return res.status(200).json(emptyPagedList("healthRecipes", page, limit));
+  }
   const data = resolveListMedia(
     await listHealthRecipes({
       page,
@@ -409,7 +484,10 @@ exports.getActiveHealthRecipes = asyncHandler(async (req, res) => {
 
 exports.getActiveTransformations = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("transformation", platform))) {
+    return res.status(200).json(emptyPagedList("transformations", page, limit));
+  }
   const data = resolveListMedia(
     await listTransformations({
       page,
@@ -493,7 +571,10 @@ exports.getActiveAssistantWellnessCoaches = asyncHandler(async (req, res) => {
 
 exports.getActiveLeadershipNotes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("leadership", platform))) {
+    return res.status(200).json(emptyPagedList("leadershipNotes", page, limit));
+  }
   const data = await listLeadershipNotes({
     page,
     limit,
@@ -511,7 +592,10 @@ exports.getActiveLeadershipNotes = asyncHandler(async (req, res) => {
 
 exports.getActiveWellnessTeamNotes = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
-  const platform = String(req.query.platform || "").trim().toLowerCase() || undefined;
+  const platform = readPlatform(req.query);
+  if (!(await isSectionSurfaceEnabled("wellness-team", platform))) {
+    return res.status(200).json(emptyPagedList("wellnessTeamNotes", page, limit));
+  }
   const data = await listWellnessTeamNotes({
     page,
     limit,

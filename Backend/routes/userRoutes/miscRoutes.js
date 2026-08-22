@@ -15,6 +15,7 @@ const {
   getActiveHealthRecipes,
   getActiveYoga,
   getBlogConfig,
+  getSectionSurfaceConfig,
   getActiveBlogPosts,
   getActiveBlogMedia,
   getActiveTransformations,
@@ -52,6 +53,7 @@ router.get("/health-tools", getActiveHealthTools);
 router.get("/health-recipes", getActiveHealthRecipes);
 router.get("/yoga", getActiveYoga);
 router.get("/blog-config", getBlogConfig);
+router.get("/section-surface-config/:section", getSectionSurfaceConfig);
 router.get("/blog-posts", getActiveBlogPosts);
 router.get("/blog-media", getActiveBlogMedia);
 router.get("/transformations", getActiveTransformations);

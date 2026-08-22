@@ -237,10 +237,7 @@ async function listVideoTestimonials({
     page,
     limit,
     maxLimit: 200,
-    sortFn:
-      !normalizedStatus || hasTypeFilter || hasSearch || hasVisibilityFilter
-        ? sortByOrderAsc
-        : undefined,
+    sortFn: sortByOrderAsc,
   });
 
   return {

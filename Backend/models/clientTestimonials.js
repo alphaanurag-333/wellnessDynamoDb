@@ -19,6 +19,7 @@ const {
   paginateItems,
 } = require("../utils/dynamoList");
 const { normalizeOrder, sortByOrderAsc } = require("../utils/displayOrder");
+const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoachModel");
 
 const TABLE = "ClientTestimonials";
 const STATUS = new Set(["active", "inactive"]);
@@ -74,6 +75,8 @@ function toPublicClientTestimonial(item) {
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
   row.status = normalizeStatus(row.status, "inactive");
   row.order = normalizeOrder(row.order, 9999);
+  row.webVisible = normalizeVisibleFlag(row.webVisible, true);
+  row.appVisible = normalizeVisibleFlag(row.appVisible, true);
   return row;
 }
 
@@ -85,6 +88,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "rating") return sanitizeRating(value);
   if (field === "status") return normalizeStatus(value);
   if (field === "order") return normalizeOrder(value);
+  if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
   if (field === "userId") return String(value || "").trim();
   if (field === "managedByCoachId") return value ? String(value).trim() : null;
   if (field === "assignedCoachType") return value ? String(value).trim() : null;
@@ -106,6 +110,8 @@ async function createClientTestimonial({
   assignedCoachId,
   submittedByRole = "user",
   order = 0,
+  webVisible = true,
+  appVisible = true,
 }) {
   const now = new Date().toISOString();
   const imageRaw = profileImage ?? profile_image;
@@ -124,6 +130,8 @@ async function createClientTestimonial({
     assignedCoachId: assignedCoachId ? String(assignedCoachId).trim() : undefined,
     submittedByRole: String(submittedByRole || "user").trim(),
     order: normalizeOrder(order),
+    webVisible: normalizeVisibleFlag(webVisible, true),
+    appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
     updatedAt: now,
   };
@@ -234,15 +242,34 @@ async function listClientTestimonials({
   search,
   userId,
   managedByCoachId,
+  platform,
+  webVisible,
+  appVisible,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedUserId = String(userId || "").trim();
   const normalizedCoachId = String(managedByCoachId || "").trim();
   const searchFilter = buildContainsFilter(["name", "description"], search);
+  const channel = String(platform || "").toLowerCase().trim();
+  const wantWebVisible =
+    webVisible !== undefined ? webVisible : channel === "web" ? true : undefined;
+  const wantAppVisible =
+    appVisible !== undefined ? appVisible : channel === "app" ? true : undefined;
+  const useVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 
   let filterExpression = searchFilter.filterExpression;
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
+
+  for (const part of [
+    visibilityFilterParts("webVisible", wantWebVisible),
+    visibilityFilterParts("appVisible", wantAppVisible),
+  ]) {
+    if (!part) continue;
+    Object.assign(exprNames, part.exprNames);
+    Object.assign(exprValues, part.exprValues);
+    filterExpression = appendFilter(filterExpression, part.expression);
+  }
 
   if (normalizedUserId) {
     exprNames["#userId"] = "userId";
@@ -256,7 +283,9 @@ async function listClientTestimonials({
     filterExpression = appendFilter(filterExpression, "#managedByCoachId = :managedByCoachId");
   }
 
-  const usePostFilter = Boolean(normalizedUserId || normalizedCoachId || searchFilter.search);
+  const usePostFilter = Boolean(
+    normalizedUserId || normalizedCoachId || searchFilter.search || useVisibilityFilter
+  );
   const queryPage = usePostFilter ? 1 : page;
   const queryLimit = usePostFilter ? Number.MAX_SAFE_INTEGER : limit;
   const queryMaxLimit = usePostFilter ? Number.MAX_SAFE_INTEGER : 200;
@@ -276,13 +305,33 @@ async function listClientTestimonials({
     page: queryPage,
     limit: queryLimit,
     maxLimit: queryMaxLimit,
-    sortFn: !normalizedStatus || usePostFilter ? sortByOrderAsc : undefined,
+    // Always sort in memory so public/app (`status=active`) matches Admin Live order,
+    // including stable tie-breaks when multiple rows share the same `order`.
+    sortFn: sortByOrderAsc,
   });
 
-  const mapped = items.map((row) => toPublicClientTestimonial(row));
+  let clientTestimonials = items.map((row) => toPublicClientTestimonial(row));
+
+  if (useVisibilityFilter) {
+    clientTestimonials = clientTestimonials.filter((row) => {
+      if (
+        wantWebVisible !== undefined
+        && normalizeVisibleFlag(row.webVisible, true) !== normalizeVisibleFlag(wantWebVisible, true)
+      ) {
+        return false;
+      }
+      if (
+        wantAppVisible !== undefined
+        && normalizeVisibleFlag(row.appVisible, true) !== normalizeVisibleFlag(wantAppVisible, true)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }
 
   if (usePostFilter) {
-    const paged = paginateItems(mapped, page, limit, 200);
+    const paged = paginateItems(clientTestimonials, page, limit, 200);
     return {
       clientTestimonials: paged.items,
       pagination: paged.pagination,
@@ -290,7 +339,7 @@ async function listClientTestimonials({
   }
 
   return {
-    clientTestimonials: mapped,
+    clientTestimonials,
     pagination,
   };
 }

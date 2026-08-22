@@ -21,6 +21,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const EMPTY_DRAFT = {
   name: "",
@@ -237,7 +238,7 @@ function RealPeopleViewModal({ entry, concernLabel, onClose, onEdit }) {
   );
 }
 
-export function DynamicRealPeopleSection({ items, setItems, onToast }) {
+export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -527,6 +528,12 @@ export function DynamicRealPeopleSection({ items, setItems, onToast }) {
 
   return (
     <div className="ua-cfg-rp">
+      <SectionSurfacePanel
+        sectionId="real-people"
+        editor={editor}
+        setEditor={setEditor}
+        onToast={onToast}
+      />
       <Panel
         title="Real People Real Healing"
         subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern + testimonial data points from Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}

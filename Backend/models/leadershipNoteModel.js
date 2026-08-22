@@ -237,7 +237,7 @@ async function listLeadershipNotes({
     page,
     limit,
     maxLimit: 200,
-    sortFn: !normalizedStatus || hasSearch || hasVisibilityFilter ? sortByOrderAsc : undefined,
+    sortFn: sortByOrderAsc,
   });
 
   return {
