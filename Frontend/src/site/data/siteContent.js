@@ -72,8 +72,6 @@ export const CONTACT_SECTION = {
   eyebrow: "Get in Touch",
   title: "Start Your Wellness Journey Today",
   description: "Download our mobile app to book consultations, join programs, and stay connected with your coach.",
-  email: "hello@wellness.example",
-  phone: "+91 00000 00000",
 };
 
 export const TESTIMONIALS_SECTION = {

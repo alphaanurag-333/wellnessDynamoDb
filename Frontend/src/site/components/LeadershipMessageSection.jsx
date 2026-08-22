@@ -243,7 +243,7 @@ export function LeadershipNotesSlider({
   if (items.length === 0) return null;
 
   return (
-    <section className="leadership leadership-slider pt-2 pb-0" aria-label={label}>
+    <section  className="leadership leadership-slider pt-2 pb-2" aria-label={label}>
       
       <div className="site-container">
          <div className="transformation-header mb-2">

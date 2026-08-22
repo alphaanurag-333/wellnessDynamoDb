@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { getWebContactDetails, saveWebContactDetails } from "../api/contactDetailsApi.js";
-import { CONTACT_DETAILS } from "../data/contactConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, actions, children }) {
@@ -113,7 +112,7 @@ export function ContactDetailsSection({ details, setDetails, onToast }) {
       setDetails(await getWebContactDetails());
     } catch (error) {
       onToast(error?.message || "Failed to load contact details");
-      setDetails(CONTACT_DETAILS.map((row) => ({ ...row })));
+      setDetails([]);
     } finally {
       setLoading(false);
     }

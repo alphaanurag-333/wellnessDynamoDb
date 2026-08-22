@@ -180,6 +180,8 @@ export default function TransformationStoriesSection() {
   const hasTransformations = transformations.length > 0;
 
   return (
+    <>
+    {hasTransformations ? (
     <section className="transformation-section pb-3" aria-label="Real transformations">
       <div className="container">
         <div className="transformation-header mb-2">
@@ -262,6 +264,7 @@ export default function TransformationStoriesSection() {
           </p>
         )}
       </div>
-    </section>
+    </section>) : null}
+    </>
   );
 }

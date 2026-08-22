@@ -4,7 +4,7 @@ import "swiper/css";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchProgramTestimonials } from "../api/publicMisc.js";
-import { getProgramTestimonialMeta } from "../constants/programTestimonials.js";
+import { getProgramTestimonialMeta, programTestimonialTypeMatches } from "../constants/programTestimonials.js";
 
 const READ_MORE_MIN_CHARS = 140;
 
@@ -87,9 +87,10 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
 
     (async () => {
       try {
-        const data = await fetchProgramTestimonials({ type, page: 1, limit: 24 });
+        const data = await fetchProgramTestimonials({ page: 1, limit: 200 });
         if (cancelled) return;
-        const rows = Array.isArray(data?.programTestimonials) ? data.programTestimonials : [];
+        const allRows = Array.isArray(data?.programTestimonials) ? data.programTestimonials : [];
+        const rows = allRows.filter((row) => programTestimonialTypeMatches(row?.type, type));
         setTestimonials(rows.map(mapProgramTestimonial).filter(Boolean));
       } catch {
         if (!cancelled) setTestimonials([]);

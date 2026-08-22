@@ -109,7 +109,9 @@
   font-weight: var(--fw-bold);
   line-height: var(--line-height-heading);
 }
-
+.bgd {
+  background: var(--primary-light) !important;
+}
 .site-shell h2,
 .site-shell .h2 {
   font-family: var(--font-family-base);
@@ -3558,6 +3560,10 @@ line-height: 1.55;
   margin: 12px 0 40px;
 }
 
+.contact-layout--form-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .contact-layout .contact-card {
   width: 100%;
   max-width: none;
@@ -3598,6 +3604,14 @@ line-height: 1.55;
 
 .contact-office__row:hover {
   background: #fff4ea;
+}
+
+.contact-office__row--static {
+  cursor: default;
+}
+
+.contact-office__row--static:hover {
+  background: var(--primary-light);
 }
 
 .contact-office__row:hover strong,
@@ -9356,9 +9370,12 @@ flex-shrink: 0;
 }
 
 /* Keep the old medicalBoard lavender band after coaches were removed */
-.about-page > .methodology + .leadership.leadership-slider,
-.about-page > .leadership.leadership-slider + .leadership.leadership-slider {
+.about-page > .methodology + .leadership.leadership-slider {
   background: var(--admin-bg);
+}
+
+.about-page > .leadership.leadership-slider + .leadership.leadership-slider {
+  background: var(--primary-light);
 }
 
 .about-page .medicalBoard__top {
@@ -10914,7 +10931,7 @@ gap: 45px;
     width: 100%;
   }
 .methodology-card__image {
-    height: 220px;
+    height: 235px;
   }
 .methodology-card__content h3 {
     font-size: var(--font-size-h4);

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getWebLocations, saveWebLocations } from "../api/locationsApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
-import { LOCATIONS } from "../data/locationConfigData.js";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -137,10 +136,10 @@ export function LocationsSection({ locations, setLocations, onToast }) {
     setLoading(true);
     try {
       const next = await getWebLocations();
-      setLocations(next.length ? next : LOCATIONS.map((row) => ({ ...row })));
+      setLocations(Array.isArray(next) ? next : []);
     } catch (error) {
       onToast(error?.message || "Failed to load locations");
-      setLocations(LOCATIONS.map((row) => ({ ...row })));
+      setLocations([]);
     } finally {
       setLoading(false);
     }

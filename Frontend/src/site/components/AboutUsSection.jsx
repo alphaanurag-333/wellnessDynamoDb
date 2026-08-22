@@ -38,34 +38,6 @@ import Methodology from "./Methodology.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
 import FinalCTA from "./FinalCTA.jsx";
 
-const FALLBACK_COFOUNDER = {
-  name: "Ms. Banita Acharya",
-  designation: "Co-Founder & CEO",
-  message: `India Has Been A Hub Of Healing & Wellness Since Vedic Times With Richness Of Indian Traditional Wellness Techniques. However, Since The Last 2 To 3 Decades, Lifestyle Diseases/Disorders Including Obesity Have Grown Manifolds.
-
-We Rank 3rd Globally In Obesity; Have A Large Population Of Diabetes And Are Rapidly Marching Towards Becoming The Capital. We Register Second Highest In Terms Of Deaths Cancer & Heart Disease Are Rapidly Growing In Urban India.
-
-Despite Medical Science Having Evolved So Much, We Are Just Managing The Disease Or The Condition. There Is Something Missing !
-
-According to me, whatever I have researched.. The primary reasons are lifestyle and hormonal imbalances which lead to such diseases/disorders.. Hence if we correct these, we can improve the disease management and can even reverse them.
-
-India Redefining Wellness is a Holistic Wellness Platform with its unique approach towards your wellbeing by redefining your health. It operates with a blend of our age-old rich Indian philosophy and modern age research & science.
-
-At IRW, we specialize in personalized holistic solutions aimed at addressing a wide range of health concerns, including personalized holistic fat loss, lifestyle disorders reversal like Diabetes, Hypo & Hyper Thyroid, PCOD/PCOS, Gut Health, and other Autoimmune Disorders.
-
-We believe our client’s health is our responsibility.
-
-We develop an understanding of the client’s current lifestyle & uncover the current health conditions through deep root cause analysis. Our approach towards addressing them includes personalized hand holding with consistent & persistent monitoring of all Health pillars like Food & Nutrition, Sleep & Rest, physical exercise & Emotional Health. This cumulative approach yield the desired improvements including the reversal of lifestyle disorders.
-
-Our core principle is to educate and empower our clients with right knowledge and practices so that they can take charge of their health to live a medicine free life.
-
-Our expertise is in extending personalized guidance and hand holding to each of our clients with regular reviews until they achieve their health goal. We understand everybody is unique and they need special attention.
-
-We are currently working on a Project to inspire & educate 10 Lakhs families within the next 2 years and help them live a Healthy & Medicine Free Life. We are also working passionately towards creating a Team of 500 in-house Wellness Coaches and helping them build their identity in the society through Wellness Consultations.
-
-I wish you all the very best ! Come & join us in our mission… Let’s make this world a better place to live !`,
-};
-
 function highlightWellnessTitle(title) {
   const text = String(title || "");
   const match = text.match(/wellness/i);
@@ -202,11 +174,11 @@ const AboutUsSection = () => {
     (async () => {
       try {
         const response = await fetchCofounderMessage();
-        if (!cancelled && response?.data) {
-          setCofounderMessage(response.data);
+        if (!cancelled) {
+          setCofounderMessage(response?.data || null);
         }
       } catch {
-        /* keep fallback content */
+        if (!cancelled) setCofounderMessage(null);
       }
     })();
 
@@ -263,13 +235,13 @@ const AboutUsSection = () => {
     };
   }, []);
 
-  const cofounderName = cofounderMessage?.name?.trim() || FALLBACK_COFOUNDER.name;
-  const cofounderDesignation = FALLBACK_COFOUNDER.designation;
-  const cofounderBody = cofounderMessage?.message?.trim() || FALLBACK_COFOUNDER.message;
+  const cofounderName = cofounderMessage?.name?.trim() || "";
+  const cofounderBody = cofounderMessage?.message?.trim() || "";
   const cofounderProfileImage = cofounderMessage?.profileImage || "";
   const cofounderVideoType = cofounderMessage?.type || "none";
   const cofounderYtLink = cofounderMessage?.ytLink || "";
   const cofounderVideo = cofounderMessage?.video || "";
+  const showCofounderMessage = Boolean(cofounderName && cofounderBody);
 
   const marqueeItems = [...items, ...items, ...items, ...items];
   const aboutHero = heroCopyFromStaticPage(aboutPage, {
@@ -356,17 +328,18 @@ const AboutUsSection = () => {
         </div>
       </section>
 
+      {showCofounderMessage ? (
       <LeadershipMessageSection
         badge="A NOTE FROM LEADERSHIP"
         title="Co-Founder's Message"
         name={cofounderName}
-        designation={cofounderDesignation}
         message={cofounderBody}
         profileImage={cofounderProfileImage}
         videoType={cofounderVideoType}
         ytLink={cofounderYtLink}
         video={cofounderVideo}
       />
+      ) : null}
 
       
 

@@ -133,12 +133,10 @@ export function useSiteConfig() {
     const email = pick(
       detailByLabel(/email|mail/i),
       config?.app_email,
-      CONTACT_SECTION.email
     );
     const phone = pick(
       detailByLabel(/phone|mobile|whatsapp|tel/i),
       config?.app_mobile,
-      CONTACT_SECTION.phone
     );
     const address = pick(liveLocations[0]?.address, config?.address);
     const shortDetail = pick(config?.app_detail, config?.app_details);

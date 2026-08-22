@@ -15,8 +15,8 @@ const {
 const {
   listByPartitionKey,
   buildContainsFilter,
-  appendFilter,
 } = require("../utils/dynamoList");
+const { typesEquivalent } = require("../utils/programTestimonialType");
 
 const TABLE = "ProgramTestimonials";
 const STATUS = new Set(["active", "inactive"]);
@@ -246,45 +246,41 @@ async function listProgramTestimonials({ page = 1, limit = 10, status, type, sea
   }
 
   const searchFilter = buildContainsFilter(["name", "description"], search);
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 10));
 
-  let indexName = "StatusCreatedAtIndex";
-  let partitionKeyName = "status";
-  let partitionKeyValue = normalizedStatus || undefined;
-  let exprNames = { ...searchFilter.exprNames };
-  let exprValues = { ...searchFilter.exprValues };
-  let filterExpression = searchFilter.filterExpression;
-
-  if (normalizedType) {
-    indexName = "TypeCreatedAtIndex";
-    partitionKeyName = "type";
-    partitionKeyValue = normalizedType;
-    if (normalizedStatus) {
-      exprNames["#status"] = "status";
-      exprValues[":status"] = normalizedStatus;
-      filterExpression = appendFilter(filterExpression, "#status = :status");
-    }
-  }
-
-  const { items, pagination } = await listByPartitionKey({
+  const { items } = await listByPartitionKey({
     tableName: TABLE,
-    indexName,
-    partitionKeyName,
-    partitionKeyValue,
-    filterExpression,
-    exprNames,
-    exprValues,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyName: "status",
+    partitionKeyValue: normalizedStatus || undefined,
+    filterExpression: searchFilter.filterExpression,
+    exprNames: { ...searchFilter.exprNames },
+    exprValues: { ...searchFilter.exprValues },
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
     scanIndexForward: false,
-    page,
-    limit,
-    maxLimit: 200,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
     sortFn: sortProgramTestimonialsByOrder,
   });
 
+  const matched = normalizedType
+    ? items.filter((row) => typesEquivalent(row?.type, normalizedType))
+    : items;
+  const total = matched.length;
+  const start = (safePage - 1) * safeLimit;
+  const paged = matched.slice(start, start + safeLimit);
+
   return {
-    programTestimonials: items.map((row) => toPublicProgramTestimonial(row)),
-    pagination,
+    programTestimonials: paged.map((row) => toPublicProgramTestimonial(row)),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit)),
+    },
   };
 }
 
@@ -332,6 +328,7 @@ module.exports = {
   normalizeStatus,
   normalizeType,
   normalizeSortOrder,
+  typesEquivalent,
   createProgramTestimonial,
   getProgramTestimonialById,
   getProgramTestimonialRecordById,
