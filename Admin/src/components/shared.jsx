@@ -170,7 +170,7 @@ export function CfgSelect({
         onClick={() => !disabled && setOpen((current) => !current)}
       >
         <span className={`ua-cfg-select__value${isPlaceholder ? " is-placeholder" : ""}`}>{label}</span>
-        <span className="ua-cfg-select__chev" aria-hidden="true">▾</span>
+        <span className="ua-cfg-select__chev" aria-hidden="true" />
       </button>
       {open ? (
         <ul className="ua-cfg-select__menu" role="listbox">
