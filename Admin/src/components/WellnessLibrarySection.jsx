@@ -27,6 +27,7 @@ import {
 } from "../data/wellnessLibraryData.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
@@ -175,7 +176,6 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemove }) {
-  const inputRef = useRef(null);
   const filled = Boolean(previewUrl);
 
   return (
@@ -187,35 +187,21 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
 
 function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
   const isAudio = mode === "audio";
   const filled = Boolean(previewUrl || embedUrl || fileName);
   const label = isAudio ? "Audio file" : "Video file";
-  const accept = isAudio ? WELLNESS_AUDIO_ACCEPT : WELLNESS_VIDEO_ACCEPT;
 
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
@@ -238,25 +224,13 @@ function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, o
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {previewUrl || fileName ? `Replace ${isAudio ? "audio" : "video"}` : `Upload ${isAudio ? "audio" : "video"}`}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label={`Remove ${isAudio ? "audio" : "video"}`} disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -305,7 +279,39 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const savedRef = useRef({});
   const itemsRef = useRef(items);
   const editFilesRef = useRef({});
-  const coverInputRefs = useRef({});
+
+  const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover photo",
+    onFiles: (file, context) => {
+      if (!file) return;
+      if (context === "draft") pickDraftImage(file);
+      else if (context?.item) changeImage(context.item, file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose video",
+    onFiles: (file, context) => {
+      if (!file) return;
+      if (context === "draft") pickDraftMedia(file, "video");
+      else if (context?.item) pickEditMedia(context.item, file, "video");
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openAudioPicker, mediaPickerModal: audioPickerModal } = useMediaPicker({
+    accept: "audio",
+    title: "Choose audio",
+    onFiles: (file, context) => {
+      if (!file) return;
+      if (context === "draft") pickDraftMedia(file, "audio");
+      else if (context?.item) pickEditMedia(context.item, file, "audio");
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   const rememberSaved = useCallback((rows) => {
     savedRef.current = Object.fromEntries((rows || []).map((row) => [row.id, snapshotItem(row)]));
@@ -767,7 +773,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                 <CoverDrop
                   previewUrl={draftPreview}
                   disabled={locked}
-                  onPick={pickDraftImage}
+                  onPick={() => openImagePicker("draft")}
                   onRemove={() => pickDraftImage(null)}
                 />
                 <MediaDrop
@@ -776,9 +782,9 @@ export function WellnessLibrarySection({ kind, onToast }) {
                   embedUrl={draftVideo || draft.type === "audio" || draft.type === "video" ? "" : youtubeEmbedUrl(draft.ytLink)}
                   fileName={draftVideo?.name || ""}
                   disabled={locked}
-                  onPick={(file) => {
-                    const inferred = String(file?.type || "").startsWith("audio/") ? "audio" : draft.type === "audio" ? "audio" : "video";
-                    pickDraftMedia(file, inferred);
+                  onPick={() => {
+                    if (draft.type === "audio") openAudioPicker("draft");
+                    else openVideoPicker("draft");
                   }}
                   onRemove={clearDraftVideo}
                 />
@@ -892,7 +898,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                       type="button"
                       className="ua-cfg-rc-cover is-video ua-cfg-rc-cover--pick"
                       disabled={locked}
-                      onClick={() => coverInputRefs.current[item.id]?.click()}
+                      onClick={() => openImagePicker({ item })}
                     >
                       {item.thumbnail ? (
                         <img className="ua-cfg-rc-cover__img" src={item.thumbnail} alt="" />
@@ -901,20 +907,6 @@ export function WellnessLibrarySection({ kind, onToast }) {
                       )}
                       <em>{item.thumbnail ? "Replace" : "Cover"}</em>
                     </button>
-                    <input
-                      ref={(node) => {
-                        coverInputRefs.current[item.id] = node;
-                      }}
-                      type="file"
-                      accept={IMAGE_ACCEPT}
-                      hidden
-                      disabled={locked}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (file) changeImage(item, file);
-                      }}
-                    />
                   </div>
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-rc-item__head">
@@ -1021,13 +1013,9 @@ export function WellnessLibrarySection({ kind, onToast }) {
                             embedUrl={item.fileUrl || item.type === "audio" || item.type === "video" ? "" : youtubeEmbedUrl(item.ytLink)}
                             fileName={stagedFile?.name || (item.hasFile ? (item.type === "audio" ? "Uploaded audio" : "Uploaded video") : "")}
                             disabled={locked}
-                            onPick={(file) => {
-                              const inferred = String(file?.type || "").startsWith("audio/")
-                                ? "audio"
-                                : item.type === "audio"
-                                  ? "audio"
-                                  : "video";
-                              pickEditMedia(item, file, inferred);
+                            onPick={() => {
+                              if (item.type === "audio") openAudioPicker({ item });
+                              else openVideoPicker({ item });
                             }}
                             onRemove={() => {
                               delete editFilesRef.current[item.id];
@@ -1127,6 +1115,10 @@ export function WellnessLibrarySection({ kind, onToast }) {
         onCancel={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
       />
+
+      {imagePickerModal}
+      {videoPickerModal}
+      {audioPickerModal}
     </div>
   );
 }

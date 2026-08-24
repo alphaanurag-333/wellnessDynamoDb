@@ -83,7 +83,9 @@ const adminProgramCatalogRoutes = require("../adminRoutes/adminProgramCatalogRou
 const adminBlogConfigRoutes = require("../adminRoutes/adminBlogConfigRoutes");
 const adminSectionSurfaceConfigRoutes = require("../adminRoutes/adminSectionSurfaceConfigRoutes");
 const adminBlogPostRoutes = require("../adminRoutes/adminBlogPostRoutes");
-const adminBlogMediaRoutes = require("../adminRoutes/adminBlogMediaRoutes");  
+const adminBlogMediaRoutes = require("../adminRoutes/adminBlogMediaRoutes");
+const adminMediaAssetRoutes = require("../adminRoutes/adminMediaAssetRoutes");
+
 const router = express.Router();
 
 router.use("/auth", accountAuthRoutes);
@@ -176,6 +178,7 @@ router.use("/blog-config", adminBlogConfigRoutes);
 router.use("/section-surface-config", adminSectionSurfaceConfigRoutes);
 router.use("/blog-posts", adminBlogPostRoutes);
 router.use("/blog-media", adminBlogMediaRoutes);
+router.use("/media-assets", adminMediaAssetRoutes);
 router.use("/physical-exercises", adminPhysicalExerciseRoutes);
 router.use("/supplements", adminSupplementRoutes);
 router.use("/medical-condition-questions", adminMedicalConditionQuestionRoutes);

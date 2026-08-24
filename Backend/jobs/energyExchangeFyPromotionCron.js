@@ -16,7 +16,7 @@ async function executeFyPromotionJob(trigger = "cron") {
   try {
     const result = await runEnergyExchangeFyPromotion(new Date());
     console.log(
-      `[ee-fy-cron] Completed (${trigger}): expired=${result.expired}, activated=${result.activated}, users=${result.users}, errors=${result.errors}`
+      `[ee-fy-cron] Completed (${trigger}): expired=${result.expired}, activated=${result.activated}, convertedToSeek=${result.convertedToSeek}, users=${result.users}, errors=${result.errors}`
     );
     return result;
   } catch (err) {

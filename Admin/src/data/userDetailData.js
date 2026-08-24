@@ -389,17 +389,24 @@ export function mergeSupplementPoolWithBank(pool = [], bankItems = []) {
 }
 
 export const TIMING_OPTIONS = [
-  "Empty stomach",
-  "Before breakfast",
-  "After breakfast",
   "Morning",
+  "Afternoon",
+  "Evening",
+  "Before 1st Meal",
+  "Before 2nd Meal",
+  "Before 3rd Meal",
+  "Before 4th Meal",
   "After 1st Meal",
   "After 2nd Meal",
   "After 3rd Meal",
   "After 4th Meal",
-  "Before lunch",
-  "Before dinner",
-  "Bedtime",
+  "Empty Stomach (Morning)",
+  "Empty Stomach (Evening)",
+  "30 mins Before Bed",
+  "After Morning Snacks",
+  "Before Morning Snacks",
+  "After Evening Snacks",
+  "Before Evening Snacks",
 ];
 
 export const UNIT_OPTIONS = ["Cap", "Tab", "Scoop", "gm", "ml", "Drop"];
@@ -430,7 +437,7 @@ export const DOSAGE_CARDS = [
     range: "12 Jul – 12 Aug",
     pct: 12,
     progressTone: "green",
-    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty stomach"),
+    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty Stomach (Morning)"),
   },
   {
     id: "prob",
@@ -439,7 +446,7 @@ export const DOSAGE_CARDS = [
     range: "12 Jul – 12 Aug",
     pct: 12,
     progressTone: "orange",
-    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty stomach"),
+    meals: buildDosageMeals(TIMING_OPTIONS, 3, "Tab", "Empty Stomach (Morning)"),
   },
 ];
 

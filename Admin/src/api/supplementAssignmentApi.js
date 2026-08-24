@@ -97,8 +97,8 @@ export function mapRecommendation(row) {
 
 export function mapDosagePeriod(row, todayCompletion = {}) {
   if (!row) return null;
-  const period = String(row.period || "").toLowerCase();
-  if (!["morning", "afternoon", "evening"].includes(period)) return null;
+  const period = String(row.period || "").toLowerCase().trim();
+  if (!period) return null;
   return {
     period,
     quantity: Math.max(1, Math.floor(Number(row.quantity) || 1)),

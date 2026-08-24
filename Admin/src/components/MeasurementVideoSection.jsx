@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   EMPTY_MEASUREMENT_CONFIG,
   getMeasurementVideoConfig,
@@ -12,6 +12,7 @@ import {
   validateMeasurementVideoFile,
 } from "../api/measurementVideoApi.js";
 import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -85,12 +86,11 @@ function LinkModal({ open, title, initialUrl, onClose, onSave, busy }) {
   );
 }
 
-function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChangeVideo, onToggleLive }) {
+function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onOpenVideo, onToggleLive }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ title: guide.title, description: guide.description });
   const [linkOpen, setLinkOpen] = useState(false);
   const [duration, setDuration] = useState(guide.duration || "");
-  const videoInputRef = useRef(null);
   const coverThumb = youtubeThumbUrl(guide.linkUrl);
   const typeLabel = guide.sourceType === "link" ? "LINK" : guide.sourceType === "video" ? "VIDEO" : "OFF";
 
@@ -131,7 +131,7 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
             type="button"
             className={`ua-cfg-mv-guide__cover${guide.videoUrl || coverThumb ? " has-media" : ""}`}
             disabled={busy}
-            onClick={() => videoInputRef.current?.click()}
+            onClick={() => onOpenVideo?.()}
           >
             {guide.videoUrl ? (
               <video
@@ -149,17 +149,6 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
             )}
             <em>Cover</em>
           </button>
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) onChangeVideo(file);
-            }}
-          />
 
           <div className="ua-cfg-mv-guide__main">
             <div className="ua-cfg-mv-guide__copy">
@@ -213,7 +202,7 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                   disabled={busy}
-                  onClick={() => videoInputRef.current?.click()}
+                  onClick={() => onOpenVideo?.()}
                 >
                   Video
                 </button>
@@ -282,9 +271,8 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
   );
 }
 
-function ParametersPanel({ parameters, busy, onUpload, onToggleShown }) {
+function ParametersPanel({ parameters, busy, onOpenImage, onToggleShown }) {
   const shownCount = parameters.filter((entry) => entry.shown).length;
-  const inputRefs = useRef({});
 
   return (
     <Panel
@@ -300,7 +288,7 @@ function ParametersPanel({ parameters, busy, onUpload, onToggleShown }) {
               type="button"
               className={`ua-cfg-mv-param-card__media${entry.hasImage ? " has-image" : ""}`}
               disabled={busy}
-              onClick={() => inputRefs.current[entry.id]?.click()}
+              onClick={() => onOpenImage?.(entry)}
             >
               {entry.url ? (
                 <img src={entry.url} alt="" className="ua-cfg-mv-param-card__img" />
@@ -309,19 +297,6 @@ function ParametersPanel({ parameters, busy, onUpload, onToggleShown }) {
               )}
               <span>{entry.hasImage ? "Replace image" : "Upload image"}</span>
             </button>
-            <input
-              ref={(node) => {
-                inputRefs.current[entry.id] = node;
-              }}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) onUpload(entry, file);
-              }}
-            />
             <div className="ua-cfg-mv-param-card__foot">
               <div className="ua-cfg-mv-param-card__meta">
                 <span className="ua-cfg-mv-param-card__name">{entry.name}</span>
@@ -394,6 +369,36 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
     }
   }
 
+  const { openPicker: openGuideVideo, mediaPickerModal: guideVideoModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose guide video",
+    onFiles: (file) => {
+      if (!file) return;
+      const invalid = validateMeasurementVideoFile(file);
+      if (invalid) {
+        onToast(invalid);
+        return;
+      }
+      runSave(() => saveMeasurementGuideVideo(file), "Measurement video uploaded");
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openParamImage, mediaPickerModal: paramImageModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose parameter image",
+    onFiles: (file, entry) => {
+      if (!file || !entry) return;
+      const invalid = validateMeasurementImageFile(file);
+      if (invalid) {
+        onToast(invalid);
+        return;
+      }
+      runSave(() => saveMeasurementParameterImage(entry.field, file), `${entry.name} image attached`);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
   return (
     <div className="ua-cfg-mv">
       {loading ? (
@@ -408,14 +413,7 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
             onToast={onToast}
             onChangeCopy={(next) => runSave(() => saveMeasurementGuideCopy(next), "Measurement guide saved")}
             onChangeLink={(url) => runSave(() => saveMeasurementGuideLink(url), "Video link saved")}
-            onChangeVideo={(file) => {
-              const invalid = validateMeasurementVideoFile(file);
-              if (invalid) {
-                onToast(invalid);
-                return null;
-              }
-              return runSave(() => saveMeasurementGuideVideo(file), "Measurement video uploaded");
-            }}
+            onOpenVideo={() => openGuideVideo()}
             onToggleLive={(live) =>
               runSave(() => saveMeasurementGuideLive(live, guide), live ? "Measurement guide is live" : "Measurement guide hidden")
             }
@@ -423,14 +421,7 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
           <ParametersPanel
             parameters={parameters}
             busy={busy}
-            onUpload={(entry, file) => {
-              const invalid = validateMeasurementImageFile(file);
-              if (invalid) {
-                onToast(invalid);
-                return;
-              }
-              runSave(() => saveMeasurementParameterImage(entry.field, file), `${entry.name} image attached`);
-            }}
+            onOpenImage={(entry) => openParamImage(entry)}
             onToggleShown={(entry, shown) =>
               runSave(
                 () => saveMeasurementParameterShown(entry.shownField, shown),
@@ -440,6 +431,8 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
           />
         </>
       )}
+      {guideVideoModal}
+      {paramImageModal}
     </div>
   );
 }

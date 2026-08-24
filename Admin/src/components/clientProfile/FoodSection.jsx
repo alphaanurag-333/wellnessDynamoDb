@@ -11,6 +11,7 @@ import {
   mapMealLogToUi,
   macroPct,
   macroTargetsFromTdee,
+  normalizeMealItems,
   roundMacros,
   sumMealMacros,
 } from "../../data/foodData.js";
@@ -122,6 +123,90 @@ function MacroMini({ tone, label, value, unit, editing, onChange }) {
   );
 }
 
+function emptyMealDraft(meal) {
+  return {
+    macros: meal?.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 },
+    items: normalizeMealItems(meal?.items),
+    description: String(meal?.description || ""),
+  };
+}
+
+function MealItemsEditor({ items, editing, onChange }) {
+  function updateItem(index, patch) {
+    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  function removeItem(index) {
+    onChange(items.filter((_, i) => i !== index));
+  }
+
+  function addItem() {
+    onChange([...items, { name: "", quantityGm: 0 }]);
+  }
+
+  if (!editing && !items.length) return null;
+
+  return (
+    <div className="ua-cp-food-meal-items">
+      <div className="ua-cp-food-meal-items__head">
+        <span className="ua-cp-food-meal-items__title">Items</span>
+        {editing ? (
+          <button type="button" className="ua-cp-food-meal-items__add" onClick={addItem}>
+            + Add item
+          </button>
+        ) : null}
+      </div>
+      {items.length ? (
+        <div className="ua-cp-food-meal-items__list">
+          <div className="ua-cp-food-meal-items__cols" aria-hidden="true">
+            <span>Item name</span>
+            <span>Quantity (g)</span>
+            {editing ? <span /> : null}
+          </div>
+          {items.map((item, index) => (
+            <div key={`item-${index}`} className="ua-cp-food-meal-items__row">
+              {editing ? (
+                <>
+                  <input
+                    type="text"
+                    className="ua-cp-food-meal-items__input"
+                    value={item.name}
+                    placeholder="Item name"
+                    onChange={(e) => updateItem(index, { name: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.1}
+                    className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                    value={item.quantityGm}
+                    onChange={(e) => updateItem(index, { quantityGm: Number(e.target.value) || 0 })}
+                  />
+                  <button
+                    type="button"
+                    className="ua-cp-food-meal-items__remove"
+                    aria-label={`Remove ${item.name || "item"}`}
+                    onClick={() => removeItem(index)}
+                  >
+                    ×
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="ua-cp-food-meal-items__name">{item.name}</span>
+                  <span className="ua-cp-food-meal-items__qty">{item.quantityGm} g</span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="ua-cp-food-meal-items__empty">No items yet. Add what AI identified or insert manually.</p>
+      )}
+    </div>
+  );
+}
+
 function CameraIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -152,29 +237,40 @@ function MealCard({
   onToast,
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(meal.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 });
-  const shown = editing ? draft : (meal.macros || draft);
+  const [draft, setDraft] = useState(() => emptyMealDraft(meal));
+  const shownMacros = editing ? draft.macros : (meal.macros || draft.macros);
+  const shownItems = editing ? draft.items : normalizeMealItems(meal.items);
+  const shownDescription = editing ? draft.description : String(meal.description || "");
   const needsAi = meal.aiStatus === "none";
   const declined = meal.aiStatus === "declined";
   const canManualInsert = needsAi || declined;
-  const showMacros = editing || (Boolean(meal.macros) && !needsAi && !declined);
+  const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !needsAi && !declined);
 
   useEffect(() => {
-    if (meal.macros) setDraft(meal.macros);
-  }, [meal.macros]);
+    setDraft(emptyMealDraft(meal));
+  }, [meal]);
 
   useEffect(() => {
     if (autoEdit) setEditing(true);
   }, [autoEdit]);
 
   function startEdit() {
-    setDraft(meal.macros || { protein: 0, carbs: 0, fat: 0, calories: 0 });
+    setDraft(emptyMealDraft(meal));
     setEditing(true);
   }
 
   async function saveEdit() {
+    const items = normalizeMealItems(draft.items);
+    if (editing && draft.items.some((item) => !String(item.name || "").trim() && Number(item.quantityGm) > 0)) {
+      onToast("Each item needs a name");
+      return;
+    }
     try {
-      await onSaveEdit(meal.id, draft);
+      await onSaveEdit(meal.id, {
+        macros: draft.macros,
+        items,
+        description: String(draft.description || "").trim(),
+      });
       setEditing(false);
       onToast(canManualInsert ? "Macros inserted manually" : "Meal macros saved");
     } catch {
@@ -200,27 +296,28 @@ function MealCard({
         <div className="ua-cp-food-meal__info">
           <strong>{meal.name}</strong>
           <span>{subtitle}</span>
-          {meal.description && !declined ? (
-            <p className="ua-cp-food-meal__desc">{meal.description}</p>
+          {editing ? (
+            <textarea
+              className="ua-cp-food-meal__desc-input"
+              rows={2}
+              value={draft.description}
+              placeholder="Meal description"
+              onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            />
+          ) : shownDescription && !declined ? (
+            <p className="ua-cp-food-meal__desc">{shownDescription}</p>
           ) : null}
           {declined && meal.declineMessage ? (
             <p className="ua-cp-food-meal__decline">{meal.declineMessage}</p>
           ) : meal.photoAiStatus === "failed" && meal.declineMessage ? (
             <p className="ua-cp-food-meal__decline">{meal.declineMessage}</p>
           ) : null}
-          {mode === "detailed" && meal.detailedTags?.length ? (
-            <div className="ua-cp-food-meal__tags">
-              {meal.detailedTags.map((tag, index) => (
-                <span key={`${tag}-${index}`} className="ua-cp-food-meal__tag">{tag}</span>
-              ))}
-            </div>
-          ) : null}
         </div>
         <div className="ua-cp-food-meal__actions">
           {canEdit ? (
             editing ? (
               <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => setEditing(false)}>Cancel</button>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => { setDraft(emptyMealDraft(meal)); setEditing(false); }}>Cancel</button>
                 <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
               </>
             ) : meal.aiStatus === "review" || meal.aiStatus === "approved" ? (
@@ -245,12 +342,22 @@ function MealCard({
           ) : null}
         </div>
       </div>
-      {showMacros ? (
-        <div className="ua-cp-food-meal__macros">
-          <MacroMini tone="green" label="P" value={shown.protein} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, protein: v }))} />
-          <MacroMini tone="orange" label="C" value={shown.carbs} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, carbs: v }))} />
-          <MacroMini tone="blue" label="F" value={shown.fat} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, fat: v }))} />
-          <MacroMini tone="purple" label="KCAL" value={shown.calories} unit="" editing={editing} onChange={(v) => setDraft((d) => ({ ...d, calories: v }))} />
+      {showAnalysis ? (
+        <div className="ua-cp-food-meal__analysis">
+          <MealItemsEditor
+            items={shownItems}
+            editing={editing}
+            onChange={(items) => setDraft((d) => ({ ...d, items }))}
+          />
+          <div className="ua-cp-food-meal__macros-wrap">
+            <span className="ua-cp-food-meal__macros-title">Macro breakup</span>
+            <div className="ua-cp-food-meal__macros">
+              <MacroMini tone="green" label="P" value={shownMacros.protein} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, protein: v } }))} />
+              <MacroMini tone="orange" label="C" value={shownMacros.carbs} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, carbs: v } }))} />
+              <MacroMini tone="blue" label="F" value={shownMacros.fat} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, fat: v } }))} />
+              <MacroMini tone="purple" label="KCAL" value={shownMacros.calories} unit="" editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, calories: v } }))} />
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
@@ -595,6 +702,13 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             photoAiStatus: "analysed",
             reviewStatus: "pending",
             macros: m.macros || { protein: 4, carbs: 22, fat: 1, calories: 118 },
+            items: m.items?.length
+              ? m.items
+              : [
+                { name: "Amla juice", quantityGm: 200 },
+                { name: "Chia seeds", quantityGm: 5 },
+              ],
+            description: m.description || "Functional juice with chia",
             declineMessage: "",
           }
           : m
@@ -623,12 +737,24 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }
   }
 
-  async function saveMealEdit(id, macros) {
+  async function saveMealEdit(id, { macros, items, description }) {
     const meal = meals.find((m) => m.id === id);
+    const nextItems = normalizeMealItems(items);
     if (!live) {
       setMeals((list) => list.map((m) => (
         m.id === id
-          ? { ...m, macros, aiStatus: "approved", reviewStatus: "approved", photoAiStatus: "analysed" }
+          ? {
+            ...m,
+            macros,
+            items: nextItems,
+            detailedTags: nextItems.map((item) => (
+              item.quantityGm > 0 ? `${item.name} · ${item.quantityGm} g` : item.name
+            )),
+            description: description || m.description,
+            aiStatus: "approved",
+            reviewStatus: "approved",
+            photoAiStatus: "analysed",
+          }
           : m
       )));
       return;
@@ -640,6 +766,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
         fatsGm: macros.fat,
         carbsGm: macros.carbs,
         caloriesKcal: macros.calories,
+        items: nextItems,
+        ...(description !== undefined ? { description } : {}),
       });
       if (meal?.reviewStatus === "pending") {
         updated = await reviewUserMealLog(id, {

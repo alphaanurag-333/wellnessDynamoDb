@@ -15,17 +15,65 @@ import {
 } from "../../api/supplementAssignmentApi.js";
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 
-const PERIOD_OPTIONS = [
+const MAX_TIMINGS = 4;
+
+const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
   { id: "afternoon", label: "Afternoon" },
   { id: "evening", label: "Evening" },
 ];
 
-const PERIOD_LABEL = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-};
+const MEAL_TIMING_OPTIONS = [
+  { id: "before_1st_meal", label: "Before 1st Meal" },
+  { id: "before_2nd_meal", label: "Before 2nd Meal" },
+  { id: "before_3rd_meal", label: "Before 3rd Meal" },
+  { id: "before_4th_meal", label: "Before 4th Meal" },
+  { id: "after_1st_meal", label: "After 1st Meal" },
+  { id: "after_2nd_meal", label: "After 2nd Meal" },
+  { id: "after_3rd_meal", label: "After 3rd Meal" },
+  { id: "after_4th_meal", label: "After 4th Meal" },
+  { id: "empty_stomach_morning", label: "Empty Stomach (Morning)" },
+  { id: "empty_stomach_evening", label: "Empty Stomach (Evening)" },
+  { id: "before_bed_30_mins", label: "30 mins Before Bed" },
+  { id: "after_morning_snacks", label: "After Morning Snacks" },
+  { id: "before_morning_snacks", label: "Before Morning Snacks" },
+  { id: "after_evening_snacks", label: "After Evening Snacks" },
+  { id: "before_evening_snacks", label: "Before Evening Snacks" },
+];
+
+const PERIOD_LABEL = Object.fromEntries(
+  [...DAY_PART_OPTIONS, ...MEAL_TIMING_OPTIONS].map((row) => [row.id, row.label]),
+);
+
+function mealRelationForPeriod(periodId) {
+  const id = String(periodId || "");
+  if (
+    id === "morning"
+    || id === "afternoon"
+    || id === "evening"
+    || id.startsWith("before_")
+    || id.startsWith("empty_stomach")
+  ) {
+    return "before";
+  }
+  return "after";
+}
+
+function formatPeriodCardLabel(period) {
+  const label = PERIOD_LABEL[period.period] || period.period;
+  // Legacy morning/afternoon/evening rows still carry mealRelation in the label
+  if (["morning", "afternoon", "evening"].includes(period.period)) {
+    return `${label} · ${period.mealRelation === "before" ? "before meal" : "after meal"}`;
+  }
+  return label;
+}
+
+function toggleMealTiming(list, id, checked) {
+  if (!checked) return list.filter((x) => x !== id);
+  if (list.includes(id)) return list;
+  if (list.length >= MAX_TIMINGS) return list;
+  return [...list, id];
+}
 
 function isHealClientUser(user) {
   const tier = String(user?.userTier || "").toLowerCase().trim();
@@ -129,7 +177,7 @@ function mapDosageToCard(dosage) {
     progressTone: pct >= 60 ? "green" : pct >= 25 ? "orange" : "purple",
     status: dosage.status,
     meals: (dosage.periods || []).map((period) => ({
-      label: `${PERIOD_LABEL[period.period] || period.period} · ${period.mealRelation === "before" ? "before meal" : "after meal"}`,
+      label: formatPeriodCardLabel(period),
       amount: `${period.quantity} ${dosage.unit}`.trim(),
       done: Boolean(period.completed),
       count: period.quantity,
@@ -558,12 +606,13 @@ export function NutritionsSection({ user, onToast }) {
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
   const [addSupp, setAddSupp] = useState("");
+  const [addDayPart, setAddDayPart] = useState("");
   const [addPeriods, setAddPeriods] = useState([]);
   const [addQty, setAddQty] = useState(1);
-  const [addMeal, setAddMeal] = useState("after");
   const [addStart, setAddStart] = useState(todayIsoDate);
   const [timingOpen, setTimingOpen] = useState(false);
   const timingRef = useRef(null);
+  const selectedPeriodCount = (addDayPart ? 1 : 0) + addPeriods.length;
 
   const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
@@ -598,7 +647,7 @@ export function NutritionsSection({ user, onToast }) {
         const catalog = await listActiveSupplementPool({ limit: 200 });
         const nextPool = catalog?.items || [];
         setPool(nextPool);
-        setAddSupp((current) => current || nextPool[0]?.id || "");
+        setAddSupp((current) => (current && nextPool.some((item) => item.id === current) ? current : ""));
       } catch (err) {
         setPool([]);
         errors.push(err?.message || "Failed to load nutrition bank");
@@ -859,7 +908,8 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   async function addDosageCard() {
-    if (!addSupp || !addPeriods.length) return;
+    const periods = [...(addDayPart ? [addDayPart] : []), ...addPeriods];
+    if (!addSupp || !periods.length) return;
     setSaving(true);
     try {
       const existing = activeDosages.find((row) => row.supplementId === addSupp);
@@ -869,14 +919,15 @@ export function NutritionsSection({ user, onToast }) {
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
         startDate: addStart || todayIsoDate(),
-        periods: addPeriods.map((period) => ({
+        periods: periods.map((period) => ({
           period,
           quantity: addQty,
-          mealRelation: addMeal,
+          mealRelation: mealRelationForPeriod(period),
         })),
       });
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
-      onToast(`Added ${name} ×${addPeriods.length}`);
+      onToast(`Added ${name} ×${periods.length}`);
+      setAddDayPart("");
       setAddPeriods([]);
       setTimingOpen(false);
       await load({ silent: true });
@@ -1074,11 +1125,37 @@ export function NutritionsSection({ user, onToast }) {
         </>
       ) : (
         <>
-          <p className="ua-cp-dosage-hint">Pick a nutrition, choose morning / afternoon / evening, set the amount, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.</p>
+          <p className="ua-cp-dosage-hint">
+            Pick a nutrition, choose morning / afternoon / evening, select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.
+          </p>
           <div className="ua-cp-dosage-add">
-            <select value={addSupp} onChange={(e) => setAddSupp(e.target.value)} disabled={!canWrite || poolLoading || !pool.length || saving || !isHealClient}>
-              {pool.length ? pool.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No nutritions in pool</option>}
+            {/* 1. Nutrition (one select) */}
+            <select
+              className="ua-cp-dosage-nutrition"
+              value={addSupp}
+              onChange={(e) => setAddSupp(e.target.value)}
+              disabled={!canWrite || poolLoading || !pool.length || saving || !isHealClient}
+            >
+              <option value="">Choose nutrition…</option>
+              {pool.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
             </select>
+
+            {/* 2. Morning / Afternoon / Evening (one select) */}
+            <select
+              className="ua-cp-dosage-daypart"
+              value={addDayPart}
+              onChange={(e) => setAddDayPart(e.target.value)}
+              disabled={!canWrite || saving || !isHealClient}
+            >
+              <option value="">Morning / Afternoon / Evening…</option>
+              {DAY_PART_OPTIONS.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+
+            {/* 3. Meal timings (checkbox, max 4) */}
             <div className="ua-cp-timing-wrap" ref={timingRef}>
               <button
                 type="button"
@@ -1089,38 +1166,64 @@ export function NutritionsSection({ user, onToast }) {
                 aria-expanded={timingOpen}
               >
                 <span className="ua-cp-timing-btn__label">
-                  {addPeriods.length ? `${addPeriods.length} timings selected` : "Choose timings…"}
+                  {addPeriods.length
+                    ? `${addPeriods.length} of ${MAX_TIMINGS} meal timings`
+                    : "Choose meal timings…"}
                 </span>
                 <span className="ua-cp-timing-btn__chevron" aria-hidden="true" />
               </button>
               {timingOpen ? (
-                <div className="ua-cp-timing-menu" role="listbox">
+                <div className="ua-cp-timing-menu" role="listbox" aria-multiselectable="true">
                   <div className="ua-cp-timing-menu__tools">
-                    <button type="button" onClick={() => setAddPeriods(PERIOD_OPTIONS.map((p) => p.id))}>Select all</button>
+                    <span className="ua-cp-timing-menu__limit">Max {MAX_TIMINGS}</span>
                     <button type="button" onClick={() => setAddPeriods([])}>Clear</button>
                   </div>
-                  {PERIOD_OPTIONS.map((t) => (
-                    <label key={t.id} className="ua-cp-timing-opt">
-                      <input
-                        type="checkbox"
-                        checked={addPeriods.includes(t.id)}
-                        onChange={(e) => setAddPeriods((list) => (e.target.checked ? [...list, t.id] : list.filter((x) => x !== t.id)))}
-                      />
-                      {t.label}
-                    </label>
-                  ))}
+                  {MEAL_TIMING_OPTIONS.map((t) => {
+                    const checked = addPeriods.includes(t.id);
+                    const atLimit = addPeriods.length >= MAX_TIMINGS && !checked;
+                    return (
+                      <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={atLimit}
+                          onChange={(e) => {
+                            setAddPeriods((list) => toggleMealTiming(list, t.id, e.target.checked));
+                          }}
+                        />
+                        {t.label}
+                      </label>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
-            <input type="number" min={1} value={addQty} onChange={(e) => setAddQty(Math.max(1, Number(e.target.value) || 1))} className="ua-cp-dosage-qty" disabled={!canWrite || saving || !isHealClient} />
-            <select value={addMeal} onChange={(e) => setAddMeal(e.target.value)} disabled={!canWrite || saving || !isHealClient}>
-              <option value="after">After meal</option>
-              <option value="before">Before meal</option>
-            </select>
-            <input type="date" data-allow-future="true" value={addStart} onChange={(e) => setAddStart(e.target.value)} className="ua-cp-dosage-date" disabled={!canWrite || saving || !isHealClient} />
+
+            {/* 4. Amount · Date · Add */}
+            <input
+              type="number"
+              min={1}
+              value={addQty}
+              onChange={(e) => setAddQty(Math.max(1, Number(e.target.value) || 1))}
+              className="ua-cp-dosage-qty"
+              disabled={!canWrite || saving || !isHealClient}
+            />
+            <input
+              type="date"
+              data-allow-future="true"
+              value={addStart}
+              onChange={(e) => setAddStart(e.target.value)}
+              className="ua-cp-dosage-date"
+              disabled={!canWrite || saving || !isHealClient}
+            />
             {canWrite && isHealClient ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary" disabled={!addSupp || !addPeriods.length || saving} onClick={addDosageCard}>
-                {saving ? "Saving…" : `Add${addPeriods.length ? ` ×${addPeriods.length}` : ""}`}
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary"
+                disabled={!addSupp || !selectedPeriodCount || saving}
+                onClick={addDosageCard}
+              >
+                {saving ? "Saving…" : `Add${selectedPeriodCount ? ` ×${selectedPeriodCount}` : ""}`}
               </button>
             ) : null}
           </div>

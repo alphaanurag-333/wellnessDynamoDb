@@ -2,8 +2,10 @@ const AppError = require("./AppError");
 
 const IMAGE_MAX_SIZE_MB = 25;
 const VIDEO_MAX_SIZE_MB = 25;
+const AUDIO_MAX_SIZE_MB = 25;
 const IMAGE_MAX_SIZE_BYTES = IMAGE_MAX_SIZE_MB * 1024 * 1024;
 const VIDEO_MAX_SIZE_BYTES = VIDEO_MAX_SIZE_MB * 1024 * 1024;
+const AUDIO_MAX_SIZE_BYTES = AUDIO_MAX_SIZE_MB * 1024 * 1024;
 const MULTER_MAX_FILE_SIZE_BYTES = VIDEO_MAX_SIZE_BYTES;
 
 function isImageMime(mimetype) {
@@ -14,8 +16,13 @@ function isVideoMime(mimetype) {
   return String(mimetype || "").startsWith("video/");
 }
 
+function isAudioMime(mimetype) {
+  return String(mimetype || "").startsWith("audio/");
+}
+
 function getMaxBytesForMime(mimetype) {
   if (isVideoMime(mimetype)) return VIDEO_MAX_SIZE_BYTES;
+  if (isAudioMime(mimetype)) return AUDIO_MAX_SIZE_BYTES;
   if (isImageMime(mimetype)) return IMAGE_MAX_SIZE_BYTES;
   return VIDEO_MAX_SIZE_BYTES;
 }
@@ -25,7 +32,13 @@ function assertUploadFileSize(file) {
 
   const maxBytes = getMaxBytesForMime(file.mimetype);
   if (file.size > maxBytes) {
-    const kind = isVideoMime(file.mimetype) ? "Video" : isImageMime(file.mimetype) ? "Image" : "File";
+    const kind = isVideoMime(file.mimetype)
+      ? "Video"
+      : isAudioMime(file.mimetype)
+        ? "Audio"
+        : isImageMime(file.mimetype)
+          ? "Image"
+          : "File";
     const maxMb = maxBytes / (1024 * 1024);
     throw new AppError(`${kind} must be ${maxMb} MB or smaller`, 413);
   }
@@ -39,9 +52,14 @@ function multerFileSizeErrorMessage(err) {
 module.exports = {
   IMAGE_MAX_SIZE_MB,
   VIDEO_MAX_SIZE_MB,
+  AUDIO_MAX_SIZE_MB,
   IMAGE_MAX_SIZE_BYTES,
   VIDEO_MAX_SIZE_BYTES,
+  AUDIO_MAX_SIZE_BYTES,
   MULTER_MAX_FILE_SIZE_BYTES,
+  isImageMime,
+  isVideoMime,
+  isAudioMime,
   assertUploadFileSize,
   multerFileSizeErrorMessage,
 };

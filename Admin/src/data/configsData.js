@@ -272,7 +272,6 @@ export const CONFIG_GROUPS = {
           on: true,
           tags: ["Upload"],
           upload: true,
-          comingSoon: true,
         },
       ],
     },

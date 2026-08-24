@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { formatRecipeDate, validateRecipeImage } from "../data/recipesConfigData.js";
 import {
@@ -17,6 +17,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { SectionSurfaceToggles } from "./SectionSurfaceToggles.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./sectionSurfaceLive.css";
 import "./blogsConfig.css";
 
@@ -53,12 +54,11 @@ function sortOrderForPosition(position, count) {
   return count + 1;
 }
 
-function CoverPick({ previewUrl, disabled, compact, onPick }) {
-  const inputRef = useRef(null);
+function CoverPick({ previewUrl, disabled, compact, onRequestPick }) {
   const filled = Boolean(previewUrl);
 
   function pick() {
-    if (!disabled) inputRef.current?.click();
+    if (!disabled) onRequestPick?.();
   }
 
   return (
@@ -78,19 +78,6 @@ function CoverPick({ previewUrl, disabled, compact, onPick }) {
     >
       {filled ? <img src={previewUrl} alt="" /> : <span aria-hidden="true">🖼️</span>}
       <em>{filled ? "Replace" : "Cover image"}</em>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onClick={(event) => event.stopPropagation()}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -372,6 +359,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
   }
 
   function openCrop(file, target) {
+    if (!file) return;
     const error = validateRecipeImage(file);
     if (error) {
       onToast(error);
@@ -384,6 +372,13 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
       target,
     });
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover image",
+    onFiles: (file, context) => openCrop(file, context),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   async function applyCrop(file) {
     const target = cropPending?.target;
@@ -486,7 +481,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
               <CoverPick
                 previewUrl={draft.coverPreview}
                 disabled={busy}
-                onPick={(file) => openCrop(file, { type: "draft" })}
+                onRequestPick={() => openPicker({ type: "draft" })}
               />
               <div className="ua-cfg-rc-new__fields">
                 <input
@@ -562,7 +557,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
                     previewUrl={entry.coverImage}
                     disabled={busy}
                     compact
-                    onPick={(file) => openCrop(file, { type: "post", id: entry.id })}
+                    onRequestPick={() => openPicker({ type: "post", id: entry.id })}
                   />
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-bl-item__head">
@@ -711,6 +706,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
           setCropPending(null);
         }}
       />
+      {mediaPickerModal}
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title={pendingDelete?.kind === "post" ? "Delete blog post?" : "Delete gallery asset?"}

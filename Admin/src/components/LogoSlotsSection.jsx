@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getAppLogos, saveAppLogo } from "../api/logoApi.js";
 import {
   createDefaultLogoSlots,
@@ -6,6 +6,7 @@ import {
   validateLogoFile,
 } from "../data/logoConfigData.js";
 import { ImageCropModal } from "./ImageCropModal.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function originalAspectCss(slot) {
   if (slot?.field === "favicon") return "1 / 1";
@@ -32,8 +33,6 @@ function Panel({ title, subtitle, children }) {
 }
 
 function LogoSlotCard({ slot, busy, onPick }) {
-  const inputRef = useRef(null);
-
   return (
     <article className={`ua-cfg-lg-slot${slot.uploaded ? " is-filled" : ""}`}>
       <div className="ua-cfg-lg-slot__head">
@@ -56,7 +55,7 @@ function LogoSlotCard({ slot, busy, onPick }) {
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                 disabled={busy}
-                onClick={() => inputRef.current?.click()}
+                onClick={() => onPick(slot)}
               >
                 Replace
               </button>
@@ -67,22 +66,11 @@ function LogoSlotCard({ slot, busy, onPick }) {
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
             disabled={busy}
-            onClick={() => inputRef.current?.click()}
+            onClick={() => onPick(slot)}
           >
             <span aria-hidden="true">🏷</span> Upload
           </button>
         )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*,.ico"
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) onPick(slot, file);
-          }}
-        />
       </div>
     </article>
   );
@@ -136,6 +124,15 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
     });
   }
 
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose logo",
+    onFiles: (file, slot) => {
+      if (file && slot) pickFile(slot, file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
   async function confirmUpload(croppedFile, cropError) {
     if (cropError) {
       onToast(cropError.message || "Failed to crop image");
@@ -175,7 +172,7 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
                 key={slot.id}
                 slot={slot}
                 busy={Boolean(busyId)}
-                onPick={pickFile}
+                onPick={(nextSlot) => openPicker(nextSlot)}
               />
             ))}
           </div>
@@ -193,6 +190,8 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
         onClose={closePending}
         onConfirm={confirmUpload}
       />
+
+      {mediaPickerModal}
     </>
   );
 }

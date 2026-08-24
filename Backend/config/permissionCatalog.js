@@ -80,6 +80,7 @@ const PERMISSION_GROUPS_RAW = [
       { to: "section-surface-config", label: "Section Surface Config", actions: [VIEW, EDIT] },
       { to: "blog-posts", label: "Blog Posts", actions: [VIEW, EDIT, DELETE] },
       { to: "blog-media", label: "Blog Media", actions: [VIEW, EDIT, DELETE] },
+      { to: "media-assets", label: "Media Assets", actions: [VIEW, EDIT, DELETE] },
       { to: "physical-exercises", label: "Physical Exercise", actions: [VIEW, EDIT, DELETE] },
       { to: "supplements", label: "Nutritions", actions: [VIEW, EDIT, DELETE] },
       {

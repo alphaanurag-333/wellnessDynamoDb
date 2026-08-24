@@ -22,6 +22,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { CfgSelect } from "./shared.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -76,7 +77,6 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const [cropPending, setCropPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [galleryQuery, setGalleryQuery] = useState("");
-  const fileInputRef = useRef(null);
   const cropKindRef = useRef("banner");
   const creatingRef = useRef(false);
   creatingRef.current = creating;
@@ -190,12 +190,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
 
   function openFilePicker(kind) {
     cropKindRef.current = kind;
-    fileInputRef.current?.click();
+    openMediaPicker(kind);
   }
 
-  function onPickFile(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
+  function beginCropFromFile(file, kind = cropKindRef.current) {
     if (!file) return;
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
@@ -203,11 +201,18 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
     setCropPending({
-      kind: cropKindRef.current,
+      kind,
       file,
       previewUrl: URL.createObjectURL(file),
     });
   }
+
+  const { openPicker: openMediaPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose banner image",
+    onFiles: (file, kind) => beginCropFromFile(file, kind || cropKindRef.current),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   function closeCrop() {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
@@ -696,7 +701,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         </div>
       </Panel>
 
-      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={onPickFile} />
+      {mediaPickerModal}
 
       <ImageCropModal
         open={Boolean(cropPending)}

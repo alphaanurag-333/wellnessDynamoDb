@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   adminCreateRealPeopleTestimonial,
   adminDeleteRealPeopleTestimonial,
@@ -22,6 +22,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const EMPTY_DRAFT = {
   name: "",
@@ -48,8 +49,7 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function PhotoDrop({ previewUrl, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
+function PhotoDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
@@ -61,25 +61,13 @@ function PhotoDrop({ previewUrl, disabled, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onRequestPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -254,7 +242,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
   const [cropPending, setCropPending] = useState(null);
   const [concernOptions, setConcernOptions] = useState([]);
   const [pointOptions, setPointOptions] = useState([]);
-  const coverInputRefs = useRef({});
 
   const loadLookups = useCallback(async () => {
     try {
@@ -347,6 +334,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
   }
 
   function openCrop(file, target) {
+    if (!file) return;
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
       return;
@@ -354,6 +342,13 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
     setCropPending({ file, previewUrl: URL.createObjectURL(file), target });
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose image",
+    onFiles: (file, context) => openCrop(file, context),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   function clearDraftPhoto() {
     setDraft((prev) => {
@@ -568,7 +563,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                 <PhotoDrop
                   previewUrl={draft.imagePreview}
                   disabled={busy}
-                  onPick={(file) => openCrop(file, "draft")}
+                  onRequestPick={() => openPicker("draft")}
                   onRemove={clearDraftPhoto}
                 />
                 <div className="ua-cfg-rp-new__meta">
@@ -668,25 +663,11 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                       className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${photo ? " is-on" : ""}`}
                       disabled={busy}
                       aria-label={photo ? "Replace client photo" : "Add client photo"}
-                      onClick={() => coverInputRefs.current[entry.id]?.click()}
+                      onClick={() => openPicker(entry.id)}
                     >
                       {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">📷</span>}
                       <em>{photo ? "Replace" : "Photo"}</em>
                     </button>
-                    <input
-                      ref={(node) => {
-                        coverInputRefs.current[entry.id] = node;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      disabled={busy}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (file) openCrop(file, entry.id);
-                      }}
-                    />
                   </div>
                   <div className="ua-cfg-rp-item__body">
                     <div className="ua-cfg-rp-item__head">
@@ -872,6 +853,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />
+      {mediaPickerModal}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

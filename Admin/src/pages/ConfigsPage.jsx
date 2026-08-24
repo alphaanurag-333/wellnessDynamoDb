@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { useNavigate } from "react-router-dom";
+import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { PageHeader, PillTabs } from "../components/shared.jsx";
 import { CONFIG_GROUPS, CONFIG_TABS } from "../data/configsData.js";
 
@@ -69,9 +70,6 @@ function ConfigComingSoonModal({ open, title, copy, onClose }) {
   return createPortal(modal, getModalRoot());
 }
 
-const GALLERY_SOON_COPY =
-  "Gallery management is not available yet.";
-
 export function ConfigsPage() {
   const navigate = useNavigate();
   const [comingSoonModal, setComingSoonModal] = useState(null);
@@ -101,9 +99,7 @@ export function ConfigsPage() {
     if (item.comingSoon) {
       setComingSoonModal({
         title: item.name,
-        copy: item.id === "app-gallery"
-          ? GALLERY_SOON_COPY
-          : `${item.name} is not available yet.`,
+        copy: `${item.name} is not available yet.`,
       });
       return;
     }
@@ -133,24 +129,42 @@ export function ConfigsPage() {
         <section key={group.name} className="ua-config-section">
           <div className="ua-config-section__head">{group.name}</div>
           <div className="ua-config-card">
-            {group.items.map((item) => (
-              <div key={item.id} className="ua-config-item">
-                <div className="ua-config-item__main">
-                  <div className="ua-config-item__name">{item.name}</div>
-                  <div className="ua-config-item__note">
-                    {item.note} · {item.owner}
-                  </div>
-                </div>
+            {group.items.map((item) => {
+              const tags = item.tags?.length
+                ? item.tags
+                : item.upload
+                  ? ["Upload"]
+                  : [];
 
-                <button
-                  type="button"
-                  className="ua-config-manage"
-                  onClick={() => handleManage(item)}
-                >
-                  Manage ›
-                </button>
-              </div>
-            ))}
+              return (
+                <div key={item.id} className="ua-config-item">
+                  <div className="ua-config-item__main">
+                    <div className="ua-config-item__name">{item.name}</div>
+                    <div className="ua-config-item__note">
+                      {item.note} · {item.owner}
+                    </div>
+                  </div>
+
+                  {tags.length > 0 ? (
+                    <div className="ua-config-item__chips">
+                      {tags.map((tag) => (
+                        <span key={tag} className="ua-config-type-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    className="ua-config-manage"
+                    onClick={() => handleManage(item)}
+                  >
+                    Manage ›
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}

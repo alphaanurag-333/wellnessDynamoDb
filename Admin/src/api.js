@@ -6,8 +6,8 @@ import {
 
 // Prefer local backend during development so panel picks up unpaid onboard fixes.
 // Override with VITE_API_URL when you need the remote API.
-// const API_BASE = "http://localhost:5000"; 
-const API_BASE =  "https://wellness-development.developmentalphawizz.com";
+const API_BASE = "http://localhost:5000";
+// const API_BASE =  "https://wellness-development.developmentalphawizz.com";
 // const API_BASE = "https://wellness.developmentalphawizz.com:5005";
 // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";

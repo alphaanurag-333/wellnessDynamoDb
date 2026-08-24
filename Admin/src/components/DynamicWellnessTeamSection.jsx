@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   adminCreateWellnessTeamNote,
   adminDeleteWellnessTeamNote,
@@ -12,6 +12,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const PAGE_SIZE = 10;
 const DEFAULT_BADGE = "OUR WELLNESS TEAM";
@@ -48,8 +49,7 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function PortraitDrop({ previewUrl, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
+function PortraitDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
@@ -61,25 +61,13 @@ function PortraitDrop({ previewUrl, disabled, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onRequestPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove portrait photo" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -139,7 +127,7 @@ function NoteForm({
   busy,
   onSave,
   onCancel,
-  onPickPhoto,
+  onRequestPickPhoto,
   saveLabel = "Save",
 }) {
   const designationOptions = titleOptions.length
@@ -152,7 +140,7 @@ function NoteForm({
         <PortraitDrop
           previewUrl={draft.imagePreview}
           disabled={busy}
-          onPick={(file) => onPickPhoto?.(file)}
+          onRequestPick={onRequestPickPhoto}
           onRemove={draft.imagePreview ? () => setDraft((prev) => {
             if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
             return { ...prev, imageFile: null, imagePreview: "" };
@@ -270,7 +258,6 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
   const [pendingDelete, setPendingDelete] = useState(null);
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [cropPending, setCropPending] = useState(null);
-  const coverInputRefs = useRef({});
 
   const loadTitles = useCallback(async () => {
     try {
@@ -340,6 +327,7 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
   }, [cropPending?.previewUrl]);
 
   function openPhotoCrop(file, target) {
+    if (!file) return;
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
       return;
@@ -351,6 +339,13 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
       target,
     });
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose image",
+    onFiles: (file, context) => openPhotoCrop(file, context),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   function patchItem(id, patch) {
     setItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -607,7 +602,7 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
               busy={busy}
               saveLabel={busy ? "Saving…" : "Add profile"}
               onCancel={() => setCreating(false)}
-              onPickPhoto={(file) => openPhotoCrop(file, "draft")}
+              onRequestPickPhoto={() => openPicker("draft")}
               onSave={addItem}
             />
           </section>
@@ -657,25 +652,11 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
                       className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick ua-cfg-ld-cover${photo ? " is-on" : ""}`}
                       disabled={busy}
                       aria-label={photo ? "Replace portrait photo" : "Add portrait photo"}
-                      onClick={() => coverInputRefs.current[item.id]?.click()}
+                      onClick={() => openPicker(item.id)}
                     >
                       {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">👤</span>}
                       <em>{photo ? "Replace" : "Photo"}</em>
                     </button>
-                    <input
-                      ref={(node) => {
-                        coverInputRefs.current[item.id] = node;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      disabled={busy}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (file) openPhotoCrop(file, item.id);
-                      }}
-                    />
                   </div>
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-ld-item__head">
@@ -915,6 +896,7 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
           onConfirm={confirmCoverCrop}
         />
       ) : null}
+      {mediaPickerModal}
     </div>
   );
 }
