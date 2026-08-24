@@ -20769,6 +20769,133 @@ scrollbar-width: thin;
   color: #8a97ac;
 }
 
+.updated-admin .ua-sop-field__count.is-max {
+  color: #e11d48;
+  font-weight: 750;
+}
+
+.updated-admin .ua-sop-step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  max-height: min(320px, 42vh);
+  overflow-y: auto;
+}
+
+.updated-admin .ua-sop-step-list.is-invalid {
+  border-color: #fda4af;
+  background: #fff1f2;
+}
+
+.updated-admin .ua-sop-step-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 30px;
+  gap: 8px;
+  align-items: center;
+}
+
+.updated-admin .ua-sop-step-row__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #eef0fc;
+  color: #5e6ad2;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.updated-admin .ua-sop-step-row__body {
+  position: relative;
+  min-width: 0;
+}
+
+.updated-admin .ua-sop-step-row__input {
+  width: 100%;
+  padding-right: 58px !important;
+}
+
+.updated-admin .ua-sop-step-row__input.is-limit {
+  border-color: #fda4af;
+}
+
+.updated-admin .ua-sop-step-row__count {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  font-weight: 650;
+  color: #8a97ac;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.updated-admin .ua-sop-step-row__count.is-max {
+  color: #e11d48;
+  font-weight: 750;
+}
+
+.updated-admin .ua-sop-step-row__remove {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #8a97ac;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.updated-admin .ua-sop-step-row__remove:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #e11d48;
+}
+
+.updated-admin .ua-sop-step-row__remove:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-sop-add-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 38px;
+  margin-top: 2px;
+  padding: 0 12px;
+  border: 1px dashed #aeb6e8;
+  border-radius: 10px;
+  background: #fff;
+  color: #5e6ad2;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.updated-admin .ua-sop-add-line:hover:not(:disabled) {
+  border-color: #5e6ad2;
+  background: #eef0fc;
+}
+
+.updated-admin .ua-sop-add-line:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: #8a97ac;
+  border-color: #d8dee9;
+}
+
 .updated-admin .ua-sop-field__error,
 .updated-admin .ua-sop-field__hint {
   font-size: 11.5px;
@@ -61708,21 +61835,25 @@ scrollbar-width: thin;
   z-index: 140;
   background: rgba(16, 35, 63, 0.28);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 28px 16px 40px;
-  overflow: auto;
+  padding: 24px 16px;
+  overflow: hidden;
 }
 
 .updated-admin .ua-create-user {
   width: min(760px, 100%);
-  margin: auto;
+  height: min(88vh, calc(100dvh - 48px));
+  max-height: min(88vh, calc(100dvh - 48px));
+  min-height: 0;
+  margin: 0;
   background: #fff;
   border: 1px solid #e8edf4;
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(16, 35, 63, 0.16);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .updated-admin .ua-create-user__head {
@@ -61731,6 +61862,7 @@ scrollbar-width: thin;
   justify-content: space-between;
   gap: 12px;
   padding: 22px 24px 12px;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-create-user__kicker {
@@ -61765,7 +61897,11 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-create-user__body {
-  padding: 8px 24px 8px;
+  padding: 8px 24px 16px;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overscroll-behavior: contain;
 }
 
 .updated-admin .ua-create-user__banner {
@@ -61939,6 +62075,9 @@ scrollbar-width: thin;
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px 22px;
+  border-top: 1px solid #eef1f6;
+  background: #fff;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-create-user__submit {

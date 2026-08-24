@@ -66,8 +66,23 @@ export function textToSteps(text) {
     .filter(Boolean);
 }
 
+export function normalizeSopStepLines(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [""];
+  return steps.map((step) => sanitizeSopStep(step));
+}
+
+export function filledSopSteps(steps) {
+  return (Array.isArray(steps) ? steps : [])
+    .map((step) => String(step || "").trim())
+    .filter(Boolean);
+}
+
 export function sanitizeSopTitle(raw, maxLen = SOP_TITLE_MAX_LEN) {
   return String(raw ?? "").replace(/\s{2,}/g, " ").slice(0, maxLen);
+}
+
+export function sanitizeSopStep(raw, maxLen = SOP_STEP_MAX_LEN) {
+  return String(raw ?? "").replace(/\r?\n/g, " ").slice(0, maxLen);
 }
 
 export function sanitizeSopStepsText(raw, maxLen = SOP_STEPS_TEXT_MAX_LEN) {
@@ -188,17 +203,25 @@ export function sopVisibleToAudience(sop, { consoleRoleId, roleKey, accessRoles 
   return LEGACY_AUDIENCE_ROLE_LABELS[audience] && normalizedRoleKey === audience;
 }
 
-export function validateSopStepsText(text) {
-  const steps = textToSteps(text);
-  if (steps.length < SOP_STEP_MIN_COUNT) return "Add at least one step.";
-  if (steps.length > SOP_STEP_MAX_COUNT) {
+export function validateSopSteps(steps) {
+  const filled = filledSopSteps(steps);
+  if (filled.length < SOP_STEP_MIN_COUNT) return "Add at least one step.";
+  if (filled.length > SOP_STEP_MAX_COUNT) {
     return `Use at most ${SOP_STEP_MAX_COUNT} steps.`;
   }
-  const tooLong = steps.findIndex((step) => step.length > SOP_STEP_MAX_LEN);
+  const lines = Array.isArray(steps) ? steps : [];
+  if (lines.length > SOP_STEP_MAX_COUNT) {
+    return `Use at most ${SOP_STEP_MAX_COUNT} steps.`;
+  }
+  const tooLong = filled.findIndex((step) => step.length > SOP_STEP_MAX_LEN);
   if (tooLong !== -1) {
     return `Step ${tooLong + 1} must be at most ${SOP_STEP_MAX_LEN} characters.`;
   }
   return "";
+}
+
+export function validateSopStepsText(text) {
+  return validateSopSteps(textToSteps(text));
 }
 
 export function isYoutubeOrVimeoUrl(url) {

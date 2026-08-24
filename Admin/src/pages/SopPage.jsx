@@ -19,26 +19,25 @@ import {
   SOP_FILE_MAX_BYTES,
   SOP_STEP_MAX_COUNT,
   SOP_STEP_MAX_LEN,
-  SOP_STEPS_TEXT_MAX_LEN,
   SOP_TITLE_MAX_LEN,
   audienceRoleLabel,
   audienceRoleStyle,
   buildSopAudienceOptions,
   defaultSopAudienceRole,
   contentTypeLabel,
+  filledSopSteps,
   formatSopDate,
-  sanitizeSopStepsText,
+  normalizeSopStepLines,
+  sanitizeSopStep,
   sanitizeSopTitle,
   sopVideoEmbedUrl,
   sopVisibleToAudience,
-  stepsToText,
-  textToSteps,
   validateSopCategory,
   validateSopAudienceRole,
   validateSopContentType,
   validateSopFile,
   validateSopLinkUrl,
-  validateSopStepsText,
+  validateSopSteps,
   validateSopTitle,
   withStepCount,
 } from "../data/sopData.js";
@@ -48,7 +47,7 @@ const EMPTY_FORM = {
   category: "onboarding",
   contentType: "text",
   audienceRole: "all",
-  stepsText: "",
+  steps: [""],
   linkUrl: "",
 };
 
@@ -155,14 +154,42 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
     category: initial?.category || "onboarding",
     contentType: initial?.contentType || "text",
     audienceRole: initial?.audienceRole || defaultSopAudienceRole(accessRoles),
-    stepsText: stepsToText(initial?.steps),
+    steps: normalizeSopStepLines(initial?.steps),
     linkUrl: initial?.linkUrl || "",
   }));
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
 
-  const stepCount = textToSteps(form.stepsText).length;
+  const stepCount = filledSopSteps(form.steps).length;
+  const canAddStep = form.steps.length < SOP_STEP_MAX_COUNT;
   const hasExistingFile = Boolean(initial?.fileUrl || initial?.fileKey);
+
+  function updateStep(index, value) {
+    setForm((f) => ({
+      ...f,
+      steps: f.steps.map((step, i) => (i === index ? sanitizeSopStep(value) : step)),
+    }));
+    clearError("steps");
+  }
+
+  function addStepLine() {
+    if (!canAddStep) return;
+    setForm((f) => ({ ...f, steps: [...f.steps, ""] }));
+    clearError("steps");
+    window.setTimeout(() => {
+      const inputs = document.querySelectorAll(".ua-sop-modal .ua-sop-step-row__input");
+      const last = inputs[inputs.length - 1];
+      if (last instanceof HTMLInputElement) last.focus();
+    }, 0);
+  }
+
+  function removeStepLine(index) {
+    setForm((f) => {
+      if (f.steps.length <= 1) return { ...f, steps: [""] };
+      return { ...f, steps: f.steps.filter((_, i) => i !== index) };
+    });
+    clearError("steps");
+  }
 
   function clearError(key) {
     setErrors((prev) => {
@@ -185,8 +212,8 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
     if (typeErr) next.contentType = typeErr;
 
     if (form.contentType === "text") {
-      const stepsErr = validateSopStepsText(form.stepsText);
-      if (stepsErr) next.stepsText = stepsErr;
+      const stepsErr = validateSopSteps(form.steps);
+      if (stepsErr) next.steps = stepsErr;
     } else if (form.contentType === "word" || form.contentType === "pdf") {
       const fileErr = validateSopFile(form.contentType, file, {
         required: mode === "create",
@@ -219,7 +246,7 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
       category: form.category,
       contentType: form.contentType,
       audienceRole: form.audienceRole,
-      steps: form.contentType === "text" ? textToSteps(form.stepsText) : [],
+      steps: form.contentType === "text" ? filledSopSteps(form.steps) : [],
       linkUrl: form.contentType === "video" && !file ? form.linkUrl.trim() : "",
       file: file || undefined,
     });
@@ -330,7 +357,7 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
                   clearError("contentType");
                   clearError("file");
                   clearError("linkUrl");
-                  clearError("stepsText");
+                  clearError("steps");
                 }}
               />
               {errors.contentType ? <span className="ua-sop-field__error">{errors.contentType}</span> : null}
@@ -361,32 +388,72 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
           </div>
 
           {form.contentType === "text" ? (
-            <label className="ua-sop-field">
+            <div className="ua-sop-field">
               <span className="ua-sop-field__label-row">
-                <span className="ua-sop-field__label">Steps — one per line *</span>
-                <span className="ua-sop-field__count">
+                <span className="ua-sop-field__label">Steps *</span>
+                <span className={`ua-sop-field__count${stepCount >= SOP_STEP_MAX_COUNT ? " is-max" : ""}`}>
                   {stepCount}/{SOP_STEP_MAX_COUNT} steps
                 </span>
               </span>
-              <textarea
-                className={`ua-sop-field__textarea${errors.stepsText ? " is-invalid" : ""}`}
-                value={form.stepsText}
-                maxLength={SOP_STEPS_TEXT_MAX_LEN}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, stepsText: sanitizeSopStepsText(e.target.value) }));
-                  clearError("stepsText");
-                }}
-                placeholder="Write one step per line"
-                rows={7}
-              />
-              {errors.stepsText ? (
-                <span className="ua-sop-field__error">{errors.stepsText}</span>
+              <div className={`ua-sop-step-list${errors.steps ? " is-invalid" : ""}`}>
+                {form.steps.map((step, index) => {
+                  const len = String(step || "").length;
+                  const nearLimit = len >= SOP_STEP_MAX_LEN;
+                  return (
+                    <div key={`sop-step-${index}`} className="ua-sop-step-row">
+                      <span className="ua-sop-step-row__num" aria-hidden="true">{index + 1}</span>
+                      <div className="ua-sop-step-row__body">
+                        <input
+                          type="text"
+                          className={`ua-sop-field__input ua-sop-step-row__input${nearLimit ? " is-limit" : ""}`}
+                          value={step}
+                          maxLength={SOP_STEP_MAX_LEN}
+                          placeholder={`Write step ${index + 1} (max ${SOP_STEP_MAX_LEN} chars)`}
+                          aria-label={`Step ${index + 1}`}
+                          onChange={(e) => updateStep(index, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (canAddStep) addStepLine();
+                            }
+                          }}
+                        />
+                        <span className={`ua-sop-step-row__count${nearLimit ? " is-max" : ""}`}>
+                          {len}/{SOP_STEP_MAX_LEN}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className="ua-sop-step-row__remove"
+                        aria-label={`Remove step ${index + 1}`}
+                        title="Remove line"
+                        disabled={form.steps.length <= 1}
+                        onClick={() => removeStepLine(index)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="ua-sop-add-line"
+                  disabled={!canAddStep || saving}
+                  onClick={addStepLine}
+                >
+                  {canAddStep
+                    ? `+ Add line (${form.steps.length}/${SOP_STEP_MAX_COUNT})`
+                    : `Limit reached (${SOP_STEP_MAX_COUNT}/${SOP_STEP_MAX_COUNT})`}
+                </button>
+              </div>
+              {errors.steps ? (
+                <span className="ua-sop-field__error">{errors.steps}</span>
               ) : (
                 <span className="ua-sop-field__hint">
-                  One step per line · max {SOP_STEP_MAX_LEN} characters each
+                  Add one step per line · max {SOP_STEP_MAX_LEN} characters each · up to {SOP_STEP_MAX_COUNT} steps
                 </span>
               )}
-            </label>
+            </div>
           ) : null}
 
           {form.contentType === "word" || form.contentType === "pdf" || form.contentType === "video" ? (
