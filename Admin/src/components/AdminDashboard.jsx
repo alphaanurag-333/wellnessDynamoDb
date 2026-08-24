@@ -586,28 +586,90 @@ function QuickInsightCard({ item, onClick }) {
   );
 }
 
+function noteStorageKeys(accountId, viewAs) {
+  const id = accountId || viewAs || "staff";
+  const noteKey = `ua-pending-note:${id}`;
+  return { noteKey, stampKey: `${noteKey}:at` };
+}
+
+function formatSavedStamp(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const hh = String(date.getHours() % 12 || 12);
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  const ap = date.getHours() >= 12 ? "PM" : "AM";
+  return `Saved ${hh}:${mm} ${ap}`;
+}
+
+function readStoredNote(noteKey, stampKey) {
+  try {
+    const stored = localStorage.getItem(noteKey) || "";
+    const storedAt = localStorage.getItem(stampKey) || "";
+    return {
+      text: stored,
+      stamp: storedAt ? formatSavedStamp(storedAt) : stored ? "Saved" : "",
+    };
+  } catch {
+    return { text: "", stamp: "" };
+  }
+}
+
+function writeStoredNote(noteKey, stampKey, text, at) {
+  try {
+    localStorage.setItem(noteKey, text);
+    if (at) localStorage.setItem(stampKey, at);
+  } catch {
+    /* session-only if storage is blocked */
+  }
+}
+
 function NotesToRemember({ onToast }) {
+  const { viewAs, account, can } = useViewAs();
+  const canEdit = can("console.pt.edit");
+  const { noteKey, stampKey } = useMemo(
+    () => noteStorageKeys(account?.id, viewAs),
+    [account?.id, viewAs],
+  );
+  const inputRef = useRef(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState("");
   const [locked, setLocked] = useState(true);
   const [savedAt, setSavedAt] = useState("");
   const dirty = text !== saved;
 
+  useEffect(() => {
+    const stored = readStoredNote(noteKey, stampKey);
+    setText(stored.text);
+    setSaved(stored.text);
+    setSavedAt(stored.stamp);
+    setLocked(true);
+  }, [noteKey, stampKey]);
+
+  function toggleLock() {
+    if (!canEdit) return;
+    setLocked((current) => {
+      const nextLocked = !current;
+      if (!nextLocked) {
+        requestAnimationFrame(() => inputRef.current?.focus());
+      }
+      return nextLocked;
+    });
+  }
+
   function saveNote() {
-    if (!dirty) return;
-    const d = new Date();
-    const hh = String(d.getHours() % 12 || 12);
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const ap = d.getHours() >= 12 ? "PM" : "AM";
+    if (!dirty || !canEdit) return;
+    const now = new Date();
+    writeStoredNote(noteKey, stampKey, text, now.toISOString());
     setSaved(text);
-    setSavedAt(`Saved ${hh}:${mm} ${ap}`);
-    onToast("Note saved");
+    setSavedAt(formatSavedStamp(now));
+    setLocked(true);
+    onToast?.("Note saved");
   }
 
   function resetNote() {
     if (!dirty) return;
     setText(saved);
-    onToast("Note reset to the last save");
+    onToast?.("Note reset to the last save");
   }
 
   return (
@@ -618,32 +680,48 @@ function NotesToRemember({ onToast }) {
         {savedAt ? <span className="coach-notes__stamp">{savedAt}</span> : null}
       </div>
       <textarea
+        ref={inputRef}
         className="coach-notes__input"
         placeholder="Anything to pick up later…"
         value={text}
-        readOnly={locked}
-        onChange={(e) => {
-          if (!locked) setText(e.target.value);
+        rows={2}
+        readOnly={locked || !canEdit}
+        aria-label="Notes to remember"
+        onChange={(event) => {
+          if (!locked && canEdit) setText(event.target.value);
         }}
       />
       <div className="coach-notes__actions">
-        <button type="button" className="coach-notes__btn coach-notes__btn--edit" onClick={() => setLocked((v) => !v)}>
-          {locked ? "Edit" : "Locked"}
-        </button>
-        <button
-          type="button"
-          className={`coach-notes__btn coach-notes__btn--reset${dirty ? " coach-notes__btn--reset-dirty" : ""}`}
-          onClick={resetNote}
-        >
-          Reset
-        </button>
-        <button
-          type="button"
-          className={`coach-notes__btn coach-notes__btn--save${dirty ? " coach-notes__btn--save-dirty" : ""}`}
-          onClick={saveNote}
-        >
-          {dirty ? "Save" : "Saved"}
-        </button>
+        {canEdit ? (
+          <>
+            <button
+              type="button"
+              className="coach-notes__btn coach-notes__btn--edit"
+              onClick={toggleLock}
+            >
+              {locked ? "Edit" : "Locked"}
+            </button>
+            <button
+              type="button"
+              className={`coach-notes__btn coach-notes__btn--reset${dirty ? " coach-notes__btn--reset-dirty" : ""}`}
+              disabled={!dirty}
+              onClick={resetNote}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              className={`coach-notes__btn coach-notes__btn--save${dirty ? " coach-notes__btn--save-dirty" : ""}`}
+              onClick={saveNote}
+            >
+              {dirty ? "Save" : "Saved"}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="coach-notes__btn coach-notes__btn--edit" disabled>
+            Locked
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1623,20 +1701,17 @@ export function AdminDashboard({
                       <span className="coach-stale-records__item-top">
                         <span className="coach-stale-records__dot" style={{ background: record.color }} />
                         <span className="coach-stale-records__label">{record.label}</span>
-                        <span className="coach-stale-records__count" style={{ color: record.color }}>{record.count}</span>
+                        <span className="coach-stale-records__count" style={{ color: "#16233f" }}>{record.count}</span>
                       </span>
                       <span className="coach-stale-records__note">{record.note}</span>
                     </button>
                   ))}
                 </div>
               </div>
-              <div style={{display:'none'}} className="coach-pending-notes">
-                <NotesToRemember onToast={onToast} />
-              </div>
-
             </div>
-
-
+            <div className="coach-pending-notes">
+              <NotesToRemember onToast={onToast} />
+            </div>
           </div>
         </section>
       ) : null}
@@ -1777,7 +1852,7 @@ export function AdminDashboard({
                 <CategoryIcon icon={appUserProgramCard.icon} />
               </span>
               <span className="prog-cat__label">{appUserProgramCard.label}</span>
-              <span className="prog-cat__count" style={{ color: appUserProgramCard.accent }}>{appUserProgramCard.count}</span>
+              <span className="prog-cat__count" style={{ color: "#16233f" }}>{appUserProgramCard.count}</span>
             </button>
           </div>
         </div>
@@ -1894,7 +1969,7 @@ export function AdminDashboard({
             <div className="community-card__head"><span>🎂</span> Birthdays</div>
             <div className="birthday-scroll">
               {birthdayRows.length === 0 ? (
-                <div className="community-card__empty">No upcoming birthdays</div>
+                <div className="community-card__empty" style={{justifyContent:"center",textAlign:"center"}}>No upcoming birthdays</div>
               ) : birthdayRows.map((b) => (
                 <div key={b.id || `${b.name}-${b.when}`} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
                   <span className="birthday-chip__name"><span>{b.mark}</span>{b.name}</span>

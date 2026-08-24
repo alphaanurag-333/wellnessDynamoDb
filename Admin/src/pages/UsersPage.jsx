@@ -75,9 +75,19 @@ function UserListAvatar({ name, profileImage, colorIndex }) {
 }
 
 function extraQueryForTypeTab(tabId, baseUserTier) {
-  if (tabId === "app") return { userTier: baseUserTier || "maintenance" };
+  if (tabId === "app") {
+    return {
+      userTier: baseUserTier || "maintenance",
+      excludeClientCategory: "eagle",
+    };
+  }
   if (tabId === "team") return { clientCategory: "eagle" };
-  if (tabId === "individual") return { clientCategory: "individual" };
+  if (tabId === "individual") {
+    return {
+      clientCategory: "individual",
+      excludeUserTier: "maintenance",
+    };
+  }
   return {};
 }
 
@@ -326,8 +336,8 @@ export function UsersPage() {
     const extra = extraQueryForTypeTab(typeTab, baseListQuery.userTier);
     return {
       ...baseListQuery,
+      ...extra,
       userTier: extra.userTier || baseListQuery.userTier,
-      clientCategory: extra.clientCategory,
     };
   }, [baseListQuery, typeTab]);
 
@@ -388,8 +398,8 @@ export function UsersPage() {
         const extra = extraQueryForTypeTab(tabId, baseListQuery.userTier);
         const params = {
           ...baseListQuery,
+          ...extra,
           userTier: extra.userTier || baseListQuery.userTier,
-          clientCategory: extra.clientCategory,
         };
         try {
           const result = useScopedUsers
@@ -406,13 +416,19 @@ export function UsersPage() {
           return 0;
         }
       };
-      const [all, individual, team, app] = await Promise.all([
-        fetchCount("all"),
+      const [individual, team, app] = await Promise.all([
         fetchCount("individual"),
         fetchCount("team"),
         fetchCount("app"),
       ]);
-      if (!cancelled) setTabCounts({ all, individual, team, app });
+      if (!cancelled) {
+        setTabCounts({
+          all: individual + team + app,
+          individual,
+          team,
+          app,
+        });
+      }
     }
     loadTabCounts();
     return () => {
@@ -421,6 +437,7 @@ export function UsersPage() {
   }, [baseListQuery, reloadNonce, useScopedUsers]);
 
   useEffect(() => {
+    if (typeTab === "all") return;
     setTabCounts((prev) => (
       prev[typeTab] === pagination.total ? prev : { ...prev, [typeTab]: pagination.total }
     ));
@@ -537,13 +554,16 @@ export function UsersPage() {
   const typeTabs = useMemo(
     () => USER_TYPE_TAB_DEFS.map((def) => {
       const id = def.id || "all";
+      const count = id === "all"
+        ? (tabCounts.all || (typeTab === "all" ? pagination.total : 0))
+        : (tabCounts[id] ?? 0);
       return {
         id,
         label: def.label,
-        count: tabCounts[id] ?? 0,
+        count,
       };
     }),
-    [tabCounts],
+    [pagination.total, tabCounts, typeTab],
   );
 
   const pageRows = useMemo(() => {
@@ -559,7 +579,8 @@ export function UsersPage() {
     return list;
   }, [enrichedPool, sort]);
 
-  const totalCount = pagination.total;
+  const listTotal = pagination.total;
+  const headerCount = Number(tabCounts[typeTab]) || listTotal;
   const totalPages = Math.max(1, pagination.pages || 1);
   const safePage = currentPage;
 
@@ -582,8 +603,8 @@ export function UsersPage() {
     [safePage, totalPages],
   );
 
-  const rangeStart = totalCount === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-  const rangeEnd = totalCount === 0 ? 0 : rangeStart + pageRows.length - 1;
+  const rangeStart = listTotal === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = listTotal === 0 ? 0 : rangeStart + pageRows.length - 1;
 
   const goToFirstPage = () => {
     if (currentPage > 1) setPage(1);
@@ -892,7 +913,7 @@ export function UsersPage() {
           layout="split"
           meta={(
             <>
-              <span className="page-head__count">{loading ? "…" : totalCount}</span>  &nbsp;clients ·{" "}
+              <span className="page-head__count">{loading ? "…" : headerCount}</span>&nbsp;clients ·{" "}
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
@@ -1173,10 +1194,10 @@ export function UsersPage() {
         </div>
       </TableScroll>
 
-      {!loading && !loadError && totalCount > 0 ? (
+      {!loading && !loadError && listTotal > 0 ? (
         <div className="ua-users-pagination" aria-label="Users pagination">
           <div className="ua-users-pagination__meta">
-            Showing <strong>{rangeStart}–{rangeEnd}</strong> of <strong>{totalCount}</strong>
+            Showing <strong>{rangeStart}–{rangeEnd}</strong> of <strong>{listTotal}</strong>
             <span className="ua-users-pagination__sep">·</span>
             {PAGE_SIZE} per page
           </div>
