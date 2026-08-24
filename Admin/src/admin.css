@@ -1001,7 +1001,7 @@
 }
 .updated-admin .npage__filter-btn:hover {
   border-color: var(--accent-blue);
-  color: var(--accent-blue);
+  color: var(--muted);
 }
 .updated-admin .npage__filter-btn--active {
   background: var(--accent-blue);
