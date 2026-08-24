@@ -1,0 +1,105 @@
+/* Transformation config page only — /configs/common-transformation
+   Scoped so other screens that reuse these classes are unchanged. */
+
+.updated-admin .ua-cfg-detail--tf,
+.updated-admin .ua-cfg-tf {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-detail--tf {
+  overflow-x: hidden;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child,
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__head,
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__head {
+  margin-bottom: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__copy {
+  flex: 1 1 12rem;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: auto;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__head {
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-detail--tf {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cfg-tf > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+    width: 100%;
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-summary__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-summary__cell {
+    padding: 8px 10px;
+  }
+}

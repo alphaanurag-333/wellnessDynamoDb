@@ -1,0 +1,276 @@
+/* FAQ config page only — /configs/app-faq
+   Scoped so other screens that reuse ua-cfg-faq* classes are unchanged. */
+
+.updated-admin .ua-cfg-detail--faq,
+.updated-admin .ua-faq-config {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-detail--faq {
+  overflow-x: hidden;
+}
+
+.updated-admin .ua-cfg-detail--faq .ua-cfg-detail__body,
+.updated-admin .ua-cfg-detail--faq .ua-cfg-summary,
+.updated-admin .ua-faq-config,
+.updated-admin .ua-faq-config .ua-cfg-panel,
+.updated-admin .ua-faq-config .ua-cfg-faq,
+.updated-admin .ua-faq-config .ua-cfg-faq-new {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-faq-config {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq {
+  grid-template-columns: 18px auto minmax(0, 1fr) minmax(0, max-content);
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq__question,
+.updated-admin .ua-faq-config .ua-cfg-faq__answer,
+.updated-admin .ua-faq-config .ua-cfg-faq__question-input,
+.updated-admin .ua-faq-config .ua-cfg-faq__answer-input {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__surfaces {
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-new__surfaces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.updated-admin .ua-faq-config .ua-cfg-faq-new__surfaces .ua-cfg-bn-surface {
+  flex: 1 1 148px;
+  min-width: 0;
+  max-width: 100%;
+  justify-content: space-between;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-detail--faq .ua-cfg-summary {
+    padding: 14px 14px 12px;
+  }
+
+  .updated-admin .ua-cfg-detail--faq .ua-cfg-summary__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-panel__head {
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-shell .ua-cfg-panel__head {
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq {
+    display: grid;
+    grid-template-columns: 22px auto minmax(0, 1fr);
+    grid-template-areas:
+      "drag num num"
+      "ctrl ctrl ctrl"
+      "q    q   q"
+      "a    a   a";
+    column-gap: 8px;
+    row-gap: 8px;
+    align-items: start;
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__drag {
+    grid-area: drag;
+    grid-column: 1;
+    grid-row: 1;
+    height: 32px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__num {
+    grid-area: num;
+    grid-column: 2 / -1;
+    grid-row: 1;
+    height: 32px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls {
+    grid-area: ctrl;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: flex-start;
+    min-height: 0;
+    height: auto;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__question,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__question-input {
+    grid-area: q;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-height: 0;
+    line-height: 1.4;
+    height: auto;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__answer,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__answer-input {
+    grid-area: a;
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq--editing .ua-cfg-faq__drag,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq--editing .ua-cfg-faq__num,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq--editing .ua-cfg-faq__controls {
+    min-height: 32px;
+    height: auto;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__surfaces {
+    width: 100%;
+    flex: 1 1 100%;
+    justify-content: flex-start;
+    gap: 8px 10px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__live {
+    gap: 6px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls .ua-cfg-btn,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls .ua-cfg-icon-btn {
+    height: 32px;
+    min-width: 32px;
+  }
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-detail--faq {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-panel {
+    padding: 14px 12px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-panel.ua-cfg-faq-shell {
+    padding: 0;
+  }
+
+  .updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+  .updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-faq-config > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-new {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .updated-admin .ua-cfg-detail--faq .ua-cfg-summary__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cfg-detail--faq .ua-cfg-summary__cell {
+    padding: 8px 10px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq {
+    padding: 12px 10px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls .ua-cfg-btn,
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls .ua-cfg-icon-btn {
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__controls .ua-cfg-btn {
+    padding: 0 14px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-new__surfaces .ua-cfg-bn-surface {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .updated-admin .ua-cfg-detail--faq {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__shown {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq__live {
+    gap: 4px;
+  }
+}

@@ -8,12 +8,13 @@ import {
 } from "../api/faqApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import "./faqConfig.css";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       <div className="ua-cfg-panel__head">
-        <div>
+        <div className="ua-cfg-panel__copy">
           <h3 className="ua-cfg-panel__title">{title}</h3>
           {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
         </div>
@@ -81,41 +82,43 @@ function FaqItemControls({
           </button>
         </div>
       </div>
-      {isEditing ? (
+      <div className="ua-cfg-faq__actions">
+        {isEditing ? (
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            disabled={busy}
+            onClick={onSave}
+          >
+            Save
+          </button>
+        ) : (
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onEdit}>
+            Edit
+          </button>
+        )}
+        <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy} onClick={onMoveUp}>
+          ↑
+        </button>
         <button
           type="button"
-          className="ua-cfg-btn ua-cfg-btn--primary"
+          className="ua-cfg-icon-btn"
+          aria-label="Move down"
           disabled={busy}
-          onClick={onSave}
+          onClick={onMoveDown}
         >
-          Save
+          ↓
         </button>
-      ) : (
-        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onEdit}>
-          Edit
+        <button
+          type="button"
+          className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+          aria-label="Delete"
+          disabled={busy}
+          onClick={onDelete}
+        >
+          ×
         </button>
-      )}
-      <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={busy} onClick={onMoveUp}>
-        ↑
-      </button>
-      <button
-        type="button"
-        className="ua-cfg-icon-btn"
-        aria-label="Move down"
-        disabled={busy}
-        onClick={onMoveDown}
-      >
-        ↓
-      </button>
-      <button
-        type="button"
-        className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-        aria-label="Delete"
-        disabled={busy}
-        onClick={onDelete}
-      >
-        ×
-      </button>
+      </div>
     </div>
   );
 }
@@ -420,7 +423,7 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
   }
 
   return (
-    <>
+    <div className="ua-faq-config">
       <SectionSurfacePanel
         sectionId="faq"
         editor={editor}
@@ -571,6 +574,6 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
         </div>
       )}
     </Panel>
-    </>
+    </div>
   );
 }

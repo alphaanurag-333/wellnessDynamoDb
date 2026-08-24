@@ -4,10 +4,11 @@ import {
   adminUpdateSectionSurfaceConfig,
 } from "../api/sectionSurfaceConfigApi.js";
 import { SectionSurfaceToggles } from "./SectionSurfaceToggles.jsx";
+import "./sectionSurfaceLive.css";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className="ua-cfg-panel ua-cfg-surface-live">
       <div className="ua-cfg-panel__head">
         <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
