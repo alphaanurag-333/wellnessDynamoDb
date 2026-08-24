@@ -174,7 +174,7 @@ export function MedicalConditionsSection({ user, onToast }) {
           ))}
         </div>
       ) : (
-        <p className="ua-cp-medical__empty">
+        <p className="ua-cp-medical__empty" style={{textAlign:"center"}}>
           This client has not submitted medical condition answers yet.
         </p>
       )}

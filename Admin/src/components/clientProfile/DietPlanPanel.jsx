@@ -308,7 +308,7 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
       ) : null}
 
       {!loading && isHealClient && !recommended && !assignOpen && !error ? (
-        <p className="ua-cp-food-diet__empty">No diet plan assigned yet.</p>
+        <p className="ua-cp-food-diet__empty" style={{textAlign:"center"}}>No diet plan assigned yet.</p>
       ) : null}
 
       {history.length ? (

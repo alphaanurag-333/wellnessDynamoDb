@@ -769,7 +769,7 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
     return (
       <div className="ua-cp-ip-assign-history">
         <h3 className="ua-cp-ip-assign-history__title">Assigned test history</h3>
-        <p className="ua-cp-ip-assign-history__empty">No test lists have been published for this client yet.</p>
+        <p className="ua-cp-ip-assign-history__empty" style={{textAlign:"center"}}>No test lists have been published for this client yet.</p>
       </div>
     );
   }
