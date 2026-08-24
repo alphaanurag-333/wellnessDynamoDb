@@ -20659,10 +20659,17 @@ scrollbar-width: thin;
   font-size: 13.5px;
 }
 
+.updated-admin .ua-dialog-backdrop:has(.ua-sop-modal) {
+  overflow: hidden;
+  align-items: center;
+}
+
 .updated-admin .ua-sop-modal {
   width: min(560px, calc(100vw - 24px));
   max-width: 560px;
-  max-height: min(92vh, 860px);
+  height: min(92vh, calc(100dvh - 40px));
+  max-height: min(92vh, calc(100dvh - 40px));
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -20670,6 +20677,7 @@ scrollbar-width: thin;
   border-radius: 16px;
   box-shadow: 0 22px 60px rgba(16, 35, 63, 0.22);
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-sop-modal__form {
@@ -20677,6 +20685,7 @@ scrollbar-width: thin;
   flex-direction: column;
   min-height: 0;
   flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .updated-admin .ua-sop-modal__body {
@@ -20684,10 +20693,28 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
   overflow-x: hidden;
+  overflow-y: scroll;
   min-height: 0;
   flex: 1 1 auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c0d4 #eef1f6;
+}
+
+.updated-admin .ua-sop-modal__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.updated-admin .ua-sop-modal__body::-webkit-scrollbar-track {
+  background: #eef1f6;
+  border-radius: 8px;
+}
+
+.updated-admin .ua-sop-modal__body::-webkit-scrollbar-thumb {
+  background: #b8c0d4;
+  border-radius: 8px;
 }
 
 .updated-admin .ua-sop-modal__head {
@@ -20782,8 +20809,7 @@ scrollbar-width: thin;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background: #f8fafc;
-  max-height: min(320px, 42vh);
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .updated-admin .ua-sop-step-list.is-invalid {
@@ -20882,6 +20908,10 @@ scrollbar-width: thin;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -8px 12px #f8fafc;
 }
 
 .updated-admin .ua-sop-add-line:hover:not(:disabled) {
@@ -21048,7 +21078,8 @@ scrollbar-width: thin;
   .updated-admin .ua-sop-modal {
     width: 100%;
     max-width: none;
-    max-height: min(94vh, 860px);
+    height: min(94vh, calc(100dvh - 20px));
+    max-height: min(94vh, calc(100dvh - 20px));
     border-radius: 16px 16px 12px 12px;
   }
 
