@@ -188,61 +188,63 @@ function StoryEditModal({
           <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
         </div>
 
-        <div className="ua-cfg-pt-edit-modal__grid">
-          <div className="ua-cfg-pt-photo-wrap">
-            <span className="ua-cfg-pt-field__label">Photo</span>
-            <CoverDrop
-              previewUrl={photo}
-              disabled={busy}
-              onPick={(file) => onPickPhoto(file, (croppedFile) => {
-                setDraft((prev) => {
-                  if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
-                  return {
-                    ...prev,
-                    imageFile: croppedFile,
-                    imagePreview: URL.createObjectURL(croppedFile),
-                  };
-                });
-              })}
-            />
-          </div>
+        <div className="ua-cfg-pt-edit-modal__body">
+          <div className="ua-cfg-pt-edit-modal__grid">
+            <div className="ua-cfg-pt-photo-wrap">
+              <span className="ua-cfg-pt-field__label">Photo</span>
+              <CoverDrop
+                previewUrl={photo}
+                disabled={busy}
+                onPick={(file) => onPickPhoto(file, (croppedFile) => {
+                  setDraft((prev) => {
+                    if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
+                    return {
+                      ...prev,
+                      imageFile: croppedFile,
+                      imagePreview: URL.createObjectURL(croppedFile),
+                    };
+                  });
+                })}
+              />
+            </div>
 
-          <div className="ua-cfg-pt-fields">
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Headline</span>
-              <input
-                type="text"
-                className="ua-cfg-pt-field__input"
-                value={draft.name}
-                placeholder="Down 18 kg on Fat Loss"
-                disabled={busy}
-                onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-              />
-            </label>
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Program</span>
-              <ProgramSelect
-                options={options}
-                value={draft.program}
-                disabled={busy}
-                onChange={(value) => setDraft((prev) => ({ ...prev, program: value }))}
-              />
-            </label>
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Description</span>
-              <textarea
-                className="ua-cfg-pt-field__textarea"
-                rows={5}
-                value={draft.description}
-                placeholder="Program-specific story..."
-                disabled={busy}
-                onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
-              />
-            </label>
+            <div className="ua-cfg-pt-fields">
+              <label className="ua-cfg-pt-field">
+                <span className="ua-cfg-pt-field__label">Headline</span>
+                <input
+                  type="text"
+                  className="ua-cfg-pt-field__input"
+                  value={draft.name}
+                  placeholder="Down 18 kg on Fat Loss"
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+                />
+              </label>
+              <label className="ua-cfg-pt-field">
+                <span className="ua-cfg-pt-field__label">Program</span>
+                <ProgramSelect
+                  options={options}
+                  value={draft.program}
+                  disabled={busy}
+                  onChange={(value) => setDraft((prev) => ({ ...prev, program: value }))}
+                />
+              </label>
+              <label className="ua-cfg-pt-field">
+                <span className="ua-cfg-pt-field__label">Description</span>
+                <textarea
+                  className="ua-cfg-pt-field__textarea"
+                  rows={5}
+                  value={draft.description}
+                  placeholder="Program-specific story..."
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                />
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="ua-cfg-mv-upload-modal__foot">
+        <div className="ua-cfg-mv-upload-modal__foot ua-cfg-pt-edit-modal__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onClose}>Cancel</button>
           <button
             type="button"
