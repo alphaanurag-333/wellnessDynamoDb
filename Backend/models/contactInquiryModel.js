@@ -12,6 +12,7 @@ const {
   buildContainsFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { validateMobile } = require("../utils/phoneValidation");
 
 const TABLE = "ContactInquiry";
 const STATUS = new Set(["new", "read", "archived"]);
@@ -26,11 +27,6 @@ const FIELD_LIMITS = {
   phone: 24,
   message: 1000,
 };
-
-function isIndiaDial(code) {
-  const normalized = String(code ?? "").trim().replace(/\s+/g, "");
-  return normalized === "+91" || normalized === "91";
-}
 
 function sanitizePhoneCountryCode(value) {
   const code = String(value ?? "").trim().replace(/\s+/g, "");
@@ -50,36 +46,12 @@ function sanitizePhoneCountryCode(value) {
 
 function sanitizeNationalPhone(value, countryCode) {
   const digits = String(value ?? "").replace(/\D/g, "");
-  if (!digits) {
-    const err = new Error("phone is required");
-    err.code = "VALIDATION_ERROR";
-    throw err;
-  }
-  if (!/^\d+$/.test(digits)) {
-    const err = new Error("phone should contain digits only");
-    err.code = "VALIDATION_ERROR";
-    throw err;
-  }
-  if (isIndiaDial(countryCode)) {
-    if (digits.length !== 10) {
-      const err = new Error("Indian mobile number must be 10 digits");
-      err.code = "VALIDATION_ERROR";
-      throw err;
-    }
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      const err = new Error("Indian mobile number must start with 6, 7, 8, or 9");
-      err.code = "VALIDATION_ERROR";
-      throw err;
-    }
-    if (/^(\d)\1{9}$/.test(digits)) {
-      const err = new Error("phone is not valid");
-      err.code = "VALIDATION_ERROR";
-      throw err;
-    }
-    return digits;
-  }
-  if (digits.length < 4 || digits.length > FIELD_LIMITS.phoneNational) {
-    const err = new Error("phone must be 4 to 15 digits");
+  const errMsg = validateMobile(digits, {
+    label: "phone",
+    countryCode,
+  });
+  if (errMsg) {
+    const err = new Error(errMsg);
     err.code = "VALIDATION_ERROR";
     throw err;
   }

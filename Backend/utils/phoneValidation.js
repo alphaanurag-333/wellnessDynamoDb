@@ -1,59 +1,128 @@
 const AppError = require("./AppError");
+const {
+  isValidPhoneNumber,
+  getCountries,
+  getCountryCallingCode,
+  Metadata,
+} = require("libphonenumber-js");
 
-const PHONE_NATIONAL_LEN = 10;
-const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
-
-const DIAL_NATIONAL_LEN = {
-  "+91": 10,
-  "+971": 9,
-  "+1": 10,
-  "+44": 10,
-  "+65": 8,
-  "+61": 9,
-  "+977": 10,
-  "+880": 10,
-  "+94": 9,
-};
+const DEFAULT_PHONE_MAX_LENGTH = 15;
+const DEFAULT_PHONE_MIN_LENGTH = 4;
 
 function normalizeDial(countryCode) {
-  const raw = String(countryCode || "").trim();
+  const raw = String(countryCode || "").trim().replace(/\s+/g, "");
   if (!raw) return "+91";
   return raw.startsWith("+") ? raw : `+${raw}`;
 }
 
-function validateIndianMobile(phone, { label = "phone" } = {}) {
-  const trimmed = String(phone ?? "").trim();
-  if (!trimmed) return `${label} is required`;
-  if (!/^\d+$/.test(trimmed)) return `${label} must contain digits only`;
-  if (trimmed.length !== PHONE_NATIONAL_LEN) {
-    return `${label} must be exactly ${PHONE_NATIONAL_LEN} digits`;
-  }
-  if (/^(\d)\1{9}$/.test(trimmed)) {
-    return `${label} is not valid`;
-  }
-  if (!INDIAN_MOBILE_PATTERN.test(trimmed)) {
-    return `${label} must start with 6, 7, 8, or 9`;
-  }
-  return null;
+function dialDigits(countryCode) {
+  return normalizeDial(countryCode).replace(/\D/g, "");
 }
 
-function validateMobile(phone, { label = "phone", countryCode } = {}) {
-  const cc = normalizeDial(countryCode);
-  if (cc === "+91") return validateIndianMobile(phone, { label });
+function countriesForDial(countryCode) {
+  const digits = dialDigits(countryCode);
+  if (!digits) return [];
+  try {
+    return getCountries().filter((c) => getCountryCallingCode(c) === digits);
+  } catch {
+    return [];
+  }
+}
 
+function getPhoneMaxLengthForIso(countryIso) {
+  const iso = String(countryIso || "")
+    .trim()
+    .toUpperCase();
+  if (!iso || iso.length !== 2) return DEFAULT_PHONE_MAX_LENGTH;
+  try {
+    const metadata = new Metadata();
+    metadata.selectNumberingPlan(iso);
+    const lengths = metadata.numberingPlan?.possibleLengths?.();
+    if (lengths?.length) return Math.max(...lengths);
+  } catch {
+    // ignore
+  }
+  return DEFAULT_PHONE_MAX_LENGTH;
+}
+
+function isValidForDial(phone, countryCode) {
+  const countries = countriesForDial(countryCode);
+  if (!countries.length) {
+    const len = phone.length;
+    return len >= DEFAULT_PHONE_MIN_LENGTH && len <= DEFAULT_PHONE_MAX_LENGTH;
+  }
+  return countries.some((iso) => {
+    try {
+      return isValidPhoneNumber(phone, iso);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function isValidForIso(phone, countryIso) {
+  const iso = String(countryIso || "")
+    .trim()
+    .toUpperCase();
+  if (!iso || iso.length !== 2) return false;
+  try {
+    return isValidPhoneNumber(phone, iso);
+  } catch {
+    return false;
+  }
+}
+
+/** India-only helper (kept for older call sites). */
+function validateIndianMobile(phone, { label = "phone" } = {}) {
+  return validateMobile(phone, { label, countryCode: "+91", countryIso: "IN" });
+}
+
+/**
+ * Validate national phone digits against selected country.
+ * Prefer countryIso when available; otherwise resolve by dial code.
+ */
+function validateMobile(
+  phone,
+  { label = "phone", countryCode, countryIso } = {},
+) {
   const trimmed = String(phone ?? "").trim();
   if (!trimmed) return `${label} is required`;
   if (!/^\d+$/.test(trimmed)) return `${label} must contain digits only`;
-  const expected = DIAL_NATIONAL_LEN[cc];
-  if (expected) {
-    if (trimmed.length !== expected) {
-      return `${label} must be exactly ${expected} digits`;
+  if (/^(\d)\1+$/.test(trimmed)) return `${label} is not valid`;
+
+  const iso = String(countryIso || "")
+    .trim()
+    .toUpperCase();
+  if (iso) {
+    const maxLen = getPhoneMaxLengthForIso(iso);
+    if (trimmed.length > maxLen) {
+      return `${label} must be at most ${maxLen} digits`;
     }
-  } else if (trimmed.length < 6 || trimmed.length > 15) {
-    return `${label} must be 6–15 digits`;
+    if (!isValidForIso(trimmed, iso)) {
+      return `${label} is not valid for the selected country`;
+    }
+    return null;
   }
-  if (/^(\d)\1+$/.test(trimmed)) {
-    return `${label} is not valid`;
+
+  const cc = normalizeDial(countryCode);
+  const countries = countriesForDial(cc);
+  if (countries.length) {
+    const maxLen = Math.max(
+      ...countries.map((c) => getPhoneMaxLengthForIso(c)),
+      DEFAULT_PHONE_MIN_LENGTH,
+    );
+    if (trimmed.length > maxLen) {
+      return `${label} must be at most ${maxLen} digits`;
+    }
+  } else if (
+    trimmed.length < DEFAULT_PHONE_MIN_LENGTH ||
+    trimmed.length > DEFAULT_PHONE_MAX_LENGTH
+  ) {
+    return `${label} must be ${DEFAULT_PHONE_MIN_LENGTH}–${DEFAULT_PHONE_MAX_LENGTH} digits`;
+  }
+
+  if (!isValidForDial(trimmed, cc)) {
+    return `${label} is not valid for the selected country code`;
   }
   return null;
 }
@@ -63,15 +132,24 @@ function assertValidIndianMobile(phone, { field = "phone" } = {}) {
   if (err) throw new AppError(err, 400);
 }
 
-function assertValidMobile(phone, { field = "phone", countryCode } = {}) {
-  const err = validateMobile(phone, { label: field, countryCode });
+function assertValidMobile(
+  phone,
+  { field = "phone", countryCode, countryIso } = {},
+) {
+  const err = validateMobile(phone, {
+    label: field,
+    countryCode,
+    countryIso,
+  });
   if (err) throw new AppError(err, 400);
 }
 
 module.exports = {
-  PHONE_NATIONAL_LEN,
-  INDIAN_MOBILE_PATTERN,
-  DIAL_NATIONAL_LEN,
+  DEFAULT_PHONE_MAX_LENGTH,
+  DEFAULT_PHONE_MIN_LENGTH,
+  normalizeDial,
+  countriesForDial,
+  getPhoneMaxLengthForIso,
   validateIndianMobile,
   validateMobile,
   assertValidIndianMobile,

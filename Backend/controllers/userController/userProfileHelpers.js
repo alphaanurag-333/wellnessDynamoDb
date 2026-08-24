@@ -1,5 +1,5 @@
 const AppError = require("../../utils/AppError");
-const { assertValidIndianMobile, assertValidMobile } = require("../../utils/phoneValidation");
+const { assertValidMobile } = require("../../utils/phoneValidation");
 const {
   assertValidDateOfBirth,
   assertValidPersonName,
@@ -778,7 +778,10 @@ function isWhatsappChanged(current, requested) {
 async function sendProfilePhoneChangeOtp(user, { phone, phoneCountryCode }) {
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) throw new AppError("phone is required", 400);
-  assertValidIndianMobile(normalizedPhone, { field: "phone" });
+  assertValidMobile(normalizedPhone, {
+    field: "phone",
+    countryCode: phoneCountryCode || user.phoneCountryCode,
+  });
   const cc = normalizeCountryCode(phoneCountryCode || user.phoneCountryCode);
   await assertUniquePhone(cc, normalizedPhone, user.id);
 
@@ -854,7 +857,10 @@ async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCount
 
   const normalizedPhone = normalizePhone(requested.phone);
   if (!normalizedPhone) throw new AppError("whatsappPhone is required", 400);
-  assertValidIndianMobile(normalizedPhone, { field: "whatsappPhone" });
+  assertValidMobile(normalizedPhone, {
+    field: "whatsappPhone",
+    countryCode: requested.countryCode || user.whatsappCountryCode,
+  });
   const cc = normalizeCountryCode(requested.countryCode || user.whatsappCountryCode);
 
   const currentEff = getEffectiveWhatsapp(user);
