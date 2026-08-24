@@ -4943,6 +4943,7 @@
 }
 
 .updated-admin .prog-cats__scroll {
+  scrollbar-width: thin;
   display: flex;
   gap: 8px;
   overflow-x: auto;
@@ -30137,6 +30138,12 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-reflect-question__text[readonly]:focus {
   border-color: transparent;
   background: transparent;
+}
+
+@media (max-width: 720px) { 
+  .manageflesd {
+  flex: 0 0 10px !important;
+  }
 }
 
 .updated-admin .ua-cp-reflect-question__score {

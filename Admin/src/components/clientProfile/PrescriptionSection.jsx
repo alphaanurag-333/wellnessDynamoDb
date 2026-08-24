@@ -431,7 +431,7 @@ export function PrescriptionSection({ user, onToast }) {
         </p>
         <div className="ua-cp-rx-history__list">
           {!loading && !history.length ? (
-            <p className="ua-page-head__sub">No prescriptions have been saved for this client yet.</p>
+            <p className="ua-page-head__sub" style={{textAlign:"center"}}>No prescriptions have been saved for this client yet.</p>
           ) : null}
           {history.map((entry) => (
             <HistoryRow

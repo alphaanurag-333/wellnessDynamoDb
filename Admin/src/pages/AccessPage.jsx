@@ -1703,8 +1703,8 @@ function MembersTab({ onToast }) {
               <div>Fine-tune</div>
             </div>
             {members.length === 0 ? (
-              <div className="ua-table ua-table--ac-members ua-table__row">
-                <div className="ua-table__muted" style={{ gridColumn: "1 / -1" }}>
+              <div className="" style={{padding:"15px",justifyContent:"center"}}>
+                <div className="ua-table__muted" style={{textAlign:"center"}}>
                   No members match this filter.
                 </div>
               </div>

@@ -283,7 +283,7 @@ function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, day
           />
         ))
       ) : (
-        <p className="ua-page-head__sub">No meals logged for this date.</p>
+        <p className="ua-page-head__sub" style={{textAlign:"center"}}>No meals logged for this date.</p>
       )}
     </div>
   );

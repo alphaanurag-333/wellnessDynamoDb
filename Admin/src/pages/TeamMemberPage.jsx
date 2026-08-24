@@ -875,7 +875,7 @@ export function TeamMemberPage() {
                 <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
                 <div><dt>Date of birth:</dt><dd>{formatMemberDob(member.dateOfBirth)}</dd></div>
                 <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
-                <div className="ua-tm-profile-panel__row--bio">
+                <div >
                   <dt>Bio:</dt>
                   <dd>
                     {member.bio ? (
