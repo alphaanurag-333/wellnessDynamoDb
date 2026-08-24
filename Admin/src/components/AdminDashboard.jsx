@@ -1566,7 +1566,7 @@ export function AdminDashboard({
                     onClick={() => goUsers({ subscriptionExpiryDays: expWindowDays })}
                   >
                     <span className="expiry-cell__label">
-                      <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color }} />
+                      <span className="expiry-cell__dot expiry-cell__dot--pulse" style={{ background: e.color, marginTop:'2px' }} />
                       {e.label}
                     </span>
                     <span className="expiry-cell__value">
