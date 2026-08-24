@@ -45,6 +45,7 @@ const {
   assertValidLocationState,
   assertValidLocationCity,
 } = require("../../utils/personFieldValidation");
+const { generateTotpSecret, buildOtpauthUrl } = require("../../utils/totp");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";

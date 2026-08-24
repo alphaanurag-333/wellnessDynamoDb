@@ -11,6 +11,18 @@ function formatPhone(countryCode, phone) {
   return `${normalized} ${digits}`;
 }
 
+function dobToInputValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function formatAddress(account) {
   const parts = [
     account?.address,
@@ -95,6 +107,10 @@ export function buildProfileFromAccount(account, activeRole) {
       phoneCountryCode: "+91",
       whatsappHint: "",
       address: "—",
+      dateOfBirth: "",
+      country: "",
+      state: "",
+      city: "",
       bio: "",
       memberSince: "—",
       lastSignIn: "—",
@@ -128,6 +144,10 @@ export function buildProfileFromAccount(account, activeRole) {
       ? "This number is used for WhatsApp and OTP sign-in."
       : "Add a mobile number for WhatsApp and OTP sign-in.",
     address: formatAddress(account),
+    dateOfBirth: dobToInputValue(account.dateOfBirth || account.dob),
+    country: String(account.country || "").trim(),
+    state: String(account.state || "").trim(),
+    city: String(account.city || "").trim(),
     bio: account.bio || "",
     memberSince: formatMemberSince(account.createdAt),
     lastSignIn: formatLastSignIn(account.lastLoginAt || account.lastSignIn || account.updatedAt),

@@ -170,6 +170,11 @@ export async function accountUpdateMe(fields = {}, file) {
         form.append("phoneCountryCode", fields.phoneCountryCode ?? "");
       }
       if (fields.address !== undefined) form.append("address", fields.address ?? "");
+      if (fields.dateOfBirth !== undefined) form.append("dateOfBirth", fields.dateOfBirth ?? "");
+      if (fields.dob !== undefined) form.append("dob", fields.dob ?? "");
+      if (fields.country !== undefined) form.append("country", fields.country ?? "");
+      if (fields.state !== undefined) form.append("state", fields.state ?? "");
+      if (fields.city !== undefined) form.append("city", fields.city ?? "");
       if (fields.designation !== undefined) form.append("designation", fields.designation ?? "");
       form.append("file", file);
       body = form;
@@ -180,6 +185,11 @@ export async function accountUpdateMe(fields = {}, file) {
       if (fields.phone !== undefined) body.phone = fields.phone;
       if (fields.phoneCountryCode !== undefined) body.phoneCountryCode = fields.phoneCountryCode;
       if (fields.address !== undefined) body.address = fields.address;
+      if (fields.dateOfBirth !== undefined) body.dateOfBirth = fields.dateOfBirth;
+      if (fields.dob !== undefined) body.dob = fields.dob;
+      if (fields.country !== undefined) body.country = fields.country;
+      if (fields.state !== undefined) body.state = fields.state;
+      if (fields.city !== undefined) body.city = fields.city;
       if (fields.designation !== undefined) body.designation = fields.designation;
       if (fields.profileImage !== undefined) body.profileImage = fields.profileImage;
       headers = { ...headers, "Content-Type": "application/json" };

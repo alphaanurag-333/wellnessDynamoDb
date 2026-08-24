@@ -8590,11 +8590,11 @@
 }
 
 .updated-admin .ua-teams-create {
-  width: min(520px, calc(100vw - 24px));
-  max-height: min(94vh, 860px);
+  width: min(680px, calc(100vw - 24px));
+  max-height: min(88vh, 720px);
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #e8eaf0;
   border-radius: 16px;
@@ -8606,7 +8606,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 18px 14px;
+  padding: 14px 16px 12px;
   border-bottom: 1px solid #edf1f7;
   flex-shrink: 0;
 }
@@ -8666,8 +8666,8 @@
 .updated-admin .ua-teams-create__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px;
+  gap: 8px;
+  padding: 12px 16px;
   overflow-y: auto;
   min-height: 0;
   flex: 1 1 auto;
@@ -8676,33 +8676,41 @@
 .updated-admin .ua-teams-create__field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .updated-admin .ua-teams-create__section {
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 2px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #8b97ab;
 }
 
+.updated-admin .ua-teams-create__section:first-child {
+  margin-top: 0;
+}
+
 .updated-admin .ua-teams-create__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px 12px;
 }
 
 .updated-admin .ua-teams-create__grid--contact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.updated-admin .ua-teams-create__grid--location {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .updated-admin .ua-teams-create__bio {
   width: 100%;
-  min-height: 88px;
-  padding: 10px 12px;
+  min-height: 56px;
+  padding: 8px 10px;
   border: 1px solid #dbe3ef;
   border-radius: 10px;
   background: #fff;
@@ -8725,11 +8733,41 @@
   border-color: #e05252;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 720px) {
+  .updated-admin .ua-teams-create__grid--location {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-teams-create__grid--location .ua-teams-create__field:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
   .updated-admin .ua-teams-create__grid,
-  .updated-admin .ua-teams-create__grid--contact {
+  .updated-admin .ua-teams-create__grid--contact,
+  .updated-admin .ua-teams-create__grid--location {
     grid-template-columns: 1fr;
   }
+
+  .updated-admin .ua-teams-create__grid--location .ua-teams-create__field:first-child {
+    grid-column: auto;
+  }
+}
+
+.updated-admin .ua-teams-create__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updated-admin .ua-teams-create__count {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: #9aa6b8;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .updated-admin .ua-teams-create__label {
@@ -8743,8 +8781,8 @@
 .updated-admin .ua-teams-create__input,
 .updated-admin .ua-teams-create .ua-cfg-select__trigger {
   width: 100%;
-  height: 40px;
-  padding: 0 12px;
+  height: 36px;
+  padding: 0 10px;
   border-radius: 10px;
   border: 1px solid rgb(203, 213, 230);
   background: #fff;
@@ -8895,7 +8933,7 @@
   justify-content: flex-end;
   gap: 8px;
   margin: 0;
-  padding: 14px 18px 18px;
+  padding: 12px 16px 14px;
   border-top: 1px solid #edf1f7;
   background: #fff;
   flex-shrink: 0;
@@ -20821,6 +20859,16 @@ scrollbar-width: thin;
   margin-bottom: 0;
 }
 
+.updated-admin .ua-profile-modal__select {
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-profile-modal__select .ua-cfg-select__trigger {
+  width: 100%;
+  min-height: 40px;
+}
+
 .updated-admin .ua-profile-modal__label {
   font-size: 10.5px;
   font-weight: 800;
@@ -27297,8 +27345,8 @@ scrollbar-width: thin;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   background: #f8fafc;
 }

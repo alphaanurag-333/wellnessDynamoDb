@@ -28,6 +28,12 @@ const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
 const { verifyTotp } = require("../../utils/totp");
 const {
+  assertValidDateOfBirth,
+  assertValidLocationCountry,
+  assertValidLocationState,
+  assertValidLocationCity,
+} = require("../../utils/personFieldValidation");
+const {
   generateUniqueReferralCode,
   registerReferralCode,
   ensureEntityReferralCode,
@@ -341,8 +347,21 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
   const account = req.account || req.user;
   if (!account?.id) throw new AppError("Authentication required", 401);
 
-  const { name, phone, phoneCountryCode, designation, bio, profileImage, password, address } =
-    req.body || {};
+  const {
+    name,
+    phone,
+    phoneCountryCode,
+    designation,
+    bio,
+    profileImage,
+    password,
+    address,
+    dateOfBirth,
+    dob,
+    country,
+    state,
+    city,
+  } = req.body || {};
   const updates = {};
 
   if (name !== undefined) updates.name = String(name).trim();
@@ -351,6 +370,12 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
     updates.phoneCountryCode = phoneCountryCode ? String(phoneCountryCode).trim() : null;
   }
   if (address !== undefined) updates.address = address ? String(address).trim() : null;
+  if (dateOfBirth !== undefined || dob !== undefined) {
+    updates.dateOfBirth = assertValidDateOfBirth(dateOfBirth ?? dob);
+  }
+  if (country !== undefined) updates.country = assertValidLocationCountry(country);
+  if (state !== undefined) updates.state = assertValidLocationState(state);
+  if (city !== undefined) updates.city = assertValidLocationCity(city);
   if (designation !== undefined) {
     updates.designation = designation ? String(designation).trim() : null;
   }

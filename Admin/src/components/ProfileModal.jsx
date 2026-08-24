@@ -15,9 +15,16 @@ import {
 } from "../api/coachContentApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { buildProfileFromAccount } from "../data/profileData.js";
+import { COUNTRY_OPTIONS, INDIA_STATES, citiesForState } from "../data/indiaLocations.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useAppSelector } from "../store/hooks.js";
 import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
+import { CfgSelect } from "./shared.jsx";
+import {
+  maxAllowedDobIso,
+  minAllowedDobIso,
+  validateDateOfBirth,
+} from "../utils/personFieldValidation.js";
 
 function ReadOnlyField({ label, value, hint }) {
   return (
@@ -475,7 +482,10 @@ export function ProfileModal({ open, onClose, onToast }) {
   const [name, setName] = useState(profile.name === "—" ? "" : profile.name);
   const [phone, setPhone] = useState(profile.phoneDigits || "");
   const [phoneCountryCode, setPhoneCountryCode] = useState(profile.phoneCountryCode || "+91");
-  const [address, setAddress] = useState(profile.address === "—" ? "" : profile.address);
+  const [dob, setDob] = useState(profile.dateOfBirth || "");
+  const [country, setCountry] = useState(profile.country || "");
+  const [state, setState] = useState(profile.state || "");
+  const [city, setCity] = useState(profile.city || "");
   const [savingBio, setSavingBio] = useState(false);
   const [savingDetails, setSavingDetails] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -490,6 +500,9 @@ export function ProfileModal({ open, onClose, onToast }) {
   const letterRef = useRef(null);
   const bioBaseline = useRef(profile.bio);
   const letterConfigRef = useRef({ text: "", version: 1, templateUrl: "" });
+
+  const indiaSelected = country === "India";
+  const cityOptions = useMemo(() => citiesForState(state), [state]);
 
   function mergeCoachAccount(nextAccount) {
     if (!nextAccount) return;
@@ -520,7 +533,10 @@ export function ProfileModal({ open, onClose, onToast }) {
     setName(profile.name === "—" ? "" : profile.name);
     setPhone(profile.phoneDigits || "");
     setPhoneCountryCode(profile.phoneCountryCode || "+91");
-    setAddress(profile.address === "—" ? "" : profile.address);
+    setDob(profile.dateOfBirth || "");
+    setCountry(profile.country || "");
+    setState(profile.state || "");
+    setCity(profile.city || "");
     setPasswordOpen(false);
     setPreview(null);
     setLinkModalOpen(false);
@@ -556,13 +572,33 @@ export function ProfileModal({ open, onClose, onToast }) {
       onToast?.("Name is required");
       return;
     }
+    const dobError = validateDateOfBirth(dob, { required: true });
+    if (dobError) {
+      onToast?.(dobError);
+      return;
+    }
+    if (!String(country || "").trim()) {
+      onToast?.("Country is required");
+      return;
+    }
+    if (!String(state || "").trim()) {
+      onToast?.("State / region is required");
+      return;
+    }
+    if (!String(city || "").trim()) {
+      onToast?.("City is required");
+      return;
+    }
     setSavingDetails(true);
     try {
       const updated = await accountUpdateMe({
         name: nextName,
         phone: String(phone || "").trim(),
         phoneCountryCode: String(phoneCountryCode || "").trim() || "+91",
-        address: String(address || "").trim(),
+        dateOfBirth: String(dob || "").trim(),
+        country: String(country || "").trim(),
+        state: String(state || "").trim(),
+        city: String(city || "").trim(),
       });
       setAccount(updated);
       onToast?.("Profile saved");
@@ -733,14 +769,97 @@ export function ProfileModal({ open, onClose, onToast }) {
               />
               <ReadOnlyField label="Work email" value={profile.email} hint="Email is used to sign in and cannot be changed here." />
               <ReadOnlyField label="Role" value={`${profile.role} · ${profile.roleNote}`} />
+              <label className="ua-profile-modal__field">
+                <span className="ua-profile-modal__label">Date of birth *</span>
+                <input
+                  type="date"
+                  className="ua-profile-modal__input ua-profile-modal__input--edit"
+                  value={dob}
+                  min={minAllowedDobIso()}
+                  max={maxAllowedDobIso()}
+                  disabled={savingDetails}
+                  onChange={(event) => {
+                    let next = event.target.value;
+                    const dobMax = maxAllowedDobIso();
+                    const dobMin = minAllowedDobIso();
+                    if (next && next > dobMax) next = dobMax;
+                    if (next && next < dobMin) next = dobMin;
+                    setDob(next);
+                  }}
+                />
+              </label>
+              <label className="ua-profile-modal__field">
+                <span className="ua-profile-modal__label">Country *</span>
+                <CfgSelect
+                  searchable
+                  searchPlaceholder="Search countries…"
+                  className="ua-profile-modal__select"
+                  options={COUNTRY_OPTIONS.map((nameOption) => ({ value: nameOption, label: nameOption }))}
+                  value={country}
+                  disabled={savingDetails}
+                  onChange={(value) => {
+                    setCountry(value);
+                    setState("");
+                    setCity("");
+                  }}
+                  ariaLabel="Country"
+                  placeholder="Select country"
+                />
+              </label>
+              <label className="ua-profile-modal__field">
+                <span className="ua-profile-modal__label">State / region *</span>
+                {indiaSelected ? (
+                  <CfgSelect
+                    searchable
+                    searchPlaceholder="Search states…"
+                    className="ua-profile-modal__select"
+                    options={INDIA_STATES.map((nameOption) => ({ value: nameOption, label: nameOption }))}
+                    value={state}
+                    disabled={savingDetails || !country}
+                    onChange={(value) => {
+                      setState(value);
+                      setCity("");
+                    }}
+                    ariaLabel="State"
+                    placeholder="Select state"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    className="ua-profile-modal__input ua-profile-modal__input--edit"
+                    value={state}
+                    disabled={savingDetails || !country}
+                    placeholder="State or region"
+                    onChange={(event) => setState(event.target.value)}
+                  />
+                )}
+              </label>
+              <label className="ua-profile-modal__field">
+                <span className="ua-profile-modal__label">City *</span>
+                {indiaSelected ? (
+                  <CfgSelect
+                    searchable
+                    searchPlaceholder="Search cities…"
+                    className="ua-profile-modal__select"
+                    options={cityOptions.map((nameOption) => ({ value: nameOption, label: nameOption }))}
+                    value={city}
+                    disabled={savingDetails || !state}
+                    onChange={setCity}
+                    ariaLabel="City"
+                    placeholder={state ? "Select city" : "Pick state first"}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    className="ua-profile-modal__input ua-profile-modal__input--edit"
+                    value={city}
+                    disabled={savingDetails || !country}
+                    placeholder="City"
+                    onChange={(event) => setCity(event.target.value)}
+                  />
+                )}
+              </label>
             </div>
-            <EditableField
-              label="Address"
-              value={address}
-              onChange={setAddress}
-              disabled={savingDetails}
-              placeholder="Add your address"
-            />
 
             <div className="ua-profile-modal__photo-row">
               <AvatarMark profile={profile} className="ua-profile-modal__photo-avatar" />
@@ -882,7 +1001,7 @@ export function ProfileModal({ open, onClose, onToast }) {
 
         <div className="ua-profile-modal__foot">
           <p className="ua-profile-modal__foot-note">
-            Email and role stay managed from Access. Save to update your name, mobile or address.
+            Email and role stay managed from Access. Save to update your name, mobile, DOB or location.
           </p>
           <div className="ua-profile-modal__foot-actions">
             <button

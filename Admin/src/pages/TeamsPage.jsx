@@ -30,8 +30,6 @@ import {
   EMAIL_MAX_LEN,
   PERSON_NAME_MAX_LEN,
   PHONE_NATIONAL_LEN,
-  DOB_MAX_AGE_YEARS,
-  DOB_MIN_AGE_YEARS,
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
   maxAllowedDobIso,
@@ -531,8 +529,11 @@ function CreateMemberModal({
             <div className="ua-teams-create__section">Personal</div>
             <div className="ua-teams-create__grid">
               <label className="ua-teams-create__field">
-                <span className="ua-teams-create__label">
-                  Full name <span aria-hidden="true">*</span>
+                <span className="ua-teams-create__label-row">
+                  <span className="ua-teams-create__label">
+                    Full name <span aria-hidden="true">*</span>
+                  </span>
+                  <span className="ua-teams-create__count">{name.trim().length}/{PERSON_NAME_MAX_LEN}</span>
                 </span>
                 <input
                   className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
@@ -547,9 +548,7 @@ function CreateMemberModal({
                   }}
                   autoFocus
                 />
-                {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : (
-                  <span className="ua-teams-create__hint">Letters only · max {PERSON_NAME_MAX_LEN} chars</span>
-                )}
+                {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : null}
               </label>
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
@@ -571,18 +570,17 @@ function CreateMemberModal({
                     clearError("dob");
                   }}
                 />
-                {errors.dob ? <span className="ua-teams-create__error">{errors.dob}</span> : (
-                  <span className="ua-teams-create__hint">
-                    {DOB_MIN_AGE_YEARS}–{DOB_MAX_AGE_YEARS} years
-                  </span>
-                )}
+                {errors.dob ? <span className="ua-teams-create__error">{errors.dob}</span> : null}
               </label>
             </div>
             <label className="ua-teams-create__field">
-              <span className="ua-teams-create__label">Bio</span>
+              <span className="ua-teams-create__label-row">
+                <span className="ua-teams-create__label">Bio</span>
+                <span className="ua-teams-create__count">{bio.length}/{TEAM_BIO_MAX_LEN}</span>
+              </span>
               <textarea
                 className={`ua-teams-create__bio${errors.bio ? " is-invalid" : ""}`}
-                rows={3}
+                rows={2}
                 value={bio}
                 maxLength={TEAM_BIO_MAX_LEN}
                 placeholder="Short bio shown on their profile (optional)"
@@ -591,11 +589,7 @@ function CreateMemberModal({
                   clearError("bio");
                 }}
               />
-              {errors.bio ? <span className="ua-teams-create__error">{errors.bio}</span> : (
-                <span className="ua-teams-create__hint">
-                  Optional · max {TEAM_BIO_MAX_LEN} characters
-                </span>
-              )}
+              {errors.bio ? <span className="ua-teams-create__error">{errors.bio}</span> : null}
             </label>
 
             <div className="ua-teams-create__section">Contact</div>
@@ -617,13 +611,14 @@ function CreateMemberModal({
                     clearError("phone");
                   }}
                 />
-                {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : (
-                  <span className="ua-teams-create__hint">10 digits, starts 6–9</span>
-                )}
+                {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : null}
               </label>
               <label className="ua-teams-create__field">
-                <span className="ua-teams-create__label">
-                  Email address <span aria-hidden="true">*</span>
+                <span className="ua-teams-create__label-row">
+                  <span className="ua-teams-create__label">
+                    Email address <span aria-hidden="true">*</span>
+                  </span>
+                  <span className="ua-teams-create__count">{email.trim().length}/{EMAIL_MAX_LEN}</span>
                 </span>
                 <input
                   className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
@@ -639,15 +634,12 @@ function CreateMemberModal({
                     clearError("email");
                   }}
                 />
-                {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : (
-                  <span className="ua-teams-create__hint">
-                    {isEdit ? "Cannot be changed" : `Max ${EMAIL_MAX_LEN} chars`}
-                  </span>
-                )}
+                {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
               </label>
             </div>
 
             <div className="ua-teams-create__section">Location</div>
+            <div className="ua-teams-create__grid ua-teams-create__grid--location">
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
                 Country <span aria-hidden="true">*</span>
@@ -672,7 +664,6 @@ function CreateMemberModal({
               />
               {errors.country ? <span className="ua-teams-create__error">{errors.country}</span> : null}
             </label>
-            <div className="ua-teams-create__grid">
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
                   State / region <span aria-hidden="true">*</span>
@@ -801,11 +792,7 @@ function CreateMemberModal({
                   />
                   <span className="ua-teams-create__check-copy">
                     <strong>Require authenticator for login</strong>
-                    <span>
-                      {isEdit
-                        ? "When on, this member must enter a Google Authenticator code after password."
-                        : "Generate a key to share. Login will require the authenticator code when enabled."}
-                    </span>
+                    <span>{isEdit ? "Required after password." : "Share the authenticator key after create."}</span>
                   </span>
                 </label>
                 {isEdit ? (
