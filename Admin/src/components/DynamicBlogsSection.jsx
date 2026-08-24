@@ -77,7 +77,7 @@ function CoverPick({ previewUrl, disabled, compact, onPick }) {
       }}
     >
       {filled ? <img src={previewUrl} alt="" /> : <span aria-hidden="true">🖼️</span>}
-      <em>{filled ? "Replace" : "Cover image"}</em>
+      <em>{filled ? "Replace" : compact ? "Cover" : "Cover image"}</em>
       <input
         ref={inputRef}
         type="file"

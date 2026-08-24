@@ -1,0 +1,108 @@
+/* Voice of Healing config page only — /configs/common-voice
+   Identity vs actions alignment. Other screens that reuse ua-cfg-vh* are unchanged. */
+
+.updated-admin .ua-cfg-detail--vh,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-rc-item__body,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__head,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__actions {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity strong,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity .ua-cfg-rc-title,
+.updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity .ua-cfg-vh-input {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__head {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__actions {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__surfaces,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__live,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-tf-item__moves,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__btns {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__btns > .ua-cfg-btn {
+    flex: 0 0 auto;
+    width: auto;
+  }
+}
+
+@container ua-cfg-vh (max-width: 900px) {
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__head {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__identity,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__actions {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__surfaces,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__live,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-tf-item__moves,
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__btns {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-detail--vh .ua-cfg-vh .ua-cfg-vh-item__btns > .ua-cfg-btn {
+    flex: 0 0 auto;
+    width: auto;
+  }
+}

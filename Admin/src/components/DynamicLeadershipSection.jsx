@@ -13,6 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import "./leadershipConfig.css";
 
 const PAGE_SIZE = 10;
 const DEFAULT_BADGE = "A NOTE FROM LEADERSHIP";
@@ -656,7 +657,7 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
                           )}
                         </div>
                       </div>
-                      <div className="ua-cfg-ld-item__actions managecss">
+                      <div className="ua-cfg-ld-item__actions">
                         <div className="ua-cfg-ld-item__surfaces">
                           <div className="ua-cfg-ld-item__live">
                             <span className={`ua-cfg-faq__shown${item.webVisible ? " is-on" : ""}`}>
