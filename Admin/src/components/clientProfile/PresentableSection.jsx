@@ -7,6 +7,7 @@ import {
   requestUserPresentablePic,
   patchUserPresentablePicsSettings,
 } from "../../api/onboardingApi.js";
+import { fetchUser, mapApiUserToRow } from "../../api/usersApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function isLiveUserId(userId) {
@@ -436,9 +437,9 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     }
     setSettingsBusy(true);
     try {
-      await patchUserPresentablePicsSettings(user.id, { enabled: next });
+      const result = await patchUserPresentablePicsSettings(user.id, { enabled: next });
       setFeatureEnabled(next);
-      await refreshUser();
+      await refreshUser(result?.user, { presentablePicsEnabled: next });
       onToast?.(
         next
           ? "Presentable pics enabled in the app"
@@ -451,13 +452,23 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     }
   }
 
-  async function refreshUser() {
+  function applyUserPatch(fields) {
+    if (!fields || !onUserUpdated) return;
+    onUserUpdated({ ...user, ...fields });
+  }
+
+  async function refreshUser(rawApiUser, fallbackFields) {
+    if (rawApiUser) {
+      onUserUpdated?.(mapApiUserToRow(rawApiUser));
+    } else if (fallbackFields) {
+      applyUserPatch(fallbackFields);
+    }
     if (!live) return;
     try {
       const row = await fetchUser(user.id);
       if (row) onUserUpdated?.(row);
     } catch {
-      // Letter review already succeeded; profile refresh is best-effort.
+      // The action already succeeded; profile refresh is best-effort.
     }
   }
 
@@ -502,8 +513,8 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     if (!live || !user?.presentablePic) return;
     setPhotoReviewBusy(true);
     try {
-      await reviewUserPresentablePic(user.id, { action: "approved" });
-      await refreshUser();
+      const updated = await reviewUserPresentablePic(user.id, { action: "approved" });
+      await refreshUser(updated, { presentablePicStatus: "approved" });
       onToast?.("Presentable pic approved");
       setConfirmTarget(null);
     } catch (err) {
@@ -535,8 +546,8 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     if (!live || !user?.presentablePic) return;
     setPhotoReviewBusy(true);
     try {
-      await reviewUserPresentablePic(user.id, { action: "rejected" });
-      await refreshUser();
+      const updated = await reviewUserPresentablePic(user.id, { action: "rejected" });
+      await refreshUser(updated, { presentablePicStatus: "rejected" });
       onToast?.("Presentable pic rejected");
       setConfirmTarget(null);
     } catch (err) {

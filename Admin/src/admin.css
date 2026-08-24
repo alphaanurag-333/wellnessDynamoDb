@@ -47324,7 +47324,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cfg-tf-drop.is-on {
