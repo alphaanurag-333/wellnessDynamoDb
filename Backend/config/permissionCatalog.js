@@ -60,6 +60,14 @@ const PERMISSION_GROUPS_RAW = [
     ],
   },
   {
+    id: "challenges",
+    label: "Challenges",
+    items: [
+      { to: "challenges", label: "Challenges", actions: [EDIT, DELETE] },
+      { to: "coupons", label: "Coupons", actions: [VIEW, EDIT, DELETE] },
+    ],
+  },
+  {
     id: "team",
     label: "Team & Coaches",
     items: [

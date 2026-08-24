@@ -169,7 +169,9 @@ export function PaymentsModal({
                         String(row.productType || "").toLowerCase() === "consultancy" ||
                         String(row.programType || "").toLowerCase() === "consultation"
                           ? " ua-payments-modal__badge--consult"
-                          : ""
+                          : String(row.productType || "").toLowerCase() === "challenge"
+                            ? " ua-payments-modal__badge--challenge"
+                            : ""
                       }`}
                     >
                       {row.programType || "—"}

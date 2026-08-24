@@ -13,6 +13,7 @@ export const SECTION_SURFACE_IDS = Object.freeze([
   "client-review",
   "faq",
   "health-disorders",
+  "challenges",
 ]);
 
 function tokenOrStored(token) {

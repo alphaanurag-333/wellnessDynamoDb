@@ -284,6 +284,15 @@ async function applyPaidSubscriptionOutcome(user, plan) {
       throw err;
     }
   }
+
+  try {
+    const {
+      clearTemporaryChallengeFlagOnRealPurchase,
+    } = require("./challengeAccessService");
+    await clearTemporaryChallengeFlagOnRealPurchase(user.id);
+  } catch (err) {
+    console.error("[SubscriptionPayment] clear challenge temp flag failed", err.message);
+  }
 }
 
 async function finalizePaidSubscriptionTransaction(transaction, { paymentId, provider }) {

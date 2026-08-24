@@ -3,7 +3,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword, comparePassword } = require("../../utils/password");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
 const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
-const { assertValidIndianMobile } = require("../../utils/phoneValidation");
+const { assertValidMobile } = require("../../utils/phoneValidation");
 const {
   setRegistrationOtp,
   clearRegistrationOtp,
@@ -148,7 +148,7 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
 
   if (!email) throw new AppError("email is required", 400);
   if (!phone) throw new AppError("phone is required", 400);
-  assertValidIndianMobile(phone, { field: "phone" });
+  assertValidMobile(phone, { field: "phone", countryCode: phoneCountryCode });
 
   const delivery = resolveRegistrationWhatsappDelivery({
     phone,
@@ -157,7 +157,10 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
     whatsappPhone: req.body.whatsappPhone,
     whatsappCountryCode: req.body.whatsappCountryCode,
   });
-  assertValidIndianMobile(delivery.phone, { field: "whatsappPhone" });
+  assertValidMobile(delivery.phone, {
+    field: "whatsappPhone",
+    countryCode: delivery.phoneCountryCode,
+  });
 
   await assertRegistrationAvailable(email, phoneCountryCode, phone);
 
@@ -206,7 +209,10 @@ exports.registerUser = asyncHandler(async (req, res) => {
     whatsappPhone: fields.whatsappPhone ?? req.body.whatsappPhone,
     whatsappCountryCode: fields.whatsappCountryCode ?? req.body.whatsappCountryCode,
   });
-  assertValidIndianMobile(delivery.phone, { field: "whatsappPhone" });
+  assertValidMobile(delivery.phone, {
+    field: "whatsappPhone",
+    countryCode: delivery.phoneCountryCode,
+  });
 
   await verifyRegistrationOtpOrThrow(
     { email: fields.email, phone: delivery.phone, phoneCountryCode: delivery.phoneCountryCode },

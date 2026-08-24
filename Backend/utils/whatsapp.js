@@ -120,9 +120,50 @@ async function sendCoachAssignmentNotifications({ user, assignee, assigneeType }
   return results;
 }
 
+async function sendChallengePaymentWhatsApp({
+  user,
+  challenge,
+  referenceNumber,
+  totalAmount,
+  template,
+}) {
+  const results = { user: null };
+  const userWa = resolveWhatsappNumber(user);
+  if (!userWa) {
+    return { user: { sent: false, reason: "missing_phone" } };
+  }
+
+  const title = challenge?.title || "Challenge";
+  const amount = Number(totalAmount) || 0;
+  const ref = referenceNumber || "";
+  const name = user?.name || "there";
+
+  let message = String(template || "").trim();
+  if (message) {
+    message = message
+      .replace(/\{name\}/gi, name)
+      .replace(/\{title\}/gi, title)
+      .replace(/\{amount\}/gi, String(amount))
+      .replace(/\{ref\}/gi, ref)
+      .replace(/\{reference\}/gi, ref);
+  } else {
+    message =
+      `Thank you for joining ${title}. Payment of Rs. ${amount} received (Ref: ${ref}). ` +
+      `A wellness coach will call you shortly to guide you through the next steps.`;
+  }
+
+  results.user = await sendWhatsAppText({
+    toPhoneCountryCode: userWa.phoneCountryCode,
+    toPhone: userWa.phone,
+    message,
+  });
+  return results;
+}
+
 module.exports = {
   formatE164,
   sendWhatsAppText,
   sendConsultancyWhatsAppNotifications,
   sendCoachAssignmentNotifications,
+  sendChallengePaymentWhatsApp,
 };

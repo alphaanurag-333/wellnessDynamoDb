@@ -8,7 +8,13 @@ const { normalizeAssignedCoachType } = require("./userAssignmentLogic");
 
 const TABLE = "ConsultancyTransaction";
 const PAYMENT_STATUSES = new Set(["pending", "paid", "failed", "refunded"]);
-const PRODUCT_TYPES = new Set(["consultancy", "subscription", "energy_exchange", "program"]);
+const PRODUCT_TYPES = new Set([
+  "consultancy",
+  "subscription",
+  "energy_exchange",
+  "program",
+  "challenge",
+]);
 const CONSULTANCY_STATUSES = new Set(["scheduled", "completed", "follow_up_needed", "cancelled"]);
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */

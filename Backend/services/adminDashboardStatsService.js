@@ -107,12 +107,14 @@ async function buildTeamRoleCards(stats = {}) {
 const PRODUCT_LABELS = {
   consultancy: "Consultancy",
   program: "Programs",
+  challenge: "Challenges",
   energy_exchange: "Energy Exchange",
   subscription: "Subscriptions",
 };
 const PRODUCT_BUCKETS = [
   { key: "program", name: "Wellness program", barName: "Wellness programs", color: "#2b8f5b" },
   { key: "consultancy", name: "PWC", barName: "PWC", color: "#0d9488" },
+  { key: "challenge", name: "Challenges", barName: "Challenges", color: "#7c3aed" },
   { key: "app", name: "App users", barName: "App users", color: "#ec7a45" },
 ];
 
@@ -127,6 +129,11 @@ const DASHBOARD_PAYMENT_BUCKETS = {
     label: "Program fees",
     productTypes: ["program"],
   },
+  challenge: {
+    key: "challenge",
+    label: "Challenges",
+    productTypes: ["challenge"],
+  },
   app: {
     key: "app",
     label: "App subscription",
@@ -134,7 +141,7 @@ const DASHBOARD_PAYMENT_BUCKETS = {
   },
 };
 
-const DASHBOARD_PAYMENT_BUCKET_ORDER = ["consultancy", "program", "app"];
+const DASHBOARD_PAYMENT_BUCKET_ORDER = ["consultancy", "program", "challenge", "app"];
 
 function roundMoney(value) {
   return Math.round(((Number(value) || 0) + Number.EPSILON) * 100) / 100;
@@ -220,6 +227,7 @@ function productBucket(productType) {
   const type = String(productType || "consultancy").toLowerCase();
   if (type === "program") return "program";
   if (type === "consultancy") return "consultancy";
+  if (type === "challenge") return "challenge";
   return "app";
 }
 
@@ -244,6 +252,7 @@ function paymentProgramLabel(row) {
   const catalog = String(
     row.userSnapshot?.catalogItemName ||
       row.userSnapshot?.programTitle ||
+      row.userSnapshot?.challengeTitle ||
       row.userSnapshot?.healthConcernTitle ||
       "",
   ).trim();
@@ -252,6 +261,7 @@ function paymentProgramLabel(row) {
 
   if (type === "program") return name || "Wellness program";
   if (type === "consultancy") return "Consultation";
+  if (type === "challenge") return name || "Challenge";
   if (type === "subscription" || type === "energy_exchange") {
     if (!name) return type === "energy_exchange" ? "Energy Exchange" : "App user";
     if (/^app user/i.test(name)) return name;
@@ -362,7 +372,7 @@ function buildRevenueByProduct(transactions) {
 }
 
 function emptyBucketTotals() {
-  return { program: 0, consultancy: 0, app: 0, total: 0 };
+  return { program: 0, consultancy: 0, challenge: 0, app: 0, total: 0 };
 }
 
 function addToBuckets(target, bucket, amount) {
@@ -435,6 +445,7 @@ function buildRevenueAnalytics({
         const rounded = {
           program: roundMoney(totals.program),
           consultancy: roundMoney(totals.consultancy),
+          challenge: roundMoney(totals.challenge),
           app: roundMoney(totals.app),
           total: roundMoney(totals.total),
         };

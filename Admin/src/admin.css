@@ -3014,6 +3014,11 @@
   color: #0f766e;
 }
 
+.updated-admin .ua-payments-modal__badge--challenge {
+  background: #f3e8ff;
+  color: #6d28d9;
+}
+
 .updated-admin .ua-payments-modal__amount {
   font-size: 12.5px;
   font-weight: 750;
@@ -4577,6 +4582,39 @@
   white-space: nowrap;
 }
 
+.updated-admin .ops-challenge__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.updated-admin .ops-challenge__stat {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 8px;
+  background: #f7f8fc;
+  border: 1px solid #eef0f6;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.updated-admin .ops-challenge__stat strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.updated-admin .ops-challenge__stat span {
+  font-size: 9px;
+  font-weight: 650;
+  color: var(--text-soft, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
 .updated-admin .ops-challenge__form {
   display: flex;
   gap: 6px;
@@ -4771,6 +4809,75 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.updated-admin .ops-challenge__item--btn {
+  width: 100%;
+  display: block;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.updated-admin .ops-challenge__item--btn:hover {
+  border-color: #d7dced;
+  background: #f5f6fc;
+}
+
+.updated-admin .ops-challenge__phase {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f3f4f8;
+  color: #5b617a;
+}
+
+.updated-admin .ops-challenge__phase--running {
+  background: #e8f8ee;
+  color: #1f7a45;
+}
+
+.updated-admin .ops-challenge__phase--upcoming {
+  background: #eef2ff;
+  color: #3b4cca;
+}
+
+.updated-admin .ops-challenge__phase--draft {
+  background: #f3f4f8;
+  color: #5b617a;
+}
+
+.updated-admin .ops-challenge__phase--ended,
+.updated-admin .ops-challenge__phase--completed {
+  background: #fdeeee;
+  color: #a33b3b;
+}
+
+.updated-admin .ops-challenge__foot {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.updated-admin .ops-challenge__manage {
+  border: 1px solid #d7dced;
+  background: #fff;
+  color: #3d4463;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ops-challenge__manage:hover {
+  border-color: #5e6ad2;
+  color: #5e6ad2;
 }
 
 /* Program categories */
@@ -58636,6 +58743,10 @@ scrollbar-width: thin;
 
   .updated-admin .ops-challenge__form {
     flex-direction: column;
+  }
+
+  .updated-admin .ops-challenge__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .updated-admin .ops-challenge__input,

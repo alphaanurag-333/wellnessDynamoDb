@@ -163,6 +163,7 @@ export function paymentsForMonth(analytics, monthKey) {
 export const DASHBOARD_PAYMENT_TABS = [
   { id: "consultancy", label: "PWC" },
   { id: "program", label: "Program fees" },
+  { id: "challenge", label: "Challenges" },
   { id: "app", label: "App subscription" },
 ];
 
@@ -198,7 +199,16 @@ export function sortPaymentProductTypes(a, b) {
 
 const PLACEHOLDER_USER = new Set(["", "client"]);
 const PLACEHOLDER_COACH = new Set(["", "—", "-", "not assigned"]);
-const PLACEHOLDER_PROGRAM = new Set(["", "—", "pwc", "wellness program", "app user", "energy exchange", "consultancy"]);
+const PLACEHOLDER_PROGRAM = new Set([
+  "",
+  "—",
+  "pwc",
+  "wellness program",
+  "app user",
+  "energy exchange",
+  "consultancy",
+  "challenge",
+]);
 
 function isPlaceholder(value, placeholders) {
   return placeholders.has(String(value || "").trim().toLowerCase());

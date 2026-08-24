@@ -89,6 +89,16 @@ module.exports = {
     (process.env.MONTHLY_CHAMPION_CRON_ENABLED !== "false" &&
       (process.env.NODE_ENV || "development") === "production"),
 
+  challengeLifecycleCronTimezone:
+    process.env.CHALLENGE_LIFECYCLE_CRON_TIMEZONE || "Asia/Kolkata",
+  // Hourly IST — grant/revoke challenge access around start/end dates
+  challengeLifecycleCronSchedule:
+    process.env.CHALLENGE_LIFECYCLE_CRON_SCHEDULE || "15 * * * *",
+  challengeLifecycleCronEnabled:
+    process.env.CHALLENGE_LIFECYCLE_CRON_ENABLED === "true" ||
+    (process.env.CHALLENGE_LIFECYCLE_CRON_ENABLED !== "false" &&
+      (process.env.NODE_ENV || "development") === "production"),
+
   /** Staff Account consolidation — docs/domain/account-migration-design-freeze.md */
   accountDualRead: process.env.ACCOUNT_DUAL_READ !== "false",
   accountDualWrite: process.env.ACCOUNT_DUAL_WRITE === "true",
