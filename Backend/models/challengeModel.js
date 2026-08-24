@@ -37,19 +37,41 @@ function normalizeTitle(value) {
     err.name = "ValidationError";
     throw err;
   }
-  if (title.length > 200) {
-    const err = new Error("title cannot exceed 200 characters");
+  if (title.length < 3) {
+    const err = new Error("title must be at least 3 characters");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (title.length > 100) {
+    const err = new Error("title cannot exceed 100 characters");
     err.name = "ValidationError";
     throw err;
   }
   return title;
 }
 
-function normalizeDescription(value) {
-  if (value === undefined || value === null) return "";
+function normalizeDescription(value, { required = false } = {}) {
+  if (value === undefined || value === null) {
+    if (required) {
+      const err = new Error("description is required");
+      err.name = "ValidationError";
+      throw err;
+    }
+    return "";
+  }
   const description = String(value).trim();
-  if (description.length > 10000) {
-    const err = new Error("description cannot exceed 10000 characters");
+  if (required && !description) {
+    const err = new Error("description is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (description && description.length < 10) {
+    const err = new Error("description must be at least 10 characters");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (description.length > 1000) {
+    const err = new Error("description cannot exceed 1000 characters");
     err.name = "ValidationError";
     throw err;
   }
@@ -60,6 +82,11 @@ function normalizePrice(value) {
   const price = Number(value);
   if (!Number.isFinite(price) || price <= 0) {
     const err = new Error("price must be a positive number");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (price > 999999) {
+    const err = new Error("price cannot exceed 999999");
     err.name = "ValidationError";
     throw err;
   }
@@ -101,6 +128,26 @@ function normalizeOnboardingStepKeys(value) {
     out.push(key);
   }
   return out;
+}
+
+function normalizeWhatsappMessageTemplate(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (text.length > 1024) {
+    const err = new Error("whatsappMessageTemplate cannot exceed 1024 characters");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const allowed = new Set(["name", "title", "amount", "ref"]);
+  const unknown = [...text.matchAll(/\{([a-zA-Z0-9_]+)\}/g)]
+    .map((m) => m[1].toLowerCase())
+    .filter((token) => !allowed.has(token));
+  if (unknown.length) {
+    const err = new Error(`Unknown placeholder {${unknown[0]}}. Use {name}, {title}, {amount}, {ref}`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return text;
 }
 
 function normalizeMaxGroupSize(value, fallback = 20) {
@@ -161,7 +208,7 @@ async function createChallenge({
   const item = {
     id: uuidv4(),
     title: normalizeTitle(title),
-    description: normalizeDescription(description),
+    description: normalizeDescription(description, { required: true }),
     price: normalizePrice(price),
     currency: String(currency || "INR").toUpperCase(),
     images: normalizeImages(images),
@@ -169,7 +216,7 @@ async function createChallenge({
     endDate: end,
     status: normalizeStatus(status),
     onboardingStepKeys: normalizeOnboardingStepKeys(onboardingStepKeys),
-    whatsappMessageTemplate: String(whatsappMessageTemplate || "").trim(),
+    whatsappMessageTemplate: normalizeWhatsappMessageTemplate(whatsappMessageTemplate),
     maxGroupSize: normalizeMaxGroupSize(maxGroupSize),
     enrollmentCount: 0,
     createdBy: String(createdBy || "").trim() || null,
@@ -258,13 +305,21 @@ async function updateChallenge(id, updates) {
     else if (key === "endDate") entries.push([key, normalizeDateOnly(value, "endDate")]);
     else if (key === "status") entries.push([key, normalizeStatus(value)]);
     else if (key === "onboardingStepKeys") entries.push([key, normalizeOnboardingStepKeys(value)]);
-    else if (key === "whatsappMessageTemplate") entries.push([key, String(value || "").trim()]);
+    else if (key === "whatsappMessageTemplate") entries.push([key, normalizeWhatsappMessageTemplate(value)]);
     else if (key === "maxGroupSize") entries.push([key, normalizeMaxGroupSize(value)]);
     else entries.push([key, value]);
   }
 
   if (entries.length === 0) {
     const err = new Error("No valid fields provided for update");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const startEntry = entries.find(([key]) => key === "startDate");
+  const endEntry = entries.find(([key]) => key === "endDate");
+  if (startEntry && endEntry && endEntry[1] < startEntry[1]) {
+    const err = new Error("endDate must be on or after startDate");
     err.name = "ValidationError";
     throw err;
   }

@@ -18,6 +18,19 @@ import { CfgSelect } from "./shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import "./challengesConfig.css";
 
+const TITLE_MAX_LEN = 100;
+const TITLE_MIN_LEN = 3;
+const DESCRIPTION_MAX_LEN = 1000;
+const DESCRIPTION_MIN_LEN = 10;
+const WHATSAPP_MAX_LEN = 1024;
+const PRICE_MAX = 999999;
+const GROUP_SIZE_MIN = 1;
+const GROUP_SIZE_MAX = 100;
+const IMAGE_MAX_COUNT = 10;
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const WHATSAPP_PLACEHOLDERS = ["name", "title", "amount", "ref"];
+const WHATSAPP_PLACEHOLDER_RE = /\{([a-zA-Z0-9_]+)\}/g;
+
 const EMPTY = {
   title: "",
   description: "",
@@ -30,6 +43,96 @@ const EMPTY = {
   maxGroupSize: 20,
   images: [],
 };
+
+function todayLocalISO() {
+  const d = new Date();
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function clampText(value, max) {
+  return String(value ?? "").slice(0, max);
+}
+
+function CharHint({ value, max }) {
+  const length = String(value || "").length;
+  return (
+    <span className={`ua-cfg-dd-char${length >= max ? " is-limit" : ""}`}>
+      {length}/{max}
+    </span>
+  );
+}
+
+function sanitizePriceInput(raw) {
+  let next = String(raw ?? "").replace(/[^\d.]/g, "");
+  const firstDot = next.indexOf(".");
+  if (firstDot !== -1) {
+    next = `${next.slice(0, firstDot + 1)}${next.slice(firstDot + 1).replace(/\./g, "")}`;
+    const [whole, frac = ""] = next.split(".");
+    next = `${whole}.${frac.slice(0, 2)}`;
+  }
+  if (next.startsWith(".")) next = `0${next}`;
+  return next.slice(0, 10);
+}
+
+function sanitizeGroupSizeInput(raw) {
+  const digits = String(raw ?? "").replace(/\D/g, "").slice(0, 3);
+  if (!digits) return "";
+  return String(Math.min(GROUP_SIZE_MAX, Number(digits)));
+}
+
+function validateChallengeDraft(draft, { isCreate = true } = {}) {
+  const errors = {};
+  const title = String(draft.title || "").trim();
+  if (!title) errors.title = "Title is required";
+  else if (title.length < TITLE_MIN_LEN) errors.title = `Title must be at least ${TITLE_MIN_LEN} characters`;
+  else if (title.length > TITLE_MAX_LEN) errors.title = `Title cannot exceed ${TITLE_MAX_LEN} characters`;
+
+  const description = String(draft.description || "").trim();
+  if (!description) errors.description = "Description is required";
+  else if (description.length < DESCRIPTION_MIN_LEN) {
+    errors.description = `Description must be at least ${DESCRIPTION_MIN_LEN} characters`;
+  } else if (description.length > DESCRIPTION_MAX_LEN) {
+    errors.description = `Description cannot exceed ${DESCRIPTION_MAX_LEN} characters`;
+  }
+
+  const price = Number(draft.price);
+  if (draft.price === "" || draft.price == null) errors.price = "Price is required";
+  else if (!Number.isFinite(price) || price <= 0) errors.price = "Enter a price greater than 0";
+  else if (price > PRICE_MAX) errors.price = `Price cannot exceed ₹${PRICE_MAX.toLocaleString("en-IN")}`;
+
+  const startDate = String(draft.startDate || "").trim();
+  const endDate = String(draft.endDate || "").trim();
+  const today = todayLocalISO();
+  if (!startDate) errors.startDate = "Start date is required";
+  else if (isCreate && startDate < today) errors.startDate = "Start date cannot be in the past";
+  if (!endDate) errors.endDate = "End date is required";
+  else if (startDate && endDate < startDate) errors.endDate = "End date must be on or after the start date";
+
+  const groupSize = Number(draft.maxGroupSize);
+  if (draft.maxGroupSize === "" || draft.maxGroupSize == null) {
+    errors.maxGroupSize = "Max group size is required";
+  } else if (!Number.isInteger(groupSize) || groupSize < GROUP_SIZE_MIN || groupSize > GROUP_SIZE_MAX) {
+    errors.maxGroupSize = `Group size must be ${GROUP_SIZE_MIN}–${GROUP_SIZE_MAX}`;
+  }
+
+  const template = String(draft.whatsappMessageTemplate || "");
+  if (template.length > WHATSAPP_MAX_LEN) {
+    errors.whatsappMessageTemplate = `Template cannot exceed ${WHATSAPP_MAX_LEN} characters`;
+  } else {
+    const unknown = [...template.matchAll(WHATSAPP_PLACEHOLDER_RE)]
+      .map((m) => m[1].toLowerCase())
+      .filter((token) => !WHATSAPP_PLACEHOLDERS.includes(token));
+    if (unknown.length) {
+      errors.whatsappMessageTemplate = `Unknown placeholder {${unknown[0]}}. Use {name}, {title}, {amount}, {ref}`;
+    }
+  }
+
+  return errors;
+}
 
 const STATUS_OPTIONS = [
   { value: "draft", label: "Draft" },
@@ -75,7 +178,22 @@ function enrollmentLabel(enr) {
   return enr?.userId ? `User ${enr.userId.slice(0, 8)}…` : "Unknown user";
 }
 
-function ChallengeForm({ draft, setDraft, imageFiles, setImageFiles, disabled }) {
+function ChallengeForm({
+  draft,
+  setDraft,
+  imageFiles,
+  setImageFiles,
+  disabled,
+  errors = {},
+  isCreate = true,
+  onClearError,
+}) {
+  const today = todayLocalISO();
+  const patch = (next) => {
+    setDraft((prev) => ({ ...prev, ...next }));
+    onClearError?.(Object.keys(next));
+  };
+
   const toggleStep = (key) => {
     setDraft((prev) => {
       const set = new Set(prev.onboardingStepKeys || []);
@@ -92,65 +210,112 @@ function ChallengeForm({ draft, setDraft, imageFiles, setImageFiles, disabled })
     }));
   };
 
+  const pickImages = (fileList) => {
+    const picked = Array.from(fileList || []);
+    const remaining = IMAGE_MAX_COUNT - (draft.images?.length || 0) - (imageFiles?.length || 0);
+    if (remaining <= 0) {
+      return { error: `You can attach up to ${IMAGE_MAX_COUNT} images` };
+    }
+    const accepted = [];
+    for (const file of picked.slice(0, remaining)) {
+      if (!String(file.type || "").startsWith("image/")) {
+        return { error: "Only image files are allowed" };
+      }
+      if (file.size > IMAGE_MAX_BYTES) {
+        return { error: "Each image must be 5 MB or smaller" };
+      }
+      accepted.push(file);
+    }
+    setImageFiles(accepted);
+    return { error: null };
+  };
+
   return (
     <div className="ua-cfg-ch-form">
-      <label className="ua-cfg-ch-field">
-        <span>Title</span>
+      <label className={`ua-cfg-ch-field${errors.title ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-ch-field__label">
+          <span>Title *</span>
+          <CharHint value={draft.title} max={TITLE_MAX_LEN} />
+        </span>
         <input
           className="ua-cfg-tc-field"
           value={draft.title}
           disabled={disabled}
+          maxLength={TITLE_MAX_LEN}
           placeholder="e.g. 21-Day Metabolic Reset"
-          onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+          aria-invalid={Boolean(errors.title)}
+          onChange={(e) => patch({ title: clampText(e.target.value, TITLE_MAX_LEN) })}
         />
+        {errors.title ? <span className="ua-cfg-ch-field__error">{errors.title}</span> : (
+          <span className="ua-cfg-ch-field__hint">{TITLE_MIN_LEN}–{TITLE_MAX_LEN} characters</span>
+        )}
       </label>
 
-      <label className="ua-cfg-ch-field">
-        <span>Description</span>
+      <label className={`ua-cfg-ch-field${errors.description ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-ch-field__label">
+          <span>Description *</span>
+          <CharHint value={draft.description} max={DESCRIPTION_MAX_LEN} />
+        </span>
         <textarea
           className="ua-cfg-nb-textarea"
           rows={4}
           value={draft.description}
           disabled={disabled}
+          maxLength={DESCRIPTION_MAX_LEN}
           placeholder="What participants will do and achieve"
-          onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))}
+          aria-invalid={Boolean(errors.description)}
+          onChange={(e) => patch({ description: clampText(e.target.value, DESCRIPTION_MAX_LEN) })}
         />
+        {errors.description ? (
+          <span className="ua-cfg-ch-field__error">{errors.description}</span>
+        ) : (
+          <span className="ua-cfg-ch-field__hint">{DESCRIPTION_MIN_LEN}–{DESCRIPTION_MAX_LEN} characters</span>
+        )}
       </label>
 
       <div className="ua-cfg-ch-grid ua-cfg-ch-grid--3">
-        <label className="ua-cfg-ch-field">
-          <span>Price (₹)</span>
+        <label className={`ua-cfg-ch-field${errors.price ? " is-invalid" : ""}`}>
+          <span>Price (₹) *</span>
           <input
             className="ua-cfg-tc-field"
             inputMode="decimal"
             value={draft.price}
             disabled={disabled}
             placeholder="999"
-            onChange={(e) => setDraft((p) => ({ ...p, price: e.target.value.replace(/[^\d.]/g, "") }))}
+            aria-invalid={Boolean(errors.price)}
+            onChange={(e) => patch({ price: sanitizePriceInput(e.target.value) })}
           />
+          {errors.price ? <span className="ua-cfg-ch-field__error">{errors.price}</span> : (
+            <span className="ua-cfg-ch-field__hint">Greater than 0, up to ₹{PRICE_MAX.toLocaleString("en-IN")}</span>
+          )}
         </label>
-        <label className="ua-cfg-ch-field">
-          <span>Start date</span>
+        <label className={`ua-cfg-ch-field${errors.startDate ? " is-invalid" : ""}`}>
+          <span>Start date *</span>
           <input
             type="date"
             className="ua-cfg-tc-field"
             data-allow-future="true"
+            min={isCreate ? today : undefined}
             value={draft.startDate}
             disabled={disabled}
-            onChange={(e) => setDraft((p) => ({ ...p, startDate: e.target.value }))}
+            aria-invalid={Boolean(errors.startDate)}
+            onChange={(e) => patch({ startDate: e.target.value })}
           />
+          {errors.startDate ? <span className="ua-cfg-ch-field__error">{errors.startDate}</span> : null}
         </label>
-        <label className="ua-cfg-ch-field">
-          <span>End date</span>
+        <label className={`ua-cfg-ch-field${errors.endDate ? " is-invalid" : ""}`}>
+          <span>End date *</span>
           <input
             type="date"
             className="ua-cfg-tc-field"
             data-allow-future="true"
-            min={draft.startDate || undefined}
+            min={draft.startDate || (isCreate ? today : undefined)}
             value={draft.endDate}
             disabled={disabled}
-            onChange={(e) => setDraft((p) => ({ ...p, endDate: e.target.value }))}
+            aria-invalid={Boolean(errors.endDate)}
+            onChange={(e) => patch({ endDate: e.target.value })}
           />
+          {errors.endDate ? <span className="ua-cfg-ch-field__error">{errors.endDate}</span> : null}
         </label>
       </div>
 
@@ -162,33 +327,48 @@ function ChallengeForm({ draft, setDraft, imageFiles, setImageFiles, disabled })
             value={draft.status}
             disabled={disabled}
             options={STATUS_OPTIONS}
-            onChange={(status) => setDraft((p) => ({ ...p, status }))}
+            onChange={(status) => patch({ status })}
           />
         </label>
-        <label className="ua-cfg-ch-field">
-          <span>Max group size</span>
+        <label className={`ua-cfg-ch-field${errors.maxGroupSize ? " is-invalid" : ""}`}>
+          <span>Max group size *</span>
           <input
             className="ua-cfg-tc-field"
             inputMode="numeric"
             value={draft.maxGroupSize}
             disabled={disabled}
-            onChange={(e) =>
-              setDraft((p) => ({ ...p, maxGroupSize: Number(e.target.value.replace(/\D/g, "")) || 20 }))
-            }
+            placeholder="20"
+            aria-invalid={Boolean(errors.maxGroupSize)}
+            onChange={(e) => patch({ maxGroupSize: sanitizeGroupSizeInput(e.target.value) })}
           />
+          {errors.maxGroupSize ? (
+            <span className="ua-cfg-ch-field__error">{errors.maxGroupSize}</span>
+          ) : (
+            <span className="ua-cfg-ch-field__hint">{GROUP_SIZE_MIN}–{GROUP_SIZE_MAX} people</span>
+          )}
         </label>
       </div>
 
-      <label className="ua-cfg-ch-field">
-        <span>WhatsApp message template</span>
+      <label className={`ua-cfg-ch-field${errors.whatsappMessageTemplate ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-ch-field__label">
+          <span>WhatsApp message template</span>
+          <CharHint value={draft.whatsappMessageTemplate} max={WHATSAPP_MAX_LEN} />
+        </span>
         <textarea
           className="ua-cfg-nb-textarea"
           rows={3}
           placeholder="Use {name}, {title}, {amount}, {ref}"
           value={draft.whatsappMessageTemplate}
           disabled={disabled}
-          onChange={(e) => setDraft((p) => ({ ...p, whatsappMessageTemplate: e.target.value }))}
+          maxLength={WHATSAPP_MAX_LEN}
+          aria-invalid={Boolean(errors.whatsappMessageTemplate)}
+          onChange={(e) => patch({ whatsappMessageTemplate: clampText(e.target.value, WHATSAPP_MAX_LEN) })}
         />
+        {errors.whatsappMessageTemplate ? (
+          <span className="ua-cfg-ch-field__error">{errors.whatsappMessageTemplate}</span>
+        ) : (
+          <span className="ua-cfg-ch-field__hint">Optional · placeholders {`{name}, {title}, {amount}, {ref}`} · max {WHATSAPP_MAX_LEN}</span>
+        )}
       </label>
 
       <div className="ua-cfg-ch-field">
@@ -211,7 +391,7 @@ function ChallengeForm({ draft, setDraft, imageFiles, setImageFiles, disabled })
         </div>
       </div>
 
-      <div className="ua-cfg-ch-field">
+      <div className={`ua-cfg-ch-field${errors.images ? " is-invalid" : ""}`}>
         <span>Images</span>
         <div className="ua-cfg-ch-images">
           {(draft.images || []).map((url) => (
@@ -238,15 +418,21 @@ function ChallengeForm({ draft, setDraft, imageFiles, setImageFiles, disabled })
               hidden
               disabled={disabled}
               onChange={(e) => {
-                setImageFiles(Array.from(e.target.files || []));
+                const result = pickImages(e.target.files);
+                if (result.error) onClearError?.(["images"], result.error);
+                else onClearError?.(["images"]);
                 e.target.value = "";
               }}
             />
           </label>
         </div>
-        {imageFiles.length ? (
+        {errors.images ? (
+          <span className="ua-cfg-ch-field__error">{errors.images}</span>
+        ) : imageFiles.length ? (
           <p className="ua-cfg-panel__sub">{imageFiles.length} new file(s) ready to upload</p>
-        ) : null}
+        ) : (
+          <span className="ua-cfg-ch-field__hint">Optional · up to {IMAGE_MAX_COUNT} images · 5 MB each</span>
+        )}
       </div>
     </div>
   );
@@ -267,6 +453,7 @@ export function ChallengesSection({ onToast }) {
   const [coachId, setCoachId] = useState("");
   const [jobBusy, setJobBusy] = useState(false);
   const [lastJob, setLastJob] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -316,27 +503,30 @@ export function ChallengesSection({ onToast }) {
     setDraft(EMPTY);
     setImageFiles([]);
     setEditingId(null);
+    setFormErrors({});
   };
 
   const openCreate = () => {
     setEditingId(null);
     setDraft(EMPTY);
     setImageFiles([]);
+    setFormErrors({});
     setSelectedId(null);
     setFormOpen(true);
   };
 
   const startEdit = (item) => {
     setEditingId(item.id);
+    setFormErrors({});
     setDraft({
-      title: item.title,
-      description: item.description,
+      title: clampText(item.title, TITLE_MAX_LEN),
+      description: clampText(item.description, DESCRIPTION_MAX_LEN),
       price: String(item.price || ""),
       startDate: item.startDate,
       endDate: item.endDate,
       status: item.status,
       onboardingStepKeys: item.onboardingStepKeys || [],
-      whatsappMessageTemplate: item.whatsappMessageTemplate || "",
+      whatsappMessageTemplate: clampText(item.whatsappMessageTemplate || "", WHATSAPP_MAX_LEN),
       maxGroupSize: item.maxGroupSize || 20,
       images: item.images || [],
     });
@@ -345,22 +535,38 @@ export function ChallengesSection({ onToast }) {
     setSelectedId(null);
   };
 
+  const clearFieldErrors = (keys = [], imageError) => {
+    setFormErrors((prev) => {
+      const next = { ...prev };
+      keys.forEach((key) => delete next[key]);
+      if (imageError) next.images = imageError;
+      return next;
+    });
+  };
+
   const save = async () => {
-    if (!draft.title.trim()) {
-      onToast?.("Title is required", "error");
+    const errors = validateChallengeDraft(draft, { isCreate: !editingId });
+    if (Object.keys(errors).length) {
+      setFormErrors(errors);
+      onToast?.(Object.values(errors)[0], "error");
       return;
     }
-    if (!draft.price || !draft.startDate || !draft.endDate) {
-      onToast?.("Price, start date and end date are required", "error");
-      return;
-    }
+    const payload = {
+      ...draft,
+      title: String(draft.title || "").trim(),
+      description: String(draft.description || "").trim(),
+      price: Number(draft.price),
+      maxGroupSize: Number(draft.maxGroupSize),
+      whatsappMessageTemplate: String(draft.whatsappMessageTemplate || "").trim(),
+    };
+    setFormErrors({});
     setSaving(true);
     try {
       if (editingId) {
-        await adminUpdateChallenge(null, editingId, draft, imageFiles);
+        await adminUpdateChallenge(null, editingId, payload, imageFiles);
         onToast?.("Challenge updated", "success");
       } else {
-        await adminCreateChallenge(null, draft, imageFiles);
+        await adminCreateChallenge(null, payload, imageFiles);
         onToast?.("Challenge created", "success");
       }
       closeForm();
@@ -501,6 +707,9 @@ export function ChallengesSection({ onToast }) {
               imageFiles={imageFiles}
               setImageFiles={setImageFiles}
               disabled={saving}
+              errors={formErrors}
+              isCreate={!editingId}
+              onClearError={clearFieldErrors}
             />
 
             <div className="ua-cfg-ch-editor__foot">
