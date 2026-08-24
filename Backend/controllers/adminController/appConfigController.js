@@ -15,6 +15,8 @@ const {
   normalizeWebLocations,
   normalizeWebContactDetails,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
+  BODY_MEASUREMENT_INFO_SHOWN_FIELDS,
+  normalizeBodyMeasurementInfoShown,
 } = require("../../models/appConfigModel");
 
 const S3_FOLDER = "appconfig";
@@ -587,6 +589,12 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
 
   if (req.body.multilang !== undefined) {
     updates.multilang = normalizeBooleanFlag(req.body.multilang, false);
+  }
+
+  for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {
+    if (req.body[field] !== undefined) {
+      updates[field] = normalizeBodyMeasurementInfoShown(req.body[field], true);
+    }
   }
 
   if (req.body.payment_gateways !== undefined) {

@@ -49,6 +49,12 @@ function toPublicClientAppConfig(doc) {
     body_measurement_info_image_waist: config.body_measurement_info_image_waist ?? "",
     body_measurement_info_image_hip: config.body_measurement_info_image_hip ?? "",
     body_measurement_info_image_thighs: config.body_measurement_info_image_thighs ?? "",
+    body_measurement_info_shown_neck: config.body_measurement_info_shown_neck !== false,
+    body_measurement_info_shown_shoulder: config.body_measurement_info_shown_shoulder !== false,
+    body_measurement_info_shown_chest: config.body_measurement_info_shown_chest !== false,
+    body_measurement_info_shown_waist: config.body_measurement_info_shown_waist !== false,
+    body_measurement_info_shown_hip: config.body_measurement_info_shown_hip !== false,
+    body_measurement_info_shown_thighs: config.body_measurement_info_shown_thighs !== false,
     progress_photo_guidelines: normalizeProgressPhotoGuidelines(
       config.progress_photo_guidelines
     ),

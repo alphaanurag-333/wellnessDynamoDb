@@ -20,6 +20,19 @@ const BODY_MEASUREMENT_INFO_IMAGE_FIELDS = BODY_MEASUREMENT_INFO_IMAGE_KEYS.map(
   (key) => `body_measurement_info_image_${key}`
 );
 
+const BODY_MEASUREMENT_INFO_SHOWN_FIELDS = BODY_MEASUREMENT_INFO_IMAGE_KEYS.map(
+  (key) => `body_measurement_info_shown_${key}`
+);
+
+function normalizeBodyMeasurementInfoShown(value, fallback = true) {
+  if (value === undefined || value === null || value === "") return Boolean(fallback);
+  if (typeof value === "boolean") return value;
+  const s = String(value).trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "yes" || s === "on") return true;
+  if (s === "false" || s === "0" || s === "no" || s === "off") return false;
+  return Boolean(fallback);
+}
+
 const MEDIA_FIELDS = [
   "admin_logo",
   "user_logo",
@@ -252,6 +265,9 @@ function toPublicAppConfig(config) {
   for (const field of MEDIA_FIELDS) {
     if (pub[field]) pub[field] = resolvePublicUrl(pub[field]) || "";
   }
+  for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {
+    pub[field] = normalizeBodyMeasurementInfoShown(config[field], true);
+  }
   return pub;
 }
 
@@ -280,6 +296,7 @@ async function createAppConfig() {
     body_measurement_guide_yt_link: "",
     body_measurement_guide_video: "",
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
+    ...Object.fromEntries(BODY_MEASUREMENT_INFO_SHOWN_FIELDS.map((field) => [field, true])),
     progress_photo_guidelines: { en: [], hi: [] },
     health_progress_trackers: DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => ({ ...row })),
     web_locations: [],
@@ -391,6 +408,8 @@ async function updateAppConfig(updates) {
       nextVal = String(val ?? "").trim() || DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE;
     } else if (key === "body_measurement_guide_description") {
       nextVal = String(val ?? "").trim() || DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION;
+    } else if (BODY_MEASUREMENT_INFO_SHOWN_FIELDS.includes(key)) {
+      nextVal = normalizeBodyMeasurementInfoShown(val, true);
     } else if (key === "progress_photo_guidelines") {
       nextVal = normalizeProgressPhotoGuidelines(val);
     } else if (key === "health_progress_trackers") {
@@ -425,11 +444,13 @@ module.exports = {
   BODY_MEASUREMENT_GUIDE_TYPES,
   BODY_MEASUREMENT_INFO_IMAGE_KEYS,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
+  BODY_MEASUREMENT_INFO_SHOWN_FIELDS,
   DEFAULT_BODY_MEASUREMENT_GUIDE_TITLE,
   DEFAULT_BODY_MEASUREMENT_GUIDE_DESCRIPTION,
   DEFAULT_COMMITMENT_LETTER_TEXT,
   DEFAULT_HEALTH_PROGRESS_TRACKERS,
   normalizeBodyMeasurementGuideType,
+  normalizeBodyMeasurementInfoShown,
   normalizeProgressPhotoGuidelines,
   normalizeHealthProgressTrackers,
   normalizeWebLocations,
