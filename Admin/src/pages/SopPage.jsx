@@ -451,7 +451,7 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
         </div>
 
         <div className="ua-sop-modal__actions">
-          <button type="button" className="btn btn--outline" onClick={onClose} disabled={saving}>
+          <button type="button" style={{justifyContent:"center"}} className="btn btn--outline" onClick={onClose} disabled={saving}>
             Cancel
           </button>
           <button type="submit" className="ua-sop-modal__primary" disabled={saving}>

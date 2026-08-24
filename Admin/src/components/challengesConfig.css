@@ -48,7 +48,7 @@
 
 .updated-admin .ua-cfg-ch-editor__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.80rem;
   font-weight: 700;
   color: #1b1f3b;
 }
@@ -233,7 +233,7 @@
 
 .updated-admin .ua-cfg-ch-card__title {
   margin: 0;
-  font-size: 0.98rem;
+  font-size: 0.70rem;
   font-weight: 700;
   color: #1b1f3b;
 }

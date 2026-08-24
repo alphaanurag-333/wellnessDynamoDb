@@ -543,7 +543,7 @@ export function ChallengesSection({ onToast }) {
                       className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--outline"
                       onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                     >
-                      {selectedId === item.id ? "Hide enrollments" : "View enrollments"}
+                      {selectedId === item.id ? "Hide" : "View"}
                     </button>
                     <button
                       type="button"

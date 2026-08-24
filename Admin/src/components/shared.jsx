@@ -88,7 +88,7 @@ export function PillTabs({ tabs, active, onChange, size = "sm" }) {
 
 export function OrangeButton({ children, onClick, type = "button", disabled = false }) {
   return (
-    <button type={type} className="ua-btn-orange" onClick={onClick} disabled={disabled}>
+    <button style={{justifyContent:"center"}} type={type} className="ua-btn-orange" onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

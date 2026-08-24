@@ -1855,7 +1855,7 @@ function ApprovalsTab({ onToast, onCountChange }) {
       {loading ? <BrandLoader variant="page" label="Loading requests…" /> : null}
       {error ? <p className="ua-table__muted">{error}</p> : null}
       {!loading && !error && requests.length === 0 ? (
-        <p className="ua-table__muted">No pending permission requests.</p>
+        <p className="ua-table__muted" style={{textAlign:"center"}}>No pending permission requests.</p>
       ) : null}
       {requests.map((a) => (
         <div key={a.id} className="ua-approval-card">
@@ -2197,7 +2197,7 @@ function SimulatorTab() {
             ariaLabel="Preview role"
             placeholder="Choose a role"
           />
-          <span className="ua-sim-scope" style={{    background: "rgb(246, 236, 254)",
+          <span className="ua-sim-scope" style={{ justifyContent:"center",   background: "rgb(246, 236, 254)",
     color: "rgb(168, 85, 247)"}}>scope: {role?.scope || "All"}</span>
           <span className="ua-sim-meta" style={{fontWeight:"400"}}>
             {loading ? "Loading…" : `${granted} of ${TOTAL_PERM_SLOTS} actions available · baseline only`}
