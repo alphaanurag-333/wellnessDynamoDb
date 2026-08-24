@@ -1132,11 +1132,13 @@ export function TeamMemberPage() {
           <div className="ua-ac-matrix__scroll">
             <div className="ua-ac-matrix__cols">
               <div className="ua-ac-matrix__col-label">Feature</div>
-              {permActs.map((a) => (
-                <div key={a} className="ua-ac-matrix__col-act">
-                  {a}
-                </div>
-              ))}
+              <div className="ua-ac-matrix__acts">
+                {permActs.map((a) => (
+                  <div key={a} className="ua-ac-matrix__col-act">
+                    {a}
+                  </div>
+                ))}
+              </div>
               <div className="ua-ac-matrix__col-granted">On</div>
             </div>
             {matrixGroups.map((group) => (
@@ -1150,25 +1152,29 @@ export function TeamMemberPage() {
                       <div className="ua-ac-matrix__perm">
                         <span className="ua-ac-matrix__perm-name">{name}</span>
                       </div>
-                      {permActs.map((act) => {
-                        const applicable = acts.includes(act);
-                        if (!applicable) {
+                      <div className="ua-ac-matrix__acts">
+                        {permActs.map((act) => {
+                          const applicable = acts.includes(act);
+                          if (!applicable) {
+                            return (
+                              <div key={act} className="ua-ac-matrix__cell">
+                                <span className="ua-ac-matrix__cell-label">{act}</span>
+                                <span className="ua-ac-dash">—</span>
+                              </div>
+                            );
+                          }
                           return (
                             <div key={act} className="ua-ac-matrix__cell">
-                              <span className="ua-ac-dash">—</span>
+                              <span className="ua-ac-matrix__cell-label">{act}</span>
+                              <ToggleSwitch
+                                on={memberHas(grants, fid, act)}
+                                disabled={!canEditPerms}
+                                onClick={() => handleToggle(fid, act)}
+                              />
                             </div>
                           );
-                        }
-                        return (
-                          <div key={act} className="ua-ac-matrix__cell">
-                            <ToggleSwitch
-                              on={memberHas(grants, fid, act)}
-                              disabled={!canEditPerms}
-                              onClick={() => handleToggle(fid, act)}
-                            />
-                          </div>
-                        );
-                      })}
+                        })}
+                      </div>
                       <div className="ua-ac-matrix__granted">
                         <span className={`ua-ac-granted-pill${onCount > 0 ? " ua-ac-granted-pill--on" : ""}`}>
                           {onCount}/{acts.length}

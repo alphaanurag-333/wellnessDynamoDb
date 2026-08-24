@@ -1268,11 +1268,13 @@ function RolesPermissionsTab({ onToast }) {
           <div className="ua-ac-matrix__scroll">
             <div className="ua-ac-matrix__cols">
               <div className="ua-ac-matrix__col-label">Permission</div>
-              {PERM_ACTS.map((a) => (
-                <div key={a} className="ua-ac-matrix__col-act">
-                  {a}
-                </div>
-              ))}
+              <div className="ua-ac-matrix__acts">
+                {PERM_ACTS.map((a) => (
+                  <div key={a} className="ua-ac-matrix__col-act">
+                    {a}
+                  </div>
+                ))}
+              </div>
               <div className="ua-ac-matrix__col-granted">Granted</div>
             </div>
 
@@ -1289,19 +1291,22 @@ function RolesPermissionsTab({ onToast }) {
                         {gCount === 0 ? <span className="ua-ac-matrix__none">None</span> : null}
                         {gCount === acts.length && gCount > 0 ? <span className="ua-ac-matrix__all">All</span> : null}
                       </div>
-                      {PERM_ACTS.map((act) => {
-                        const applicable = acts.includes(act);
-                        const kind = cellKind(grants, parents, role.id, fid, act, applicable);
-                        return (
-                          <div key={act} className="ua-ac-matrix__cell">
-                            <ToggleSwitch
-                              kind={kind}
-                              disabled={role.locked}
-                              onClick={() => handleToggle(fid, act)}
-                            />
-                          </div>
-                        );
-                      })}
+                      <div className="ua-ac-matrix__acts">
+                        {PERM_ACTS.map((act) => {
+                          const applicable = acts.includes(act);
+                          const kind = cellKind(grants, parents, role.id, fid, act, applicable);
+                          return (
+                            <div key={act} className="ua-ac-matrix__cell">
+                              <span className="ua-ac-matrix__cell-label">{act}</span>
+                              <ToggleSwitch
+                                kind={kind}
+                                disabled={role.locked}
+                                onClick={() => handleToggle(fid, act)}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
                       <div className="ua-ac-matrix__granted">
                         <span className={`ua-ac-granted-pill${gCount > 0 ? " ua-ac-granted-pill--on" : ""}`}>
                           {gCount}/{acts.length}
