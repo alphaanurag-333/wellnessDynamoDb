@@ -13,6 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import "./voiceConfig.css";
 
 const EMPTY_DRAFT = {
   name: "",

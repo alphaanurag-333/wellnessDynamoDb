@@ -16,6 +16,7 @@ import {
 } from "../data/nutritionBankData.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import "./nutritionBankConfig.css";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
@@ -216,61 +217,60 @@ function NutritionRow({
             </span>
           )}
         </div>
-        <div className="ua-cfg-nb-row__copy">
-          <div className="ua-cfg-nb-row__top">
-            <strong>{item.name}</strong>
-            <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
-              {item.live ? "LIVE" : "HIDDEN"}
-            </span>
+        <div className="ua-cfg-nb-row__body">
+          <div className="ua-cfg-nb-row__head">
+            <div className="ua-cfg-nb-row__identity">
+              <strong>{item.name}</strong>
+              {editing ? null : (
+                <>
+                  <p className="ua-cfg-nb-row__excerpt">
+                    {item.description && item.description !== item.name ? item.description : "No description yet"}
+                  </p>
+                  <div className="ua-cfg-nb-row__meta">
+                    <span>{item.pack || formatPack(item.packSize, item.unit) || "No pack size"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>Rs. {formatBottlePrice(item.price)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="ua-cfg-nb-row__actions">
+              <div className="ua-cfg-nb-row__live">
+                <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+                  {item.live ? "LIVE" : "HIDDEN"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+                  aria-pressed={item.live}
+                  aria-label={`${item.name} ${item.live ? "live" : "hidden"}`}
+                  disabled={locked}
+                  onClick={onToggleLive}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
+              {editing ? null : (
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  disabled={locked}
+                  onClick={onEdit}
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                type="button"
+                className={`ua-cfg-icon-btn${editing ? "" : " ua-cfg-icon-btn--danger"}`}
+                aria-label={editing ? "Cancel" : `Delete ${item.name}`}
+                disabled={locked}
+                onClick={editing ? onCancel : onDelete}
+              >
+                ×
+              </button>
+            </div>
           </div>
-          <p className="ua-cfg-nb-row__excerpt">
-            {item.description && item.description !== item.name ? item.description : "No description yet"}
-          </p>
-          <div className="ua-cfg-nb-row__meta">
-            <span>{item.pack || formatPack(item.packSize, item.unit) || "No pack size"}</span>
-            <span aria-hidden="true">·</span>
-            <span>Rs. {formatBottlePrice(item.price)}</span>
-          </div>
-        </div>
-        <div className="ua-cfg-nb-row__actions">
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-            aria-pressed={item.live}
-            aria-label={`${item.name} ${item.live ? "live" : "hidden"}`}
-            disabled={locked}
-            onClick={onToggleLive}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-          {editing ? (
-            <button
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-              disabled={locked}
-              onClick={onSave}
-            >
-              Save
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="ua-cfg-cr-link ua-cfg-cr-link--modify"
-              disabled={locked}
-              onClick={onEdit}
-            >
-              Edit
-            </button>
-          )}
-          <button
-            type="button"
-            className={`ua-cfg-icon-btn${editing ? "" : " ua-cfg-icon-btn--danger"}`}
-            aria-label={editing ? "Cancel" : `Delete ${item.name}`}
-            disabled={locked}
-            onClick={editing ? onCancel : onDelete}
-          >
-            ×
-          </button>
         </div>
       </div>
 
@@ -533,7 +533,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const locked = busy || loading;
 
   return (
-    <>
+    <div className="ua-nb-config">
       <Panel
         className="ua-cfg-nb"
         title="Nutrition bank"
@@ -665,7 +665,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         onCancel={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
       />
-    </>
+    </div>
   );
 }
 
