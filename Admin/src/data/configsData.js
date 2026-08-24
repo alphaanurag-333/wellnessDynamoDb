@@ -112,13 +112,14 @@ export const CONFIG_GROUPS = {
         {
           id: "app-tos",
           name: "Terms of service",
-          note: "App legal copy · Static Pages",
+          note: "Same content as FS · Terms of service · website & app",
           owner: "Admin / Support",
           app: true,
-          web: false,
+          web: true,
           live: true,
           on: true,
           tags: ["Text"],
+          sharedWith: "web-fs-tos",
         },
         {
           id: "app-dpa",
@@ -374,7 +375,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-tos",
           name: "FS · Terms of service",
-          note: "Legal copy",
+          note: "Website & app legal copy · shared with App · Terms of service",
           owner: "Admin / Support",
           app: true,
           web: true,

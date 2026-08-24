@@ -233,59 +233,31 @@ export function staticPageCopy(page, fallback = {}) {
   return pillarCopyFromStaticPage(page, fallback);
 }
 
-function liveBlockText(block) {
-  if (!block || typeof block !== "object") return "";
-  const versions = Array.isArray(block.versions) ? block.versions : [];
-  const n = Number(block.webVersion);
-  const version = versions.find((entry) => Number(entry?.n) === n) || versions[0];
-  return String(version?.text || block.text || block.content || "").trim();
-}
-
-function shownBlocks(page) {
-  return (Array.isArray(page?.blocks) ? page.blocks : []).filter(
-    (block) => block && block.shown !== false
-  );
-}
-
 export function htmlFromStaticPage(page) {
-  if (!page) return "";
-  const compiled = shownBlocks(page)
-    .map((block) => {
-      const text = liveBlockText(block);
-      if (!text) return "";
-      if (block.id === "intro" || block.id === "copyright" || block.id === "secondary") {
-        return text;
-      }
-      const alreadyHasHeading = /<h2\b/i.test(text);
-      if (alreadyHasHeading) return text;
-      const title = String(block.title || "").trim();
-      return title ? `<h2>${title}</h2>\n${text}` : text;
-    })
-    .filter(Boolean)
-    .join("\n");
-  if (stripHtml(compiled)) return compiled;
-  return String(page.content || "").trim();
+  return String(page?.content || "").trim();
 }
 
 export function footerCopyFromStaticPage(page) {
   if (!page) {
     return { copyright: "", credit: "" };
   }
-  const blocks = shownBlocks(page);
-  const byId = (id) => blocks.find((block) => block.id === id);
-  const copyright = stripHtml(liveBlockText(byId("copyright")) || "");
-  const credit = stripHtml(liveBlockText(byId("secondary")) || "");
-  if (copyright || credit) {
-    return { copyright, credit };
+  const html = String(page.content || "").trim();
+  if (!html) {
+    return { copyright: "", credit: "" };
   }
-  const parts = stripHtml(page.content || "")
-    .split("||")
-    .flatMap((part) => String(part).split(/\n+/))
+  const paragraphs = html.match(/<p[^>]*>[\s\S]*?<\/p>/gi) || [];
+  const lines = paragraphs.map((part) => stripHtml(part)).filter(Boolean);
+  if (lines.length >= 2) {
+    return { copyright: lines[0], credit: lines[1] };
+  }
+  const plain = stripHtml(html);
+  const split = plain
+    .split(/\n+/)
     .map((part) => part.trim())
     .filter(Boolean);
   return {
-    copyright: parts.find((part) => /©|copyright/i.test(part)) || parts[0] || "",
-    credit: parts.find((part) => part !== parts[0]) || "",
+    copyright: split.find((part) => /©|copyright/i.test(part)) || split[0] || "",
+    credit: split.find((part) => part !== split[0]) || split[1] || "",
   };
 }
 
@@ -300,37 +272,10 @@ export function pillarCopyFromStaticPage(page, fallback = {}) {
   }
 
   const title = String(page.title || "").trim() || fallback.title || "";
-  const shown = (Array.isArray(page.blocks) ? page.blocks : []).filter((block) => block && block.shown !== false);
-  const headlineBlock = shown.find((block) => block.id === "headline")
-    || shown.find((block) => block.id && block.id !== "intro");
-  const introBlock = shown.find((block) => block.id === "intro");
-
-  let headTitle = "";
-  let bodyHtml = "";
-
-  if (headlineBlock && headlineBlock.id !== "intro") {
-    headTitle = String(headlineBlock.title || "").trim();
-    bodyHtml = liveBlockText(headlineBlock);
-    if (headTitle && title && headTitle.toLowerCase() === title.toLowerCase()) {
-      headTitle = "";
-    }
-  } else if (introBlock) {
-    const parts = splitHtmlAroundFirstHeading(liveBlockText(introBlock));
-    headTitle = parts.heading;
-    bodyHtml = parts.intro || liveBlockText(introBlock);
-  }
-
-  if (!headTitle || !stripHtml(bodyHtml)) {
-    const html = String(page.content || "").trim();
-    const parts = splitHtmlAroundFirstHeading(html);
-    if (!headTitle) {
-      const heading = parts.heading || "";
-      headTitle = heading && heading.toLowerCase() !== title.toLowerCase() ? heading : "";
-    }
-    if (!stripHtml(bodyHtml)) {
-      bodyHtml = parts.heading ? parts.intro : html;
-    }
-  }
+  const html = String(page.content || "").trim();
+  const parts = splitHtmlAroundFirstHeading(html);
+  let headTitle = parts.heading || "";
+  let bodyHtml = parts.heading ? parts.intro : html;
 
   if (headTitle && title && headTitle.toLowerCase() === title.toLowerCase()) {
     headTitle = "";

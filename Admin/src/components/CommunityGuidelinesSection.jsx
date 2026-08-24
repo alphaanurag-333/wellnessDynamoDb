@@ -1,7 +1,7 @@
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
 import { LegalSectionsEditor } from "./LegalSectionsEditor.jsx";
 
-export function CommunityGuidelinesSection({ blocks, setBlocks, onToast }) {
+export function CommunityGuidelinesSection({ blocks, setBlocks, onToast, registerPublishHandler, onLocalChange }) {
   return (
     <LegalSectionsEditor
       slug="community-guideline"
@@ -12,6 +12,8 @@ export function CommunityGuidelinesSection({ blocks, setBlocks, onToast }) {
       blocks={blocks}
       setBlocks={setBlocks}
       onToast={onToast}
+      registerPublishHandler={registerPublishHandler}
+      onLocalChange={onLocalChange}
     />
   );
 }

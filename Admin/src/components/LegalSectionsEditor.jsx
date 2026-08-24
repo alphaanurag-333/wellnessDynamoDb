@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   blocksFromSections,
   getLegalPage,
@@ -44,6 +44,14 @@ function SectionCopy({ text }) {
   return <p>{value}</p>;
 }
 
+function snapshotPage(title, live, blocks) {
+  return JSON.stringify({
+    title: String(title || "").trim(),
+    status: live ? "active" : "inactive",
+    blocks: blocksFromSections(sectionsFromBlocks(blocks), blocks),
+  });
+}
+
 export function LegalSectionsEditor({
   slug,
   defaultTitle,
@@ -53,64 +61,91 @@ export function LegalSectionsEditor({
   blocks,
   setBlocks,
   onToast,
+  registerPublishHandler,
+  onLocalChange,
 }) {
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [pageTitle, setPageTitle] = useState(defaultTitle);
   const [savedTitle, setSavedTitle] = useState(defaultTitle);
   const [live, setLive] = useState(true);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const savedSnapshotRef = useRef("");
+  const stateRef = useRef({ blocks, pageTitle: defaultTitle, live: true });
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ title: "", body: "" });
   const [showAdd, setShowAdd] = useState(false);
   const [newDraft, setNewDraft] = useState({ title: "", body: "" });
   const [pendingDelete, setPendingDelete] = useState(null);
 
+  stateRef.current = { blocks, pageTitle, live };
+
   const sections = sectionsFromBlocks(blocks);
+
+  const syncLocalDirty = useCallback((nextTitle, nextLive, nextBlocks) => {
+    const dirty = snapshotPage(nextTitle, nextLive, nextBlocks) !== savedSnapshotRef.current;
+    setHasLocalChanges(dirty);
+    onLocalChange?.({ hasLocalChanges: dirty });
+  }, [onLocalChange]);
+
+  const applySavedPage = useCallback((page) => {
+    const title = page.title || defaultTitle;
+    const nextLive = page.status !== "inactive";
+    const nextBlocks = page.blocks?.length ? page.blocks : fallbackBlocks.map((row) => ({ ...row }));
+    setPageTitle(title);
+    setSavedTitle(title);
+    setLive(nextLive);
+    setBlocks(nextBlocks);
+    savedSnapshotRef.current = snapshotPage(title, nextLive, nextBlocks);
+    setHasLocalChanges(false);
+    onLocalChange?.({ hasLocalChanges: false });
+  }, [defaultTitle, fallbackBlocks, onLocalChange, setBlocks]);
+
+  const applySavedPageRef = useRef(applySavedPage);
+  applySavedPageRef.current = applySavedPage;
 
   const loadPage = useCallback(async () => {
     setLoading(true);
     try {
       const page = await getLegalPage(slug, fallbackBlocks);
-      setPageTitle(page.title || defaultTitle);
-      setSavedTitle(page.title || defaultTitle);
-      setLive(page.status !== "inactive");
-      setBlocks(page.blocks?.length ? page.blocks : fallbackBlocks.map((row) => ({ ...row })));
+      applySavedPage(page);
     } catch (error) {
       onToast(error?.message || `Failed to load ${defaultTitle.toLowerCase()}`);
-      setBlocks(fallbackBlocks.map((row) => ({ ...row })));
+      applySavedPage({ title: defaultTitle, status: "active", blocks: fallbackBlocks });
     } finally {
       setLoading(false);
     }
-  }, [defaultTitle, fallbackBlocks, onToast, setBlocks, slug]);
+  }, [applySavedPage, defaultTitle, fallbackBlocks, onToast, slug]);
 
   useEffect(() => {
     loadPage();
   }, [loadPage]);
 
-  async function persist(nextSections, extra = {}, successMessage) {
-    const nextBlocks = blocksFromSections(nextSections, blocks);
-    const previous = blocks;
-    setBlocks(nextBlocks);
-    setBusy(true);
-    try {
+  useEffect(() => {
+    if (!registerPublishHandler) return undefined;
+    registerPublishHandler(async () => {
+      const { blocks: currentBlocks, pageTitle: currentTitle, live: currentLive } = stateRef.current;
       const saved = await saveLegalPage(slug, {
-        title: extra.title ?? pageTitle,
-        status: extra.live === false ? "inactive" : extra.live === true ? "active" : live ? "active" : "inactive",
-        blocks: nextBlocks,
+        title: currentTitle,
+        status: currentLive ? "active" : "inactive",
+        blocks: currentBlocks,
       });
-      setPageTitle(saved.title || defaultTitle);
-      setSavedTitle(saved.title || defaultTitle);
-      setLive(saved.status !== "inactive");
-      setBlocks(saved.blocks);
-      if (successMessage) onToast(successMessage);
-      return true;
-    } catch (error) {
-      setBlocks(previous);
-      onToast(error?.message || `Failed to save ${defaultTitle.toLowerCase()}`);
-      return false;
-    } finally {
-      setBusy(false);
+      applySavedPageRef.current(saved);
+      return saved;
+    });
+  }, [registerPublishHandler, slug]);
+
+  function applyLocal(nextSections, extra = {}) {
+    const nextBlocks = blocksFromSections(nextSections, blocks);
+    const nextTitle = extra.title ?? pageTitle;
+    const nextLive = extra.live === false ? false : extra.live === true ? true : live;
+    if (extra.title !== undefined) {
+      setPageTitle(nextTitle);
+      setSavedTitle(nextTitle);
     }
+    if (extra.live !== undefined) setLive(nextLive);
+    setBlocks(nextBlocks);
+    syncLocalDirty(nextTitle, nextLive, nextBlocks);
+    return true;
   }
 
   function startEdit(section) {
@@ -135,10 +170,8 @@ export function LegalSectionsEditor({
       onToast("Section copy is required");
       return;
     }
-    const ok = await persist(
-      sections.map((row) => (row.id === id ? { ...row, title, body } : row)),
-      {},
-      "Section saved"
+    const ok = applyLocal(
+      sections.map((row) => (row.id === id ? { ...row, title, body } : row))
     );
     if (ok) cancelEdit();
   }
@@ -154,10 +187,8 @@ export function LegalSectionsEditor({
       onToast("Section copy is required");
       return;
     }
-    const ok = await persist(
-      [...sections, { id: `section-${Date.now()}`, title, body, shown: true }],
-      {},
-      `${title} added`
+    const ok = applyLocal(
+      [...sections, { id: `section-${Date.now()}`, title, body, shown: true }]
     );
     if (ok) {
       setNewDraft({ title: "", body: "" });
@@ -169,12 +200,7 @@ export function LegalSectionsEditor({
     if (busy) return;
     const next = !live;
     setLive(next);
-    const ok = await persist(
-      sections,
-      { live: next },
-      next ? `${defaultTitle} is live` : `${defaultTitle} hidden`
-    );
-    if (!ok) setLive(!next);
+    applyLocal(sections, { live: next });
   }
 
   async function confirmDelete() {
@@ -182,11 +208,7 @@ export function LegalSectionsEditor({
     const section = pendingDelete;
     setPendingDelete(null);
     if (editingId === section.id) cancelEdit();
-    await persist(
-      sections.filter((row) => row.id !== section.id),
-      {},
-      `${section.title} removed`
-    );
+    applyLocal(sections.filter((row) => row.id !== section.id));
   }
 
   function moveSection(index, delta) {
@@ -196,19 +218,24 @@ export function LegalSectionsEditor({
     const copy = [...sections];
     const [row] = copy.splice(index, 1);
     copy.splice(nextIndex, 0, row);
-    persist(copy, {}, "Section order saved");
+    applyLocal(copy, {}, "Section order updated");
   }
 
-  const locked = loading || busy;
+  const locked = loading;
 
   return (
     <div className="ua-cfg-privacy">
+      {hasLocalChanges ? (
+        <p className="ua-cfg-panel__sub ua-cfg-privacy__draft-note" role="status">
+          Unsaved changes — stored in this session only. Click <strong>Publish</strong> to save to the site, or refresh to discard.
+        </p>
+      ) : null}
       <Panel
         title={defaultTitle}
         subtitle={
           loading
             ? `Loading ${defaultTitle.toLowerCase()}…`
-            : `Shown on ${sitePath}. Use the arrows to reorder. Saved to Static Pages.`
+            : `Preview for ${sitePath}. Edits stay local until you publish.`
         }
         actions={
           loading ? null : (
@@ -260,7 +287,7 @@ export function LegalSectionsEditor({
                 const next = pageTitle.trim() || defaultTitle;
                 setPageTitle(next);
                 if (next === savedTitle) return;
-                persist(sections, { title: next }, "Page title saved");
+                applyLocal(sections, { title: next }, "Page title updated");
               }}
             />
           </label>
@@ -347,10 +374,8 @@ export function LegalSectionsEditor({
                       aria-pressed={section.shown}
                       aria-label={`${section.title} ${section.shown ? "shown" : "hidden"}`}
                       disabled={locked}
-                      onClick={() => persist(
-                        sections.map((row) => (row.id === section.id ? { ...row, shown: !row.shown } : row)),
-                        {},
-                        `${section.title} ${section.shown ? "hidden" : "shown"}`
+                      onClick={() => applyLocal(
+                        sections.map((row) => (row.id === section.id ? { ...row, shown: !row.shown } : row))
                       )}
                     >
                       <span className="ua-toggle__knob" />
@@ -435,7 +460,7 @@ export function LegalSectionsEditor({
         open={Boolean(pendingDelete)}
         tag={`Delete ${noun}`}
         title={pendingDelete ? `Remove “${pendingDelete.title}”?` : ""}
-        body="This section will be removed from the live page. You can’t undo this."
+        body="This section will be removed from your local edits. Publish to apply on the live site, or refresh to undo."
         cancelLabel="Keep section"
         confirmLabel="Delete"
         confirmTone="danger"

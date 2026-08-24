@@ -13,6 +13,7 @@ const {
   paginateItems,
   filterItemsBySearch,
 } = require("../utils/dynamoList");
+const { resolvePublicUrl, normalizeNullableMediaField } = require("../utils/s3");
 
 const TABLE = "Sop";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
@@ -23,6 +24,8 @@ const ALLOWED_CATEGORIES = new Set([
   "reviews",
   "payments",
 ]);
+const ALLOWED_CONTENT_TYPES = new Set(["text", "word", "pdf", "video"]);
+const { normalizeAudienceRoleInput, AUDIENCE_ALL } = require("../utils/sopAudienceRole");
 
 function normalizeStatus(status, fallback = "active") {
   const next = String(status || fallback).toLowerCase().trim();
@@ -34,12 +37,33 @@ function normalizeCategory(category, fallback = "onboarding") {
   return ALLOWED_CATEGORIES.has(next) ? next : fallback;
 }
 
+function normalizeContentType(contentType, fallback = "text") {
+  const next = String(contentType || fallback).toLowerCase().trim();
+  return ALLOWED_CONTENT_TYPES.has(next) ? next : fallback;
+}
+
+function normalizeAudienceRole(audienceRole, fallback = AUDIENCE_ALL) {
+  const next = normalizeAudienceRoleInput(audienceRole);
+  return next || fallback;
+}
+
 function normalizeSteps(steps) {
   if (Array.isArray(steps)) {
     return steps.map((s) => String(s || "").trim()).filter(Boolean);
   }
   if (typeof steps === "string") {
-    return steps
+    const raw = steps.trim();
+    if (raw.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map((s) => String(s || "").trim()).filter(Boolean);
+        }
+      } catch {
+        /* fall through to line split */
+      }
+    }
+    return raw
       .split(/\r?\n/)
       .map((s) => s.trim())
       .filter(Boolean);
@@ -47,29 +71,54 @@ function normalizeSteps(steps) {
   return [];
 }
 
+function normalizeLinkUrl(value) {
+  const raw = String(value || "").trim();
+  return raw || null;
+}
+
 function toPublicSop(item) {
   if (!item) return null;
   const steps = Array.isArray(item.steps) ? item.steps : [];
+  const contentType = normalizeContentType(item.contentType || (steps.length ? "text" : "text"));
+  const fileKey = item.fileKey || null;
+  const fileUrl = fileKey ? resolvePublicUrl(fileKey) : null;
   return {
     ...item,
+    contentType,
+    audienceRole: normalizeAudienceRole(item.audienceRole, AUDIENCE_ALL),
     steps,
     stepCount: steps.length,
+    fileKey,
+    fileUrl: fileUrl || null,
+    fileName: item.fileName || null,
+    linkUrl: item.linkUrl || null,
   };
 }
 
 async function createSop({
   title,
   category = "onboarding",
+  contentType = "text",
+  audienceRole = AUDIENCE_ALL,
   steps = [],
+  fileKey = null,
+  fileName = null,
+  linkUrl = null,
   author = "Admin desk",
   status = "active",
 }) {
   const now = new Date().toISOString();
+  const type = normalizeContentType(contentType);
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
     category: normalizeCategory(category),
-    steps: normalizeSteps(steps),
+    contentType: type,
+    audienceRole: normalizeAudienceRole(audienceRole),
+    steps: type === "text" ? normalizeSteps(steps) : [],
+    fileKey: fileKey ? normalizeNullableMediaField(fileKey, "fileKey") : null,
+    fileName: fileName ? String(fileName).trim() || null : null,
+    linkUrl: type === "video" ? normalizeLinkUrl(linkUrl) : null,
     author: String(author || "Admin desk").trim() || "Admin desk",
     status: normalizeStatus(status),
     createdAt: now,
@@ -98,7 +147,26 @@ async function getSopById(id) {
 }
 
 async function updateSop(id, updates) {
-  const entries = Object.entries(updates || {}).filter(([, value]) => value !== undefined);
+  const patch = { ...(updates || {}) };
+  if (patch.contentType !== undefined) {
+    patch.contentType = normalizeContentType(patch.contentType);
+  }
+  if (patch.steps !== undefined) {
+    patch.steps = normalizeSteps(patch.steps);
+  }
+  if (patch.fileKey !== undefined) {
+    patch.fileKey = patch.fileKey
+      ? normalizeNullableMediaField(patch.fileKey, "fileKey")
+      : null;
+  }
+  if (patch.linkUrl !== undefined) {
+    patch.linkUrl = normalizeLinkUrl(patch.linkUrl);
+  }
+  if (patch.fileName !== undefined) {
+    patch.fileName = patch.fileName ? String(patch.fileName).trim() || null : null;
+  }
+
+  const entries = Object.entries(patch).filter(([, value]) => value !== undefined);
   if (entries.length === 0) {
     throw new Error("No valid fields provided for update");
   }
@@ -140,11 +208,12 @@ async function deleteSop(id) {
   );
 }
 
-async function listSops({ page = 1, limit = 50, status, category, search } = {}) {
+async function listSops({ page = 1, limit = 50, status, category, audienceRole, search } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedCategory = category ? normalizeCategory(category, "") : "";
+  const normalizedAudienceRole = audienceRole ? normalizeAudienceRole(audienceRole, "") : "";
   const searchTerm = String(search || "").trim();
-  const searching = Boolean(searchTerm) || Boolean(normalizedCategory);
+  const searching = Boolean(searchTerm) || Boolean(normalizedCategory) || Boolean(normalizedAudienceRole);
 
   const result = await listByPartitionKey({
     tableName: TABLE,
@@ -163,10 +232,14 @@ async function listSops({ page = 1, limit = 50, status, category, search } = {})
     items = items.filter((item) => item.category === normalizedCategory);
   }
 
+  if (normalizedAudienceRole) {
+    items = items.filter((item) => item.audienceRole === normalizedAudienceRole);
+  }
+
   if (searchTerm) {
     items = filterItemsBySearch(items, {
       search: searchTerm,
-      searchFields: ["title", "category", "author", "steps"],
+      searchFields: ["title", "category", "audienceRole", "author", "steps", "fileName", "linkUrl"],
     });
   }
 
@@ -181,6 +254,7 @@ async function listSops({ page = 1, limit = 50, status, category, search } = {})
 module.exports = {
   TABLE,
   ALLOWED_CATEGORIES,
+  ALLOWED_CONTENT_TYPES,
   createSop,
   getSopById,
   updateSop,
@@ -188,5 +262,7 @@ module.exports = {
   listSops,
   normalizeStatus,
   normalizeCategory,
+  normalizeContentType,
+  normalizeAudienceRole,
   normalizeSteps,
 };

@@ -1,7 +1,7 @@
 import { APP_DPA_BLOCKS } from "../data/configDetailData.js";
 import { LegalSectionsEditor } from "./LegalSectionsEditor.jsx";
 
-export function DpaSection({ blocks, setBlocks, onToast }) {
+export function DpaSection({ blocks, setBlocks, onToast, registerPublishHandler, onLocalChange }) {
   return (
     <LegalSectionsEditor
       slug="app-dpa"
@@ -12,6 +12,8 @@ export function DpaSection({ blocks, setBlocks, onToast }) {
       blocks={blocks}
       setBlocks={setBlocks}
       onToast={onToast}
+      registerPublishHandler={registerPublishHandler}
+      onLocalChange={onLocalChange}
     />
   );
 }

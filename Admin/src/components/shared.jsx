@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
@@ -141,7 +142,9 @@ export function CfgSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [menuStyle, setMenuStyle] = useState(null);
   const ref = useRef(null);
+  const menuRef = useRef(null);
   const searchRef = useRef(null);
   const selected = options.find((row) => String(row.value) === String(value));
   const isPlaceholder = value === undefined || value === null || String(value) === "";
@@ -153,32 +156,122 @@ export function CfgSelect({
     return options.filter((entry) => String(entry.label || "").toLowerCase().includes(q));
   }, [options, query, searchable]);
 
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuStyle(null);
+      return undefined;
+    }
+
+    function placeMenu() {
+      const trigger = ref.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const gap = 6;
+      const maxMenu = Math.min(280, window.innerHeight * 0.45);
+      const spaceBelow = window.innerHeight - rect.bottom - gap - 8;
+      const spaceAbove = rect.top - gap - 8;
+      const openUp = spaceBelow < Math.min(160, maxMenu) && spaceAbove > spaceBelow;
+      const available = Math.max(120, openUp ? spaceAbove : spaceBelow);
+      const width = Math.max(rect.width, 160);
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
+      setMenuStyle({
+        position: "fixed",
+        left,
+        width,
+        zIndex: 10050,
+        maxHeight: Math.min(maxMenu, available),
+        ...(openUp
+          ? { bottom: window.innerHeight - rect.top + gap, top: "auto" }
+          : { top: rect.bottom + gap, bottom: "auto" }),
+      });
+    }
+
+    placeMenu();
+    window.addEventListener("resize", placeMenu);
+    window.addEventListener("scroll", placeMenu, true);
+    return () => {
+      window.removeEventListener("resize", placeMenu);
+      window.removeEventListener("scroll", placeMenu, true);
+    };
+  }, [open, visibleOptions.length, searchable, query]);
+
   useEffect(() => {
     if (!open) {
       setQuery("");
       return undefined;
     }
     function onPointerDown(event) {
-      if (ref.current && !ref.current.contains(event.target)) setOpen(false);
+      const inTrigger = ref.current?.contains(event.target);
+      const inMenu = menuRef.current?.contains(event.target);
+      if (!inTrigger && !inMenu) setOpen(false);
     }
     function onKey(event) {
       if (event.key === "Escape") setOpen(false);
     }
     document.addEventListener("mousedown", onPointerDown);
     document.addEventListener("keydown", onKey);
-    if (searchable) {
-      const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
-      return () => {
-        window.clearTimeout(timer);
-        document.removeEventListener("mousedown", onPointerDown);
-        document.removeEventListener("keydown", onKey);
-      };
-    }
     return () => {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, searchable]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !searchable || !menuStyle) return undefined;
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [open, searchable, menuStyle]);
+
+  const optionList = (list, emptyLabel) => (
+    <ul className="ua-cfg-select__menu ua-cfg-select__menu--portal" role="listbox">
+      {list.length ? list.map((entry) => {
+        const isOn = String(entry.value) === String(value);
+        return (
+          <li key={entry.id || String(entry.value)}>
+            <button
+              type="button"
+              className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
+              role="option"
+              aria-selected={isOn}
+              onClick={() => {
+                onChange(entry.value);
+                setOpen(false);
+              }}
+            >
+              {entry.label}
+            </button>
+          </li>
+        );
+      }) : (
+        <li><span className="ua-cfg-select__empty">{emptyLabel}</span></li>
+      )}
+    </ul>
+  );
+
+  const menu = open && menuStyle ? createPortal(
+    <div
+      ref={menuRef}
+      className="ua-cfg-select__menu-wrap ua-cfg-select__menu-wrap--portal"
+      style={menuStyle}
+    >
+      {searchable ? (
+        <div className="ua-cfg-select__search-wrap">
+          <input
+            ref={searchRef}
+            type="search"
+            className="ua-cfg-select__search"
+            value={query}
+            placeholder={searchPlaceholder}
+            aria-label={`${ariaLabel || "Options"} search`}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
+      {optionList(searchable ? visibleOptions : options, searchable ? "No matches" : "No options")}
+    </div>,
+    document.body,
+  ) : null;
 
   return (
     <div className={`ua-cfg-select${open ? " is-open" : ""}${searchable ? " ua-cfg-select--searchable" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
@@ -194,71 +287,7 @@ export function CfgSelect({
         <span className={`ua-cfg-select__value${isPlaceholder ? " is-placeholder" : ""}`}>{label}</span>
         <span className="ua-cfg-select__chev" aria-hidden="true" />
       </button>
-      {open ? (
-        searchable ? (
-          <div className="ua-cfg-select__menu-wrap">
-            <div className="ua-cfg-select__search-wrap">
-              <input
-                ref={searchRef}
-                type="search"
-                className="ua-cfg-select__search"
-                value={query}
-                placeholder={searchPlaceholder}
-                aria-label={`${ariaLabel || "Options"} search`}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => event.stopPropagation()}
-              />
-            </div>
-            <ul className="ua-cfg-select__menu" role="listbox">
-              {visibleOptions.length ? visibleOptions.map((entry) => {
-                const isOn = String(entry.value) === String(value);
-                return (
-                  <li key={entry.id || String(entry.value)}>
-                    <button
-                      type="button"
-                      className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
-                      role="option"
-                      aria-selected={isOn}
-                      onClick={() => {
-                        onChange(entry.value);
-                        setOpen(false);
-                      }}
-                    >
-                      {entry.label}
-                    </button>
-                  </li>
-                );
-              }) : (
-                <li><span className="ua-cfg-select__empty">No matches</span></li>
-              )}
-            </ul>
-          </div>
-        ) : (
-          <ul className="ua-cfg-select__menu" role="listbox">
-            {options.length ? options.map((entry) => {
-              const isOn = String(entry.value) === String(value);
-              return (
-                <li key={entry.id || String(entry.value)}>
-                  <button
-                    type="button"
-                    className={`ua-cfg-select__option${isOn ? " is-on" : ""}`}
-                    role="option"
-                    aria-selected={isOn}
-                    onClick={() => {
-                      onChange(entry.value);
-                      setOpen(false);
-                    }}
-                  >
-                    {entry.label}
-                  </button>
-                </li>
-              );
-            }) : (
-              <li><span className="ua-cfg-select__empty">No options</span></li>
-            )}
-          </ul>
-        )
-      ) : null}
+      {menu}
     </div>
   );
 }

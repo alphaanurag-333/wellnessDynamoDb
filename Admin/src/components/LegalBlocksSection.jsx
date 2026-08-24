@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getLegalPage, saveLegalPage } from "../api/legalPageApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import {
@@ -171,66 +171,83 @@ export function LegalBlocksSection({
   persistSlug,
   pageTitle,
   fallbackBlocks,
+  registerPublishHandler,
+  onLocalChange,
 }) {
   const persistEnabled = Boolean(persistSlug);
   const [loading, setLoading] = useState(persistEnabled);
-  const [busy, setBusy] = useState(false);
+  const savedSnapshotRef = useRef("");
+  const stateRef = useRef({ blocks });
   const [historyId, setHistoryId] = useState(null);
   const historyBlock = blocks.find((entry) => entry.id === historyId) ?? null;
+
+  stateRef.current = { blocks };
+
+  const applySavedBlocks = useCallback((nextBlocks) => {
+    setBlocks(nextBlocks);
+    savedSnapshotRef.current = JSON.stringify(nextBlocks);
+    onLocalChange?.({ hasLocalChanges: false });
+  }, [onLocalChange, setBlocks]);
+
+  const applySavedBlocksRef = useRef(applySavedBlocks);
+  applySavedBlocksRef.current = applySavedBlocks;
+
+  const syncLocalDirty = useCallback((nextBlocks) => {
+    const dirty = JSON.stringify(nextBlocks) !== savedSnapshotRef.current;
+    onLocalChange?.({ hasLocalChanges: dirty });
+  }, [onLocalChange]);
 
   const loadPage = useCallback(async () => {
     if (!persistSlug) return;
     setLoading(true);
     try {
       const page = await getLegalPage(persistSlug, fallbackBlocks || []);
-      setBlocks(page.blocks);
+      applySavedBlocks(page.blocks);
     } catch (error) {
       onToast(error?.message || "Failed to load page");
-      if (fallbackBlocks?.length) setBlocks(fallbackBlocks.map((row) => ({ ...row })));
+      if (fallbackBlocks?.length) applySavedBlocks(fallbackBlocks.map((row) => ({ ...row })));
     } finally {
       setLoading(false);
     }
-  }, [fallbackBlocks, onToast, persistSlug, setBlocks]);
+  }, [applySavedBlocks, fallbackBlocks, onToast, persistSlug]);
 
   useEffect(() => {
     loadPage();
   }, [loadPage]);
 
-  async function persist(nextBlocks, successMessage) {
+  useEffect(() => {
+    if (!persistEnabled || !registerPublishHandler) return undefined;
+    registerPublishHandler(async () => {
+      const saved = await saveLegalPage(persistSlug, {
+        title: pageTitle,
+        blocks: stateRef.current.blocks,
+      });
+      applySavedBlocksRef.current(saved.blocks);
+      return saved;
+    });
+  }, [pageTitle, persistEnabled, persistSlug, registerPublishHandler]);
+
+  function applyLocal(nextBlocks, successMessage) {
     if (!persistEnabled) {
       setBlocks(nextBlocks);
       if (successMessage) onToast(successMessage);
       return true;
     }
-    const previous = blocks;
     setBlocks(nextBlocks);
-    setBusy(true);
-    try {
-      const saved = await saveLegalPage(persistSlug, {
-        title: pageTitle,
-        blocks: nextBlocks,
-      });
-      setBlocks(saved.blocks);
-      if (successMessage) onToast(successMessage);
-      return true;
-    } catch (error) {
-      setBlocks(previous);
-      onToast(error?.message || "Failed to save page");
-      return false;
-    } finally {
-      setBusy(false);
-    }
+    syncLocalDirty(nextBlocks);
+    if (successMessage) onToast(successMessage);
+    return true;
   }
 
   function updateBlock(id, patch, successMessage) {
-    persist(
+    applyLocal(
       blocks.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry)),
       successMessage
     );
   }
 
   function updateAsset(id, key, uploaded) {
-    persist(
+    applyLocal(
       blocks.map((entry) =>
         entry.id === id
           ? { ...entry, assets: { ...entry.assets, [key]: { ...entry.assets[key], uploaded } } }
@@ -239,7 +256,7 @@ export function LegalBlocksSection({
     );
   }
 
-  const locked = loading || busy;
+  const locked = loading;
 
   if (loading) {
     return <p className="ua-cfg-panel__sub">Loading page from Static Pages…</p>;
@@ -249,7 +266,7 @@ export function LegalBlocksSection({
     <div className="ua-cfg-lb">
       {persistEnabled ? (
         <p className="ua-cfg-panel__sub">
-          Saved to Static Pages · {persistSlug}. Shown sections publish to the website.
+          Edits stay local until you publish · {persistSlug}
         </p>
       ) : null}
 

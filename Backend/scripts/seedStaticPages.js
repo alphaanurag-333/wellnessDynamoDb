@@ -9,6 +9,7 @@
 require("dotenv").config();
 
 const { createPage, getPageBySlug, updatePage } = require("../models/staticPageModel");
+const { htmlToLegalBlocks } = require("../utils/legalBlocks");
 
 const EFFECTIVE_DATE = "July 4, 2026";
 const COMPANY_NAME = "Wellness";
@@ -249,21 +250,6 @@ const STATIC_PAGES = [
     `.trim(),
   },
   {
-    title: "App Terms of Service",
-    slug: "app-tos",
-    status: "active",
-    content: `
-      <p>By creating an account you agree to these terms and to the protocols prescribed by your assigned wellness coach.</p>
-      <h2>Key terms</h2>
-      <ul>
-        <li>Programs are delivered digitally through the IRW app. Session timings are agreed with your coach.</li>
-        <li>Program fees are refundable on a pro-rata basis within the first 14 days.</li>
-        <li>Your labs, photos and notes are visible only to you and your assigned coach.</li>
-        <li>We may update these terms; material changes are notified in the app.</li>
-      </ul>
-    `.trim(),
-  },
-  {
     title: "Data Processing Agreement",
     slug: "app-dpa",
     status: "active",
@@ -356,20 +342,31 @@ const STATIC_PAGES = [
 ];
 
 async function upsertPage(row) {
-  const existing = await getPageBySlug(row.slug);
+  const payload = { ...row };
+  const legalSlugs = new Set([
+    "terms-and-conditions",
+    "privacy-policy",
+    "community-guideline",
+    "app-dpa",
+  ]);
+  if (!payload.blocks && payload.content && legalSlugs.has(payload.slug)) {
+    payload.blocks = htmlToLegalBlocks(payload.content, payload.title);
+  }
+
+  const existing = await getPageBySlug(payload.slug);
 
   if (existing) {
     const updated = await updatePage(existing.id, {
-      title: row.title,
-      slug: row.slug,
-      content: row.content,
-      status: row.status,
-      ...(row.blocks ? { blocks: row.blocks } : {}),
+      title: payload.title,
+      slug: payload.slug,
+      content: payload.content,
+      status: payload.status,
+      ...(payload.blocks ? { blocks: payload.blocks } : {}),
     });
     return { action: "updated", item: updated };
   }
 
-  const created = await createPage(row);
+  const created = await createPage(payload);
   return { action: "created", item: created };
 }
 
