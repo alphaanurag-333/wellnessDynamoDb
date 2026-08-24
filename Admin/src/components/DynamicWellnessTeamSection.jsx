@@ -715,7 +715,7 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
                           )}
                         </div>
                       </div>
-                      <div className="ua-cfg-ld-item__actions">
+                      <div className="ua-cfg-ld-item__actions managecss">
                         <div className="ua-cfg-ld-item__surfaces">
                           <div className="ua-cfg-ld-item__live">
                             <span className={`ua-cfg-faq__shown${item.webVisible ? " is-on" : ""}`}>

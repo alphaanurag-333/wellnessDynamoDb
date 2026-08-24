@@ -57,9 +57,9 @@ function cropBoxSize(ratio) {
   return { width: Math.round(w * scale), height: Math.round(h * scale), w, h };
 }
 
-function Panel({ title, subtitle, actions, children }) {
+function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       <div className="ua-cfg-panel__head">
         <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
@@ -1236,7 +1236,7 @@ export function RecipesSection({
           onToast={onToast}
         />
       ) : (
-        <Panel title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
+        <Panel className="ua-cfg-surface-live" title="Where this is live" subtitle="Turn it on for the app, the website, or both.">
           <div className="ua-cfg-bn-surfaces">
             <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn ? " is-on" : ""}`}>
               <span>App {editor.appOn ? "Enabled" : "Disabled"}</span>

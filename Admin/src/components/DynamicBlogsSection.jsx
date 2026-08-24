@@ -17,6 +17,8 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { SectionSurfaceToggles } from "./SectionSurfaceToggles.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import "./sectionSurfaceLive.css";
+import "./blogsConfig.css";
 
 const POSITION_OPTIONS = [
   { value: "featured", label: "Featured (top)" },
@@ -25,9 +27,9 @@ const POSITION_OPTIONS = [
   { value: "last", label: "Last" },
 ];
 
-function Panel({ title, subtitle, actions, children }) {
+function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       <div className="ua-cfg-panel__head">
         <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
@@ -437,6 +439,7 @@ export function DynamicBlogsSection({ editor, setEditor, posts, setPosts, galler
   return (
     <div className="ua-cfg-bl">
       <Panel
+        className="ua-cfg-surface-live"
         title="Where this is live"
         subtitle="Turn it on for the app, the website, or both."
         actions={(

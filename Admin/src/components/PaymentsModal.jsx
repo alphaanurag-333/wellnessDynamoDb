@@ -120,6 +120,9 @@ export function PaymentsModal({
             </div>
             <div className="ua-team-modal__sub">{subtitle}</div>
           </div>
+          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
           <div className="ua-payments-modal__tabs">
             <PillTabs
               tabs={productTabs}
@@ -128,9 +131,6 @@ export function PaymentsModal({
               size="sm"
             />
           </div>
-          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
         </div>
 
         <div className="ua-payments-modal__body">
@@ -162,8 +162,8 @@ export function PaymentsModal({
                   onClick={() => onOpenClient(row)}
                 >
                   <span className="ua-payments-modal__user">{row.userName}</span>
-                  <span className="ua-payments-modal__coach">{row.coachName || "—"}</span>
-                  <span className="ua-payments-modal__program">
+                  <span className="ua-payments-modal__coach" data-label="Coach">{row.coachName || "—"}</span>
+                  <span className="ua-payments-modal__program" data-label="Type">
                     <span
                       className={`ua-payments-modal__badge${
                         String(row.productType || "").toLowerCase() === "consultancy" ||
@@ -175,7 +175,7 @@ export function PaymentsModal({
                       {row.programType || "—"}
                     </span>
                   </span>
-                  <span className="ua-payments-modal__date">{row.dateLabel}</span>
+                  <span className="ua-payments-modal__date" data-label="Date">{row.dateLabel}</span>
                   <span className="ua-payments-modal__amount">{formatPaymentAmount(row.amount)}</span>
                 </button>
               ))}

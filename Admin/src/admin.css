@@ -2771,10 +2771,18 @@
 }
 
 /* Dashboard payments modal */
+.updated-admin .ua-team-modal-backdrop:has(.ua-payments-modal) {
+  padding: 12px;
+  align-items: center;
+}
+
 .updated-admin .ua-payments-modal {
-  width: 760px;
-  height: min(560px, 82vh);
-  min-height: min(560px, 82vh);
+  width: min(760px, 100%);
+  max-width: 100%;
+  height: min(560px, 86vh);
+  min-height: 0;
+  max-height: 86vh;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-payments-modal__icon {
@@ -2786,27 +2794,81 @@
   border-radius: 8px;
   background: #eef0fc;
   color: #5e6ad2;
+  grid-area: icon;
 }
 
-.updated-admin .ua-payments-modal__head {
-  flex-wrap: wrap;
-  align-items: flex-start;
+.updated-admin .ua-team-modal__head.ua-payments-modal__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon copy close"
+    "tabs tabs tabs";
+  align-items: center;
   gap: 10px 12px;
 }
 
-.updated-admin .ua-payments-modal__tabs {
-  flex: 1 1 220px;
-  display: flex;
-  justify-content: flex-end;
+.updated-admin .ua-payments-modal__head .ua-team-modal__head-copy {
+  grid-area: copy;
   min-width: 0;
-  margin-left: auto;
+}
+
+.updated-admin .ua-payments-modal__head .ua-team-modal__title {
+  overflow-wrap: break-word;
+}
+
+.updated-admin .ua-payments-modal__head .ua-team-modal__sub {
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-payments-modal__head .ua-team-modal__close {
+  grid-area: close;
+}
+
+.updated-admin .ua-payments-modal__tabs {
+  grid-area: tabs;
+  display: flex;
+  justify-content: flex-start;
+  min-width: 0;
+  width: 100%;
+  margin-left: 0;
 }
 
 .updated-admin .ua-payments-modal__tabs .ua-pill-tabs {
   margin: 0;
+  width: max-content;
   max-width: 100%;
+  flex-wrap: nowrap;
 }
 
+@media (min-width: 840px) {
+  .updated-admin .ua-team-modal__head.ua-payments-modal__head {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "icon copy tabs close";
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-payments-modal__tabs {
+    width: auto;
+    max-width: min(360px, 100%);
+    justify-content: flex-end;
+  }
+}
+
+
+
+@media (max-width: 720px) {
+  .managecss {
+      flex: auto !important;
+  }
+}
+
+@media (max-width: 640px) {
+    .add-css {
+        flex-direction: row !important;
+    }
+}  
 .updated-admin .ua-payments-modal__body {
   padding: 0;
   overflow: hidden;
@@ -53849,9 +53911,95 @@ scrollbar-width: thin;
   min-width: 640px;
 }
 
-.updated-admin .ua-payments-modal__table-head,
-.updated-admin .ua-payments-modal__row {
-  min-width: 680px;
+@media (min-width: 721px) {
+  .updated-admin .ua-payments-modal__table-head,
+  .updated-admin .ua-payments-modal__row {
+    min-width: 680px;
+  }
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-team-modal-backdrop:has(.ua-payments-modal) {
+    padding: 8px;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-payments-modal {
+    width: 100%;
+    max-width: 100%;
+    height: min(92dvh, 100%);
+    max-height: 92dvh;
+    min-height: 0;
+    margin: auto 0;
+    border-radius: 14px;
+  }
+
+  .updated-admin .ua-payments-modal__head {
+    padding: 14px 14px 12px;
+  }
+
+  .updated-admin .ua-payments-modal__content {
+    overflow-x: hidden;
+  }
+
+  .updated-admin .ua-payments-modal__tabs .ua-pill-tabs {
+    width: 100%;
+  }
+
+  .updated-admin .ua-payments-modal__tabs .ua-pill-tabs__btn {
+    flex: 1 0 auto;
+    padding: 0 10px;
+  }
+
+  .updated-admin .ua-payments-modal__table-head {
+    display: none;
+  }
+
+  .updated-admin .ua-payments-modal__table-head,
+  .updated-admin .ua-payments-modal__row {
+    min-width: 0;
+  }
+
+  .updated-admin .ua-payments-modal__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "user amount"
+      "coach date"
+      "program program";
+    align-items: start;
+    gap: 4px 10px;
+    padding: 12px 14px;
+  }
+
+  .updated-admin .ua-payments-modal__user {
+    grid-area: user;
+  }
+
+  .updated-admin .ua-payments-modal__amount {
+    grid-area: amount;
+    text-align: right;
+  }
+
+  .updated-admin .ua-payments-modal__coach {
+    grid-area: coach;
+  }
+
+  .updated-admin .ua-payments-modal__date {
+    grid-area: date;
+    text-align: right;
+  }
+
+  .updated-admin .ua-payments-modal__program {
+    grid-area: program;
+  }
+
+  .updated-admin .ua-payments-modal__coach[data-label]::before,
+  .updated-admin .ua-payments-modal__date[data-label]::before {
+    content: attr(data-label) ": ";
+    font-weight: 650;
+    color: var(--muted-light);
+  }
 }
 
 .updated-admin .ua-prog-progress-modal__table-head--metric,
