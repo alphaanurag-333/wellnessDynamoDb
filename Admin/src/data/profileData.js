@@ -78,11 +78,6 @@ function initialsFromName(name) {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
-function roleInitial(roleName) {
-  const name = String(roleName || "").trim();
-  return name ? name.charAt(0).toUpperCase() : "?";
-}
-
 export function isCoachProfileRole(roleId) {
   return COACH_ROLE_IDS.has(String(roleId || "").trim());
 }
@@ -96,7 +91,7 @@ export function buildProfileFromAccount(account, activeRole) {
   if (!account) {
     return {
       id: "",
-      initial: roleInitial(roleName),
+      initial: "?",
       name: "Not signed in",
       role: roleName,
       roleId: activeRole?.id || "",
@@ -131,7 +126,7 @@ export function buildProfileFromAccount(account, activeRole) {
 
   return {
     id: account.id || "",
-    initial: roleInitial(roleName),
+    initial: initialsFromName(account.name),
     name: account.name || "—",
     role: roleName,
     roleId: activeRole?.id || "",
