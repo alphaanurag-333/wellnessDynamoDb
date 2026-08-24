@@ -265,6 +265,9 @@
   .updated-admin .ua-faq-config .ua-cfg-faq-new__surfaces .ua-cfg-bn-surface {
     flex: 1 1 100%;
   }
+  .paddingmanage {
+    padding: 10px !important;
+  }
 }
 
 @media (max-width: 360px) {

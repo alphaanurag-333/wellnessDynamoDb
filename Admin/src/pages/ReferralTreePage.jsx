@@ -278,6 +278,9 @@ export function ReferralTreePage() {
 
   return (
     <main className="content ua-page-enter ua-rt-page">
+      {root || treeLoading ? (
+      <Link class="ua-cfg-detail__back" onClick={clearTree}>← Back Referral Tree</Link>
+      ) : null}
       <PageHeader
         title={root ? shortLabel(root.name || "Referral tree", 40) : "Referral Tree"}
         subtitle={
@@ -308,12 +311,12 @@ export function ReferralTreePage() {
 
       {root || treeLoading ? (
         <div className="ua-rt-treebar">
-          <button type="button" className="ua-rt-treebar__back" onClick={clearTree} disabled={treeLoading}>
+          {/* <button type="button" className="ua-rt-treebar__back" onClick={clearTree} disabled={treeLoading}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M15 18l-6-6 6-6" />
             </svg>
             Back to overview
-          </button>
+          </button> */}
           <div className="ua-rt-treebar__info">
             <span className="ua-rt-treebar__name" title={root?.name || undefined}>
               {shortLabel(root?.name || (treeLoading ? "Loading…" : "Tree"), 36)}
@@ -325,7 +328,7 @@ export function ReferralTreePage() {
         </div>
       ) : (
         <section className="ua-rt-find">
-          <div className="ua-rt-find__tabs">
+          <div className="ua-rt-find__tabs" style={{maxWidth:"max-content"}}>
             <PillTabs
               tabs={listTabs}
               active={listTab}
@@ -401,7 +404,7 @@ export function ReferralTreePage() {
 
       {treeLoading ? (
         <div className="ua-rt-loading">
-          <BrandLoader />
+          <BrandLoader variant="page" label="Loading …"/>
         </div>
       ) : null}
 
@@ -497,14 +500,14 @@ export function ReferralTreePage() {
                             }}
                           >
                             <div className="ua-rt-cell-name" data-label="Staff">
-                              <span className="ua-rt-ellipsis" title={fullName}>
+                              <span style={{fontSize:"13px",color:"#0f172a",fontWeight:'600'}} className="ua-rt-ellipsis" title={fullName}>
                                 {shortLabel(fullName, 32)}
                               </span>
                             </div>
-                            <div className="ua-rt-mono" data-label="Code">
+                            <div style={{fontSize:"12px"}} className="ua-rt-mono" data-label="Code">
                               {row.referralCode || "—"}
                             </div>
-                            <div data-label="Role">{entityLabel(row.entityType)}</div>
+                            <div data-label="Role" style={{fontSize:"12px"}}>{entityLabel(row.entityType)}</div>
                             <div className="ua-rt-direct" data-label="Direct">
                               {row.directCount}
                             </div>
