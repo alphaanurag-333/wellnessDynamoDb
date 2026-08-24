@@ -390,7 +390,7 @@ function buildSupplements(dosages, today) {
     }
     if (PERIOD_LABEL[first?.period]) noteParts.push(PERIOD_LABEL[first.period]);
     return {
-      name: row.name || "Supplement",
+      name: row.name || "Nutrition",
       note: noteParts.join(" · ") || row.unit || "",
       dosages: periods.map((p) => ({
         label: `${PERIOD_LABEL[p.period] || p.period} · ${p.quantity}`,

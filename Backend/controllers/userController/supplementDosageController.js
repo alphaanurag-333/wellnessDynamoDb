@@ -78,7 +78,7 @@ exports.getUserSupplementDosagesController = asyncHandler(async (req, res) => {
 
   return res.status(200).json({
     status: true,
-    message: "Supplement dosages fetched successfully",
+    message: "Nutritions dosages fetched successfully",
     date: logDate,
     dosages: hydrated,
   });
@@ -94,7 +94,7 @@ exports.toggleUserSupplementDosageLogController = asyncHandler(async (req, res) 
 
   const dosage = await getUserSupplementDosageRecordById(dosageId);
   if (!dosage || String(dosage.userId || "") !== String(userId)) {
-    throw new AppError("Supplement dosage not found", 404);
+    throw new AppError("Nutrition dosage not found", 404);
   }
   if (!isDosageActiveOnDate(dosage, logDate)) {
     throw new AppError("This dosage plan is not active for the selected date", 400);

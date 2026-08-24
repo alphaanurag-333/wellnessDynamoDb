@@ -46,7 +46,6 @@ function LeadershipVideo({ videoType = "none", ytLink = "", video = "", classNam
 }
 
 function LeadershipNoteCard({
-  badge = "A NOTE FROM LEADERSHIP",
   title,
   name,
   designation,
@@ -161,7 +160,6 @@ function LeadershipNoteCard({
 
 /** Legacy single-note section (kept for fallback / reuse). */
 export function LeadershipMessageSection({
-  badge = "A NOTE FROM LEADERSHIP",
   title,
   name,
   designation,
@@ -176,7 +174,6 @@ export function LeadershipMessageSection({
     <section className={`pt-2 pb-2 leadership${className ? ` ${className}` : ""}`}>
       <div className="site-container">
         <LeadershipNoteCard
-          badge={badge}
           title={title}
           name={name}
           designation={designation}
@@ -306,7 +303,6 @@ export function LeadershipNotesSlider({
           {items.map((note) => (
             <SwiperSlide key={note.id || note._id}>
               <LeadershipNoteCard
-                badge={note.badge || "A NOTE FROM LEADERSHIP"}
                 title={note.title || note.designation}
                 name={note.name}
                 designation={note.designation}

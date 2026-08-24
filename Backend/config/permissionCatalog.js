@@ -81,7 +81,7 @@ const PERMISSION_GROUPS_RAW = [
       { to: "blog-posts", label: "Blog Posts", actions: [VIEW, EDIT, DELETE] },
       { to: "blog-media", label: "Blog Media", actions: [VIEW, EDIT, DELETE] },
       { to: "physical-exercises", label: "Physical Exercise", actions: [VIEW, EDIT, DELETE] },
-      { to: "supplements", label: "Supplements", actions: [VIEW, EDIT, DELETE] },
+      { to: "supplements", label: "Nutritions", actions: [VIEW, EDIT, DELETE] },
       {
         to: "medical-condition-questions",
         label: "Medical Conditions",
@@ -194,7 +194,7 @@ const CLIENT_HUB_TAB_META = {
   "mental-wellbeing": "Mental wellbeing",
   yoga: "Yoga",
   "daily-reflection": "Daily reflection",
-  "supplement-recommendations": "Supplements",
+  "supplement-recommendations": "Nutritions",
   "supplement-dosage": "Dosage",
   "meal-tracking": "Meals",
   "health-progress": "Health progress",

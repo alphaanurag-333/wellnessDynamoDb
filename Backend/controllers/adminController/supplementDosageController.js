@@ -66,7 +66,7 @@ exports.listCoachUserSupplementDosagesController = asyncHandler(async (req, res)
 
   return res.status(200).json({
     status: true,
-    message: "Supplement dosages fetched successfully",
+    message: "Nutritions dosages fetched successfully",
     dosages: hydrated,
   });
 });
@@ -85,7 +85,7 @@ exports.createCoachUserSupplementDosageController = asyncHandler(async (req, res
 
   const supplement = await getSupplementById(supplementId);
   if (!supplement || String(supplement.status || "").toLowerCase() !== "active") {
-    throw new AppError("Supplement is invalid or inactive", 400);
+    throw new AppError("Nutrition is invalid or inactive", 400);
   }
 
   const startDate = normalizeStartDate(req.body?.startDate);
@@ -121,7 +121,7 @@ exports.createCoachUserSupplementDosageController = asyncHandler(async (req, res
 
   return res.status(201).json({
     status: true,
-    message: "Supplement dosage created successfully",
+    message: "Nutrition dosage created successfully",
     dosage: { ...dosage, progressPercent: 0 },
   });
 });
@@ -141,13 +141,13 @@ exports.deleteCoachUserSupplementDosageController = asyncHandler(async (req, res
     await stopUserSupplementDosage(dosageId);
   } catch (err) {
     if (err?.name === "ConditionalCheckFailedException" || err?.name === "NotFoundError") {
-      throw new AppError("Supplement dosage not found", 404);
+      throw new AppError("Nutrition dosage not found", 404);
     }
     throw err;
   }
 
   return res.status(200).json({
     status: true,
-    message: "Supplement dosage stopped successfully",
+    message: "Nutrition dosage stopped successfully",
   });
 });

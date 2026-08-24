@@ -326,7 +326,6 @@ const AboutUsSection = () => {
 
       {showCofounderMessage ? (
       <LeadershipMessageSection
-        badge="A NOTE FROM LEADERSHIP"
         title="Co-Founder's Message"
         name={cofounderName}
         message={cofounderBody}

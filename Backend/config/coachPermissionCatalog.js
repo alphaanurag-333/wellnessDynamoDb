@@ -39,7 +39,7 @@ const CLIENT_HUB_TAB_META = {
   "mental-wellbeing": "Mental wellbeing",
   yoga: "Yoga",
   "daily-reflection": "Daily reflection",
-  "supplement-recommendations": "Supplements",
+  "supplement-recommendations": "Nutritions",
   "supplement-dosage": "Dosage",
   "meal-tracking": "Meals",
   "health-progress": "Health progress",

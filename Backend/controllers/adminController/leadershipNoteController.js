@@ -18,7 +18,6 @@ const {
   listLeadershipNotes,
   normalizeStatus,
   normalizeVisibleFlag,
-  DEFAULT_BADGE,
 } = require("../../models/leadershipNoteModel");
 
 const ALLOWED_STATUS = ["active", "inactive"];
@@ -49,7 +48,6 @@ exports.createLeadershipNoteController = asyncHandler(async (req, res) => {
   const name = String(req.body.name || "").trim();
   const designation = String(req.body.designation || "").trim();
   const title = String(req.body.title || "").trim();
-  const badge = String(req.body.badge || "").trim() || DEFAULT_BADGE;
   const message = String(req.body.message || "").trim();
   const status = normalizeStatus(req.body.status, "active");
   const webVisible =
@@ -77,7 +75,6 @@ exports.createLeadershipNoteController = asyncHandler(async (req, res) => {
     name,
     designation,
     title: title || designation,
-    badge,
     message,
     profileImage,
     status,
@@ -111,9 +108,6 @@ exports.updateLeadershipNoteController = asyncHandler(async (req, res) => {
   }
   if (req.body.title !== undefined) {
     updates.title = String(req.body.title || "").trim();
-  }
-  if (req.body.badge !== undefined) {
-    updates.badge = String(req.body.badge || "").trim() || DEFAULT_BADGE;
   }
   if (req.body.message !== undefined) {
     const message = String(req.body.message || "").trim();

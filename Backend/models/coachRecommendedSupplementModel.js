@@ -36,7 +36,7 @@ function normalizeDeliveryOption(value) {
 
 function normalizeItems(items) {
   if (!Array.isArray(items) || items.length === 0) {
-    const err = new Error("At least one supplement item is required");
+    const err = new Error("At least one nutrition item is required");
     err.name = "ValidationError";
     throw err;
   }

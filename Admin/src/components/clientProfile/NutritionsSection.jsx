@@ -110,7 +110,7 @@ function recommendationToHistoryRow(rec) {
   return {
     id: rec.id,
     date: formatLongDate(rec.createdAt) || "—",
-    items: items || "Supplements",
+    items: items || "Nutritions",
     type: selfBilling ? "Self billing" : "Coach delivery",
     amount: rec.billingTotal || 0,
     status,
@@ -166,7 +166,7 @@ function FulfilmentStatus({ recommendation }) {
       <p className="ua-cp-nut-log__hint">
         {billedOn
           ? `Client uploaded a purchase bill on ${billedOn}.`
-          : "The client will buy these supplements and upload a PDF bill in the app."}
+          : "The client will buy these nutritions and upload a PDF bill in the app."}
       </p>
       {recommendation.billPdfUrl ? (
         <a className="ua-cp-nut-log__add" href={recommendation.billPdfUrl} target="_blank" rel="noreferrer">
@@ -805,7 +805,7 @@ export function NutritionsSection({ user, onToast }) {
 
   async function saveRecommendation() {
     if (!selected.length) {
-      onToast?.("Pick at least one supplement");
+      onToast?.("Pick at least one nutrition");
       return;
     }
     setSaving(true);
@@ -849,7 +849,7 @@ export function NutritionsSection({ user, onToast }) {
       if (syncedOrders > 0) {
         onToast(`Saved & synced to user app · ${syncedOrders} order${syncedOrders === 1 ? "" : "s"}. Check the client app.`);
       } else {
-        onToast("Saved & synced to user app. Check supplements in the client app.");
+        onToast("Saved & synced to user app. Check nutritions in the client app.");
       }
     } catch (err) {
       onToast?.(err?.message || "Could not save & sync");
@@ -875,7 +875,7 @@ export function NutritionsSection({ user, onToast }) {
           mealRelation: addMeal,
         })),
       });
-      const name = pool.find((item) => item.id === addSupp)?.name || "Supplement";
+      const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
       onToast(`Added ${name} ×${addPeriods.length}`);
       setAddPeriods([]);
       setTimingOpen(false);
@@ -912,7 +912,7 @@ export function NutritionsSection({ user, onToast }) {
         rows.push({
           id: `${rec.id}-${order.id}`,
           date: formatLongDate(order.placedOn) || "—",
-          items: items || "Supplements",
+          items: items || "Nutritions",
           type: order.vendor ? `Coach delivery · ${order.vendor}` : "Coach delivery",
           amount,
           status: order.billName || order.billPdfUrl ? "Bill uploaded" : "Order logged",
@@ -940,14 +940,14 @@ export function NutritionsSection({ user, onToast }) {
     <div className="ua-cp-section ua-cp-nutritions">
       <div className="ua-cp-nutritions__head">
         <h2 className="ua-cp-nutritions__title">Nutritions</h2>
-        <p className="ua-cp-nutritions__sub">Supplement recommendation, pricing &amp; dosage plan.</p>
+        <p className="ua-cp-nutritions__sub">Nutritions recommendation, pricing &amp; dosage plan.</p>
       </div>
       <PillTabs tabs={[{ id: "recommendation", label: "Recommendation" }, { id: "dosage", label: "Dosage" }]} active={sub} onChange={setSub} size="md" />
 
       {loading ? <p className="ua-page-head__sub">Loading nutritions…</p> : null}
       {error && !loading ? <p className="ua-page-head__sub" style={{ color: "#b42318" }}>{error}</p> : null}
       {!isHealClient && !loading ? (
-        <p className="ua-page-head__sub">Supplements can only be assigned to Heal (paid) clients.</p>
+        <p className="ua-page-head__sub">Nutritions can only be assigned to Heal (paid) clients.</p>
       ) : null}
 
       {sub === "recommendation" ? (
@@ -967,12 +967,12 @@ export function NutritionsSection({ user, onToast }) {
               >
                 <option value="">
                   {poolLoading
-                    ? "Loading supplement pool…"
+                    ? "Loading nutritions pool…"
                     : availablePool.length
-                      ? "+ Add supplement from pool..."
+                      ? "+ Add nutritions from pool..."
                       : pool.length
-                        ? "All supplements from the pool are selected"
-                        : "Add supplements in Config → Nutrition bank first"}
+                        ? "All nutritions from the pool are selected"
+                        : "Add nutritions in Config → Nutrition bank first"}
                 </option>
                 {availablePool.map((s) => (
                   <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
@@ -999,7 +999,7 @@ export function NutritionsSection({ user, onToast }) {
                   </div>
                 ))}
               </div>
-            ) : (!loading ? <p className="ua-cp-rec-hint">No supplements selected yet.</p> : null)}
+            ) : (!loading ? <p className="ua-cp-rec-hint">No nutritions selected yet.</p> : null)}
             <div className="ua-cp-billing-bar">
               <span>Billing amount</span>
               <strong>Rs. {billing.toLocaleString("en-IN")}</strong>
@@ -1074,10 +1074,10 @@ export function NutritionsSection({ user, onToast }) {
         </>
       ) : (
         <>
-          <p className="ua-cp-dosage-hint">Pick a supplement, choose morning / afternoon / evening, set the amount, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.</p>
+          <p className="ua-cp-dosage-hint">Pick a nutrition, choose morning / afternoon / evening, set the amount, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.</p>
           <div className="ua-cp-dosage-add">
             <select value={addSupp} onChange={(e) => setAddSupp(e.target.value)} disabled={!canWrite || poolLoading || !pool.length || saving || !isHealClient}>
-              {pool.length ? pool.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No supplements in pool</option>}
+              {pool.length ? pool.map((s) => <option key={s.id} value={s.id}>{s.name}</option>) : <option value="">No nutritions in pool</option>}
             </select>
             <div className="ua-cp-timing-wrap" ref={timingRef}>
               <button

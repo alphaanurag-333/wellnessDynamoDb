@@ -92,7 +92,7 @@ exports.listCoachUserSupplementRecommendationsController = asyncHandler(async (r
 
   return res.status(200).json({
     status: true,
-    message: "Supplement recommendations fetched successfully",
+    message: "Nutritions recommendations fetched successfully",
     recommendations,
     recommended: recommendations[0] || null,
     history: recommendations.length > 1 ? recommendations.slice(1) : [],
@@ -137,7 +137,7 @@ exports.createCoachUserSupplementRecommendationController = asyncHandler(async (
 
   return res.status(201).json({
     status: true,
-    message: "Supplement recommendation created successfully",
+    message: "Nutritions recommendation created successfully",
     recommendation,
   });
 });
@@ -157,14 +157,14 @@ exports.deleteCoachUserSupplementRecommendationController = asyncHandler(async (
     await deleteCoachRecommendedSupplement(recommendationId);
   } catch (err) {
     if (err?.name === "ConditionalCheckFailedException" || err?.name === "NotFoundError") {
-      throw new AppError("Supplement recommendation not found", 404);
+      throw new AppError("Nutrition recommendation not found", 404);
     }
     throw err;
   }
 
   return res.status(200).json({
     status: true,
-    message: "Supplement recommendation removed successfully",
+    message: "Nutritions recommendation removed successfully",
   });
 });
 

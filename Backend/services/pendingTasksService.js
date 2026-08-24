@@ -102,7 +102,7 @@ function formatOrderProducts(rec) {
       return qty > 1 ? `${name} × ${qty}` : name;
     })
     .filter(Boolean);
-  if (names.length === 0) return "Supplements";
+  if (names.length === 0) return "Nutritions";
   if (names.length <= 2) return names.join(" · ");
   return `${names.slice(0, 2).join(" · ")} +${names.length - 2} more`;
 }

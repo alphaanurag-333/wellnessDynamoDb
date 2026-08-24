@@ -16,7 +16,6 @@ export function mapLeadershipNote(row) {
     name: String(row.name || "").trim(),
     designation: String(row.designation || "").trim(),
     title: String(row.title || "").trim(),
-    badge: String(row.badge || "").trim(),
     message: String(row.message || "").trim(),
     profileImage: row.profileImage || "",
     order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
@@ -33,7 +32,6 @@ function appendFields(form, fields) {
   if (fields.name !== undefined) form.append("name", String(fields.name || "").trim());
   if (fields.designation !== undefined) form.append("designation", String(fields.designation || "").trim());
   if (fields.title !== undefined) form.append("title", String(fields.title || "").trim());
-  if (fields.badge !== undefined) form.append("badge", String(fields.badge || "").trim());
   if (fields.message !== undefined) form.append("message", String(fields.message || "").trim());
   if (fields.order !== undefined) form.append("order", String(fields.order));
   if (fields.status !== undefined) form.append("status", String(fields.status));
@@ -47,7 +45,6 @@ function jsonFields(fields) {
   if (fields.name !== undefined) payload.name = String(fields.name || "").trim();
   if (fields.designation !== undefined) payload.designation = String(fields.designation || "").trim();
   if (fields.title !== undefined) payload.title = String(fields.title || "").trim();
-  if (fields.badge !== undefined) payload.badge = String(fields.badge || "").trim();
   if (fields.message !== undefined) payload.message = String(fields.message || "").trim();
   if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) payload.status = String(fields.status);

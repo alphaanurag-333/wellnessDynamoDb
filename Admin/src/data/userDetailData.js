@@ -619,7 +619,7 @@ export function getUserProfile(_userId) {
 
 export const DEFAULT_REMINDERS = [
   { id: 1, text: "Morning gym session", freq: "Daily", time: "06:30" },
-  { id: 2, text: "Take supplements", freq: "After lunch", time: "13:30" },
+  { id: 2, text: "Take nutritions", freq: "After lunch", time: "13:30" },
   { id: 3, text: "Evening walk", freq: "Daily", time: "18:00" },
 ];
 

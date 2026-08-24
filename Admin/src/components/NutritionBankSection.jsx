@@ -289,7 +289,7 @@ function NutritionRow({
           />
           <div className="ua-cfg-dp-add__actions">
             <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={onSave}>
-              {locked ? "Saving…" : "Save supplement"}
+              {locked ? "Saving…" : "Save nutrition"}
             </button>
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={locked} onClick={onCancel}>
               Cancel
@@ -441,7 +441,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     setBusy(true);
     try {
       const updated = await adminUpdateNutritionBankItem(null, id, fields, file);
-      if (!updated) throw new Error("Failed to save supplement");
+      if (!updated) throw new Error("Failed to save nutrition");
       setItems((prev) => {
         const next = prev.map((entry) => (entry.id === id ? { ...entry, ...updated } : entry));
         itemsRef.current = next;
@@ -450,7 +450,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       if (successMessage) onToast(successMessage);
       return true;
     } catch (error) {
-      onToast(error?.message || "Failed to save supplement");
+      onToast(error?.message || "Failed to save nutrition");
       return false;
     } finally {
       setBusy(false);
@@ -474,13 +474,13 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         { name, description: description || name, packSize, unit, price, live: true },
         draftFile,
       );
-      if (!created) throw new Error("Failed to add supplement");
+      if (!created) throw new Error("Failed to add nutrition");
       resetAddForm();
       onToast(`${name} added to the bank`);
       setPage(1);
       await loadItems(1);
     } catch (error) {
-      onToast(error?.message || "Failed to add supplement");
+      onToast(error?.message || "Failed to add nutrition");
     } finally {
       setBusy(false);
     }
@@ -500,7 +500,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       item.id,
       { name, description: description || name, packSize, unit, price },
       editFile,
-      "Supplement saved",
+      "Nutrition saved",
     );
     if (ok) cancelEdit();
   }
@@ -523,7 +523,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         await loadItems(page);
       }
     } catch (error) {
-      onToast(error?.message || "Failed to delete supplement");
+      onToast(error?.message || "Failed to delete nutrition");
     } finally {
       setBusy(false);
     }
@@ -540,7 +540,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         subtitle={
           loading
             ? "Loading nutrition bank…"
-            : "Admin and Support maintain pricing. Coaches pick supplements from this bank for a client."
+            : "Admin and Support maintain pricing. Coaches pick nutritions from this bank for a client."
         }
         actions={
           loading ? null : (
@@ -555,7 +555,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                   disabled={locked}
                   onClick={openAddForm}
                 >
-                  + Add supplement
+                  + Add nutrition
                 </button>
               ) : null}
             </>
@@ -584,7 +584,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
 
         {showAddForm ? (
           <Panel
-            title="Add a supplement"
+            title="Add a nutrition"
             subtitle="Name it, set pack size and bottle price, then it joins the bank for every coach."
           >
             <div className="ua-cfg-nb-add">
@@ -612,7 +612,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         ) : null}
 
         {loading ? (
-          <p className="ua-cfg-panel__sub">Fetching supplements from the server…</p>
+          <p className="ua-cfg-panel__sub">Fetching nutritions from the server…</p>
         ) : items.length ? (
           <div className="ua-cfg-nb-list">
             {items.map((item) => (
@@ -629,7 +629,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                   item.id,
                   { live: !item.live },
                   null,
-                  item.live ? "Supplement hidden" : "Supplement is live",
+                  item.live ? "Nutrition hidden" : "Nutrition is live",
                 )}
                 onEdit={() => startEdit(item)}
                 onSave={() => saveEdit(item)}
@@ -639,7 +639,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
             ))}
           </div>
         ) : (
-          <p className="ua-cfg-panel__sub">No supplements in the bank yet. Add one below.</p>
+          <p className="ua-cfg-panel__sub">No nutritions in the bank yet. Add one below.</p>
         )}
 
         {!loading && pagination.total > 0 ? (
@@ -656,10 +656,10 @@ export function NutritionBankSection({ items, setItems, onToast }) {
 
       <ConfirmDialog
         open={!!pendingDelete}
-        tag="Delete supplement"
+        tag="Delete nutrition"
         title={pendingDelete ? `Remove “${pendingDelete.name}”?` : ""}
-        body="This will permanently remove the supplement from the bank. You can’t undo this."
-        cancelLabel="Keep supplement"
+        body="This will permanently remove the nutrition from the bank. You can’t undo this."
+        cancelLabel="Keep nutrition"
         confirmLabel="Delete"
         confirmTone="danger"
         onCancel={() => setPendingDelete(null)}

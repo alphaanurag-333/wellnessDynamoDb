@@ -34,7 +34,7 @@ const { isStaffPaidFeatureTier } = require("../../services/paidFeatureAccessServ
 
 function assertHealTierUser(user) {
   if (!isStaffPaidFeatureTier(user)) {
-    throw new AppError("Supplements can only be assigned to Heal or Maintenance (paid) users", 400);
+    throw new AppError("Nutritions can only be assigned to Heal or Maintenance (paid) users", 400);
   }
 }
 
@@ -79,13 +79,13 @@ function parseDeliveryOption(body) {
 
 async function buildRecommendationItemSnapshots(items) {
   if (!Array.isArray(items) || items.length === 0) {
-    throw new AppError("At least one supplement item is required", 400);
+    throw new AppError("At least one nutrition item is required", 400);
   }
 
   const ids = items.map((row) => row.supplementId);
   const supplements = await getActiveSupplementsByIds(ids);
   if (supplements.length !== ids.length) {
-    throw new AppError("One or more selected supplements are invalid or inactive", 400);
+    throw new AppError("One or more selected nutritions are invalid or inactive", 400);
   }
 
   const byId = new Map(supplements.map((row) => [String(row.id || row._id), row]));
@@ -104,7 +104,7 @@ async function buildRecommendationItemSnapshots(items) {
 async function loadRecommendationForUser(recommendationId, userId) {
   const record = await getCoachRecommendedSupplementRecordById(recommendationId);
   if (!record || String(record.userId || "") !== String(userId)) {
-    throw new AppError("Supplement recommendation not found", 404);
+    throw new AppError("Nutrition recommendation not found", 404);
   }
   return record;
 }
@@ -112,7 +112,7 @@ async function loadRecommendationForUser(recommendationId, userId) {
 async function loadDosageForUser(dosageId, userId) {
   const record = await getUserSupplementDosageRecordById(dosageId);
   if (!record || String(record.userId || "") !== String(userId)) {
-    throw new AppError("Supplement dosage not found", 404);
+    throw new AppError("Nutrition dosage not found", 404);
   }
   return record;
 }

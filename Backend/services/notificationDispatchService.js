@@ -550,7 +550,7 @@ async function dispatchSupplementRecommendedNotification({
   recommendationId,
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
-  const message = `${name} shared new supplement recommendations for you.`;
+  const message = `${name} shared new nutritions recommendations for you.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -558,7 +558,7 @@ async function dispatchSupplementRecommendedNotification({
     message,
     referenceId: recommendationId ? String(recommendationId) : null,
     referenceType: "coach_recommended_supplement",
-    title: "New supplement recommendations",
+    title: "New nutritions recommendations",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -572,7 +572,7 @@ async function dispatchSupplementDosageAssignedNotification({
   supplementName,
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
-  const supplement = String(supplementName || "a supplement").trim() || "a supplement";
+  const supplement = String(supplementName || "a nutrition").trim() || "a nutrition";
   const message = `${name} set a dosage schedule for ${supplement}.`;
 
   const notification = await createTargetedNotification({
@@ -581,7 +581,7 @@ async function dispatchSupplementDosageAssignedNotification({
     message,
     referenceId: dosageId ? String(dosageId) : null,
     referenceType: "user_supplement_dosage",
-    title: "New supplement dosage",
+    title: "New nutrition dosage",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -598,8 +598,8 @@ async function dispatchSupplementOrderLoggedNotification({
   const name = String(coachName || "Your coach").trim() || "Your coach";
   const source = String(vendor || "").trim();
   const message = source
-    ? `${name} placed your supplement order with ${source}.`
-    : `${name} placed your supplement order.`;
+    ? `${name} placed your nutritions order with ${source}.`
+    : `${name} placed your nutritions order.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -607,7 +607,7 @@ async function dispatchSupplementOrderLoggedNotification({
     message,
     referenceId: orderId ? String(orderId) : recommendationId ? String(recommendationId) : null,
     referenceType: "coach_supplement_fulfilment_order",
-    title: "Supplement order placed",
+    title: "Nutritions order placed",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -621,10 +621,10 @@ async function dispatchSupplementDeliveryRequestedCoachNotification({ user, reco
   }
 
   const userName = String(user?.name || "A user").trim() || "A user";
-  const message = `${userName} requested supplement delivery.`;
+  const message = `${userName} requested nutritions delivery.`;
 
   return sendPushToTokens(tokens, {
-    title: "Supplement delivery requested",
+    title: "Nutritions delivery requested",
     body: message,
     data: {
       type: FCM_TYPE_BY_KIND.supplement_delivery_requested,
@@ -647,10 +647,10 @@ async function dispatchSupplementBillUploadedCoachNotification({ user, recommend
   }
 
   const userName = String(user?.name || "A user").trim() || "A user";
-  const message = `${userName} uploaded a supplement bill.`;
+  const message = `${userName} uploaded a nutrition bill.`;
 
   return sendPushToTokens(tokens, {
-    title: "Supplement bill uploaded",
+    title: "Nutrition bill uploaded",
     body: message,
     data: {
       type: FCM_TYPE_BY_KIND.supplement_bill_uploaded,

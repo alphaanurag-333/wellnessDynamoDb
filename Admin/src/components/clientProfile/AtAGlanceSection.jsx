@@ -295,14 +295,14 @@ function SupplementsBlock({ supplements, onNavigate }) {
   return (
     <div className="ua-cp-glance-block">
       <div className="ua-cp-supp-head">
-        <span className="ua-cp-supp-head__label">Nutrition · active supplements</span>
+        <span className="ua-cp-supp-head__label">Nutrition · active nutritions</span>
         <button type="button" className="ua-cp-supp-head__link" onClick={() => onNavigate?.("nutritions")}>
           {activeCount} active · Open plan ›
         </button>
       </div>
       <button type="button" className="ua-cp-supp-panel cdact" onClick={() => onNavigate?.("nutritions")}>
         <div className="ua-cp-supp-table__head">
-          <div>Supplement</div><div>Dosage</div><div>Runs out · date</div>
+          <div>Nutrition</div><div>Dosage</div><div>Runs out · date</div>
         </div>
         {items.length ? items.map((s) => (
           <div key={s.name} className="ua-cp-supp-table__row">
@@ -327,7 +327,7 @@ function SupplementsBlock({ supplements, onNavigate }) {
           <div className="ua-cp-supp-table__row">
             <div className="ua-cp-supp-name">
               <div>
-                <div className="ua-cp-supp-name__title">No active supplements</div>
+                <div className="ua-cp-supp-name__title">No active nutritions</div>
                 <div className="ua-cp-supp-name__sub">Assign dosages from Nutritions</div>
               </div>
             </div>
@@ -524,7 +524,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
         <span className="ua-cp-comms__label">⏰ Reminders</span>
         <input
           className="ua-cp-comms__input ua-cp-comms__input--reminder"
-          placeholder="Reminder (e.g. Take supplements)"
+          placeholder="Reminder (e.g. Take nutritions)"
           maxLength={REMINDER_NAME_MAX}
           value={reminder}
           disabled={savingReminder}

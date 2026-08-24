@@ -35,7 +35,7 @@ exports.listSupplementsController = asyncHandler(async (req, res) => {
 
 exports.getSupplementByIdController = asyncHandler(async (req, res) => {
   const supplement = await getSupplementById(req.params.id);
-  if (!supplement) throw new AppError("Supplement not found", 404);
+  if (!supplement) throw new AppError("Nutrition not found", 404);
   return res.status(200).json({ status: true, supplement });
 });
 
@@ -59,12 +59,12 @@ exports.createSupplementController = asyncHandler(async (req, res) => {
 
   const supplement = await createSupplement({ name, description, packSize, unit, price, image, status });
 
-  return res.status(201).json({ status: true, message: "Supplement created successfully", supplement });
+  return res.status(201).json({ status: true, message: "Nutrition created successfully", supplement });
 });
 
 exports.updateSupplementController = asyncHandler(async (req, res) => {
   const current = await getSupplementRecordById(req.params.id);
-  if (!current) throw new AppError("Supplement not found", 404);
+  if (!current) throw new AppError("Nutrition not found", 404);
 
   const updates = {};
   if (req.body.name !== undefined) {
@@ -112,22 +112,22 @@ exports.updateSupplementController = asyncHandler(async (req, res) => {
   try {
     supplement = await updateSupplement(req.params.id, updates);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Supplement not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Nutrition not found", 404);
     throw err;
   }
-  return res.status(200).json({ status: true, message: "Supplement updated successfully", supplement });
+  return res.status(200).json({ status: true, message: "Nutrition updated successfully", supplement });
 });
 
 exports.deleteSupplementController = asyncHandler(async (req, res) => {
   const current = await getSupplementRecordById(req.params.id);
-  if (!current) throw new AppError("Supplement not found", 404);
+  if (!current) throw new AppError("Nutrition not found", 404);
   if (current.image) await deleteStoredMedia(current.image);
 
   try {
     await deleteSupplement(req.params.id);
   } catch (err) {
-    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Supplement not found", 404);
+    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Nutrition not found", 404);
     throw err;
   }
-  return res.status(200).json({ status: true, message: "Supplement deleted successfully" });
+  return res.status(200).json({ status: true, message: "Nutrition deleted successfully" });
 });

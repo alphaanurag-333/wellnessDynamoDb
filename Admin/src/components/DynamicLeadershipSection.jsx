@@ -15,13 +15,11 @@ import { CfgSelect, ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 
 const PAGE_SIZE = 10;
-const DEFAULT_BADGE = "A NOTE FROM LEADERSHIP";
 
 const EMPTY_DRAFT = {
   name: "",
   designation: "",
   title: "",
-  badge: DEFAULT_BADGE,
   message: "",
   webVisible: true,
   appVisible: true,
@@ -88,7 +86,6 @@ function LeadershipViewModal({ entry, onClose, onEdit }) {
       <div className="ua-cfg-rc-view ua-cfg-ld-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="ld-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
-            <p className="ua-cfg-rc-view__tag">{asCopyString(entry.badge) || DEFAULT_BADGE}</p>
             <h3 id="ld-view-title">{asCopyString(entry.name) || "Untitled leader"}</h3>
             <p>
               {asCopyString(entry.designation) || asCopyString(entry.title) || "—"}
@@ -182,7 +179,7 @@ function NoteForm({
               }))}
             />
           </label>
-          <label className="ua-cfg-ld-field">
+          <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">
             <span>Card title</span>
             <input
               type="text"
@@ -191,16 +188,6 @@ function NoteForm({
               disabled={busy}
               placeholder="Defaults to designation"
               onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
-            />
-          </label>
-          <label className="ua-cfg-ld-field">
-            <span>Badge label</span>
-            <input
-              type="text"
-              className="ua-cfg-vh-input"
-              value={asCopyString(draft.badge)}
-              disabled={busy}
-              onChange={(event) => setDraft((prev) => ({ ...prev, badge: event.target.value }))}
             />
           </label>
         </div>
@@ -403,7 +390,6 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
         name,
         designation,
         title: draft.title.trim() || designation,
-        badge: draft.badge.trim() || DEFAULT_BADGE,
         message,
         webVisible: draft.webVisible,
         appVisible: draft.appVisible,
@@ -440,7 +426,6 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
         name,
         designation,
         title: String(item.title || "").trim() || designation,
-        badge: String(item.badge || "").trim() || DEFAULT_BADGE,
         message,
         webVisible: item.webVisible,
         appVisible: item.appVisible,
@@ -768,7 +753,7 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
                   </div>
                   {isEditing ? (
                     <div className="ua-cfg-ld-edit">
-                      <label className="ua-cfg-ld-field">
+                      <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">
                         <span>Card title</span>
                         <input
                           className="ua-cfg-vh-input"
@@ -776,16 +761,6 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
                           disabled={busy}
                           placeholder="Card title (defaults to designation)"
                           onChange={(event) => patchItem(item.id, { title: event.target.value })}
-                        />
-                      </label>
-                      <label className="ua-cfg-ld-field">
-                        <span>Badge label</span>
-                        <input
-                          className="ua-cfg-vh-input"
-                          value={asCopyString(item.badge) || DEFAULT_BADGE}
-                          disabled={busy}
-                          placeholder="Badge label"
-                          onChange={(event) => patchItem(item.id, { badge: event.target.value })}
                         />
                       </label>
                       <label className="ua-cfg-ld-field ua-cfg-ld-field--wide">

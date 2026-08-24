@@ -1047,7 +1047,7 @@ function NutritionBankPreview({ items, surface, item }) {
             <span className="ua-cfg-preview-nb__back" aria-hidden="true">‹</span>
             <strong>Nutrition bank</strong>
           </div>
-          <p className="ua-cfg-preview-nb__intro">Pick supplements from the bank for this client.</p>
+          <p className="ua-cfg-preview-nb__intro">Pick nutritions from the bank for this client.</p>
           {liveItems.length ? (
             <div className="ua-cfg-preview-nb__list">
               {liveItems.map((entry) => (
@@ -1609,7 +1609,7 @@ function ContactDetailsPreview({ details = [], surface, item }) {
   );
 }
 
-function LeadershipPreview({ items = [], heading = "Leadership Profile", empty = "No live leadership notes to preview.", badgeFallback = "A NOTE FROM LEADERSHIP", appLabel = "Leadership" }) {
+function LeadershipPreview({ items = [], heading = "Leadership Profile", empty = "No live leadership notes to preview.", showBadge = false, badgeFallback = "", appLabel = "Leadership" }) {
   const live = items.filter((entry) => entry.live);
   const featured = live[0];
 
@@ -1641,7 +1641,7 @@ function LeadershipPreview({ items = [], heading = "Leadership Profile", empty =
           ) : (
             <div className="ua-cfg-vh-preview-video">👤</div>
           )}
-          <p className="ua-cfg-ft-preview__copy">{featured.badge || badgeFallback}</p>
+          {showBadge ? <p className="ua-cfg-ft-preview__copy">{featured.badge || badgeFallback}</p> : null}
           <p className="ua-cfg-ft-preview__copy"><strong>{featured.name}</strong> · {title}</p>
           {featured.message ? <p className="ua-cfg-ft-preview__copy">{featured.message}</p> : null}
         </div>
@@ -2190,6 +2190,7 @@ function renderPreviewBody(item, surface, previewState) {
           items={previewState.wtItems ?? []}
           heading="Wellness Team Profile"
           empty="No live wellness team profiles to preview."
+          showBadge
           badgeFallback="OUR WELLNESS TEAM"
           appLabel="Team"
         />

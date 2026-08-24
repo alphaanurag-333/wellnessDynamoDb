@@ -22,7 +22,6 @@ const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoach
 
 const TABLE = "LeadershipNotes";
 const STATUS = new Set(["active", "inactive"]);
-const DEFAULT_BADGE = "A NOTE FROM LEADERSHIP";
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -47,6 +46,7 @@ function toPublicLeadershipNote(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
   if (!row) return null;
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
+  delete row.badge;
   row.webVisible = normalizeVisibleFlag(row.webVisible, true);
   row.appVisible = normalizeVisibleFlag(row.appVisible, true);
   row.order = normalizeOrder(row.order, 9999);
@@ -56,7 +56,7 @@ function toPublicLeadershipNote(item) {
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "profileImage") return normalizeProfileImageField(value);
-  if (["name", "designation", "title", "badge", "message"].includes(field)) {
+  if (["name", "designation", "title", "message"].includes(field)) {
     return String(value ?? "").trim();
   }
   if (field === "status") return normalizeStatus(value);
@@ -69,7 +69,6 @@ async function createLeadershipNote({
   name,
   designation,
   title,
-  badge,
   message,
   profileImage,
   profile_image,
@@ -86,7 +85,6 @@ async function createLeadershipNote({
     name: String(name || "").trim(),
     designation: designationText,
     title: String(title || "").trim() || designationText,
-    badge: String(badge || "").trim() || DEFAULT_BADGE,
     message: String(message || "").trim(),
     profileImage: imageKey,
     status: normalizeStatus(status),
@@ -123,7 +121,7 @@ async function getLeadershipNoteById(id) {
 }
 
 async function updateLeadershipNote(id, updates) {
-  const blockedFields = new Set(["id", "_id", "createdAt"]);
+  const blockedFields = new Set(["id", "_id", "createdAt", "badge"]);
   const entries = Object.entries(updates || {})
     .filter(([k, v]) => !blockedFields.has(k) && v !== undefined)
     .map(([k, v]) => [normalizeUpdateFieldName(k), sanitizeUpdateField(k, v)]);
@@ -248,7 +246,6 @@ async function listLeadershipNotes({
 
 module.exports = {
   TABLE,
-  DEFAULT_BADGE,
   normalizeStatus,
   normalizeOrder,
   normalizeVisibleFlag,

@@ -42,7 +42,7 @@ exports.getUserSupplementRecommendationsController = asyncHandler(async (req, re
 
   return res.status(200).json({
     status: true,
-    message: "Supplement recommendations fetched successfully",
+    message: "Nutritions recommendations fetched successfully",
     recommended: recommendations[0] || null,
     history: recommendations.length > 1 ? recommendations.slice(1) : [],
     recommendations,
