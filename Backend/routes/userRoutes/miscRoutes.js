@@ -14,10 +14,7 @@ const {
   getActiveHealthTools,
   getActiveHealthRecipes,
   getActiveYoga,
-  getBlogConfig,
   getSectionSurfaceConfig,
-  getActiveBlogPosts,
-  getActiveBlogMedia,
   getActiveTransformations,
   getActiveWellnessCoaches,
   getActiveAssistantWellnessCoaches,
@@ -52,10 +49,7 @@ router.get("/health-disorders", getActiveHealthDisorders);
 router.get("/health-tools", getActiveHealthTools);
 router.get("/health-recipes", getActiveHealthRecipes);
 router.get("/yoga", getActiveYoga);
-router.get("/blog-config", getBlogConfig);
 router.get("/section-surface-config/:section", getSectionSurfaceConfig);
-router.get("/blog-posts", getActiveBlogPosts);
-router.get("/blog-media", getActiveBlogMedia);
 router.get("/transformations", getActiveTransformations);
 router.get("/wellness-coaches", getActiveWellnessCoaches);
 router.get("/assistant-wellness-coaches", getActiveAssistantWellnessCoaches);

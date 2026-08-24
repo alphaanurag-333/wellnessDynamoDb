@@ -61,7 +61,6 @@ import { HealthDisordersSection } from "../components/HealthDisordersSection.jsx
 import { RecipesSection } from "../components/RecipesSection.jsx";
 import { YogaSection } from "../components/YogaSection.jsx";
 import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx";
-import { DynamicBlogsSection } from "../components/DynamicBlogsSection.jsx";
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
@@ -90,9 +89,6 @@ import {
 import {
   YOGA_EDITOR,
 } from "../data/yogaConfigData.js";
-import {
-  BLOGS_EDITOR,
-} from "../data/blogsConfigData.js";
 import { PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -1319,7 +1315,6 @@ const PREVIEW_CONFIGS = new Set([
   "common-dropdowns",
   "common-recipes",
   "common-yoga",
-  "common-blogs",
 ]);
 
 function PreviewActions({ item, onOpen, onPublish, canPublish }) {
@@ -1433,9 +1428,6 @@ export function ConfigDetailPage() {
   const [rcItems, setRcItems] = useState([]);
   const [ygEditor, setYgEditor] = useState(YOGA_EDITOR);
   const [ygItems, setYgItems] = useState([]);
-  const [blEditor, setBlEditor] = useState(BLOGS_EDITOR);
-  const [blPosts, setBlPosts] = useState([]);
-  const [blGallery, setBlGallery] = useState([]);
   const [featureFlags, setFeatureFlags] = useState(FEATURE_FLAGS);
   const [appContent, setAppContent] = useState({
     appName: "",
@@ -1739,8 +1731,6 @@ export function ConfigDetailPage() {
                 ? (rcEditor.appOn || rcEditor.webOn) && rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
                 ? (ygEditor.appOn || ygEditor.webOn) && ygItems.some((entry) => entry.live)
-              : item.id === "common-blogs"
-                ? blEditor.appOn || blEditor.webOn || blPosts.some((entry) => entry.live)
               : item.id === "feature-flags"
                 ? featureFlags.some((entry) => entry.on)
           : item.toggleable === false
@@ -2323,26 +2313,13 @@ export function ConfigDetailPage() {
         return <WellnessLibrarySection kind="yoga" onToast={onToast} />;
       case "common-physical-exercise":
         return <WellnessLibrarySection kind="exercise" onToast={onToast} />;
-      case "common-blogs":
-        return (
-          <DynamicBlogsSection
-            editor={blEditor}
-            setEditor={setBlEditor}
-            posts={blPosts}
-            setPosts={setBlPosts}
-            gallery={blGallery}
-            setGallery={setBlGallery}
-            summary={<ConfigSummary item={item} groupName={groupName} on={summaryOn} />}
-            onToast={onToast}
-          />
-        );
       default:
         return <GenericPanel item={item} />;
     }
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-blogs" ? " ua-cfg-detail--bl" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>
@@ -2444,8 +2421,6 @@ export function ConfigDetailPage() {
           rcItems,
           ygEditor,
           ygItems,
-          blEditor,
-          blPosts,
           featureFlags,
         }}
       />
@@ -2459,9 +2434,7 @@ export function ConfigDetailPage() {
 
       {canViewConfig ? (
         <div className="ua-cfg-detail__body">
-          {item.id === "common-blogs" ? null : (
-            <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
-          )}
+          <ConfigSummary item={item} groupName={groupName} on={summaryOn} />
           <div
             aria-disabled={!canEditConfig}
             style={

@@ -18,14 +18,11 @@ const { listHealthDisorders } = require("../../models/healthDisorderModel");
 const { listHealthTools } = require("../../models/healthToolModel");
 const { listHealthRecipes } = require("../../models/healthRecipeModel");
 const { listYoga } = require("../../models/yogaModel");
-const { getBlogConfig } = require("../../models/blogConfigModel");
 const {
   SECTION_CONFIG_IDS,
   resolveConfigId,
   getSectionSurfaceConfig,
 } = require("../../models/sectionSurfaceConfigModel");
-const { listBlogPosts } = require("../../models/blogPostModel");
-const { listBlogMedia } = require("../../models/blogMediaModel");
 const { listTransformations } = require("../../models/transformationModel");
 const { listWellnessCoaches } = require("../../models/wellnessCoachModel");
 const {
@@ -98,15 +95,6 @@ function emptyPagedList(listKey, page, limit) {
 async function isSectionSurfaceEnabled(section, platform) {
   if (platform !== "app" && platform !== "web") return true;
   const config = await getSectionSurfaceConfig(section);
-  if (!config) return true;
-  if (platform === "app") return config.appOn !== false;
-  return config.webOn !== false;
-}
-
-/** BlogConfig uses the same appOn/webOn semantics as SectionSurfaceConfig. */
-async function isBlogSurfaceEnabled(platform) {
-  if (platform !== "app" && platform !== "web") return true;
-  const config = await getBlogConfig();
   if (!config) return true;
   if (platform === "app") return config.appOn !== false;
   return config.webOn !== false;
@@ -389,15 +377,6 @@ exports.getActiveYoga = asyncHandler(async (req, res) => {
   });
 });
 
-exports.getBlogConfig = asyncHandler(async (_req, res) => {
-  const config = await getBlogConfig();
-  return res.status(200).json({
-    status: true,
-    message: config ? "Blog config fetched" : "Blog config not available",
-    data: config,
-  });
-});
-
 exports.getSectionSurfaceConfig = asyncHandler(async (req, res) => {
   const section = String(req.params.section || "").trim().toLowerCase();
   if (!resolveConfigId(section)) {
@@ -411,49 +390,6 @@ exports.getSectionSurfaceConfig = asyncHandler(async (req, res) => {
     status: true,
     message: config ? "Section surface config fetched" : "Section surface config not available",
     data: config,
-  });
-});
-
-exports.getActiveBlogPosts = asyncHandler(async (req, res) => {
-  const { page, limit } = readPaging(req.query);
-  const platform = readPlatform(req.query);
-  if (!(await isBlogSurfaceEnabled(platform))) {
-    return res.status(200).json(emptyPagedList("posts", page, limit));
-  }
-  const data = resolveListMedia(
-    await listBlogPosts({
-      page,
-      limit,
-      status: "active",
-      search: readSearch(req.query),
-      platform,
-    }),
-    "posts",
-    ["coverImage"]
-  );
-  return res.status(200).json({
-    status: true,
-    posts: data.posts,
-    pagination: data.pagination,
-  });
-});
-
-exports.getActiveBlogMedia = asyncHandler(async (req, res) => {
-  const { page, limit } = readPaging(req.query);
-  const data = resolveListMedia(
-    await listBlogMedia({
-      page,
-      limit,
-      status: "active",
-      search: readSearch(req.query),
-    }),
-    "media",
-    ["image"]
-  );
-  return res.status(200).json({
-    status: true,
-    media: data.media,
-    pagination: data.pagination,
   });
 });
 

@@ -47,9 +47,6 @@ Many list endpoints accept `?platform=app|web` so Admin Web/App visibility toggl
 | `GET` | `/public/misc/health-tools` | |
 | `GET` | `/public/misc/health-recipes` | `type`, `category`, `search`, `platform` |
 | `GET` | `/public/misc/yoga` | `search`, `platform` |
-| `GET` | `/public/misc/blog-config` | |
-| `GET` | `/public/misc/blog-posts` | `search`, `platform` |
-| `GET` | `/public/misc/blog-media` | |
 | `GET` | `/public/misc/transformations` | `search`, `platform` |
 | `GET` | `/public/misc/wellness-coaches` | `platform` |
 | `GET` | `/public/misc/assistant-wellness-coaches` | `platform` |

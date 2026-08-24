@@ -693,17 +693,6 @@ export const CONFIG_GROUPS = {
           on: true,
           tags: ["Video", "Text"],
         },
-        {
-          id: "common-blogs",
-          name: "Blogs",
-          note: "Long-form posts",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
       ],
     },
   ],
@@ -738,8 +727,7 @@ export function configPermissionPrefix(configId) {
     configId === "common-about" ||
     configId === "common-google-review" ||
     configId === "common-recipes" ||
-    configId === "common-yoga" ||
-    configId === "common-blogs"
+    configId === "common-yoga"
   ) {
     return "ct";
   }

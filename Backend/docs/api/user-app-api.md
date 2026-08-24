@@ -5,7 +5,7 @@ All paths below are under `/api`.
 
 This document covers every endpoint the **mobile app** needs:
 
-1. **Public** content (no login) — home, FAQ, recipes, yoga, blogs, coaches, etc.
+1. **Public** content (no login) — home, FAQ, recipes, yoga, coaches, etc.
 2. **User auth** — register / login / profile
 3. **Authenticated user** APIs — tracking, payments, Heal features, etc.
 
@@ -74,9 +74,6 @@ All **Public**. Use `?platform=app` from the APK so Admin Web/App toggles apply 
 | `GET` | `/public/misc/health-tools` | — |
 | `GET` | `/public/misc/health-recipes` | `page`, `limit`, `type`, `category`, `search`, **`platform`** |
 | `GET` | `/public/misc/yoga` | `page`, `limit`, `search`, **`platform`** |
-| `GET` | `/public/misc/blog-config` | Global blog App/Web enable flags |
-| `GET` | `/public/misc/blog-posts` | `page`, `limit`, `search`, **`platform`** |
-| `GET` | `/public/misc/blog-media` | `page`, `limit`, `search` |
 | `GET` | `/public/misc/transformations` | `page`, `limit`, `search`, **`platform`** |
 | `GET` | `/public/misc/wellness-coaches` | `page`, `limit`, **`platform`** |
 | `GET` | `/public/misc/assistant-wellness-coaches` | `page`, `limit`, **`platform`** |
@@ -93,7 +90,7 @@ All **Public**. Use `?platform=app` from the APK so Admin Web/App toggles apply 
 | `POST` | `/public/misc/contact-inquiries` | Contact form body |
 | `GET` | `/public/misc/referral/validate` | `?code=` or referral query — validate referral |
 
-**APK tip:** Prefer `platform=app` on FAQs, recipes, yoga, blogs, transformations, testimonials, coaches, and leadership/team notes.
+**APK tip:** Prefer `platform=app` on FAQs, recipes, yoga, transformations, testimonials, coaches, and leadership/team notes.
 
 ---
 

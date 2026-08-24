@@ -19,7 +19,7 @@ function previewSurfaces(item) {
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "3:4" });
     return surfaces;
   }
-  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs") {
+  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga") {
     if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
     return surfaces;
@@ -34,7 +34,7 @@ function surfaceSubtitle(surfaces, activeId, item) {
   if (item?.id === "common-transformation" || item?.id === "common-real-people") {
     return "Common asset · renders on both surfaces · 3:4";
   }
-  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-blogs") {
+  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga") {
     return "Common asset · renders on both surfaces · 16:9";
   }
   if (item?.id === "app-faq") {
@@ -2248,21 +2248,6 @@ function renderPreviewBody(item, surface, previewState) {
           heading="Yoga & Pranayam"
         />
       );
-    case "common-blogs":
-      return (
-        <VoicePreview
-          editor={{
-            ...previewState.blEditor,
-            videoUploaded: (previewState.blPosts ?? []).some((entry) => entry.cover),
-            clientName: asCopyString(previewState.blPosts?.find((entry) => entry.live)?.title),
-          }}
-          items={(previewState.blPosts ?? []).map((entry) => ({
-            ...entry,
-            title: asCopyString(entry.title),
-          }))}
-          heading="Blogs"
-        />
-      );
     case "feature-flags":
       return (
         <PreviewStage surface={surface} item={item}>
@@ -2318,7 +2303,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </button>
         </div>
 
-        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" && item.id !== "common-blogs" ? (
+        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" ? (
           <div className="ua-cfg-preview-modal__tabs" role="tablist">
             {surfaces.map((surface) => (
               <button
@@ -2335,7 +2320,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </div>
         ) : null}
 
-        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs" ? "dual" : activeSurface}`}>
+        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" ? "dual" : activeSurface}`}>
           {surfaces.length ? (
             renderPreviewBody(item, activeSurface, previewState)
           ) : (
@@ -2380,7 +2365,7 @@ export function previewHintForItem(item) {
   if (item.id === "feature-flags") {
     return "Toggle flags, then open Preview";
   }
-  if (item.id === "web-program-testimonials" || item.id === "web-logo" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-blogs") {
+  if (item.id === "web-program-testimonials" || item.id === "web-logo" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga") {
     return "Upload something, then open Preview";
   }
   if (item.id === "web-footer") {

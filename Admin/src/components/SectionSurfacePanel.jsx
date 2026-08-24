@@ -22,7 +22,7 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 /**
- * Section-level App/Web enable pills (same pattern as Blogs).
+ * Section-level App/Web enable pills.
  * When `editor`/`setEditor` are provided, state is lifted for preview/summary.
  */
 export function SectionSurfacePanel({

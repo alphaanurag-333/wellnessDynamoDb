@@ -100,7 +100,6 @@ All list endpoints return **active** items only. Pass **`platform=app`** where s
 | GET | `/api/public/misc/video-testimonials` | `page`, `limit` | **yes** |
 | GET | `/api/public/misc/health-recipes` | `page`, `limit`, `type`, `category`, `search` | **yes** |
 | GET | `/api/public/misc/yoga` | `page`, `limit`, `type`, `category`, `search` | **yes** |
-| GET | `/api/public/misc/blog-posts` | `page`, `limit`, `search` | **yes** |
 | GET | `/api/public/misc/transformations` | `page`, `limit`, `search` | **yes** |
 | GET | `/api/public/misc/wellness-coaches` | `page`, `limit`, `search` | **yes** |
 | GET | `/api/public/misc/assistant-wellness-coaches` | `page`, `limit`, `search` | **yes** |
@@ -133,8 +132,6 @@ curl -s "$BASE/api/public/misc/transformations?page=1&limit=20&platform=app"
 | GET | `/api/public/misc/health-concerns` | `page`, `limit`, `search` |
 | GET | `/api/public/misc/health-disorders` | `page`, `limit`, `type`, `search` |
 | GET | `/api/public/misc/health-tools` | `page`, `limit`, `search` |
-| GET | `/api/public/misc/blog-config` | — |
-| GET | `/api/public/misc/blog-media` | `page`, `limit`, `search` |
 | GET | `/api/public/misc/birthday-posts` | `page`, `limit`, `postDate` (YYYY-MM-DD) |
 | GET | `/api/public/misc/monthly-champions` | `monthYear` |
 | GET | `/api/public/misc/test-catalog` | `page`, `limit`, `search`, `category` |
@@ -406,7 +403,6 @@ GET /api/public/misc/real-people-testimonials
 GET /api/public/misc/video-testimonials
 GET /api/public/misc/health-recipes
 GET /api/public/misc/yoga
-GET /api/public/misc/blog-posts
 GET /api/public/misc/transformations
 GET /api/public/misc/wellness-coaches
 GET /api/public/misc/assistant-wellness-coaches
