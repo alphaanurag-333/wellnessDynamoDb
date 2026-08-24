@@ -4,7 +4,9 @@ const {
   getCountries,
   getCountryCallingCode,
   Metadata,
+  getExampleNumber,
 } = require("libphonenumber-js");
+const examples = require("libphonenumber-js/mobile/examples");
 
 const DEFAULT_PHONE_MAX_LENGTH = 15;
 const DEFAULT_PHONE_MIN_LENGTH = 4;
@@ -29,20 +31,41 @@ function countriesForDial(countryCode) {
   }
 }
 
-function getPhoneMaxLengthForIso(countryIso) {
+function getMobileLengthBounds(countryIso) {
   const iso = String(countryIso || "")
     .trim()
     .toUpperCase();
-  if (!iso || iso.length !== 2) return DEFAULT_PHONE_MAX_LENGTH;
+  if (!iso || iso.length !== 2) return null;
+
   try {
     const metadata = new Metadata();
     metadata.selectNumberingPlan(iso);
-    const lengths = metadata.numberingPlan?.possibleLengths?.();
-    if (lengths?.length) return Math.max(...lengths);
+    for (const typeName of ["MOBILE", "FIXED_LINE_OR_MOBILE"]) {
+      const type = metadata.numberingPlan?.type?.(typeName);
+      const lengths = type?.possibleLengths?.();
+      if (lengths?.length) {
+        return { min: Math.min(...lengths), max: Math.max(...lengths) };
+      }
+    }
+  } catch {
+    // fall through
+  }
+
+  try {
+    const example = getExampleNumber(iso, examples);
+    if (example?.nationalNumber) {
+      const len = example.nationalNumber.length;
+      return { min: len, max: len };
+    }
   } catch {
     // ignore
   }
-  return DEFAULT_PHONE_MAX_LENGTH;
+
+  return null;
+}
+
+function getPhoneMaxLengthForIso(countryIso) {
+  return getMobileLengthBounds(countryIso)?.max ?? DEFAULT_PHONE_MAX_LENGTH;
 }
 
 function isValidForDial(phone, countryCode) {
