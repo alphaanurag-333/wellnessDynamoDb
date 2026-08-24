@@ -25,6 +25,9 @@ const STATUS_FILTER_OPTIONS = [
   { value: "inactive", label: "Hidden" },
 ];
 
+const SUPPLEMENT_NAME_MAX_LEN = 80;
+const SUPPLEMENT_DESCRIPTION_MAX_LEN = 500;
+
 function unitSelectOptions(unit) {
   return unitOptionsFor(unit).map((value) => ({ id: value, value, label: value }));
 }
@@ -106,25 +109,43 @@ function SupplementFormFields({
       />
       <div className="ua-cfg-nb-form__fields">
         <label>
-          <span>Name</span>
+          <span className="ua-cfg-nb-form__label-row">
+            <span>Name</span>
+            <span className="ua-cfg-nb-form__count">
+              {String(name || "").length}/{SUPPLEMENT_NAME_MAX_LEN}
+            </span>
+          </span>
           <input
             type="text"
             className="ua-cfg-tc-field"
             placeholder="e.g. Omega-3 fish oil"
             value={name}
+            maxLength={SUPPLEMENT_NAME_MAX_LEN}
             disabled={disabled}
-            onChange={(event) => onChange({ name: event.target.value })}
+            onChange={(event) =>
+              onChange({ name: event.target.value.slice(0, SUPPLEMENT_NAME_MAX_LEN) })
+            }
           />
         </label>
         <label className="ua-cfg-nb-form__desc">
-          <span>Description</span>
+          <span className="ua-cfg-nb-form__label-row">
+            <span>Description</span>
+            <span className="ua-cfg-nb-form__count">
+              {String(description || "").length}/{SUPPLEMENT_DESCRIPTION_MAX_LEN}
+            </span>
+          </span>
           <textarea
             className="ua-cfg-nb-textarea"
             rows={3}
             placeholder="Short note coaches will see"
             value={description}
+            maxLength={SUPPLEMENT_DESCRIPTION_MAX_LEN}
             disabled={disabled}
-            onChange={(event) => onChange({ description: event.target.value })}
+            onChange={(event) =>
+              onChange({
+                description: event.target.value.slice(0, SUPPLEMENT_DESCRIPTION_MAX_LEN),
+              })
+            }
           />
         </label>
         <div className="ua-cfg-nb-form__meta">
@@ -169,126 +190,114 @@ function SupplementFormFields({
   );
 }
 
-function NutritionEditModal({ item, busy, onClose, onSave, onToggleLive, onDelete, onToast }) {
-  const [draft, setDraft] = useState(() => ({
-    name: item.name || "",
-    description: item.description || "",
-    packSize: item.packSize ? String(item.packSize) : "",
-    unit: item.unit || "Caps",
-    price: item.price ? String(item.price) : "",
-  }));
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(item.image || "");
-
-  useEffect(() => {
-    setDraft({
-      name: item.name || "",
-      description: item.description || "",
-      packSize: item.packSize ? String(item.packSize) : "",
-      unit: item.unit || "Caps",
-      price: item.price ? String(item.price) : "",
-    });
-    setFile(null);
-    setPreview((current) => {
-      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
-      return item.image || "";
-    });
-  }, [item.id, item.name, item.description, item.packSize, item.unit, item.price, item.image]);
-
-  useEffect(() => () => {
-    if (preview.startsWith("blob:")) URL.revokeObjectURL(preview);
-  }, [preview]);
-
-  function pickImage(nextFile) {
-    if (!(nextFile instanceof File)) return;
-    setPreview((current) => {
-      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
-      return URL.createObjectURL(nextFile);
-    });
-    setFile(nextFile);
-  }
-
-  async function save() {
-    const name = draft.name.trim();
-    const packSize = parsePackSize(draft.packSize);
-    const unit = String(draft.unit || "").trim();
-    const price = parseBottlePrice(draft.price);
-    if (!name || !packSize || !unit || !price) {
-      onToast("Name, pack size, unit and bottle price are required");
-      return false;
-    }
-    return onSave(
-      {
-        name,
-        description: draft.description.trim() || name,
-        packSize,
-        unit,
-        price,
-      },
-      file,
-      "Supplement saved",
-    );
-  }
-
+function NutritionRow({
+  item,
+  editing,
+  draft,
+  previewUrl,
+  locked,
+  onDraftChange,
+  onPickImage,
+  onToggleLive,
+  onEdit,
+  onSave,
+  onCancel,
+  onDelete,
+}) {
   return (
-    <div className="ua-cp-modal-backdrop ua-cfg-nb-modal-backdrop" onClick={onClose} role="presentation">
-      <div
-        className="ua-cfg-dp-modal ua-cfg-nb-modal"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-labelledby="ua-cfg-nb-modal-title"
-      >
-        <div className="ua-cfg-dp-modal__head">
-          <div>
-            <h3 id="ua-cfg-nb-modal-title" className="ua-cfg-dp-modal__title">{item.name}</h3>
-            <p className="ua-cfg-dp-modal__sub">Supplement · nutrition bank</p>
+    <article className={`ua-cfg-nb-row${editing ? " is-editing" : ""}${item.live ? "" : " is-hidden"}`}>
+      <div className="ua-cfg-nb-row__summary">
+        <div className="ua-cfg-nb-row__media">
+          {item.image ? (
+            <img src={item.image} alt="" />
+          ) : (
+            <span className="ua-cfg-nb-row__placeholder" aria-hidden="true">
+              {String(item.name || "?").slice(0, 1).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="ua-cfg-nb-row__copy">
+          <div className="ua-cfg-nb-row__top">
+            <strong>{item.name}</strong>
+            <span className={`ua-cfg-faq__shown${item.live ? " is-on" : ""}`}>
+              {item.live ? "LIVE" : "HIDDEN"}
+            </span>
           </div>
-          <div className="ua-cfg-dp-modal__actions">
-            <span className="ua-cfg-dp-modal__live-label">Live</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
-              aria-pressed={item.live}
-              disabled={busy}
-              onClick={() => onToggleLive(!item.live)}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-            <button
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
-              disabled={busy}
-              onClick={() => onDelete(item)}
-            >
-              Delete
-            </button>
-            <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>
-              ×
-            </button>
+          <p className="ua-cfg-nb-row__excerpt">
+            {item.description && item.description !== item.name ? item.description : "No description yet"}
+          </p>
+          <div className="ua-cfg-nb-row__meta">
+            <span>{item.pack || formatPack(item.packSize, item.unit) || "No pack size"}</span>
+            <span aria-hidden="true">·</span>
+            <span>Rs. {formatBottlePrice(item.price)}</span>
           </div>
         </div>
+        <div className="ua-cfg-nb-row__actions">
+          <button
+            type="button"
+            className={`ua-toggle ua-toggle--sm${item.live ? " ua-toggle--on" : ""}`}
+            aria-pressed={item.live}
+            aria-label={`${item.name} ${item.live ? "live" : "hidden"}`}
+            disabled={locked}
+            onClick={onToggleLive}
+          >
+            <span className="ua-toggle__knob" />
+          </button>
+          {editing ? (
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+              disabled={locked}
+              onClick={onSave}
+            >
+              Save
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+              disabled={locked}
+              onClick={onEdit}
+            >
+              Edit
+            </button>
+          )}
+          <button
+            type="button"
+            className={`ua-cfg-icon-btn${editing ? "" : " ua-cfg-icon-btn--danger"}`}
+            aria-label={editing ? "Cancel" : `Delete ${item.name}`}
+            disabled={locked}
+            onClick={editing ? onCancel : onDelete}
+          >
+            ×
+          </button>
+        </div>
+      </div>
 
-        <div className="ua-cfg-nb-modal__body">
+      {editing ? (
+        <div className="ua-cfg-nb-row__editor">
           <SupplementFormFields
             name={draft.name}
             description={draft.description}
             packSize={draft.packSize}
             unit={draft.unit}
             price={draft.price}
-            previewUrl={preview}
-            disabled={busy}
-            onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-            onPickImage={pickImage}
+            previewUrl={previewUrl}
+            disabled={locked}
+            onChange={onDraftChange}
+            onPickImage={onPickImage}
           />
+          <div className="ua-cfg-dp-add__actions">
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={onSave}>
+              {locked ? "Saving…" : "Save supplement"}
+            </button>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={locked} onClick={onCancel}>
+              Cancel
+            </button>
+          </div>
         </div>
-
-        <div className="ua-cfg-nb-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={save}>
-            {busy ? "Saving…" : "Save supplement"}
-          </button>
-        </div>
-      </div>
-    </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -297,7 +306,10 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const [draftFile, setDraftFile] = useState(null);
   const [draftPreview, setDraftPreview] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editDraft, setEditDraft] = useState(emptyNutritionDraft);
+  const [editFile, setEditFile] = useState(null);
+  const [editPreview, setEditPreview] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -312,8 +324,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const itemsRef = useRef(items);
-
-  const selectedItem = items.find((entry) => entry.id === selectedId) ?? null;
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -368,6 +378,10 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     if (draftPreview.startsWith("blob:")) URL.revokeObjectURL(draftPreview);
   }, [draftPreview]);
 
+  useEffect(() => () => {
+    if (editPreview.startsWith("blob:")) URL.revokeObjectURL(editPreview);
+  }, [editPreview]);
+
   function pickDraftImage(file) {
     setDraftPreview((current) => {
       if (current.startsWith("blob:")) URL.revokeObjectURL(current);
@@ -380,6 +394,47 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     setDraft(emptyNutritionDraft());
     pickDraftImage(null);
     setShowAddForm(false);
+  }
+
+  function openAddForm() {
+    setDraft(emptyNutritionDraft());
+    pickDraftImage(null);
+    setShowAddForm(true);
+  }
+
+  function startEdit(item) {
+    setShowAddForm(false);
+    setEditingId(item.id);
+    setEditDraft({
+      name: item.name || "",
+      description: item.description || "",
+      packSize: item.packSize ? String(item.packSize) : "",
+      unit: item.unit || "Caps",
+      price: item.price ? String(item.price) : "",
+    });
+    setEditFile(null);
+    setEditPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return item.image || "";
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditDraft(emptyNutritionDraft());
+    setEditFile(null);
+    setEditPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return "";
+    });
+  }
+
+  function pickEditImage(file) {
+    setEditPreview((current) => {
+      if (current.startsWith("blob:")) URL.revokeObjectURL(current);
+      return file instanceof File ? URL.createObjectURL(file) : "";
+    });
+    setEditFile(file instanceof File ? file : null);
   }
 
   async function persistItem(id, fields, file, successMessage) {
@@ -431,11 +486,30 @@ export function NutritionBankSection({ items, setItems, onToast }) {
     }
   }
 
+  async function saveEdit(item) {
+    const name = editDraft.name.trim();
+    const description = editDraft.description.trim();
+    const packSize = parsePackSize(editDraft.packSize);
+    const unit = String(editDraft.unit || "").trim();
+    const price = parseBottlePrice(editDraft.price);
+    if (!name || !packSize || !unit || !price) {
+      onToast("Name, pack size, unit and bottle price are required");
+      return;
+    }
+    const ok = await persistItem(
+      item.id,
+      { name, description: description || name, packSize, unit, price },
+      editFile,
+      "Supplement saved",
+    );
+    if (ok) cancelEdit();
+  }
+
   async function confirmDelete() {
     if (!pendingDelete || busy) return;
     const item = pendingDelete;
     setPendingDelete(null);
-    if (selectedId === item.id) setSelectedId(null);
+    if (editingId === item.id) cancelEdit();
     setBusy(true);
     try {
       await adminDeleteNutritionBankItem(null, item.id);
@@ -456,6 +530,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   }
 
   const liveCount = items.filter((entry) => entry.live).length;
+  const locked = busy || loading;
 
   return (
     <>
@@ -469,9 +544,21 @@ export function NutritionBankSection({ items, setItems, onToast }) {
         }
         actions={
           loading ? null : (
-            <span className="ua-cfg-dp__count">
-              {liveCount} live of {pagination.total}
-            </span>
+            <>
+              <span className="ua-cfg-dp__count">
+                {liveCount} live of {pagination.total}
+              </span>
+              {!showAddForm ? (
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  disabled={locked}
+                  onClick={openAddForm}
+                >
+                  + Add supplement
+                </button>
+              ) : null}
+            </>
           )
         }
       >
@@ -495,45 +582,60 @@ export function NutritionBankSection({ items, setItems, onToast }) {
           />
         </div>
 
+        {showAddForm ? (
+          <Panel
+            title="Add a supplement"
+            subtitle="Name it, set pack size and bottle price, then it joins the bank for every coach."
+          >
+            <div className="ua-cfg-nb-add">
+              <SupplementFormFields
+                name={draft.name}
+                description={draft.description}
+                packSize={draft.packSize}
+                unit={draft.unit}
+                price={draft.price}
+                previewUrl={draftPreview}
+                disabled={busy}
+                onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
+                onPickImage={pickDraftImage}
+              />
+              <div className="ua-cfg-dp-add__actions">
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
+                  {busy ? "Adding…" : "Add to bank"}
+                </button>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetAddForm}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </Panel>
+        ) : null}
+
         {loading ? (
           <p className="ua-cfg-panel__sub">Fetching supplements from the server…</p>
         ) : items.length ? (
-          <div className="ua-cfg-nb-grid">
+          <div className="ua-cfg-nb-list">
             {items.map((item) => (
-              <button
+              <NutritionRow
                 key={item.id}
-                type="button"
-                className={`ua-cfg-nb-card${selectedId === item.id ? " is-selected" : ""}${item.live ? "" : " is-hidden"}`}
-                onClick={() => setSelectedId(item.id)}
-              >
-                <div className="ua-cfg-nb-card__media">
-                  {item.image ? (
-                    <img src={item.image} alt="" />
-                  ) : (
-                    <span className="ua-cfg-nb-card__placeholder" aria-hidden="true">
-                      {String(item.name || "?").slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="ua-cfg-nb-card__body">
-                  <div className="ua-cfg-nb-card__top">
-                    <strong>{item.name}</strong>
-                    {item.live ? (
-                      <span className="ua-cfg-nb-card__live">Live</span>
-                    ) : (
-                      <span className="ua-cfg-nb-card__hidden">Hidden</span>
-                    )}
-                  </div>
-                  <p className="ua-cfg-nb-card__excerpt">
-                    {item.description && item.description !== item.name ? item.description : "No description yet"}
-                  </p>
-                  <div className="ua-cfg-nb-card__meta">
-                    <span>{item.pack || formatPack(item.packSize, item.unit) || "No pack size"}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Rs. {formatBottlePrice(item.price)}</span>
-                  </div>
-                </div>
-              </button>
+                item={item}
+                editing={editingId === item.id}
+                draft={editDraft}
+                previewUrl={editPreview || item.image || ""}
+                locked={busy}
+                onDraftChange={(patch) => setEditDraft((current) => ({ ...current, ...patch }))}
+                onPickImage={pickEditImage}
+                onToggleLive={() => persistItem(
+                  item.id,
+                  { live: !item.live },
+                  null,
+                  item.live ? "Supplement hidden" : "Supplement is live",
+                )}
+                onEdit={() => startEdit(item)}
+                onSave={() => saveEdit(item)}
+                onCancel={cancelEdit}
+                onDelete={() => setPendingDelete(item)}
+              />
             ))}
           </div>
         ) : (
@@ -551,67 +653,6 @@ export function NutritionBankSection({ items, setItems, onToast }) {
           />
         ) : null}
       </Panel>
-
-      <Panel
-        title="Add a supplement"
-        subtitle="Name it, set pack size and bottle price, then it joins the bank for every coach."
-        actions={
-          !showAddForm ? (
-            <button style={{borderRadius: "9px",
-              border: "1px dashed rgb(203, 213, 230)",
-              background: "rgb(255, 255, 255)",
-              color: "rgb(94, 106, 210)"}}
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline"
-              disabled={busy || loading}
-              onClick={() => setShowAddForm(true)}
-            >
-              + New supplement
-            </button>
-          ) : null
-        }
-      >
-        {showAddForm ? (
-          <div className="ua-cfg-nb-add">
-            <SupplementFormFields
-              name={draft.name}
-              description={draft.description}
-              packSize={draft.packSize}
-              unit={draft.unit}
-              price={draft.price}
-              previewUrl={draftPreview}
-              disabled={busy}
-              onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-              onPickImage={pickDraftImage}
-            />
-            <div className="ua-cfg-dp-add__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
-                {busy ? "Adding…" : "Add to bank"}
-              </button>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetAddForm}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </Panel>
-
-      {selectedItem ? (
-        <NutritionEditModal
-          item={selectedItem}
-          busy={busy}
-          onClose={() => setSelectedId(null)}
-          onSave={(fields, file, message) => persistItem(selectedItem.id, fields, file, message)}
-          onToggleLive={(live) => persistItem(
-            selectedItem.id,
-            { live },
-            null,
-            live ? "Supplement is live" : "Supplement hidden",
-          )}
-          onDelete={(item) => setPendingDelete(item)}
-          onToast={onToast}
-        />
-      ) : null}
 
       <ConfirmDialog
         open={!!pendingDelete}

@@ -69,9 +69,6 @@ function ConfigComingSoonModal({ open, title, copy, onClose }) {
   return createPortal(modal, getModalRoot());
 }
 
-const FEATURE_FLAGS_SOON_COPY =
-  "Feature-flag management is not available yet.";
-
 const GALLERY_SOON_COPY =
   "Gallery management is not available yet.";
 
@@ -81,7 +78,6 @@ export function ConfigsPage() {
   const [tab, setTab] = useState(() => {
     try {
       const saved = window.localStorage.getItem("admin.configs.activeTab");
-      if (saved === "flags") return "app";
       return CONFIG_TABS.some((entry) => entry.id === saved) ? saved : "app";
     } catch {
       return "app";
@@ -98,13 +94,6 @@ export function ConfigsPage() {
   }, [tab]);
 
   function handleTabChange(nextTab) {
-    if (nextTab === "flags") {
-      setComingSoonModal({
-        title: "Feature flags",
-        copy: FEATURE_FLAGS_SOON_COPY,
-      });
-      return;
-    }
     setTab(nextTab);
   }
 

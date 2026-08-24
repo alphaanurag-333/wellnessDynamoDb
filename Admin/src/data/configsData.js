@@ -2,7 +2,6 @@ export const CONFIG_TABS = [
   { id: "app", label: "App" },
   { id: "web", label: "Web" },
   { id: "common", label: "Common" },
-  { id: "flags", label: "Feature flags" },
 ];
 
 /** @typedef {{ id: string, name: string, note: string, owner: string, app?: boolean, web?: boolean, live?: boolean, on?: boolean, upload?: boolean, tags?: string[], toggleable?: boolean }} ConfigItem */
@@ -708,7 +707,6 @@ export const CONFIG_GROUPS = {
       ],
     },
   ],
-  flags: [],
 };
 
 export function findConfigItem(configId) {
