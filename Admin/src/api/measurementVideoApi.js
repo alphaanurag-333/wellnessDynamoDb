@@ -36,11 +36,18 @@ export function mapMeasurementConfig(config = {}) {
     },
     parameters: MEASUREMENT_PARAMETER_DEFS.map((row) => {
       const url = String(config[row.field] || "").trim();
+      const shownRaw = config[row.shownField];
+      const shown =
+        shownRaw === undefined || shownRaw === null || shownRaw === ""
+          ? true
+          : shownRaw === true ||
+            String(shownRaw).toLowerCase() === "true" ||
+            String(shownRaw) === "1";
       return {
         ...row,
         url,
         hasImage: Boolean(url),
-        shown: true,
+        shown,
       };
     }),
   };
@@ -144,6 +151,14 @@ export async function saveMeasurementParameterImage(field, file) {
   fd.append(field, file);
   try {
     return await patchAppConfig(fd);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function saveMeasurementParameterShown(shownField, shown) {
+  try {
+    return await patchAppConfig({ [shownField]: Boolean(shown) });
   } catch (error) {
     normalizeApiError(error);
   }
