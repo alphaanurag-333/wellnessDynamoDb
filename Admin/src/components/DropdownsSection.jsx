@@ -45,6 +45,34 @@ const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((entry) => ({
 
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
+function isImageIcon(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return false;
+  return /^(blob:|data:|https?:\/\/|\/)/i.test(raw) || /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(raw);
+}
+
+function OptionIcon({ src }) {
+  const url = asCopyString(src);
+  if (isImageIcon(url)) {
+    return (
+      <span className="ua-cfg-dd-row__thumb">
+        <img
+          src={url}
+          alt=""
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+            event.currentTarget.parentElement?.classList.add("ua-cfg-dd-row__thumb--empty");
+          }}
+        />
+      </span>
+    );
+  }
+  if (url) {
+    return <span className="ua-cfg-dd-row__emoji" aria-hidden="true">{url}</span>;
+  }
+  return <span className="ua-cfg-dd-row__thumb ua-cfg-dd-row__thumb--empty" aria-hidden="true" />;
+}
+
 function matchesQuery(list, query) {
   if (!query) return true;
   if (asCopyString(list.title).toLowerCase().includes(query)) return true;
@@ -112,9 +140,13 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   const [answerTypeDrafts, setAnswerTypeDrafts] = useState({});
   const [editIconFile, setEditIconFile] = useState(null);
   const [editIconPreview, setEditIconPreview] = useState("");
+  const [addIconFiles, setAddIconFiles] = useState({});
+  const [addIconPreviews, setAddIconPreviews] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const addIconPreviewsRef = useRef(addIconPreviews);
+  addIconPreviewsRef.current = addIconPreviews;
 
   const query = search.trim().toLowerCase();
 
@@ -147,6 +179,21 @@ export function DropdownsSection({ lists, setLists, onToast }) {
   useEffect(() => {
     loadLists();
   }, [loadLists]);
+
+  useEffect(() => () => {
+    Object.values(addIconPreviewsRef.current).forEach((url) => {
+      if (String(url).startsWith("blob:")) URL.revokeObjectURL(url);
+    });
+  }, []);
+
+  function setAddIcon(listId, file) {
+    setAddIconPreviews((prev) => {
+      const previous = prev[listId];
+      if (String(previous).startsWith("blob:")) URL.revokeObjectURL(previous);
+      return { ...prev, [listId]: file instanceof File ? URL.createObjectURL(file) : "" };
+    });
+    setAddIconFiles((prev) => ({ ...prev, [listId]: file instanceof File ? file : null }));
+  }
 
   const visible = useMemo(() => {
     return lists
@@ -198,12 +245,18 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       return;
     }
     const label = labelCheck.value;
+    const addIconFile = addIconFiles[list.id];
+    if (list.slug === "health-concern" && !(addIconFile instanceof File)) {
+      onToast("Upload an icon for this health concern");
+      return;
+    }
     setBusy(true);
     try {
       if (list.slug === "health-concern") {
         const created = await adminCreateHealthConcern(
           null,
           { title: label, description: label },
+          addIconFile,
         );
         setLists((prev) =>
           prev.map((row) =>
@@ -261,6 +314,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         replaceList(nextList);
       }
       setDrafts((prev) => ({ ...prev, [list.id]: "" }));
+      if (list.slug === "health-concern") setAddIcon(list.id, null);
       onToast("Option added");
     } catch (error) {
       onToast(error?.message || "Failed to add option");
@@ -521,7 +575,8 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const labelMax = labelLimitForList(list.slug);
             const draftValue = asCopyString(drafts[list.id]);
             const draftValidation = validateDropdownLabel(draftValue, { slug: list.slug, options: source.options });
-            const canAdd = draftValidation.ok;
+            const addIconReady = !supportsIcons || addIconFiles[list.id] instanceof File;
+            const canAdd = draftValidation.ok && addIconReady;
             return (
               <section
                 key={list.id}
@@ -599,7 +654,11 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                           </div>
                         ) : (
                           <div className="ua-cfg-dd-row__main">
-                            <span className={`ua-cfg-dd-row__dot${entry.on ? " is-on" : ""}`} aria-hidden="true" />
+                            {supportsIcons ? (
+                              <OptionIcon src={entry.icon} />
+                            ) : (
+                              <span className={`ua-cfg-dd-row__dot${entry.on ? " is-on" : ""}`} aria-hidden="true" />
+                            )}
                             <div className="ua-cfg-dd-row__copy">
                               <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
                             </div>
@@ -664,11 +723,22 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     </p>
                   )}
                 </div>
-                <div className="ua-cfg-dd-add">
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}`}>
+                  {supportsIcons ? (
+                    <IconPicker
+                      previewUrl={addIconPreviews[list.id]}
+                      disabled={busy}
+                      label="Upload icon"
+                      onPick={(file) => {
+                        if (file) setAddIcon(list.id, file);
+                      }}
+                      onClear={addIconPreviews[list.id] ? () => setAddIcon(list.id, null) : undefined}
+                    />
+                  ) : null}
                   <label className="ua-cfg-dd-field ua-cfg-dd-add__field">
                     <input
                       className="ua-cfg-vh-input ua-cfg-dd-add__input"
-                      placeholder="Add an option…"
+                      placeholder={supportsIcons ? "Add a health concern…" : "Add an option…"}
                       value={draftValue}
                       maxLength={labelMax}
                       disabled={busy}

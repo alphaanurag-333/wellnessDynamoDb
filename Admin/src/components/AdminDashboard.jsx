@@ -656,10 +656,12 @@ function isImageIcon(icon) {
 }
 
 function CategoryIcon({ icon }) {
-  if (isImageIcon(icon)) {
-    return <img src={icon} alt="" />;
+  const value = String(icon || "").trim();
+  if (isImageIcon(value)) {
+    return <img src={value} alt="" />;
   }
-  return icon || "🌿";
+  if (!value || value.length > 24) return "🌿";
+  return value;
 }
 
 function concernKey(value) {

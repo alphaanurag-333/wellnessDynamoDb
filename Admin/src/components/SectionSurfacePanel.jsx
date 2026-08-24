@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   adminEnsureSectionSurfaceConfig,
   adminUpdateSectionSurfaceConfig,
@@ -30,6 +30,8 @@ export function SectionSurfacePanel({
   editor,
   setEditor,
   onToast,
+  onLoaded,
+  persistImmediately = true,
   title = "Where this is live",
   subtitle = "Turn it on for the app, the website, or both.",
   showApp = true,
@@ -37,6 +39,8 @@ export function SectionSurfacePanel({
 }) {
   const [local, setLocal] = useState({ appOn: true, webOn: true });
   const [busy, setBusy] = useState(false);
+  const onLoadedRef = useRef(onLoaded);
+  onLoadedRef.current = onLoaded;
   const controlled = typeof setEditor === "function";
   const surface = controlled
     ? { appOn: editor?.appOn !== false, webOn: editor?.webOn !== false }
@@ -57,6 +61,7 @@ export function SectionSurfacePanel({
         } else {
           setLocal(next);
         }
+        onLoadedRef.current?.(next);
       } catch (error) {
         onToast?.(error?.message || "Could not load section settings");
       }
@@ -64,7 +69,7 @@ export function SectionSurfacePanel({
     return () => {
       cancelled = true;
     };
-  }, [controlled, onToast, sectionId, setEditor]);
+  }, [controlled, onToast, persistImmediately, sectionId, setEditor]);
 
   async function patchConfig(next) {
     const prev = surface;
@@ -74,6 +79,7 @@ export function SectionSurfacePanel({
     } else {
       setLocal(merged);
     }
+    if (!persistImmediately) return;
     setBusy(true);
     try {
       const saved = await adminUpdateSectionSurfaceConfig(null, sectionId, merged);

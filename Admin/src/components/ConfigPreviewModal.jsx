@@ -2348,7 +2348,7 @@ export function previewHintForItem(item) {
     return "Set GST percentage and collection, then open Preview";
   }
   if (item.id === "app-consultancy-amount") {
-    return "Set consultancy fee and tax, then open Preview";
+    return "Set consultancy fee and tax, then Publish to save. Preview shows unsaved edits.";
   }
   if (item.id === "app-payment-gateway") {
     return "Pick a gateway, then open Preview";

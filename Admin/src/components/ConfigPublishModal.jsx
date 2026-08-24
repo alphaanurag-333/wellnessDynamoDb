@@ -4,6 +4,8 @@ import { CONFIG_LEGAL_PUBLISH_SLUGS } from "../api/legalPageApi.js";
 const DEFERRED_PUBLISH_CONFIGS = new Set([
   ...Object.keys(CONFIG_LEGAL_PUBLISH_SLUGS),
   "web-fs-social",
+  "app-consultancy-amount",
+  "app-faq",
 ]);
 
 function publishBody(item) {

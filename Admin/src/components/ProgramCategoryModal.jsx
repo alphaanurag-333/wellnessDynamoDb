@@ -24,10 +24,12 @@ function isImageIcon(icon) {
 }
 
 function HeadIcon({ icon }) {
-  if (isImageIcon(icon)) {
-    return <img src={icon} alt="" />;
+  const value = String(icon || "").trim();
+  if (isImageIcon(value)) {
+    return <img src={value} alt="" />;
   }
-  return icon || "👥";
+  if (!value || value.length > 24) return "👥";
+  return value;
 }
 
 export function ProgramCategoryModal({ open, program, onClose, onOpenClient }) {

@@ -29,6 +29,14 @@
   gap: 14px;
 }
 
+.updated-admin .ua-faq-config > .ua-cfg-panel__sub--warn {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
 .updated-admin .ua-faq-config .ua-cfg-faq-list .ua-cfg-faq {
   grid-template-columns: 18px auto minmax(0, 1fr) minmax(0, max-content);
 }

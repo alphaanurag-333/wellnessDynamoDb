@@ -2400,6 +2400,8 @@
 .updated-admin .ua-team-modal__head-icon {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  max-width: 40px;
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -2427,18 +2429,23 @@
 .updated-admin .ua-team-modal__head-copy {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-team-modal__title {
   font-size: 15px;
   font-weight: 750;
   color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-team-modal__sub {
   font-size: 11px;
   color: var(--muted-light);
   margin-top: 1px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-team-modal__remind-all {
@@ -2663,6 +2670,10 @@
   width: 520px;
 }
 
+.updated-admin .ua-prog-cat-modal .ua-team-modal__head {
+  align-items: flex-start;
+}
+
 .updated-admin .ua-prog-cat-modal__body {
   padding: 0;
   overflow-y: auto;
@@ -2710,11 +2721,17 @@
   font-size: 12.5px;
   font-weight: 650;
   color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-prog-cat-modal__staff {
   font-size: 12px;
   color: var(--muted-light);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-prog-cat-modal__empty {
@@ -2752,11 +2769,15 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--text);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-prog-cat-modal__group-price {
   font-size: 11px;
   color: var(--muted-light);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-prog-cat-modal__group-count {
@@ -4825,6 +4846,8 @@
 .updated-admin .prog-cat {
   flex: 0 0 auto;
   min-width: 132px;
+  max-width: 168px;
+  width: 168px;
   text-align: left;
   border-radius: 10px;
   padding: 10px 11px;
@@ -4836,6 +4859,7 @@
   border: 1px solid transparent;
   transition: transform 0.15s, box-shadow 0.15s;
   background: #fff;
+  overflow: hidden;
 }
 
 .updated-admin .prog-cat:hover {
@@ -4846,6 +4870,8 @@
 .updated-admin .prog-cat__icon {
   width: 40px;
   height: 40px;
+  min-width: 40px;
+  max-width: 40px;
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -4874,6 +4900,12 @@
   font-weight: 700;
   color: #5a6b85;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .updated-admin .prog-cat__count {
@@ -13004,6 +13036,8 @@
 .updated-admin .ua-cp-modal__title {
   font-size: 16px;
   font-weight: 800;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cp-modal__sub {
@@ -31067,6 +31101,14 @@ scrollbar-width: thin;
   justify-content: space-between;
   gap: 10px;
   min-height: 32px;
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-cp-present-photo__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   flex-wrap: wrap;
 }
 
@@ -50832,7 +50874,11 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
-.updated-admin .ua-cfg-dd-add.has-icon,
+.updated-admin .ua-cfg-dd-add.has-icon {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .updated-admin .ua-cfg-dd-add.has-type {
   display: grid;
 }
@@ -54260,6 +54306,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cp-present-photo__actions .ua-cp-btn,
+  .updated-admin .ua-cp-present-photo__nav .ua-cp-btn,
   .updated-admin .ua-cp-present-photo__foot > .ua-cp-btn {
     flex: 1 1 auto;
   }
@@ -54296,7 +54343,14 @@ scrollbar-width: thin;
     width: 100%;
   }
 
+  .updated-admin .ua-cp-present-photo__nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
   .updated-admin .ua-cp-present-photo__foot > .ua-cp-btn,
+  .updated-admin .ua-cp-present-photo__nav .ua-cp-btn,
   .updated-admin .ua-cp-present-photo__actions .ua-cp-btn {
     width: 100%;
   }
@@ -57529,6 +57583,10 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cfg-dd-add.has-icon {
     grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-dd-add.has-icon .ua-cfg-dd-add__btn {
+    grid-column: 1 / -1;
   }
 
   .updated-admin .ua-cfg-dd-row__actions {
@@ -61452,12 +61510,17 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add,
-.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-icon,
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type,
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-supp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-icon {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add__field {
@@ -61543,10 +61606,17 @@ scrollbar-width: thin;
 
 @container ua-cfg-dd-card (max-width: 380px) {
   .updated-admin .ua-cfg-dd .ua-cfg-dd-add,
-  .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-icon,
   .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type,
   .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-supp {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-icon {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-icon .ua-cfg-dd-add__btn {
+    grid-column: 1 / -1;
   }
 
   .updated-admin .ua-cfg-dd .ua-cfg-dd-add .ua-cfg-dd-add__btn,
@@ -61555,7 +61625,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-dd .ua-cfg-dd-row__fields.has-icon {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 44px minmax(0, 1fr);
   }
 }
 

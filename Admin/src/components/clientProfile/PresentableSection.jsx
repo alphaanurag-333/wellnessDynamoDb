@@ -6,6 +6,7 @@ import {
   reviewUserPresentablePic,
   requestUserPresentablePic,
   patchUserPresentablePicsSettings,
+  downloadUserPresentablePic,
 } from "../../api/onboardingApi.js";
 import { fetchUser, mapApiUserToRow } from "../../api/usersApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
@@ -46,6 +47,91 @@ function openPdf(url, onToast) {
     return;
   }
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function presentableFileName(photo) {
+  const ext = String(photo?.url || "").match(/\.(jpe?g|png|webp|gif|heic)(?:\?|$)/i)?.[1]?.toLowerCase() || "jpg";
+  const datePart = String(photo?.uploaded || "photo").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "") || "photo";
+  return `presentable-pic-${datePart}.${ext}`;
+}
+
+function presentableHistoryIndex(photo) {
+  const match = String(photo?.id || "").match(/^presentable-history-(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+function mimeFromFilename(filename) {
+  const ext = String(filename || "").split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "heic") return "image/heic";
+  return "image/jpeg";
+}
+
+function asDownloadBlob(blob, filename) {
+  if (blob?.type && blob.type.startsWith("image/")) return blob;
+  return new Blob([blob], { type: mimeFromFilename(filename) });
+}
+
+function triggerBlobDownload(blob, filename) {
+  const file = asDownloadBlob(blob, filename);
+  const objectUrl = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+}
+
+async function blobFromUrl(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Could not download image");
+  const blob = await response.blob();
+  if (!blob || blob.size === 0) throw new Error("Could not download image");
+  return blob;
+}
+
+async function blobFromCanvas(url) {
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not download image"));
+    img.src = url;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (next) => (next ? resolve(next) : reject(new Error("Could not download image"))),
+      "image/jpeg",
+      0.95,
+    );
+  });
+  return blob;
+}
+
+async function downloadFromPublicUrl(url, filename) {
+  const proxyUrl = `/__image_download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+  try {
+    triggerBlobDownload(await blobFromUrl(proxyUrl), filename);
+    return;
+  } catch {
+    /* S3 CORS often blocks a direct browser fetch */
+  }
+  try {
+    triggerBlobDownload(await blobFromUrl(url), filename);
+    return;
+  } catch {
+    triggerBlobDownload(await blobFromCanvas(url), filename);
+  }
 }
 
 function ConfirmModal({ open, eyebrow, title, body, confirmLabel, confirmTone = "primary", onClose, onConfirm }) {
@@ -176,7 +262,7 @@ function CommitmentLetterModal({ open, user, letter, onClose, onToast }) {
   );
 }
 
-function PresentablePicViewModal({ open, url, label, onClose }) {
+function PresentablePicViewModal({ open, url, label, onClose, onDownload, downloadBusy }) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -199,14 +285,26 @@ function PresentablePicViewModal({ open, url, label, onClose }) {
           <div className="ua-cp-modal__title" id="presentable-view-title">
             {label || "Presentable pic"}
           </div>
-          <button
-            type="button"
-            className="ua-cp-modal__close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ×
-          </button>
+          <div className="ua-cp-modal__actions">
+            {url ? (
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                onClick={onDownload}
+                disabled={downloadBusy}
+              >
+                {downloadBusy ? "Downloading…" : "Download"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="ua-cp-modal__close"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
         </div>
         <div className="ua-cp-modal__body" style={{ padding: 0 }}>
           <div style={{ padding: 14, display: "flex", justifyContent: "center" }}>
@@ -275,7 +373,17 @@ function photoStatusMeta(status) {
   return { label: "PENDING APPROVAL", tone: "pending" };
 }
 
-function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView, canReview }) {
+function PhotoCard({
+  photo,
+  onToast,
+  onApprove,
+  onReject,
+  reviewBusy,
+  onView,
+  onDownload,
+  downloadBusy,
+  canReview,
+}) {
   const status = photoStatusMeta(photo.status);
   const pending = photo?.reviewable !== false && status.tone === "pending";
 
@@ -302,23 +410,35 @@ function PhotoCard({ photo, onToast, onApprove, onReject, reviewBusy, onView, ca
           ) : null}
         </div>
         <div className="ua-cp-present-photo__foot">
-          {photo.url ? (
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-              onClick={() => onView?.(photo.url)}
-            >
-              View
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-              onClick={() => onToast?.("No photo file attached")}
-            >
-              View
-            </button>
-          )}
+          <div className="ua-cp-present-photo__nav">
+            {photo.url ? (
+              <>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                  onClick={() => onView?.(photo)}
+                >
+                  View
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                  onClick={() => onDownload?.(photo)}
+                  disabled={downloadBusy}
+                >
+                  {downloadBusy ? "Downloading…" : "Download"}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                onClick={() => onToast?.("No photo file attached")}
+              >
+                View
+              </button>
+            )}
+          </div>
           {pending && canReview ? (
             <div className="ua-cp-present-photo__actions">
               <button
@@ -363,6 +483,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [photoReviewBusy, setPhotoReviewBusy] = useState(false);
   const [requestBusy, setRequestBusy] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
+  const [downloadBusyId, setDownloadBusyId] = useState(null);
 
   const live = isLiveUserId(user?.id);
   const clientName = user?.name?.split(" ")[0] || "Client";
@@ -561,11 +682,45 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUrl, setViewUrl] = useState("");
   const [viewLabel, setViewLabel] = useState("Presentable pic");
+  const [viewPhoto, setViewPhoto] = useState(null);
 
-  function openView(url, label) {
-    setViewUrl(url);
-    setViewLabel(label || "Presentable pic");
+  function openView(photo) {
+    setViewPhoto(photo || null);
+    setViewUrl(photo?.url || "");
+    setViewLabel(photo?.label || "Presentable pic");
     setViewOpen(true);
+  }
+
+  async function downloadPhoto(photo) {
+    if (!photo?.url) {
+      onToast?.("No photo file attached");
+      return;
+    }
+    const filename = presentableFileName(photo);
+    const busyKey = photo.id || photo.url;
+    setDownloadBusyId(busyKey);
+    try {
+      if (live && user?.id) {
+        try {
+          const historyIndex = presentableHistoryIndex(photo);
+          const blob = await downloadUserPresentablePic(user.id, {
+            ...(historyIndex != null ? { historyIndex } : {}),
+            filename,
+          });
+          triggerBlobDownload(blob, filename);
+          onToast?.("Image downloaded");
+          return;
+        } catch {
+          /* fall back when the download API is not available yet */
+        }
+      }
+      await downloadFromPublicUrl(photo.url, filename);
+      onToast?.("Image downloaded");
+    } catch (error) {
+      onToast?.(error?.message || "Could not download image");
+    } finally {
+      setDownloadBusyId(null);
+    }
   }
 
   return (
@@ -706,7 +861,9 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
                     reviewBusy={photoReviewBusy}
                     onApprove={() => setConfirmTarget({ type: "approve-photo" })}
                     onReject={() => setConfirmTarget({ type: "reject-photo" })}
-                    onView={() => openView(photo.url, photo.label)}
+                    onView={openView}
+                    onDownload={downloadPhoto}
+                    downloadBusy={downloadBusyId === photo.id}
                     canReview={canEdit}
                   />
                 ))}
@@ -785,6 +942,8 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
         url={viewUrl}
         label={viewLabel}
         onClose={() => setViewOpen(false)}
+        onDownload={() => downloadPhoto(viewPhoto || { url: viewUrl, label: viewLabel })}
+        downloadBusy={Boolean(downloadBusyId)}
       />
     </div>
   );

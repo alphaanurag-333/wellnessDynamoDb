@@ -188,6 +188,43 @@ export async function requestUserPresentablePic(userId, { photoType } = {}) {
   }
 }
 
+export async function downloadUserPresentablePic(userId, { historyIndex, filename } = {}) {
+  try {
+    const q = new URLSearchParams();
+    if (historyIndex != null && historyIndex !== "") q.set("historyIndex", String(historyIndex));
+    if (filename) q.set("filename", filename);
+    const { data } = await api.get(
+      `/account/heal-users/${encodeURIComponent(userId)}/presentable-pic/download${q.toString() ? `?${q}` : ""}`,
+      { headers: authHeader(), responseType: "blob" },
+    );
+    if (!(data instanceof Blob) || data.size === 0) {
+      throw new Error("Could not download image");
+    }
+    if (data.type && data.type.includes("application/json")) {
+      const text = await data.text();
+      let message = "Could not download image";
+      try {
+        message = JSON.parse(text)?.message || message;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(message);
+    }
+    return data;
+  } catch (error) {
+    if (error?.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const parsed = JSON.parse(text);
+        if (parsed?.message) throw new Error(parsed.message);
+      } catch (inner) {
+        if (inner?.message && !(inner instanceof SyntaxError)) throw inner;
+      }
+    }
+    normalizeApiError(error);
+  }
+}
+
 export async function reviewUserPresentablePic(userId, { action } = {}) {
   try {
     const { data } = await api.patch(

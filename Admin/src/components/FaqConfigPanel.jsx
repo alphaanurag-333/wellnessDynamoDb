@@ -6,6 +6,7 @@ import {
   adminReorderFaqs,
   adminUpdateFaq,
 } from "../api/faqApi.js";
+import { adminUpdateSectionSurfaceConfig } from "../api/sectionSurfaceConfigApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import "./faqConfig.css";
@@ -195,10 +196,61 @@ function applyOrder(items, fromId, toId) {
   return next.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
 }
 
-export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) {
+const LOCAL_FAQ_PREFIX = "local-";
+
+function isLocalFaqId(id) {
+  return String(id || "").startsWith(LOCAL_FAQ_PREFIX);
+}
+
+function newLocalFaqId() {
+  return `${LOCAL_FAQ_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function snapshotFaqs(list = []) {
+  return JSON.stringify(
+    list.map((entry) => ({
+      id: entry.id,
+      question: String(entry.question || ""),
+      answer: String(entry.answer || ""),
+      shown: entry.shown !== false,
+      webVisible: entry.webVisible !== false,
+      appVisible: entry.appVisible !== false,
+    })),
+  );
+}
+
+function snapshotSurface(value) {
+  return JSON.stringify({
+    appOn: value?.appOn !== false,
+    webOn: value?.webOn !== false,
+  });
+}
+
+function faqChanged(original, entry) {
+  if (!original) return true;
+  return (
+    String(original.question || "") !== String(entry.question || "")
+    || String(original.answer || "") !== String(entry.answer || "")
+    || (original.shown !== false) !== (entry.shown !== false)
+    || (original.webVisible !== false) !== (entry.webVisible !== false)
+    || (original.appVisible !== false) !== (entry.appVisible !== false)
+  );
+}
+
+export function FaqConfigPanel({
+  items,
+  setItems,
+  editor,
+  setEditor,
+  onToast,
+  registerPublishHandler,
+  onLocalChange,
+}) {
+  const deferPublish = Boolean(registerPublishHandler);
   const shownCount = items.filter((item) => item.shown).length;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ question: "", answer: "" });
   const [showAddForm, setShowAddForm] = useState(false);
@@ -208,23 +260,53 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
   const addFormRef = useRef(null);
   const newQuestionRef = useRef(null);
   const itemsRef = useRef(items);
+  const editorRef = useRef(editor);
+  const editingIdRef = useRef(editingId);
+  const draftRef = useRef(draft);
+  const showAddFormRef = useRef(showAddForm);
+  const newDraftRef = useRef(newDraft);
+  const savedFaqsRef = useRef("[]");
+  const savedSurfaceRef = useRef(snapshotSurface({ appOn: true, webOn: true }));
+  const persistRef = useRef(null);
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+  useEffect(() => {
+    editingIdRef.current = editingId;
+    draftRef.current = draft;
+    showAddFormRef.current = showAddForm;
+    newDraftRef.current = newDraft;
+  }, [draft, editingId, newDraft, showAddForm]);
+
+  const markSaved = useCallback((nextItems, nextEditor) => {
+    savedFaqsRef.current = snapshotFaqs(nextItems);
+    savedSurfaceRef.current = snapshotSurface(nextEditor);
+    setHasLocalChanges(false);
+    onLocalChange?.({ hasLocalChanges: false });
+  }, [onLocalChange]);
 
   const loadFaqs = useCallback(async () => {
     setLoading(true);
     try {
       const { faqs } = await adminListFaqs(null, { limit: 200 });
       setItems(faqs);
+      savedFaqsRef.current = snapshotFaqs(faqs);
+      setHasLocalChanges(snapshotSurface(editorRef.current) !== savedSurfaceRef.current);
+      onLocalChange?.({
+        hasLocalChanges: snapshotSurface(editorRef.current) !== savedSurfaceRef.current,
+      });
     } catch (error) {
       onToast(error?.message || "Failed to load FAQs");
       setItems([]);
+      savedFaqsRef.current = snapshotFaqs([]);
     } finally {
       setLoading(false);
     }
-  }, [onToast, setItems]);
+  }, [onLocalChange, onToast, setItems]);
 
   useEffect(() => {
     loadFaqs();
@@ -260,7 +342,138 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
     setShowAddForm(true);
   }
 
+  function syncDirty(nextItems = itemsRef.current, nextEditor = editorRef.current) {
+    if (!deferPublish) return;
+    const addDraft = newDraftRef.current || {};
+    const dirty =
+      snapshotFaqs(nextItems) !== savedFaqsRef.current
+      || snapshotSurface(nextEditor) !== savedSurfaceRef.current
+      || Boolean(editingIdRef.current)
+      || (
+        showAddFormRef.current
+        && (String(addDraft.question || "").trim() || String(addDraft.answer || "").trim())
+      );
+    setHasLocalChanges(dirty);
+    onLocalChange?.({ hasLocalChanges: dirty });
+  }
+
+  useEffect(() => {
+    if (!deferPublish) return;
+    syncDirty();
+  }, [deferPublish, editor, editingId, items, newDraft, showAddForm]);
+
+  function commitOpenForms(sourceItems) {
+    let nextItems = [...sourceItems];
+    const openEditId = editingIdRef.current;
+    if (openEditId) {
+      const question = String(draftRef.current.question || "").trim();
+      const answer = String(draftRef.current.answer || "").trim();
+      if (!question || !answer) {
+        throw new Error("Finish or cancel the question you're editing before publishing");
+      }
+      nextItems = nextItems.map((entry) => (
+        entry.id === openEditId ? { ...entry, question, answer } : entry
+      ));
+    }
+    if (showAddFormRef.current) {
+      const question = String(newDraftRef.current.question || "").trim();
+      const answer = String(newDraftRef.current.answer || "").trim();
+      if (question || answer) {
+        if (!question || !answer) {
+          throw new Error("Finish or close the new question form before publishing");
+        }
+        nextItems = [
+          ...nextItems,
+          {
+            id: newLocalFaqId(),
+            question,
+            answer,
+            shown: true,
+            status: "active",
+            webVisible: newDraftRef.current.webVisible !== false,
+            appVisible: newDraftRef.current.appVisible !== false,
+            sortOrder: nextItems.length + 1,
+          },
+        ];
+      }
+    }
+    return nextItems;
+  }
+
+  async function persistFaqs() {
+    const nextEditor = {
+      appOn: editorRef.current?.appOn !== false,
+      webOn: editorRef.current?.webOn !== false,
+    };
+    const nextItems = commitOpenForms(itemsRef.current);
+    setBusy(true);
+    try {
+      await adminUpdateSectionSurfaceConfig(null, "faq", nextEditor);
+      const originalById = new Map(
+        JSON.parse(savedFaqsRef.current || "[]").map((entry) => [entry.id, entry]),
+      );
+      const keepIds = new Set(
+        nextItems.filter((entry) => !isLocalFaqId(entry.id)).map((entry) => entry.id),
+      );
+      for (const original of originalById.values()) {
+        if (!keepIds.has(original.id)) {
+          await adminDeleteFaq(null, original.id);
+        }
+      }
+      const published = [];
+      for (const entry of nextItems) {
+        if (isLocalFaqId(entry.id)) {
+          const created = await adminCreateFaq(null, {
+            question: entry.question,
+            answer: entry.answer,
+            shown: entry.shown !== false,
+            webVisible: entry.webVisible !== false,
+            appVisible: entry.appVisible !== false,
+          });
+          published.push(created);
+          continue;
+        }
+        const original = originalById.get(entry.id);
+        if (faqChanged(original, entry)) {
+          const updated = await adminUpdateFaq(null, entry.id, {
+            question: entry.question,
+            answer: entry.answer,
+            shown: entry.shown !== false,
+            webVisible: entry.webVisible !== false,
+            appVisible: entry.appVisible !== false,
+          });
+          published.push({ ...entry, ...updated });
+        } else {
+          published.push(entry);
+        }
+      }
+      const orderedIds = published.map((entry) => entry.id);
+      const reordered = orderedIds.length ? await adminReorderFaqs(null, orderedIds) : [];
+      const finalItems = reordered.length ? reordered : published;
+      setItems(finalItems);
+      setEditor((prev) => ({ ...(prev || {}), ...nextEditor }));
+      cancelEdit();
+      closeAddForm();
+      markSaved(finalItems, nextEditor);
+      return { items: finalItems, editor: nextEditor };
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  persistRef.current = persistFaqs;
+
+  useEffect(() => {
+    if (!deferPublish) return undefined;
+    registerPublishHandler(async () => persistRef.current());
+  }, [deferPublish, registerPublishHandler]);
+
   async function persistOrder(nextItems) {
+    if (deferPublish) {
+      setItems(nextItems);
+      syncDirty(nextItems);
+      return;
+    }
     const orderedIds = nextItems.map((entry) => entry.id);
     const faqs = await adminReorderFaqs(null, orderedIds);
     setItems(faqs.length ? faqs : nextItems);
@@ -271,6 +484,16 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
     const answer = draft.answer.trim();
     if (!question || !answer) {
       onToast("Question and answer are required");
+      return;
+    }
+    if (deferPublish) {
+      const nextItems = itemsRef.current.map((entry) => (
+        entry.id === id ? { ...entry, question, answer } : entry
+      ));
+      setItems(nextItems);
+      cancelEdit();
+      syncDirty(nextItems);
+      onToast("Question updated — publish to go live");
       return;
     }
     setBusy(true);
@@ -293,6 +516,26 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
       onToast("Question and answer are required");
       return;
     }
+    if (deferPublish) {
+      const nextItems = [
+        ...itemsRef.current,
+        {
+          id: newLocalFaqId(),
+          question,
+          answer,
+          shown: true,
+          status: "active",
+          webVisible: newDraft.webVisible !== false,
+          appVisible: newDraft.appVisible !== false,
+          sortOrder: itemsRef.current.length + 1,
+        },
+      ];
+      setItems(nextItems);
+      closeAddForm();
+      syncDirty(nextItems);
+      onToast("Question added — publish to go live");
+      return;
+    }
     setBusy(true);
     try {
       const created = await adminCreateFaq(null, {
@@ -313,15 +556,19 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
   }
 
   async function toggleShown(item) {
-    setBusy(true);
     const nextShown = !item.shown;
-    setItems((prev) =>
-      prev.map((entry) =>
-        entry.id === item.id
-          ? { ...entry, shown: nextShown, status: nextShown ? "active" : "inactive" }
-          : entry,
-      ),
+    const nextItems = itemsRef.current.map((entry) =>
+      entry.id === item.id
+        ? { ...entry, shown: nextShown, status: nextShown ? "active" : "inactive" }
+        : entry,
     );
+    setItems(nextItems);
+    if (deferPublish) {
+      syncDirty(nextItems);
+      onToast(nextShown ? "FAQ shown — publish to go live" : "FAQ hidden — publish to go live");
+      return;
+    }
+    setBusy(true);
     try {
       const updated = await adminUpdateFaq(null, item.id, { shown: nextShown });
       setItems((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, ...updated } : entry)));
@@ -343,9 +590,15 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
   async function toggleSurface(item, field) {
     if (busy || (field !== "webVisible" && field !== "appVisible")) return;
     const nextValue = !item[field];
-    setItems((prev) =>
-      prev.map((entry) => (entry.id === item.id ? { ...entry, [field]: nextValue } : entry)),
-    );
+    const nextItems = itemsRef.current.map((entry) => (
+      entry.id === item.id ? { ...entry, [field]: nextValue } : entry
+    ));
+    setItems(nextItems);
+    if (deferPublish) {
+      syncDirty(nextItems);
+      onToast(`${field === "webVisible" ? "Web" : "App"} ${nextValue ? "visible" : "hidden"} — publish to go live`);
+      return;
+    }
     setBusy(true);
     try {
       const updated = await adminUpdateFaq(null, item.id, { [field]: nextValue });
@@ -364,9 +617,15 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
   async function removeItem(item) {
     if (!window.confirm(`Delete “${item.question || "this question"}”?`)) return;
     if (editingId === item.id) cancelEdit();
-    setBusy(true);
     const previous = itemsRef.current;
-    setItems((prev) => prev.filter((entry) => entry.id !== item.id));
+    const nextItems = previous.filter((entry) => entry.id !== item.id);
+    setItems(nextItems);
+    if (deferPublish) {
+      syncDirty(nextItems);
+      onToast("Question removed — publish to go live");
+      return;
+    }
+    setBusy(true);
     try {
       await adminDeleteFaq(null, item.id);
       onToast("Question removed");
@@ -387,6 +646,10 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
     [copy[idx], copy[nextIdx]] = [copy[nextIdx], copy[idx]];
     const next = copy.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
     setItems(next);
+    if (deferPublish) {
+      syncDirty(next);
+      return;
+    }
     setBusy(true);
     try {
       await persistOrder(next);
@@ -410,6 +673,11 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
     setDragOverId(null);
     if (next === previous || next.every((entry, i) => entry.id === previous[i]?.id)) return;
     setItems(next);
+    if (deferPublish) {
+      syncDirty(next);
+      onToast("Order updated — publish to go live");
+      return;
+    }
     setBusy(true);
     try {
       await persistOrder(next);
@@ -429,14 +697,26 @@ export function FaqConfigPanel({ items, setItems, editor, setEditor, onToast }) 
         editor={editor}
         setEditor={setEditor}
         onToast={onToast}
+        persistImmediately={!deferPublish}
+        onLoaded={(next) => {
+          savedSurfaceRef.current = snapshotSurface(next);
+          syncDirty(itemsRef.current, next);
+        }}
       />
+      {deferPublish && hasLocalChanges ? (
+        <p className="ua-cfg-panel__sub ua-cfg-panel__sub--warn">
+          Unsaved changes — stored in this session only. Click <strong>Publish</strong> to save, or refresh to discard.
+        </p>
+      ) : null}
       <Panel
       className="ua-cfg-faq-shell"
       title="Questions & answers"
       subtitle={
         loading
           ? "Loading FAQs…"
-          : `Drag to reorder · ${shownCount} of ${items.length} shown`
+          : deferPublish
+            ? `Edits stay local until you publish · Drag to reorder · ${shownCount} of ${items.length} shown`
+            : `Drag to reorder · ${shownCount} of ${items.length} shown`
       }
       actions={(
         <button

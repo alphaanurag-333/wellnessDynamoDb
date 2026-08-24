@@ -1529,7 +1529,7 @@ export function ConfigDetailPage() {
     if (!found) return;
     const current = found.item;
     const legalSlugs = CONFIG_LEGAL_PUBLISH_SLUGS[current.id];
-    const usesPublishHandler = Boolean(legalSlugs) || current.id === "web-fs-social";
+    const usesPublishHandler = Boolean(legalSlugs) || current.id === "web-fs-social" || current.id === "app-consultancy-amount" || current.id === "app-faq";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1540,6 +1540,8 @@ export function ConfigDetailPage() {
         const saved = await publish();
         if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
+        } else if (current.id === "app-consultancy-amount" && saved) {
+          setConsultancySettings(saved);
         } else if (current.id === "app-tos" || current.id === "web-fs-tos") {
           const page = Array.isArray(saved)
             ? saved.find((row) => row.slug === "terms-and-conditions")
@@ -1555,6 +1557,9 @@ export function ConfigDetailPage() {
           setContactPageBlocks(saved.blocks);
         } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
           setFooterTextBlocks(saved.blocks);
+        } else if (current.id === "app-faq") {
+          if (Array.isArray(saved?.items)) setFaqItems(saved.items);
+          if (saved?.editor) setFaqEditor((prev) => ({ ...prev, ...saved.editor }));
         }
         setLegalLocalDirty(false);
         onToast(`${current.name} published`);
@@ -1756,6 +1761,8 @@ export function ConfigDetailPage() {
             editor={faqEditor}
             setEditor={setFaqEditor}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-program":
@@ -1866,6 +1873,8 @@ export function ConfigDetailPage() {
             settings={consultancySettings}
             setSettings={setConsultancySettings}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-gst":

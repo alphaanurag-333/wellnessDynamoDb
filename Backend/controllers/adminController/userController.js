@@ -1,7 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword } = require("../../utils/password");
-const { uploadFileFromRequest, deleteStoredMedia } = require("../../utils/s3");
+const { uploadFileFromRequest, deleteStoredMedia, sendStoredObjectAsAttachment } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
 const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
@@ -244,6 +244,38 @@ exports.requestPresentablePicController = asyncHandler(async (req, res) => {
     photoType,
     notification,
   });
+});
+
+exports.downloadPresentablePicController = asyncHandler(async (req, res) => {
+  const userId = readUserIdParam(req);
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const historyIndexRaw = req.query.historyIndex;
+  let objectKey = "";
+  if (historyIndexRaw !== undefined && String(historyIndexRaw).trim() !== "") {
+    const index = Number(historyIndexRaw);
+    const history = Array.isArray(user.presentablePicHistory) ? user.presentablePicHistory : [];
+    if (!Number.isInteger(index) || index < 0 || index >= history.length) {
+      throw new AppError("Presentable pic not found", 404);
+    }
+    objectKey = String(history[index]?.url || "").trim();
+  } else {
+    objectKey = String(user.presentablePic || "").trim();
+  }
+  if (!objectKey) throw new AppError("No presentable pic uploaded", 404);
+
+  const ext = objectKey.match(/\.(jpe?g|png|webp|gif|heic)(?:\?|$)/i)?.[1]?.toLowerCase() || "jpg";
+  const filename = String(req.query.filename || `presentable-pic.${ext}`).trim();
+  const contentType =
+    ext === "png" ? "image/png"
+    : ext === "webp" ? "image/webp"
+    : ext === "gif" ? "image/gif"
+    : ext === "heic" ? "image/heic"
+    : "image/jpeg";
+
+  await sendStoredObjectAsAttachment(res, objectKey, { filename, contentType });
 });
 
 exports.reviewPresentablePicController = asyncHandler(async (req, res) => {
