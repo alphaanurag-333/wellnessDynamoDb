@@ -61829,6 +61829,7 @@ scrollbar-width: thin;
 }
 
 /* Create user modal */
+.ua-create-user-backdrop,
 .updated-admin .ua-create-user-backdrop {
   position: fixed;
   inset: 0;
@@ -61841,10 +61842,11 @@ scrollbar-width: thin;
   overflow: hidden;
 }
 
+.ua-create-user,
 .updated-admin .ua-create-user {
   width: min(760px, 100%);
-  height: min(88vh, calc(100dvh - 48px));
-  max-height: min(88vh, calc(100dvh - 48px));
+  height: calc(100dvh - 48px);
+  max-height: calc(100dvh - 48px);
   min-height: 0;
   margin: 0;
   background: #fff;
@@ -61854,6 +61856,7 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-create-user__head {
@@ -61863,6 +61866,15 @@ scrollbar-width: thin;
   gap: 12px;
   padding: 22px 24px 12px;
   flex-shrink: 0;
+}
+
+.ua-create-user__form,
+.updated-admin .ua-create-user__form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-create-user__kicker {
@@ -61896,18 +61908,41 @@ scrollbar-width: thin;
   background: #f4f6fa;
 }
 
+.ua-create-user__body,
 .updated-admin .ua-create-user__body {
   padding: 8px 24px 16px;
-  overflow-y: auto;
-  min-height: 0;
   flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100dvh - 200px);
+  overflow-x: hidden;
+  overflow-y: scroll;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c0d4 #eef1f6;
+}
+
+.ua-create-user__body::-webkit-scrollbar,
+.updated-admin .ua-create-user__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ua-create-user__body::-webkit-scrollbar-track,
+.updated-admin .ua-create-user__body::-webkit-scrollbar-track {
+  background: #eef1f6;
+  border-radius: 8px;
+}
+
+.ua-create-user__body::-webkit-scrollbar-thumb,
+.updated-admin .ua-create-user__body::-webkit-scrollbar-thumb {
+  background: #b8c0d4;
+  border-radius: 8px;
 }
 
 .updated-admin .ua-create-user__banner {
   margin-bottom: 14px;
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: 10px; 
   background: #fdeeee;
   color: #b42318;
   font-size: 13px;

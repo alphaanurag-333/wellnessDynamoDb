@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
 import { createUser, GENDER_UI_OPTIONS } from "../api/usersApi.js";
 import {
@@ -250,12 +251,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     }
   }
 
-  return (
+  const modal = (
     <div className="ua-create-user-backdrop" role="presentation">
-      <form
+      <div
         className="ua-create-user"
         onClick={(e) => e.stopPropagation()}
-        onSubmit={submit}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-user-title"
@@ -270,6 +270,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
           </button>
         </div>
 
+        <form className="ua-create-user__form" onSubmit={submit}>
         <div className="ua-create-user__body">
           {submitError ? <div className="ua-create-user__banner">{submitError}</div> : null}
 
@@ -642,7 +643,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
             {busy ? "Creating…" : "Create user"}
           </button>
         </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
+
+  const root = document.querySelector(".updated-admin") || document.body;
+  return createPortal(modal, root);
 }
