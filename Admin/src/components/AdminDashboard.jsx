@@ -11,13 +11,12 @@ import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
 import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { PaymentsModal } from "./PaymentsModal.jsx";
+import { DashboardChallengesCard } from "./DashboardChallengesCard.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
 import {
   A1C_METRICS,
   APP_CLIENT_STATS,
   APP_USER_PROG_CARD,
-  CHALLENGE_AUDIENCE_OPTIONS,
-  CHALLENGE_DAY_OPTIONS,
   COACH_TIERS,
   DASH_SCOPE_LABELS,
   EXP_CARDS,
@@ -895,10 +894,6 @@ export function AdminDashboard({
   const [selectedMonthKey, setSelectedMonthKey] = useState(null);
   const [productMonthKey, setProductMonthKey] = useState(null);
   const [champExpanded, setChampExpanded] = useState(false);
-  const [chName, setChName] = useState("");
-  const [chDays, setChDays] = useState("14");
-  const [chAud, setChAud] = useState("all");
-  const [chRunning, setChRunning] = useState([]);
   const [remindModal, setRemindModal] = useState(null);
   const [remindBusy, setRemindBusy] = useState(false);
   const [rosterModal, setRosterModal] = useState(null);
@@ -1063,29 +1058,6 @@ export function AdminDashboard({
     setBroadcastModalOpen(false);
     setBroadcastMeta("Last sent just now");
     onToast("Broadcast sent to all users");
-  }
-
-  function startChallenge() {
-    const name = chName.trim();
-    if (!name) return;
-    const audience = CHALLENGE_AUDIENCE_OPTIONS.find((a) => a.value === chAud)?.label ?? "All clients";
-    setChRunning((prev) => [
-      ...prev,
-      {
-        id: `${Date.now()}`,
-        name,
-        progress: `Day 1 of ${chDays}`,
-        meta: `${audience} · started today`,
-        pct: 4,
-      },
-    ]);
-    setChName("");
-    onToast(`Challenge "${name}" started`);
-  }
-
-  function endChallenge(id) {
-    setChRunning((prev) => prev.filter((c) => c.id !== id));
-    onToast("Challenge ended");
   }
 
   function goUsers(filters = {}) {
@@ -1856,82 +1828,7 @@ export function AdminDashboard({
               </div>
             </div>
 
-            <div className="ops-challenge">
-              <div className="ops-challenge__head">
-                <span className="ops-challenge__icon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 6.5 7 .6-5.3 4.6 1.6 6.8L12 17l-6.9 3.5 1.6-6.8L1.4 9.1l7-.6z"></path></svg></span>
-                <span className="ops-challenge__title">Challenges</span>
-                <span className="ops-challenge__count">
-                  {chRunning.length} RUNNING
-                </span>
-              </div>
-              <div className="ops-challenge__form">
-                <input
-                  type="text"
-                  className="ops-challenge__input"
-                  placeholder="Challenge name"
-                  value={chName}
-                  onChange={(e) => setChName(e.target.value)}
-                />
-                <select
-                  className="ops-challenge__select"
-                  aria-label="Challenge length"
-                  value={chDays}
-                  onChange={(e) => setChDays(e.target.value)}
-                >
-                  {CHALLENGE_DAY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <select
-                  className="ops-challenge__select ops-challenge__select--aud"
-                  aria-label="Challenge audience"
-                  value={chAud}
-                  onChange={(e) => setChAud(e.target.value)}
-                >
-                  {CHALLENGE_AUDIENCE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className={`ops-challenge__start${chName.trim() ? " ops-challenge__start--ready" : ""}`}
-                  disabled={!chName.trim()}
-                  onClick={startChallenge}
-                >
-                  Start challenge
-                </button>
-              </div>
-              <div className="ops-challenge__list">
-                <div className="ops-challenge__list-items">
-                  {chRunning.length === 0 ? (
-                    <div className="ops-challenge__empty">
-                      No challenge running. Name one, pick a length and audience, then start it.
-                    </div>
-                  ) : (
-                    chRunning.map((challenge) => (
-                      <div key={challenge.id} className="ops-challenge__item">
-                        <div className="ops-challenge__item-head">
-                          <span className="ops-challenge__item-name">{challenge.name}</span>
-                          <span className="ops-challenge__item-progress">{challenge.progress}</span>
-                          <button
-                            type="button"
-                            className="ops-challenge__end"
-                            title="End challenge"
-                            onClick={() => endChallenge(challenge.id)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className="ops-challenge__bar">
-                          <span className="ops-challenge__bar-fill" style={{ width: `${challenge.pct}%` }} />
-                        </div>
-                        <div className="ops-challenge__item-meta">{challenge.meta}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
+            <DashboardChallengesCard onToast={onToast} />
           </div>
         </section>
       ) : null}

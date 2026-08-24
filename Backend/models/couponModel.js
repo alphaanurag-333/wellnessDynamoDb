@@ -17,6 +17,7 @@ const {
 const TABLE = "Coupon";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
 const ALLOWED_DISCOUNT_TYPES = new Set(["percentage", "fixed"]);
+const ALLOWED_APPLIES_TO = new Set(["challenge", "consultancy", "program", "subscription", "energy_exchange"]);
 
 function normalizeStatus(status, fallback = "active") {
   const next = String(status || fallback).toLowerCase().trim();
@@ -43,6 +44,45 @@ function normalizeValue(value, discountType) {
   return num;
 }
 
+function normalizeAppliesTo(value) {
+  if (value == null || value === "") return ["challenge"];
+  const list = Array.isArray(value) ? value : String(value).split(",");
+  const out = [];
+  const seen = new Set();
+  for (const raw of list) {
+    const next = String(raw || "").toLowerCase().trim();
+    if (!ALLOWED_APPLIES_TO.has(next) || seen.has(next)) continue;
+    seen.add(next);
+    out.push(next);
+  }
+  return out.length ? out : ["challenge"];
+}
+
+function normalizeChallengeIds(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((id) => String(id || "").trim()).filter(Boolean);
+}
+
+function couponAppliesToChallenge(coupon, challengeId) {
+  if (!coupon || normalizeStatus(coupon.status) !== "active") return false;
+  const appliesTo = normalizeAppliesTo(coupon.appliesTo);
+  if (!appliesTo.includes("challenge")) return false;
+  const challengeIds = normalizeChallengeIds(coupon.challengeIds);
+  if (!challengeIds.length) return true;
+  return challengeIds.includes(String(challengeId || "").trim());
+}
+
+function computeCouponDiscount(baseAmount, coupon) {
+  const base = Math.max(0, Number(baseAmount) || 0);
+  if (!coupon) return 0;
+  const type = normalizeDiscountType(coupon.discountType);
+  const value = Number(coupon.value) || 0;
+  if (type === "percentage") {
+    return Math.round((base * (value / 100) + Number.EPSILON) * 100) / 100;
+  }
+  return Math.min(base, Math.round((value + Number.EPSILON) * 100) / 100);
+}
+
 async function getCouponByCode(couponCode) {
   const code = normalizeCouponCode(couponCode);
   if (!code) return null;
@@ -64,6 +104,8 @@ async function createCoupon({
   couponCode,
   discountType = "percentage",
   value,
+  appliesTo,
+  challengeIds,
 }) {
   const normalizedCode = normalizeCouponCode(couponCode);
   const normalizedType = normalizeDiscountType(discountType);
@@ -91,6 +133,8 @@ async function createCoupon({
     couponCode: normalizedCode,
     discountType: normalizedType,
     value: normalizedValue,
+    appliesTo: normalizeAppliesTo(appliesTo),
+    challengeIds: normalizeChallengeIds(challengeIds),
     createdAt: now,
     updatedAt: now,
   };
@@ -187,5 +231,10 @@ module.exports = {
   normalizeDiscountType,
   normalizeCouponCode,
   normalizeValue,
+  normalizeAppliesTo,
+  normalizeChallengeIds,
+  couponAppliesToChallenge,
+  computeCouponDiscount,
   ALLOWED_DISCOUNT_TYPES,
+  ALLOWED_APPLIES_TO,
 };

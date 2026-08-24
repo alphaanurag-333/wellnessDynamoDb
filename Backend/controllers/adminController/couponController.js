@@ -12,6 +12,8 @@ const {
   normalizeCouponCode,
   normalizeValue,
   ALLOWED_DISCOUNT_TYPES,
+  normalizeAppliesTo,
+  normalizeChallengeIds,
 } = require("../../models/couponModel");
 
 exports.listCouponsController = asyncHandler(async (req, res) => {
@@ -69,6 +71,22 @@ exports.createCouponController = asyncHandler(async (req, res) => {
       couponCode,
       discountType,
       value,
+      appliesTo: req.body.appliesTo !== undefined
+        ? normalizeAppliesTo(req.body.appliesTo)
+        : ["challenge"],
+      challengeIds: req.body.challengeIds !== undefined
+        ? normalizeChallengeIds(
+            typeof req.body.challengeIds === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(req.body.challengeIds);
+                  } catch {
+                    return String(req.body.challengeIds).split(",");
+                  }
+                })()
+              : req.body.challengeIds
+          )
+        : [],
     });
   } catch (err) {
     if (err?.code === "DUPLICATE_COUPON_CODE") {
@@ -135,6 +153,24 @@ exports.updateCouponController = asyncHandler(async (req, res) => {
     } catch (err) {
       throw new AppError(err.message, 400);
     }
+  }
+
+  if (req.body.appliesTo !== undefined) {
+    updates.appliesTo = normalizeAppliesTo(req.body.appliesTo);
+  }
+
+  if (req.body.challengeIds !== undefined) {
+    const raw =
+      typeof req.body.challengeIds === "string"
+        ? (() => {
+            try {
+              return JSON.parse(req.body.challengeIds);
+            } catch {
+              return String(req.body.challengeIds).split(",");
+            }
+          })()
+        : req.body.challengeIds;
+    updates.challengeIds = normalizeChallengeIds(raw);
   }
 
   if (Object.keys(updates).length === 0) {

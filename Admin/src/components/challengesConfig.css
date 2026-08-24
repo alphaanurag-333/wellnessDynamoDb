@@ -1,0 +1,380 @@
+/* Challenges config — /configs/app-challenges */
+
+.updated-admin .ua-cfg-detail--ch,
+.updated-admin .ua-cfg-ch {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-detail--ch {
+  overflow-x: hidden;
+}
+
+.updated-admin .ua-cfg-ch {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.updated-admin .ua-cfg-ch > .ua-cfg-panel .ua-cfg-panel__head {
+  align-items: flex-start;
+}
+
+.updated-admin .ua-cfg-ch .ua-cfg-tc-field,
+.updated-admin .ua-cfg-ch .ua-cfg-nb-textarea,
+.updated-admin .ua-cfg-ch .ua-cfg-select,
+.updated-admin .ua-cfg-ch .ua-cfg-select__trigger {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-ch-editor {
+  margin-top: 4px;
+  padding: 16px;
+  border: 1px solid #e8eaf5;
+  border-radius: 14px;
+  background: #fbfcff;
+}
+
+.updated-admin .ua-cfg-ch-editor__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.updated-admin .ua-cfg-ch-editor__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1b1f3b;
+}
+
+.updated-admin .ua-cfg-ch-editor__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #eceef8;
+}
+
+.updated-admin .ua-cfg-ch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.updated-admin .ua-cfg-ch-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-ch-field > span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5b617a;
+}
+
+.updated-admin .ua-cfg-ch-grid {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-ch-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.updated-admin .ua-cfg-ch-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.updated-admin .ua-cfg-ch-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-ch-chip {
+  border: 1px solid #d7dbed;
+  background: #fff;
+  color: #3d4463;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-ch-chip.is-on {
+  border-color: #f08b42;
+  background: #fff4eb;
+  color: #c45e12;
+}
+
+.updated-admin .ua-cfg-ch-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-ch-thumb {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e4e7f4;
+}
+
+.updated-admin .ua-cfg-ch-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.updated-admin .ua-cfg-ch-thumb__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(20, 24, 40, 0.72);
+  color: #fff;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.updated-admin .ua-cfg-ch-uploader {
+  width: 76px;
+  height: 76px;
+  border: 1px dashed #c9cede;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #6b728f;
+  background: #fff;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-ch-uploader.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.updated-admin .ua-cfg-ch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-ch-card {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #e8eaf5;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-ch-card.is-selected {
+  border-color: #f08b42;
+  box-shadow: 0 0 0 1px rgba(240, 139, 66, 0.2);
+}
+
+.updated-admin .ua-cfg-ch-card__media {
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f8;
+}
+
+.updated-admin .ua-cfg-ch-card__media img,
+.updated-admin .ua-cfg-ch-card__ph {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.updated-admin .ua-cfg-ch-card__ph {
+  background: linear-gradient(135deg, #ffe8d6, #e8fff2);
+}
+
+.updated-admin .ua-cfg-ch-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-ch-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-ch-card__title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1b1f3b;
+}
+
+.updated-admin .ua-cfg-ch-card__meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b728f;
+}
+
+.updated-admin .ua-cfg-ch-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.updated-admin .ua-cfg-ch-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.updated-admin .ua-cfg-ch-badge--live {
+  background: #e8f8ee;
+  color: #1f7a45;
+}
+
+.updated-admin .ua-cfg-ch-badge--draft {
+  background: #f3f4f8;
+  color: #5b617a;
+}
+
+.updated-admin .ua-cfg-ch-badge--done {
+  background: #eef2ff;
+  color: #3b4cca;
+}
+
+.updated-admin .ua-cfg-ch-badge--muted {
+  background: #fdeeee;
+  color: #a33b3b;
+}
+
+.updated-admin .ua-cfg-ch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px 4px;
+  color: #6b728f;
+}
+
+.updated-admin .ua-cfg-ch-ops {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.updated-admin .ua-cfg-ch-ops__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-ch-ops__block h5 {
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1b1f3b;
+}
+
+.updated-admin .ua-cfg-ch-ops__line,
+.updated-admin .ua-cfg-ch-ops__enroll {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f1f7;
+  font-size: 0.82rem;
+  color: #5b617a;
+}
+
+.updated-admin .ua-cfg-ch-ops__enroll {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-ch-ops__enroll-copy {
+  min-width: 0;
+  width: 100%;
+}
+
+.updated-admin .ua-cfg-ch-ops__enroll-copy .ua-cfg-panel__sub {
+  margin: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.updated-admin .ua-cfg-ch-ops__enroll-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1b1f3b;
+}
+
+.updated-admin .ua-cfg-ch-ops__user-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.updated-admin .ua-cfg-ch-ops__user-link:hover {
+  color: #c45e12;
+  text-decoration: underline;
+}
+
+.updated-admin .ua-cfg-ch-ops__assign {
+  width: 100%;
+  max-width: 280px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-ch-grid--2,
+  .updated-admin .ua-cfg-ch-grid--3,
+  .updated-admin .ua-cfg-ch-ops__row {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-ch-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-ch-card__media {
+    width: 64px;
+    height: 64px;
+  }
+}

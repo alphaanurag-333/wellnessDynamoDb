@@ -375,6 +375,15 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
     });
   }
 
+  try {
+    const {
+      clearTemporaryChallengeFlagOnRealPurchase,
+    } = require("./challengeAccessService");
+    await clearTemporaryChallengeFlagOnRealPurchase(user.id);
+  } catch (err) {
+    console.error("[ProgramPayment] clear challenge temp flag failed", err.message);
+  }
+
   const bundled = transaction?.userSnapshot?.bundledSubscription;
   if (bundled?.enabled && !isEagle) {
     const isFyBundle =

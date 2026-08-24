@@ -131,6 +131,10 @@ exports.optionalPhysicalExerciseFile = optionalMultipart(physicalExerciseUpload)
 exports.optionalCoachContentFiles = optionalMultipart(coachContentUpload);
 exports.optionalTransformationFiles = optionalMultipart(transformationUploads);
 exports.optionalProgressPhotoFiles = optionalMultipart(progressPhotoUploads);
+
+const challengeUploads = memoryFields([{ name: "images", maxCount: 10 }]);
+exports.optionalChallengeFiles = optionalMultipart(challengeUploads);
+
 const dietPlanUpload = memorySingle("file");
 exports.optionalDietPlanFile = optionalMultipart(dietPlanUpload);
 const supplementBillUpload = memorySingle("file");

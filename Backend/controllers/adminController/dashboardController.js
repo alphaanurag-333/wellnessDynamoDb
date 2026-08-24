@@ -118,7 +118,7 @@ exports.listStaffDashboardPayments = asyncHandler(async (req, res) => {
 
   const type = String(req.query.type || req.query.productType || "consultancy").trim().toLowerCase();
   if (!DASHBOARD_PAYMENT_BUCKET_ORDER.includes(type)) {
-    throw new AppError("type must be consultancy, program, or app", 400);
+    throw new AppError("type must be consultancy, program, challenge, or app", 400);
   }
 
   const page = Math.max(1, Number(req.query.page) || 1);

@@ -16,6 +16,7 @@ const SECTION_CONFIG_IDS = Object.freeze({
   "client-review": "client-review-config",
   faq: "faq-config",
   "health-disorders": "health-disorders-config",
+  challenges: "challenges-config",
 });
 
 function parseBool(value, fallback = true) {
