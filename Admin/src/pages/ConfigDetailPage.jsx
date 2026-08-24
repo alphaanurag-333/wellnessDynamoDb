@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Link, useOutletContext, useParams } from "react-router-dom";
 import { ConfigPreviewModal, previewHintForItem } from "../components/ConfigPreviewModal.jsx";
 import { ConfigPublishModal } from "../components/ConfigPublishModal.jsx";
@@ -29,7 +29,6 @@ import { GstSection } from "../components/GstSection.jsx";
 import { ConsultancyAmountSection } from "../components/ConsultancyAmountSection.jsx";
 import { AppSubscriptionFySection } from "../components/AppSubscriptionFySection.jsx";
 import { DpaSection } from "../components/DpaSection.jsx";
-import { AppTosSection } from "../components/AppTosSection.jsx";
 import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
 import { TermsAndConditionsSection } from "../components/TermsAndConditionsSection.jsx";
 import { CommunityGuidelinesSection } from "../components/CommunityGuidelinesSection.jsx";
@@ -102,7 +101,6 @@ import {
   APP_SUBSCRIPTION_FY_DEFAULTS,
   activePaymentGateway,
   createDefaultGateways,
-  APP_TOS_BLOCKS,
   APP_DPA_BLOCKS,
 } from "../data/configDetailData.js";
 import { configPermissionPrefix, findConfigItem, getConfigStateLabel } from "../data/configsData.js";
@@ -116,6 +114,7 @@ import {
   triggerCoachCheckout,
 } from "../api/appProgramApi.js";
 import { getAppContent } from "../api/appContentApi.js";
+import { CONFIG_LEGAL_PUBLISH_SLUGS } from "../api/legalPageApi.js";
 
 function surfacesLabel(item) {
   if (item.app && item.web) return "App & web";
@@ -1373,7 +1372,6 @@ export function ConfigDetailPage() {
     referralDiscount: "",
   });
   const [gateways, setGateways] = useState(createDefaultGateways);
-  const [appTosBlocks, setAppTosBlocks] = useState(APP_TOS_BLOCKS);
   const [dpaBlocks, setDpaBlocks] = useState(APP_DPA_BLOCKS);
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
@@ -1447,6 +1445,20 @@ export function ConfigDetailPage() {
   });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const [legalLocalDirty, setLegalLocalDirty] = useState(false);
+  const legalPublishHandlerRef = useRef(null);
+
+  const registerLegalPublishHandler = useCallback((handler) => {
+    legalPublishHandlerRef.current = handler;
+  }, []);
+
+  const handleLegalLocalChange = useCallback(({ hasLocalChanges }) => {
+    setLegalLocalDirty(Boolean(hasLocalChanges));
+  }, []);
+
+  useEffect(() => {
+    setLegalLocalDirty(false);
+  }, [configId]);
 
   useEffect(() => {
     if (configId !== "app-program" && configId !== "app-subscriptions") return undefined;
@@ -1522,13 +1534,51 @@ export function ConfigDetailPage() {
   }
 
   async function publishConfig() {
-    if (item.id !== "app-program" && item.id !== "app-subscriptions") {
-      onToast(`${item.name} published`);
+    if (!found) return;
+    const current = found.item;
+    const legalSlugs = CONFIG_LEGAL_PUBLISH_SLUGS[current.id];
+    const usesPublishHandler = Boolean(legalSlugs) || current.id === "web-fs-social";
+    if (usesPublishHandler) {
+      const publish = legalPublishHandlerRef.current;
+      if (!publish) {
+        onToast("Nothing to publish on this page");
+        return;
+      }
+      try {
+        const saved = await publish();
+        if (current.id === "web-fs-social" && Array.isArray(saved)) {
+          setSocialLinks(saved);
+        } else if (current.id === "app-tos" || current.id === "web-fs-tos") {
+          const page = Array.isArray(saved)
+            ? saved.find((row) => row.slug === "terms-and-conditions")
+            : saved;
+          if (page?.blocks?.length) setTosBlocks(page.blocks);
+        } else if (current.id === "web-fs-privacy" && saved?.blocks?.length) {
+          setPrivacyBlocks(saved.blocks);
+        } else if (current.id === "web-fs-guidelines" && saved?.blocks?.length) {
+          setGuidelineBlocks(saved.blocks);
+        } else if (current.id === "app-dpa" && saved?.blocks?.length) {
+          setDpaBlocks(saved.blocks);
+        } else if (current.id === "web-fs-contact" && saved?.blocks?.length) {
+          setContactPageBlocks(saved.blocks);
+        } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
+          setFooterTextBlocks(saved.blocks);
+        }
+        setLegalLocalDirty(false);
+        onToast(`${current.name} published`);
+      } catch (error) {
+        onToast(error?.message || `Could not publish ${current.name.toLowerCase()}`);
+      }
+      return;
+    }
+
+    if (current.id !== "app-program" && current.id !== "app-subscriptions") {
+      onToast(`${current.name} published`);
       return;
     }
 
     try {
-      const isProgram = item.id === "app-program";
+      const isProgram = current.id === "app-program";
       const saved = await saveCoachCheckoutOptions(
         isProgram
           ? {
@@ -1590,8 +1640,6 @@ export function ConfigDetailPage() {
           ? Boolean(String(consultancySettings.consultancyAmount || "").trim())
         : item.id === "app-payment-gateway"
           ? activeGateway?.name ?? false
-          : item.id === "app-tos"
-            ? appTosBlocks.some((entry) => entry.shown)
           : item.id === "app-dpa"
             ? dpaBlocks.some((entry) => entry.shown)
           : item.id === "app-measurement-video"
@@ -1644,7 +1692,7 @@ export function ConfigDetailPage() {
                 ? websiteLinks.length > 0
               : item.id === "web-fs-privacy"
                 ? privacyBlocks.some((entry) => entry.shown)
-              : item.id === "web-fs-tos"
+              : item.id === "web-fs-tos" || item.id === "app-tos"
                 ? tosBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-guidelines"
                 ? guidelineBlocks.some((entry) => entry.shown)
@@ -1848,20 +1896,14 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
-      case "app-tos":
-        return (
-          <AppTosSection
-            blocks={appTosBlocks}
-            setBlocks={setAppTosBlocks}
-            onToast={onToast}
-          />
-        );
       case "app-dpa":
         return (
           <DpaSection
             blocks={dpaBlocks}
             setBlocks={setDpaBlocks}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-measurement-video":
@@ -2021,6 +2063,8 @@ export function ConfigDetailPage() {
             setLinks={setSocialLinks}
             onToast={onToast}
             persistToAppConfig
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "web-fs-links":
@@ -2038,14 +2082,19 @@ export function ConfigDetailPage() {
             blocks={privacyBlocks}
             setBlocks={setPrivacyBlocks}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
+      case "app-tos":
       case "web-fs-tos":
         return (
           <TermsAndConditionsSection
             blocks={tosBlocks}
             setBlocks={setTosBlocks}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "web-fs-guidelines":
@@ -2054,6 +2103,8 @@ export function ConfigDetailPage() {
             blocks={guidelineBlocks}
             setBlocks={setGuidelineBlocks}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "web-fs-contact":
@@ -2068,6 +2119,8 @@ export function ConfigDetailPage() {
               blocks={contactPageBlocks}
               setBlocks={setContactPageBlocks}
               onToast={onToast}
+              registerPublishHandler={registerLegalPublishHandler}
+              onLocalChange={handleLegalLocalChange}
             />
             <ContactDetailsSection
               details={contactDetails}
@@ -2085,6 +2138,8 @@ export function ConfigDetailPage() {
             persistSlug="footer-text"
             pageTitle="Footer text"
             fallbackBlocks={FOOTER_TEXT_BLOCKS}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "web-logo":
@@ -2210,6 +2265,8 @@ export function ConfigDetailPage() {
             blocks={aboutBlocks}
             setBlocks={setAboutBlocks}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "common-google-review":
@@ -2330,7 +2387,6 @@ export function ConfigDetailPage() {
           consultancySettings,
           gateways,
           activeGateway,
-          appTosBlocks,
           dpaBlocks,
           measurementGuide,
           measurementParams,

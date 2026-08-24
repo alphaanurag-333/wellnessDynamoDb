@@ -165,17 +165,6 @@ export function paymentMethodsForGateway(gatewayId) {
   }
 }
 
-export const TOS_CONTENT = {
-  intro:
-    "By creating an account you agree to these terms and to the protocols prescribed by your assigned wellness coach.",
-  bullets: [
-    "Programs are delivered digitally through the IRW app. Session timings are agreed with your coach.",
-    "Program fees are refundable on a pro-rata basis within the first 14 days.",
-    "Your labs, photos and notes are visible only to you and your assigned coach.",
-    "We may update these terms; material changes are notified in the app.",
-  ],
-};
-
 export const MEDICAL_ANSWER_TYPES = [
   { id: "yes_no", label: "Yes / No" },
   { id: "yes_no_text", label: "Yes / No + details" },
@@ -277,14 +266,6 @@ function legalCopyToBlocks(prefix, introTitle, intro, listTitle, bullets) {
     ),
   ];
 }
-
-export const APP_TOS_BLOCKS = legalCopyToBlocks(
-  "intro",
-  "Agreement",
-  TOS_CONTENT.intro,
-  "Key terms",
-  TOS_CONTENT.bullets
-);
 
 export const APP_DPA_BLOCKS = legalCopyToBlocks(
   "intro",

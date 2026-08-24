@@ -1,7 +1,7 @@
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { LegalSectionsEditor } from "./LegalSectionsEditor.jsx";
 
-export function TermsAndConditionsSection({ blocks, setBlocks, onToast }) {
+export function TermsAndConditionsSection({ blocks, setBlocks, onToast, registerPublishHandler, onLocalChange }) {
   return (
     <LegalSectionsEditor
       slug="terms-and-conditions"
@@ -12,6 +12,8 @@ export function TermsAndConditionsSection({ blocks, setBlocks, onToast }) {
       blocks={blocks}
       setBlocks={setBlocks}
       onToast={onToast}
+      registerPublishHandler={registerPublishHandler}
+      onLocalChange={onLocalChange}
     />
   );
 }

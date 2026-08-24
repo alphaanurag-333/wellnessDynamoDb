@@ -102,10 +102,21 @@ export function mapLegalPage(page = {}, fallbackBlocks = []) {
     slug: page.slug || "",
     title: String(page.title || "").trim(),
     status: page.status || "active",
-    content: page.content || "",
     blocks,
   };
 }
+
+/** Config detail IDs → static page slug(s) published together. */
+export const CONFIG_LEGAL_PUBLISH_SLUGS = {
+  "app-tos": ["terms-and-conditions"],
+  "web-fs-tos": ["terms-and-conditions"],
+  "web-fs-privacy": ["privacy-policy"],
+  "web-fs-guidelines": ["community-guideline"],
+  "app-dpa": ["app-dpa"],
+  "web-fs-contact": ["contact-us"],
+  "web-fs-text": ["footer-text"],
+  "common-about": ["about-us", "our-mission", "our-vision", "our-goal"],
+};
 
 export async function getLegalPage(slug, fallbackBlocks = []) {
   try {

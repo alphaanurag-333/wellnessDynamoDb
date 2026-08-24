@@ -2,6 +2,7 @@ const express = require("express");
 
 const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
+const { optionalAdminFile } = require("../../middleware/authMultipart");
 const {
   listSopsController,
   getSopByIdController,
@@ -12,10 +13,28 @@ const {
 
 const router = express.Router();
 
+// Coaches (and other staff) may view; create / edit / delete are Admin-only (enforced in controllers).
 router.get("/", protectAccount, authorizeStaff("console.sop.view", { admin: "sops.view" }), listSopsController);
 router.get("/:id", protectAccount, authorizeStaff("console.sop.view", { admin: "sops.view" }), getSopByIdController);
-router.post("/", protectAccount, authorizeStaff("console.sop.create", { admin: "sops.edit" }), createSopController);
-router.patch("/:id", protectAccount, authorizeStaff("console.sop.edit", { admin: "sops.edit" }), updateSopController);
-router.delete("/:id", protectAccount, authorizeStaff("console.sop.delete", { admin: "sops.delete" }), deleteSopController);
+router.post(
+  "/",
+  protectAccount,
+  authorizeStaff("console.sop.create", { admin: "sops.edit" }),
+  optionalAdminFile,
+  createSopController
+);
+router.patch(
+  "/:id",
+  protectAccount,
+  authorizeStaff("console.sop.edit", { admin: "sops.edit" }),
+  optionalAdminFile,
+  updateSopController
+);
+router.delete(
+  "/:id",
+  protectAccount,
+  authorizeStaff("console.sop.delete", { admin: "sops.delete" }),
+  deleteSopController
+);
 
 module.exports = router;

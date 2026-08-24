@@ -6,8 +6,8 @@ const SLUG_ALIASES = {
   "terms": ["terms-and-conditions", "terms-of-service"],
   "terms-of-service": ["terms-and-conditions", "terms"],
   "terms-and-conditions": ["terms-of-service", "terms"],
-  "app-tos": ["app-terms-and-conditions"],
-  "app-terms-and-conditions": ["app-tos"],
+  "app-tos": ["terms-and-conditions"],
+  "app-terms-and-conditions": ["terms-and-conditions"],
   "app-dpa": ["data-processing-agreement", "dpa"],
   "data-processing-agreement": ["app-dpa", "dpa"],
   "dpa": ["app-dpa", "data-processing-agreement"],
@@ -70,10 +70,16 @@ function normalizeLegalAsset(asset, fallback) {
   };
 }
 
+function stripEditorArtifacts(html) {
+  return String(html || "")
+    .replace(/\s*data-list-item-id="[^"]*"/gi, "")
+    .trim();
+}
+
 function normalizeLegalVersion(row, index) {
   if (!row || typeof row !== "object") return null;
   const n = Number(row.n || index + 1);
-  const text = String(row.text ?? "").trim();
+  const text = stripEditorArtifacts(row.text ?? "");
   return {
     n: Number.isFinite(n) && n > 0 ? Math.floor(n) : index + 1,
     date: String(row.date || "").trim() || todayLabel(),
@@ -177,7 +183,9 @@ function compileLegalBlocksToHtml(blocks, surface = "web") {
       const text = liveBlockText(block, resolvedSurface);
       const body = looksLikeHtml(text) ? text : text ? `<p>${escapeHtml(text)}</p>` : "";
       if (!body) return "";
-      if (block.id === "intro") return body;
+      if (block.id === "intro" || block.id === "copyright" || block.id === "secondary") {
+        return body;
+      }
       return `<h2>${escapeHtml(block.title)}</h2>\n${body}`;
     })
     .filter(Boolean)

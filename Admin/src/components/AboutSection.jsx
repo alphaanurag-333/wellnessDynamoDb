@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   blocksFromSections,
   getLegalPage,
@@ -178,17 +178,42 @@ function saveBlocks(section) {
   ]);
 }
 
-export function AboutSection({ setBlocks, onToast }) {
+export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLocalChange }) {
   const [loading, setLoading] = useState(true);
-  const [busySlug, setBusySlug] = useState("");
   const [editingSlug, setEditingSlug] = useState("");
   const [draft, setDraft] = useState({ title: "", headline: "", body: "" });
   const [sections, setSections] = useState(() => ABOUT_STATIC_PAGES.map(emptySection));
+  const savedSnapshotRef = useRef("");
+  const sectionsRef = useRef(sections);
+
+  sectionsRef.current = sections;
 
   const syncPreview = useCallback((next) => {
     if (typeof setBlocks !== "function") return;
     setBlocks(previewBlocksFromSections(next));
   }, [setBlocks]);
+
+  const snapshotSections = useCallback((rows) => JSON.stringify(
+    rows.map((section) => ({
+      slug: section.slug,
+      title: section.title,
+      headline: section.headline,
+      live: section.live,
+      body: section.body,
+    })),
+  ), []);
+
+  const syncLocalDirty = useCallback((next) => {
+    const dirty = snapshotSections(next) !== savedSnapshotRef.current;
+    onLocalChange?.({ hasLocalChanges: dirty });
+  }, [onLocalChange, snapshotSections]);
+
+  const applySavedSections = useCallback((next) => {
+    setSections(next);
+    syncPreview(next);
+    savedSnapshotRef.current = snapshotSections(next);
+    onLocalChange?.({ hasLocalChanges: false });
+  }, [onLocalChange, snapshotSections, syncPreview]);
 
   const loadSections = useCallback(async () => {
     setLoading(true);
@@ -197,21 +222,44 @@ export function AboutSection({ setBlocks, onToast }) {
         ABOUT_STATIC_PAGES.map((page) => getLegalPage(page.slug, page.fallbackBlocks))
       );
       const next = ABOUT_STATIC_PAGES.map((page, index) => parseLoadedSection(page, pages[index] || {}));
-      setSections(next);
-      syncPreview(next);
+      applySavedSections(next);
     } catch (error) {
       onToast(error?.message || "Failed to load about sections");
-      const fallback = ABOUT_STATIC_PAGES.map(emptySection);
-      setSections(fallback);
-      syncPreview(fallback);
+      applySavedSections(ABOUT_STATIC_PAGES.map(emptySection));
     } finally {
       setLoading(false);
     }
-  }, [onToast, syncPreview]);
+  }, [applySavedSections, onToast]);
 
   useEffect(() => {
     loadSections();
   }, [loadSections]);
+
+  const applySavedSectionsRef = useRef(applySavedSections);
+  applySavedSectionsRef.current = applySavedSections;
+
+  useEffect(() => {
+    if (!registerPublishHandler) return undefined;
+    registerPublishHandler(async () => {
+      const current = sectionsRef.current;
+      const savedPages = await Promise.all(
+        current.map((section) => saveLegalPage(section.slug, {
+          title: section.title,
+          status: section.live ? "active" : "inactive",
+          blocks: saveBlocks(section),
+        })),
+      );
+      const next = current.map((section, index) => ({
+        ...parseLoadedSection(
+          ABOUT_STATIC_PAGES.find((page) => page.slug === section.slug) || section,
+          savedPages[index] || {},
+        ),
+        live: savedPages[index]?.status !== "inactive",
+      }));
+      applySavedSectionsRef.current(next);
+      return savedPages;
+    });
+  }, [registerPublishHandler]);
 
   function cancelEdit() {
     setEditingSlug("");
@@ -227,39 +275,14 @@ export function AboutSection({ setBlocks, onToast }) {
     });
   }
 
-  async function persist(section, patch, successMessage) {
+  function applyLocal(section, patch, successMessage) {
     const nextSection = { ...section, ...patch };
-    const previous = sections;
     const next = sections.map((row) => (row.slug === section.slug ? nextSection : row));
     setSections(next);
     syncPreview(next);
-    setBusySlug(section.slug);
-    try {
-      const saved = await saveLegalPage(section.slug, {
-        title: nextSection.title,
-        status: nextSection.live ? "active" : "inactive",
-        blocks: saveBlocks(nextSection),
-      });
-      const resolved = {
-        ...parseLoadedSection(
-          ABOUT_STATIC_PAGES.find((page) => page.slug === section.slug) || section,
-          saved,
-        ),
-        live: saved.status !== "inactive",
-      };
-      const resolvedList = next.map((row) => (row.slug === section.slug ? { ...nextSection, ...resolved } : row));
-      setSections(resolvedList);
-      syncPreview(resolvedList);
-      if (successMessage) onToast(successMessage);
-      return true;
-    } catch (error) {
-      setSections(previous);
-      syncPreview(previous);
-      onToast(error?.message || `Failed to save ${section.label.toLowerCase()}`);
-      return false;
-    } finally {
-      setBusySlug("");
-    }
+    syncLocalDirty(next);
+    if (successMessage) onToast(successMessage);
+    return true;
   }
 
   async function saveEdit(section) {
@@ -278,20 +301,19 @@ export function AboutSection({ setBlocks, onToast }) {
       onToast("Description is required");
       return;
     }
-    const ok = await persist(section, { title, headline, body }, `${section.label} saved`);
+    const ok = applyLocal(section, { title, headline, body }, `${section.label} updated`);
     if (ok) cancelEdit();
   }
 
-  async function toggleLive(section) {
-    if (busySlug) return;
-    await persist(
+  function toggleLive(section) {
+    applyLocal(
       section,
       { live: !section.live },
       `${section.label} ${section.live ? "hidden" : "is live"}`
     );
   }
 
-  const locked = loading || Boolean(busySlug);
+  const locked = loading;
 
   return (
     <div className="ua-cfg-privacy ua-cfg-about">

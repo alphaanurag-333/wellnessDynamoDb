@@ -1871,15 +1871,6 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
-    case "app-tos":
-      return (
-        <LegalTextPreview
-          title="Terms of service"
-          blocks={previewState.appTosBlocks ?? []}
-          surface={surface}
-          item={item}
-        />
-      );
     case "app-dpa":
       return (
         <LegalTextPreview
@@ -2036,6 +2027,7 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-tos":
     case "web-fs-tos":
       return (
         <LegalBlocksPreview
@@ -2399,7 +2391,7 @@ export function previewHintForItem(item) {
   if (item.id === "web-fs-links") {
     return "Edit the links, then open Preview";
   }
-  if (item.id === "web-fs-privacy" || item.id === "web-fs-tos" || item.id === "web-fs-guidelines" || item.id === "web-fs-text") {
+  if (item.id === "web-fs-privacy" || item.id === "web-fs-tos" || item.id === "app-tos" || item.id === "web-fs-guidelines" || item.id === "web-fs-text") {
     return "Edit the copy, then open Preview";
   }
   if (item.id === "web-fs-contact") {
@@ -2408,7 +2400,7 @@ export function previewHintForItem(item) {
   if (item.id === "web-location") {
     return "Edit the locations, then open Preview";
   }
-  if (item.id === "app-tos" || item.id === "app-dpa" || item.tags?.includes("Text")) {
+  if (item.id === "app-dpa" || item.tags?.includes("Text")) {
     return "Edit the copy, then open Preview";
   }
   if (item.upload || item.tags?.includes("Upload")) {

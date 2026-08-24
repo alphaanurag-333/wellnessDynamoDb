@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getAppSocialLinks, saveAppSocialLinks } from "../api/socialLinksApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import {
@@ -46,25 +46,49 @@ export function SocialLinksSection({
   onToast,
   defaultIcon,
   persistToAppConfig = false,
+  registerPublishHandler,
+  onLocalChange,
   labelPlaceholder = "Label · e.g. Facebook",
   urlPlaceholder = "URL · e.g. facebook.com/irwellness",
 }) {
+  const deferPublish = persistToAppConfig && Boolean(registerPublishHandler);
   const [loading, setLoading] = useState(persistToAppConfig);
   const [busy, setBusy] = useState(false);
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+  const savedSnapshotRef = useRef("");
+  const linksRef = useRef(links);
   const [editingId, setEditingId] = useState(null);
   const [draftUrl, setDraftUrl] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [newDraft, setNewDraft] = useState({ label: "", url: "" });
+
+  linksRef.current = links;
+
+  const syncLocalDirty = useCallback((next) => {
+    const dirty = JSON.stringify(next) !== savedSnapshotRef.current;
+    setHasLocalChanges(dirty);
+    onLocalChange?.({ hasLocalChanges: dirty });
+  }, [onLocalChange]);
+
+  const applySavedLinks = useCallback((next) => {
+    setLinks(next);
+    savedSnapshotRef.current = JSON.stringify(next);
+    setHasLocalChanges(false);
+    onLocalChange?.({ hasLocalChanges: false });
+  }, [onLocalChange, setLinks]);
+
+  const applySavedLinksRef = useRef(applySavedLinks);
+  applySavedLinksRef.current = applySavedLinks;
 
   const loadLinks = useCallback(async () => {
     if (!persistToAppConfig) return;
     setLoading(true);
     try {
       const next = await getAppSocialLinks();
-      setLinks(next);
+      applySavedLinks(next);
     } catch (error) {
       onToast(error?.message || "Failed to load social links");
-      setLinks(SOCIAL_APP_CONFIG_FIELDS.map((field) => ({
+      applySavedLinks(SOCIAL_APP_CONFIG_FIELDS.map((field) => ({
         id: field.id,
         label: field.label,
         icon: field.icon,
@@ -73,24 +97,31 @@ export function SocialLinksSection({
     } finally {
       setLoading(false);
     }
-  }, [onToast, persistToAppConfig, setLinks]);
+  }, [applySavedLinks, onToast, persistToAppConfig]);
 
   useEffect(() => {
     loadLinks();
   }, [loadLinks]);
 
-  function startEdit(entry) {
-    setShowAdd(false);
-    setEditingId(entry.id);
-    setDraftUrl(asCopyString(entry.url));
-  }
+  useEffect(() => {
+    if (!deferPublish) return undefined;
+    registerPublishHandler(async () => {
+      const saved = await saveAppSocialLinks(linksRef.current);
+      applySavedLinksRef.current(saved);
+      return saved;
+    });
+  }, [deferPublish, registerPublishHandler]);
 
-  function cancelEdit() {
-    setEditingId(null);
-    setDraftUrl("");
+  function applyLocal(next) {
+    setLinks(next);
+    syncLocalDirty(next);
+    return true;
   }
 
   async function persist(next, message) {
+    if (deferPublish) {
+      return applyLocal(next);
+    }
     if (!persistToAppConfig) {
       setLinks(next);
       if (message) onToast(message);
@@ -110,6 +141,17 @@ export function SocialLinksSection({
     }
   }
 
+  function startEdit(entry) {
+    setShowAdd(false);
+    setEditingId(entry.id);
+    setDraftUrl(asCopyString(entry.url));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setDraftUrl("");
+  }
+
   async function saveEdit(id) {
     const stored = toStoredSocialUrl(draftUrl);
     if (stored === null || !String(draftUrl || "").trim()) {
@@ -119,7 +161,7 @@ export function SocialLinksSection({
     const next = links.map((entry) => (
       entry.id === id ? { ...entry, url: toDisplaySocialUrl(stored) } : entry
     ));
-    const ok = await persist(next, "Link saved");
+    const ok = await persist(next);
     if (ok) cancelEdit();
   }
 
@@ -143,7 +185,7 @@ export function SocialLinksSection({
       icon: defaultIcon || socialIconForLabel(label),
     };
 
-    const ok = await persist([...links, nextEntry], `${nextEntry.label} added`);
+    const ok = await persist([...links, nextEntry]);
     if (ok) {
       setNewDraft({ label: "", url: "" });
       setShowAdd(false);
@@ -153,7 +195,7 @@ export function SocialLinksSection({
   async function removeLink(entry) {
     if (persistToAppConfig) return;
     const next = links.filter((row) => row.id !== entry.id);
-    const ok = await persist(next, `${asCopyString(entry.label)} removed`);
+    const ok = await persist(next);
     if (ok && editingId === entry.id) cancelEdit();
   }
 
@@ -162,14 +204,21 @@ export function SocialLinksSection({
 
   return (
     <div className="ua-cfg-sm">
+    {deferPublish && hasLocalChanges ? (
+      <p className="ua-cfg-panel__sub ua-cfg-panel__sub--warn">
+        Unsaved changes — stored in this session only. Click <strong>Publish</strong> to save to the site, or refresh to discard.
+      </p>
+    ) : null}
     <Panel
       title="Links"
       subtitle={
         loading
           ? "Loading social links…"
-          : persistToAppConfig
-            ? "Shown in the website footer. Facebook, Instagram, YouTube, and LinkedIn are saved to App Config."
-            : "Shown in the website footer."
+          : deferPublish
+            ? "Shown in the website footer. Edits stay local until you publish."
+            : persistToAppConfig
+              ? "Shown in the website footer. Facebook, Instagram, YouTube, and LinkedIn are saved to App Config."
+              : "Shown in the website footer."
       }
       actions={
         loading || !canAdd ? null : (

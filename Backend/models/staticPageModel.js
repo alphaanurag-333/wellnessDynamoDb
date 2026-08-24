@@ -71,6 +71,32 @@ function withResolvedBlocks(row, fallbackBlocks) {
   };
 }
 
+function toAdminPagePayload(row, fallbackBlocks) {
+  const resolved = withResolvedBlocks(row, fallbackBlocks);
+  if (!resolved) return null;
+
+  return {
+    id: resolved.id,
+    slug: resolved.slug,
+    title: resolved.title,
+    status: resolved.status,
+    blocks: resolved.blocks,
+    createdAt: resolved.createdAt,
+    updatedAt: resolved.updatedAt,
+  };
+}
+
+function toPublicPagePayload(row, surface = "web") {
+  const resolved = withResolvedBlocks(row);
+  if (!resolved) return null;
+  const compiled = compileLegalBlocksToHtml(resolved.blocks, surface);
+  return {
+    title: resolved.title,
+    slug: resolved.slug,
+    content: compiled || String(resolved.content || "").trim(),
+  };
+}
+
 async function listPages() {
   const { items } = await listByPartitionKey({
     tableName: TABLE,
@@ -208,6 +234,8 @@ module.exports = {
   getPageBySlug,
   getPageBySlugWithAliases,
   withResolvedBlocks,
+  toAdminPagePayload,
+  toPublicPagePayload,
   createPage,
   updatePage,
   deletePage,

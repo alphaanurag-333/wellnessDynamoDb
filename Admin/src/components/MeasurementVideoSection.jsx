@@ -7,6 +7,7 @@ import {
   saveMeasurementGuideLive,
   saveMeasurementGuideVideo,
   saveMeasurementParameterImage,
+  saveMeasurementParameterShown,
   validateMeasurementImageFile,
   validateMeasurementVideoFile,
 } from "../api/measurementVideoApi.js";
@@ -281,16 +282,16 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onChange
   );
 }
 
-function ParametersPanel({ parameters, busy, onUpload }) {
-  const shownCount = parameters.filter((entry) => entry.hasImage).length;
+function ParametersPanel({ parameters, busy, onUpload, onToggleShown }) {
+  const shownCount = parameters.filter((entry) => entry.shown).length;
   const inputRefs = useRef({});
 
   return (
     <Panel
       className="ua-cfg-mv-params"
       title="Internal parameters"
-      subtitle="Reference images shown beside each measurement in the app. Images only — labels are fixed."
-      actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} have images</span>}
+      subtitle="Reference images shown beside each measurement in the app. Toggle off to hide the info icon for that field."
+      actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} shown in app</span>}
     >
       <div className="ua-cfg-mv-params__grid">
         {parameters.map((entry) => (
@@ -322,10 +323,27 @@ function ParametersPanel({ parameters, busy, onUpload }) {
               }}
             />
             <div className="ua-cfg-mv-param-card__foot">
-              <span className="ua-cfg-mv-param-card__name">{entry.name}</span>
-              <span className={`ua-cfg-mv-param-card__shown${entry.hasImage ? " is-on" : ""}`}>
-                {entry.hasImage ? "Ready" : "No image"}
-              </span>
+              <div className="ua-cfg-mv-param-card__meta">
+                <span className="ua-cfg-mv-param-card__name">{entry.name}</span>
+                <span className={`ua-cfg-mv-param-card__ready${entry.hasImage ? " is-on" : ""}`}>
+                  {entry.hasImage ? "Image ready" : "No image"}
+                </span>
+              </div>
+              <div className="ua-cfg-mv-param-card__live">
+                <span className={`ua-cfg-mv-param-card__shown${entry.shown ? " is-on" : ""}`}>
+                  {entry.shown ? "Shown" : "Hidden"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
+                  aria-pressed={entry.shown}
+                  aria-label={entry.shown ? `Hide ${entry.name} info icon` : `Show ${entry.name} info icon`}
+                  disabled={busy}
+                  onClick={() => onToggleShown(entry, !entry.shown)}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
             </div>
           </article>
         ))}
@@ -413,6 +431,12 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
               }
               runSave(() => saveMeasurementParameterImage(entry.field, file), `${entry.name} image attached`);
             }}
+            onToggleShown={(entry, shown) =>
+              runSave(
+                () => saveMeasurementParameterShown(entry.shownField, shown),
+                shown ? `${entry.name} info icon shown` : `${entry.name} info icon hidden`,
+              )
+            }
           />
         </>
       )}

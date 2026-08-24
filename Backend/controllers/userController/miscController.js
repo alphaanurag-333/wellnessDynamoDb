@@ -7,8 +7,7 @@ const {
   getDropdownBySlug,
   toPublicList,
 } = require("../../models/configDropdownModel");
-const { getPageBySlugWithAliases, slugify, withResolvedBlocks } = require("../../models/staticPageModel");
-const { compileLegalBlocksToHtml } = require("../../utils/legalBlocks");
+const { getPageBySlugWithAliases, slugify, toPublicPagePayload } = require("../../models/staticPageModel");
 const { listClientTestimonials } = require("../../models/clientTestimonials");
 const { listProgramTestimonials } = require("../../models/programTestimonialModel");
 const { listRealPeopleTestimonials } = require("../../models/realPeopleTestimonialModel");
@@ -198,8 +197,8 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
   const raw = String(req.params.slug || "").trim();
   if (!raw) throw new AppError("slug is required", 400);
   const slug = slugify(raw) || raw.toLowerCase().trim();
-  const page = await getPageBySlugWithAliases(slug);
-  if (!page || String(page.status || "").toLowerCase() !== "active") {
+  const row = await getPageBySlugWithAliases(slug);
+  if (!row || String(row.status || "").toLowerCase() !== "active") {
     throw new AppError("Page not found", 404);
   }
   const surface =
@@ -208,16 +207,9 @@ exports.getStaticPageBySlug = asyncHandler(async (req, res) => {
       .trim() === "app"
       ? "app"
       : "web";
-  const resolved = withResolvedBlocks(page);
-  // Always compile from live blocks so panel edits show up even if stored
-  // `content` lagged behind (website already prefers blocks; app used content).
-  const compiled = compileLegalBlocksToHtml(resolved.blocks, surface);
   return res.status(200).json({
     status: true,
-    page: {
-      ...resolved,
-      content: compiled || String(resolved.content || "").trim(),
-    },
+    page: toPublicPagePayload(row, surface),
   });
 });
 

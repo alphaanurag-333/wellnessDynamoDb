@@ -4,7 +4,7 @@ const {
   listPages,
   getPageById,
   getPageBySlugWithAliases,
-  withResolvedBlocks,
+  toAdminPagePayload,
   createPage,
   updatePage,
   deletePage,
@@ -28,7 +28,7 @@ exports.getPageByIdController = asyncHandler(async (req, res) => {
   }
   return res.status(200).json({
     status: true,
-    data: withResolvedBlocks(row),
+    data: toAdminPagePayload(row),
   });
 });
 
@@ -39,7 +39,7 @@ exports.getPageBySlugController = asyncHandler(async (req, res) => {
   if (!row) throw new AppError("Page not found", 404);
   return res.status(200).json({
     status: true,
-    data: withResolvedBlocks(row),
+    data: toAdminPagePayload(row),
   });
 });
 
@@ -82,7 +82,7 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
       return res.status(201).json({
         status: true,
         message: "Page created successfully",
-        data: withResolvedBlocks(row),
+        data: toAdminPagePayload(row),
       });
     }
 
@@ -95,7 +95,7 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
     return res.status(200).json({
       status: true,
       message: "Page updated successfully",
-      data: withResolvedBlocks(row),
+      data: toAdminPagePayload(row),
     });
   } catch (err) {
     if (err?.code === "DUPLICATE_SLUG") throw new AppError("Slug already exists", 409);
@@ -123,7 +123,7 @@ exports.createPageController = asyncHandler(async (req, res) => {
     return res.status(201).json({
       status: true,
       message: "Page created successfully",
-      data: row,
+      data: toAdminPagePayload(row),
     });
   } catch (err) {
     if (err?.code === "DUPLICATE_SLUG") {
@@ -173,7 +173,7 @@ exports.updatePageController = asyncHandler(async (req, res) => {
     return res.status(200).json({
       status: true,
       message: "Page updated successfully",
-      data: row,
+      data: toAdminPagePayload(row),
     });
   } catch (err) {
     if (err?.code === "NOT_FOUND") throw new AppError("Page not found", 404);
