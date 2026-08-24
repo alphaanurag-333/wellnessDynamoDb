@@ -14,6 +14,25 @@ const STATUS = new Set(["active", "inactive"]);
 const RULE_EFFECTS = new Set(["allow", "deny"]);
 const POLICY_EFFECTS = new Set(["allow", "deny", "mixed"]);
 const TARGET_TYPES = new Set(["role", "member"]);
+const POLICY_NAME_MAX_LEN = 40;
+const POLICY_DESC_MAX_LEN = 80;
+
+function normalizePolicyName(value) {
+  const name = String(value || "").trim();
+  if (!name) throw new Error("Policy name is required");
+  if (name.length > POLICY_NAME_MAX_LEN) {
+    throw new Error(`Policy name must be ${POLICY_NAME_MAX_LEN} characters or fewer`);
+  }
+  return name;
+}
+
+function normalizePolicyDescription(value) {
+  const description = String(value || "").trim();
+  if (description.length > POLICY_DESC_MAX_LEN) {
+    throw new Error(`Description must be ${POLICY_DESC_MAX_LEN} characters or fewer`);
+  }
+  return description;
+}
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).trim().toLowerCase();
@@ -255,11 +274,12 @@ async function createAccessPolicy({
 }) {
   const now = new Date().toISOString();
   const storedRules = normalizeStoredRules(rules, { featureId, effect });
-  const fields = policyFieldsFromRules(storedRules, description);
+  const nextName = normalizePolicyName(name);
+  const fields = policyFieldsFromRules(storedRules, normalizePolicyDescription(description));
   const item = {
     id: uuidv4(),
-    name: String(name || "").trim(),
-    slug: normalizeSlug(name),
+    name: nextName,
+    slug: normalizeSlug(nextName),
     ...fields,
     status: normalizeStatus(status),
     attachments: [],
@@ -297,9 +317,11 @@ async function updateAccessPolicy(id, updates) {
   const current = await getAccessPolicyRecord(id);
   if (!current) return null;
   const nextName =
-    updates?.name !== undefined ? String(updates.name || "").trim() : current.name;
+    updates?.name !== undefined ? normalizePolicyName(updates.name) : current.name;
   const nextDescription =
-    updates?.description !== undefined ? String(updates.description || "").trim() : current.description || "";
+    updates?.description !== undefined
+      ? normalizePolicyDescription(updates.description)
+      : current.description || "";
   const nextAttachments =
     updates?.attachments !== undefined
       ? (Array.isArray(updates.attachments) ? updates.attachments : []).map(normalizeAttachment)

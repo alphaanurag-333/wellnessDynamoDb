@@ -34,9 +34,14 @@ import {
   DEFAULT_VIEWS,
   PERM_ACTS,
   PERM_CATALOG,
+  POLICY_CARD_ATTACHMENT_LIMIT,
+  POLICY_CARD_RULE_LIMIT,
+  POLICY_DESC_MAX_LEN,
+  POLICY_NAME_MAX_LEN,
   ROLE_META,
   ROLE_ORDER,
   TOTAL_PERM_SLOTS,
+  clipPolicyText,
   cellKind,
   cloneGrants,
   copyRoleGrants,
@@ -246,9 +251,52 @@ function editorRulesFromPolicy(policy) {
   ];
 }
 
+function PolicyField({
+  label,
+  value,
+  max,
+  placeholder,
+  multiline = false,
+  autoFocus = false,
+  onChange,
+}) {
+  const count = String(value || "").length;
+  return (
+    <label className="ua-ac-field">
+      <span className="ua-ac-field__label-row">
+        <span className="ua-ac-field__label">{label}</span>
+        <span className={`ua-ac-field__count${count >= max ? " is-limit" : ""}`}>
+          {count}/{max}
+        </span>
+      </span>
+      {multiline ? (
+        <textarea
+          className="ua-ac-field__input ua-ac-field__textarea"
+          placeholder={placeholder}
+          value={value}
+          maxLength={max}
+          rows={3}
+          onChange={(event) => onChange(clipPolicyText(event.target.value, max))}
+        />
+      ) : (
+        <input
+          className="ua-ac-field__input"
+          placeholder={placeholder}
+          value={value}
+          maxLength={max}
+          autoFocus={autoFocus}
+          onChange={(event) => onChange(clipPolicyText(event.target.value, max))}
+        />
+      )}
+    </label>
+  );
+}
+
 function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
-  const [name, setName] = useState(policy?.name || "");
-  const [description, setDescription] = useState(policy?.description || "");
+  const [name, setName] = useState(() => clipPolicyText(policy?.name || "", POLICY_NAME_MAX_LEN));
+  const [description, setDescription] = useState(() =>
+    clipPolicyText(policy?.description || "", POLICY_DESC_MAX_LEN),
+  );
   const [rules, setRules] = useState(() => editorRulesFromPolicy(policy));
   const isEditing = Boolean(policy);
   const canSubmit = Boolean(name.trim()) && rules.every((rule) => rule.featureId && rule.actions.length) && !busy;
@@ -286,25 +334,22 @@ function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
         <p className="ua-ac-modal__body">
           Mix allow and deny rules in one bundle. Deny beats the role baseline; a personal override still wins.
         </p>
-        <label className="ua-ac-field">
-          <span className="ua-ac-field__label">Policy name</span>
-          <input
-            className="ua-ac-field__input"
-            placeholder="Policy name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            autoFocus
-          />
-        </label>
-        <label className="ua-ac-field">
-          <span className="ua-ac-field__label">Description</span>
-          <input
-            className="ua-ac-field__input"
-            placeholder="Optional — shown on the policy card"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </label>
+        <PolicyField
+          label="Policy name"
+          value={name}
+          max={POLICY_NAME_MAX_LEN}
+          placeholder="e.g. Block dashboard export"
+          autoFocus
+          onChange={setName}
+        />
+        <PolicyField
+          label="Description"
+          value={description}
+          max={POLICY_DESC_MAX_LEN}
+          placeholder="Optional — shown on the policy card"
+          multiline
+          onChange={setDescription}
+        />
 
         {rules.map((rule, index) => {
           const selected = featureMeta(rule.featureId);
@@ -384,7 +429,7 @@ function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
             return (
               <div key={rule.key} className="ua-policy-card__rule">
                 <span className={`ua-rule-badge ua-rule-badge--${rule.effect}`}>{rule.effect.toUpperCase()}</span>
-                <span>{`${rule.actions.join(" / ")} · ${selected.featureName}`}</span>
+                <span className="ua-policy-card__rule-text">{`${rule.actions.join(" / ")} · ${selected.featureName}`}</span>
               </div>
             );
           })}
@@ -399,8 +444,8 @@ function CreatePolicyModal({ policy, busy, onClose, onSubmit }) {
             disabled={!canSubmit}
             onClick={() =>
               onSubmit({
-                name: name.trim(),
-                description: description.trim(),
+                name: clipPolicyText(name.trim(), POLICY_NAME_MAX_LEN),
+                description: clipPolicyText(description.trim(), POLICY_DESC_MAX_LEN),
                 rules: rules.map((rule) => ({
                   effect: rule.effect,
                   featureId: rule.featureId,
@@ -599,7 +644,7 @@ function PoliciesTab({ onToast }) {
   return (
     <>
       <div className="ua-section-bar">
-        <span>Reusable allow/deny bundles. Attach one to a whole role or a single member; a policy deny beats the role baseline but a personal override still wins.</span>
+        <span className="ua-section-bar__copy">Reusable allow/deny bundles. Attach one to a whole role or a single member; a policy deny beats the role baseline but a personal override still wins.</span>
         <OrangeButton onClick={() => setEditorPolicy(null)}>+ Create policy</OrangeButton>
       </div>
 
@@ -614,19 +659,26 @@ function PoliciesTab({ onToast }) {
       {!loading && !error ? (
         policies.length ? (
           <div className="ua-policy-grid">
-            {policies.map((policy) => (
+            {policies.map((policy) => {
+              const visibleRules = (policy.rules || []).slice(0, POLICY_CARD_RULE_LIMIT);
+              const extraRules = Math.max(0, (policy.rules || []).length - visibleRules.length);
+              const visibleAttachments = (policy.attachments || []).slice(0, POLICY_CARD_ATTACHMENT_LIMIT);
+              const extraAttachments = Math.max(0, (policy.attachments || []).length - visibleAttachments.length);
+              return (
               <div key={policy.id} className="ua-policy-card">
                 <div className="ua-policy-card__head">
                   <div className="ua-policy-card__title-block">
-                    <div className="ua-policy-card__name">{policy.name}</div>
-                    {policy.desc ? <div className="ua-policy-card__desc">{policy.desc}</div> : null}
+                    <div className="ua-policy-card__name" title={policy.name}>{policy.name}</div>
+                    {policy.desc ? (
+                      <div className="ua-policy-card__desc" title={policy.desc}>{policy.desc}</div>
+                    ) : null}
                   </div>
                   <span className={`ua-policy-card__scope ua-policy-card__scope--${String(policy.effect || policy.scope || "deny").toLowerCase()}`}>
                     {policy.scope}
                   </span>
                 </div>
                 <div className="ua-policy-card__rules">
-                  {(policy.rules || []).map((rule, index) => (
+                  {visibleRules.map((rule, index) => (
                     <div key={`${policy.id}-${rule.featureId}-${rule.effect}-${rule.action}-${index}`} className="ua-policy-card__rule">
                       <span className={`ua-rule-badge ua-rule-badge--${String(rule.type || rule.effect || "deny").toLowerCase()}`}>
                         {rule.type || String(rule.effect || "deny").toUpperCase()}
@@ -634,17 +686,21 @@ function PoliciesTab({ onToast }) {
                       <span className="ua-policy-card__rule-text">{rule.text}</span>
                     </div>
                   ))}
+                  {extraRules ? <div className="ua-policy-card__more">+{extraRules} more rule{extraRules === 1 ? "" : "s"}</div> : null}
                 </div>
                 <div className="ua-policy-card__foot">
                   <div className="ua-policy-card__attachments">
                     <span className="ua-policy-card__attachments-label">Attached to</span>
                     <div className="ua-policy-card__chips">
-                      {policy.attachments?.length ? (
-                        policy.attachments.map((attachment) => (
-                          <span key={attachment.id} className="ua-policy-card__chip">
-                            {policyAttachmentLabel(attachment)}
-                          </span>
-                        ))
+                      {visibleAttachments.length ? (
+                        <>
+                          {visibleAttachments.map((attachment) => (
+                            <span key={attachment.id} className="ua-policy-card__chip" title={policyAttachmentLabel(attachment)}>
+                              {policyAttachmentLabel(attachment)}
+                            </span>
+                          ))}
+                          {extraAttachments ? <span className="ua-policy-card__more-chip">+{extraAttachments}</span> : null}
+                        </>
                       ) : (
                         <span className="ua-policy-card__empty">Nobody yet</span>
                       )}
@@ -663,7 +719,8 @@ function PoliciesTab({ onToast }) {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="ua-table-card ua-policy-empty">
@@ -702,7 +759,7 @@ function PoliciesTab({ onToast }) {
           <div className="ua-dialog" role="dialog" aria-modal="true">
             <div className="ua-dialog__title">Delete policy?</div>
             <p className="ua-dialog__body">
-              This will remove <b>{deleteTarget.name}</b> and all of its role/member attachments.
+              This will remove <b title={deleteTarget.name}>{deleteTarget.name}</b> and all of its role/member attachments.
             </p>
             <div className="ua-dialog__actions">
               <button

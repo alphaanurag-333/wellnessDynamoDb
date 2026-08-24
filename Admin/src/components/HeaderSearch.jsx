@@ -174,7 +174,8 @@ export function HeaderSearch() {
       }
     }
 
-    if (!q) return hits.slice(0, 8);
+    // Empty query shows all visible nav pages (incl. SOP / Contact Inquiries).
+    if (!q) return hits;
     return hits.slice(0, 12);
   }, [can, canAccess, canConfigs, debounced, navSections]);
 

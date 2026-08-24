@@ -7,6 +7,15 @@ export const ACCESS_TABS = [
   { id: "audit", label: "Audit log" },
 ];
 
+export const POLICY_NAME_MAX_LEN = 40;
+export const POLICY_DESC_MAX_LEN = 80;
+export const POLICY_CARD_RULE_LIMIT = 4;
+export const POLICY_CARD_ATTACHMENT_LIMIT = 4;
+
+export function clipPolicyText(value, max) {
+  return String(value ?? "").slice(0, max);
+}
+
 export const PERM_ACTS = ["view", "create", "edit", "delete", "upload", "export", "toggle"];
 
 /** [sectionLabel, featureName, featureId, actions[], sectionId] */
