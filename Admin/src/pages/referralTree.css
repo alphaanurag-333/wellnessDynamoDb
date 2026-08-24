@@ -230,7 +230,7 @@
 
 .updated-admin .ua-rt-stat__value {
   margin-top: 6px;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 700;
   color: #0f172a;
   line-height: 1.1;
@@ -649,7 +649,7 @@ a.ua-org-card__name:hover {
 .updated-admin .ua-rt-name {
   display: inline-block;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: #0f172a;
   text-decoration: none;
 }

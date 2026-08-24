@@ -152,7 +152,7 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
         onChange={(event) => onChange({ ...draft, answer: event.target.value })}
       />
       <div className="ua-cfg-bn-surfaces ua-cfg-faq-new__surfaces">
-        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
+        <div className={`paddingmanage ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
           <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
           <button
             type="button"
@@ -164,7 +164,7 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
             <span className="ua-toggle__knob" />
           </button>
         </div>
-        <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
+        <div className={`paddingmanage ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
           <span>App {draft.appVisible ? "Visible" : "Hidden"}</span>
           <button
             type="button"

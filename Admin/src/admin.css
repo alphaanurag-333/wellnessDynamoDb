@@ -6223,7 +6223,7 @@
 
 .updated-admin .ua-table__row {
   border-bottom: 1px solid var(--border-soft);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.12s;
 }
@@ -9209,7 +9209,7 @@
 }
 
 .updated-admin .ua-table__row {
-  padding: 14px 20px;
+  padding: 10px 20px;
   gap: 12px;
 }
 
