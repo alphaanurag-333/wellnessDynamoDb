@@ -16,6 +16,8 @@ const adminHealthToolRoutes = require("./adminRoutes/adminHealthToolRoutes");
 const adminHealthRecipeRoutes = require("./adminRoutes/adminHealthRecipeRoutes");
 const adminYogaRoutes = require("./adminRoutes/adminYogaRoutes");
 const adminSectionSurfaceConfigRoutes = require("./adminRoutes/adminSectionSurfaceConfigRoutes");
+const adminMediaAssetRoutes = require("./adminRoutes/adminMediaAssetRoutes");
+
 const adminPhysicalExerciseRoutes = require("./adminRoutes/adminPhysicalExerciseRoutes");
 const adminSupplementRoutes = require("./adminRoutes/adminSupplementRoutes");
 const adminMedicalConditionQuestionRoutes = require("./adminRoutes/adminMedicalConditionQuestionRoutes");
@@ -166,6 +168,7 @@ router.use("/admin/health-tools", adminHealthToolRoutes);
 router.use("/admin/health-recipes", adminHealthRecipeRoutes);
 router.use("/admin/yoga", adminYogaRoutes);
 router.use("/admin/section-surface-config", adminSectionSurfaceConfigRoutes);
+router.use("/admin/media-assets", adminMediaAssetRoutes);
 router.use("/admin/physical-exercises", adminPhysicalExerciseRoutes);
 router.use("/admin/supplements", adminSupplementRoutes);
 router.use("/admin/medical-condition-questions", adminMedicalConditionQuestionRoutes);

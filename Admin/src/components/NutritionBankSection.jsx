@@ -16,9 +16,8 @@ import {
 } from "../data/nutritionBankData.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./nutritionBankConfig.css";
-
-const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -52,15 +51,13 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 }
 
 function ImagePicker({ previewUrl, disabled, onPick, label = "Upload image" }) {
-  const inputRef = useRef(null);
-
   return (
     <button
       type="button"
       className={`ua-cfg-nb-uploader${previewUrl ? " has-image" : ""}`}
       disabled={disabled}
       aria-label={label}
-      onClick={() => inputRef.current?.click()}
+      onClick={() => onPick?.()}
     >
       {previewUrl ? (
         <>
@@ -73,18 +70,6 @@ function ImagePicker({ previewUrl, disabled, onPick, label = "Upload image" }) {
           {label}
         </span>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={IMAGE_ACCEPT}
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          onPick(file);
-        }}
-      />
     </button>
   );
 }
@@ -320,6 +305,16 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const itemsRef = useRef(items);
+
+  const { openPicker: openImagePicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose nutrition image",
+    onFiles: (file, context) => {
+      if (context === "edit") pickEditImage(file);
+      else pickDraftImage(file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -593,7 +588,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                 previewUrl={draftPreview}
                 disabled={busy}
                 onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-                onPickImage={pickDraftImage}
+                onPickImage={() => openImagePicker("draft")}
               />
               <div className="ua-cfg-dp-add__actions cddapply">
                 <button type="button" className=" ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
@@ -620,7 +615,7 @@ export function NutritionBankSection({ items, setItems, onToast }) {
                 previewUrl={editPreview || item.image || ""}
                 locked={busy}
                 onDraftChange={(patch) => setEditDraft((current) => ({ ...current, ...patch }))}
-                onPickImage={pickEditImage}
+                onPickImage={() => openImagePicker("edit")}
                 onToggleLive={() => persistItem(
                   item.id,
                   { live: !item.live },
@@ -649,6 +644,8 @@ export function NutritionBankSection({ items, setItems, onToast }) {
           />
         ) : null}
       </Panel>
+
+      {mediaPickerModal}
 
       <ConfirmDialog
         open={!!pendingDelete}

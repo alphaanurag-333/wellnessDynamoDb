@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   adminCreateVideoTestimonial,
   adminDeleteVideoTestimonial,
@@ -13,6 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./voiceConfig.css";
 
 const EMPTY_DRAFT = {
@@ -41,7 +42,6 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
   const filled = Boolean(previewUrl);
 
   return (
@@ -53,31 +53,18 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover image" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
 
 function VideoDrop({ fileName, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
   const filled = Boolean(fileName);
 
   return (
@@ -88,25 +75,13 @@ function VideoDrop({ fileName, disabled, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {filled ? "Replace video" : "Upload video"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="video/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -187,7 +162,23 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
   const [pagination, setPagination] = useState({ page: 1, limit: TESTIMONIAL_PAGE_SIZE, total: 0, pages: 1 });
   const [pendingDelete, setPendingDelete] = useState(null);
   const [cropPending, setCropPending] = useState(null);
-  const coverInputRefs = useRef({});
+
+  const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover image",
+    onFiles: (file, target) => openCrop(file, target || "draft"),
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose video",
+    onFiles: (file) => {
+      if (!file) return;
+      setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name, type: "video" }));
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -467,13 +458,13 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
                 <CoverDrop
                   previewUrl={draft.imagePreview}
                   disabled={busy}
-                  onPick={(file) => openCrop(file, "draft")}
+                  onPick={() => openImagePicker("draft")}
                   onRemove={clearDraftPhoto}
                 />
                 <VideoDrop
                   fileName={draft.videoName}
                   disabled={busy}
-                  onPick={(file) => setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name, type: "video" }))}
+                  onPick={() => openVideoPicker()}
                   onRemove={clearDraftVideo}
                 />
               </div>
@@ -533,25 +524,11 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
                       className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${photo ? " is-on" : ""}`}
                       disabled={busy}
                       aria-label={photo ? "Replace cover image" : "Add cover image"}
-                      onClick={() => coverInputRefs.current[entry.id]?.click()}
+                      onClick={() => openImagePicker(entry.id)}
                     >
                       {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">🖼</span>}
                       <em>{photo ? "Replace" : "Cover"}</em>
                     </button>
-                    <input
-                      ref={(node) => {
-                        coverInputRefs.current[entry.id] = node;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      disabled={busy}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (file) openCrop(file, entry.id);
-                      }}
-                    />
                   </div>
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-vh-item__head">
@@ -711,6 +688,9 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />
+
+      {imagePickerModal}
+      {videoPickerModal}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

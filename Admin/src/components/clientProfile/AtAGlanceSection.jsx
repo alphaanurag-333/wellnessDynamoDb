@@ -809,10 +809,10 @@ function OnboardingStatusCard({
   }, [doneCount, total, nextStep?.label, onProgressChange, user?.paidOnboardingCompleted]);
 
   const persistStep = async (stepKey, status) => {
+    const n = PAID_STATUS_TO_UI_STEP[stepKey];
     if (!user?.id || String(user.id).match(/^\d+$/)) {
       setDoneMap((prev) => {
         const next = { ...prev };
-        const n = PAID_STATUS_TO_UI_STEP[stepKey];
         if (status === "done") next[n] = true;
         else delete next[n];
         return next;
@@ -826,23 +826,39 @@ function OnboardingStatusCard({
         ...user.paidOnboardingStepStatus,
         [stepKey]: status,
       };
+      const saved = String(nextStatus?.[stepKey] || "").toLowerCase();
+      if (status === "pending" && saved === "done") {
+        throw new Error(`Could not reopen ${stepKey}. Try again.`);
+      }
+      const doneCountFromApi = Number(data?.completedStepsCount);
+      const onboardingDone = Number.isFinite(doneCountFromApi)
+        ? doneCountFromApi
+        : Object.keys(PAID_STATUS_TO_UI_STEP).filter(
+          (key) => nextStatus?.[key] === "done" || nextStatus?.[key] === "skipped",
+        ).length;
+      setDoneMap((prev) => {
+        const next = { ...prev };
+        if (status === "done" || saved === "done" || saved === "skipped") next[n] = true;
+        else delete next[n];
+        return next;
+      });
       onUserUpdated?.({
         ...user,
         paidOnboardingStepStatus: nextStatus,
         paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+        onboardingDone,
+        onboardingPct: Math.round((onboardingDone / ONBOARDING_STEPS.length) * 100),
       });
     } finally {
       setBusy(false);
     }
   };
 
-  const toggleStep = (n) => {
+  const toggleStep = async (n) => {
     const step = ONBOARDING_STEPS.find((s) => s.n === n);
     if (!step?.key) return;
     const currentlyDone = !!doneMap[n];
-    persistStep(step.key, currentlyDone ? "pending" : "done").catch((err) => {
-      onToast(err?.message || "Failed to update step");
-    });
+    await persistStep(step.key, currentlyDone ? "pending" : "done");
     if (n === 5 && currentlyDone) {
       setStepNotes((prev) => {
         const next = { ...prev };
@@ -852,10 +868,14 @@ function OnboardingStatusCard({
     }
   };
 
-  const handleStepAction = (step) => {
+  const handleStepAction = async (step) => {
     if (step.done) {
-      toggleStep(step.n);
-      onToast(`Reopened · ${step.label}`);
+      try {
+        await toggleStep(step.n);
+        onToast(`Reopened · ${step.label}`);
+      } catch (err) {
+        onToast(err?.message || "Failed to reopen step");
+      }
       return;
     }
     if (step.section && !step.action) {
@@ -883,8 +903,12 @@ function OnboardingStatusCard({
       });
       return;
     }
-    toggleStep(step.n);
-    onToast(`${step.label} completed`);
+    try {
+      await toggleStep(step.n);
+      onToast(`${step.label} completed`);
+    } catch (err) {
+      onToast(err?.message || "Failed to update step");
+    }
   };
 
   return (
@@ -981,7 +1005,11 @@ function OnboardingStatusCard({
                 <StepToggle
                   done={step.done}
                   current={isCurrent}
-                  onClick={canEdit ? () => toggleStep(step.n) : undefined}
+                  onClick={canEdit ? () => {
+                    toggleStep(step.n).catch((err) => {
+                      onToast(err?.message || "Failed to update step");
+                    });
+                  } : undefined}
                 />
                 <div className="ua-cp-onboard-step__copy">
                   <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>

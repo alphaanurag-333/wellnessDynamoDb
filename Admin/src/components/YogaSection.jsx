@@ -32,6 +32,7 @@ import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
 
@@ -400,7 +401,6 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
 }
 
 function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemove }) {
-  const inputRef = useRef(null);
   const filled = Boolean(previewUrl);
 
   return (
@@ -412,55 +412,28 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
 
-function FileButton({ accept, disabled, label, onPick }) {
-  const inputRef = useRef(null);
+function FileButton({ disabled, label, onPick }) {
   return (
-    <>
-      <button
-        type="button"
-        className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-file-btn"
-        disabled={disabled}
-        title={label}
-        onClick={() => inputRef.current?.click()}
-      >
-        {label}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
-    </>
+    <button
+      type="button"
+      className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm ua-cfg-rc-file-btn"
+      disabled={disabled}
+      title={label}
+      onClick={() => onPick?.()}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -469,7 +442,6 @@ function revokeBlobUrl(url) {
 }
 
 function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
   const filled = Boolean(previewUrl || embedUrl || fileName);
 
   return (
@@ -491,25 +463,13 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onPick?.()}
       >
         {previewUrl ? "Replace video" : "Upload video"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="video/mp4,video/webm,video/ogg,video/quicktime,.mp4,.webm,.ogg,.mov,.m4v"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0] || null;
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -592,10 +552,27 @@ export function YogaSection({
   const [cropPending, setCropPending] = useState(null);
   const itemsRef = useRef(items);
   const categoryOptionsRef = useRef(categoryOptions);
-  const coverInputRefs = useRef({});
   const loadSeq = useRef(0);
   const filtersKey = `${debouncedQuery}|${categoryFilter}`;
   const filtersKeyRef = useRef(filtersKey);
+
+  const { openPicker: openCoverPicker, mediaPickerModal: coverPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover photo",
+    onFiles: (file, target) => openCoverCrop(file, target || "draft"),
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose video",
+    onFiles: (file, context) => {
+      if (!file) return;
+      if (context === "draft" || !context) pickDraftVideo(file);
+      else replaceVideo(context, file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   useEffect(() => {
     itemsRef.current = items;
@@ -1152,7 +1129,7 @@ export function YogaSection({
                 <CoverDrop
                   previewUrl={draft.coverPreview}
                   disabled={disabled}
-                  onPick={pickDraftCover}
+                  onPick={() => openCoverPicker("draft")}
                   onRemove={clearDraftCover}
                 />
                 <VideoDrop
@@ -1160,7 +1137,7 @@ export function YogaSection({
                   embedUrl={draft.videoFile ? "" : youtubeEmbedUrl(draft.videoLink)}
                   fileName={draft.videoName}
                   disabled={disabled}
-                  onPick={pickDraftVideo}
+                  onPick={() => openVideoPicker("draft")}
                   onRemove={clearDraftVideo}
                 />
               </div>
@@ -1284,7 +1261,7 @@ export function YogaSection({
                       type="button"
                       className={`ua-cfg-rc-cover${entry.type === "VIDEO" || entry.type === "YT" ? " is-video" : ""} ua-cfg-rc-cover--pick`}
                       disabled={disabled}
-                      onClick={() => coverInputRefs.current[entry.id]?.click()}
+                      onClick={() => openCoverPicker(entry.id)}
                     >
                       {entry.thumbnail ? (
                         <img className="ua-cfg-rc-cover__img" src={entry.thumbnail} alt="" />
@@ -1293,19 +1270,6 @@ export function YogaSection({
                       )}
                       <em>{entry.thumbnail ? "Replace" : "Cover"}</em>
                     </button>
-                    <input
-                      ref={(node) => {
-                        coverInputRefs.current[entry.id] = node;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      hidden
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        if (file) openCoverCrop(file, entry.id);
-                      }}
-                    />
                   </div>
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-rc-item__head">
@@ -1463,7 +1427,7 @@ export function YogaSection({
                             embedUrl={(entry.videoPreview || entry.video) ? "" : youtubeEmbedUrl(entry.videoLink)}
                             fileName={entry.videoName}
                             disabled={disabled}
-                            onPick={(file) => replaceVideo(entry.id, file)}
+                            onPick={() => openVideoPicker(entry.id)}
                             onRemove={() => clearItemVideo(entry.id)}
                           />
                           <div className="ua-cfg-rc-edit__side">
@@ -1680,6 +1644,9 @@ export function YogaSection({
         onClose={closeCoverCrop}
         onConfirm={confirmCoverCrop}
       />
+
+      {coverPickerModal}
+      {videoPickerModal}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

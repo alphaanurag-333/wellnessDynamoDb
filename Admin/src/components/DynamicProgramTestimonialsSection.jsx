@@ -15,6 +15,7 @@ import {
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect } from "./shared.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const PAGE_SIZE = 100;
 
@@ -71,8 +72,7 @@ function ProgramSelect({ options, value, disabled, onChange, className = "" }) {
   );
 }
 
-function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
+function CoverDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
@@ -84,25 +84,13 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onRequestPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -138,7 +126,7 @@ function StoryEditModal({
   busy,
   onClose,
   onSave,
-  onPickPhoto,
+  onRequestPickPhoto,
 }) {
   const [draft, setDraft] = useState({
     name: String(story.name || ""),
@@ -195,7 +183,7 @@ function StoryEditModal({
               <CoverDrop
                 previewUrl={photo}
                 disabled={busy}
-                onPick={(file) => onPickPhoto(file, (croppedFile) => {
+                onRequestPick={() => onRequestPickPhoto?.((croppedFile) => {
                   setDraft((prev) => {
                     if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
                     return {
@@ -386,6 +374,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   }
 
   function openCoverCrop(file, onCropped) {
+    if (!file) return;
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
       return;
@@ -397,6 +386,13 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
       onCropped,
     });
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose image",
+    onFiles: (file, onCropped) => openCoverCrop(file, onCropped),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   async function confirmCoverCrop(croppedFile, cropError) {
     if (cropError) {
@@ -593,7 +589,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
             <CoverDrop
               previewUrl={createDraft.imagePreview}
               disabled={busy}
-              onPick={(file) => openCoverCrop(file, (croppedFile) => {
+              onRequestPick={() => openPicker((croppedFile) => {
                 setCreateDraft((prev) => {
                   if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
                   return {
@@ -806,7 +802,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
           busy={busy}
           onClose={() => setEditingId(null)}
           onSave={saveEditStory}
-          onPickPhoto={openCoverCrop}
+          onRequestPickPhoto={openPicker}
         />
       ) : null}
 
@@ -822,6 +818,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         onClose={closeCoverCrop}
         onConfirm={confirmCoverCrop}
       />
+      {mediaPickerModal}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

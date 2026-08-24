@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   adminCreateCofounderMessage,
   adminGetCofounderMessage,
@@ -9,6 +9,7 @@ import {
 import { formatRecipeDate, youtubeEmbedUrl } from "../data/recipesConfigData.js";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect } from "./shared.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const EMPTY_DRAFT = {
   name: "",
@@ -39,7 +40,6 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
-  const inputRef = useRef(null);
   return (
     <div className="ua-cfg-cf-portrait-wrap">
       <div className="ua-cfg-rc-cover-drop-wrap">
@@ -49,7 +49,7 @@ function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
             className={`ua-cfg-rc-cover-drop ua-cfg-cf-portrait-drop${previewUrl ? " is-on" : ""}`}
             disabled={disabled}
             aria-label={previewUrl ? "Replace portrait photo" : "Add portrait photo"}
-            onClick={() => inputRef.current?.click()}
+            onClick={() => onPick?.()}
           >
             {previewUrl ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">👤</span>}
             <em>{previewUrl ? "Replace" : "Add photo"}</em>
@@ -58,18 +58,6 @@ function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
             <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove portrait photo" disabled={disabled} onClick={onRemove}>×</button>
           ) : null}
         </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          disabled={disabled}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (file) onPick(file);
-          }}
-        />
       </div>
     </div>
   );
@@ -85,7 +73,25 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
   const [videoFile, setVideoFile] = useState(null);
   const [videoName, setVideoName] = useState("");
   const [cropPending, setCropPending] = useState(null);
-  const videoInputRef = useRef(null);
+
+  const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose portrait photo",
+    onFiles: (file) => openCrop(file),
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose video",
+    onFiles: (file) => {
+      if (!file) return;
+      setVideoFile(file);
+      setVideoName(file.name);
+      onToast("Video attached — save to publish");
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   const syncDraft = useCallback((row) => {
     const mapped = mapCofounderMessage(row);
@@ -299,7 +305,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
           <PortraitPicker
             previewUrl={photo}
             disabled={loading || busy}
-            onPick={openCrop}
+            onPick={() => openImagePicker()}
             onRemove={imageFile instanceof File ? clearDraftPhoto : null}
           />
           <div className="ua-cfg-cf-details">
@@ -362,7 +368,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
                 <div className="ua-cfg-cf-video-row">
                   <span className="ua-cfg-vh-thumb" aria-hidden="true">▶</span>
                   <strong>{videoName || (mapped?.video ? "Current video attached" : "No video yet")}</strong>
-                  <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => videoInputRef.current?.click()}>
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => openVideoPicker()}>
                     {mapped?.video || videoFile ? "Replace video" : "Upload video"}
                   </button>
                 </div>
@@ -376,29 +382,10 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
             </div>
           ) : null}
 
-          {draft.type === "video" ? (
-            <>
-              {mapped?.video && !videoFile ? (
-                <div className="ua-cfg-cf-video-preview">
-                  <video className="ua-cfg-rc-view__player" src={mapped.video} controls preload="metadata" />
-                </div>
-              ) : null}
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="video/*"
-                hidden
-                disabled={loading || busy}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (!file) return;
-                  setVideoFile(file);
-                  setVideoName(file.name);
-                  onToast("Video attached — save to publish");
-                }}
-              />
-            </>
+          {draft.type === "video" && mapped?.video && !videoFile ? (
+            <div className="ua-cfg-cf-video-preview">
+              <video className="ua-cfg-rc-view__player" src={mapped.video} controls preload="metadata" />
+            </div>
           ) : null}
         </div>
       </Panel>
@@ -426,6 +413,9 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />
+
+      {imagePickerModal}
+      {videoPickerModal}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ONBOARDING_PAGE_SIZE,
   listOnboardingCoaches,
@@ -20,6 +20,7 @@ import {
   buildOnboardingStats,
 } from "../data/onboardingVideoData.js";
 import { ListPagination } from "./shared.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -140,10 +141,38 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
   const [draft, setDraft] = useState({ title: coach.title, description: coach.description });
   const [linkOpen, setLinkOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const videoInputRef = useRef(null);
-  const coverInputRef = useRef(null);
   const hasVideo = Boolean(coach.videoUrl || coach.linkUrl);
   const preview = videoPreviewSrc(coach);
+
+  const { openPicker: openCoverPicker, mediaPickerModal: coverPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover image",
+    onFiles: (file) => {
+      if (!file) return;
+      const invalid = validateIntroCoverFile(file);
+      if (invalid) {
+        onToast(invalid);
+        return;
+      }
+      onSaveCover(file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
+    accept: "video",
+    title: "Choose video",
+    onFiles: (file) => {
+      if (!file) return;
+      const invalid = validateIntroVideoFile(file);
+      if (invalid) {
+        onToast(invalid);
+        return;
+      }
+      onSaveVideo(file);
+    },
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
 
   useEffect(() => {
     setDraft({ title: coach.title, description: coach.description });
@@ -187,29 +216,12 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
               <button
                 type="button"
                 className="ua-cfg-onb-editor__cover-btn"
-                onClick={() => coverInputRef.current?.click()}
+                onClick={() => openCoverPicker()}
                 disabled={busy}
               >
                 Replace cover
               </button>
             </div>
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (!file) return;
-                const invalid = validateIntroCoverFile(file);
-                if (invalid) {
-                  onToast(invalid);
-                  return;
-                }
-                onSaveCover(file);
-              }}
-            />
             <span className="ua-cfg-onb-editor__cover-note">Cover photo · 16:9 · shown in the app card</span>
           </div>
 
@@ -231,26 +243,9 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
 
             <div className="ua-cfg-onb-editor__actions">
               <div className="ua-cfg-onb-editor__actions-left">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => videoInputRef.current?.click()}>
+                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => openVideoPicker()}>
                   {hasVideo ? "Replace video" : "Upload video"}
                 </button>
-                <input
-                  ref={videoInputRef}
-                  type="file"
-                  accept="video/*"
-                  hidden
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = "";
-                    if (!file) return;
-                    const invalid = validateIntroVideoFile(file);
-                    if (invalid) {
-                      onToast(invalid);
-                      return;
-                    }
-                    onSaveVideo(file);
-                  }}
-                />
                 <button
                   type="button"
                   className={`ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm${coach.sourceType === "link" ? " is-linked" : ""}`}
@@ -300,6 +295,9 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
           if (savedCoach) setLinkOpen(false);
         }}
       />
+
+      {coverPickerModal}
+      {videoPickerModal}
     </>
   );
 }

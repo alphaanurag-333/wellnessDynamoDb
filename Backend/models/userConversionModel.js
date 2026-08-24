@@ -281,11 +281,10 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
 }
 
 /**
- * Admin downgrade: Heal (paid subscription) → Seek (free).
- * Clears heal-specific assignment; keeps the user's referral code (issued at registration).
- * Referral history (referredBy*, convertedAt) is kept.
+ * Downgrade Heal or Maintenance → Seek (free).
+ * Clears paid-tier assignment and entitlements; keeps referral code + referral history.
  */
-async function convertHealToSeek(userId) {
+async function convertToSeek(userId) {
   const user = await getUserById(userId);
   if (!user) {
     const err = new Error("User not found");
@@ -293,8 +292,9 @@ async function convertHealToSeek(userId) {
     throw err;
   }
 
-  if (!isHealTier(user.userTier)) {
-    const err = new Error("User is not a Heal (paid) member");
+  const tier = normalizeTier(user.userTier);
+  if (tier !== "heal" && tier !== "maintenance") {
+    const err = new Error("User is not a Heal or Maintenance member");
     err.name = "InvalidTierError";
     throw err;
   }
@@ -330,6 +330,38 @@ async function convertHealToSeek(userId) {
   };
 
   return updateUser(userId, updates);
+}
+
+/** Admin downgrade: Heal (paid subscription) → Seek (free). */
+async function convertHealToSeek(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (!isHealTier(user.userTier)) {
+    const err = new Error("User is not a Heal (paid) member");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+  return convertToSeek(userId);
+}
+
+/** Downgrade: Maintenance → Seek when app subscription expires (or admin). */
+async function convertMaintenanceToSeek(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (!isMaintenanceTier(user.userTier)) {
+    const err = new Error("User is not a Maintenance member");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+  return convertToSeek(userId);
 }
 
 async function convertHealToMaintenance(userId) {
@@ -406,7 +438,9 @@ module.exports = {
   resolveReferralCodeInput,
   completeConsultancyEnrollment,
   convertSeekToHeal,
+  convertToSeek,
   convertHealToSeek,
+  convertMaintenanceToSeek,
   convertHealToMaintenance,
   convertMaintenanceToHeal,
   ensureHealIfProgramPurchased,

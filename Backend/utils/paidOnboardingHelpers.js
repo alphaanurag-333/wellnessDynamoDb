@@ -151,6 +151,15 @@ function markStepPending(stepStatus, stepKey) {
   const next = normalizePaidOnboardingStepStatus(stepStatus);
   assertKnownStepKey(stepKey, { allowSubkeys: false });
   next[stepKey] = "pending";
+  // Clear derived/source keys so a later normalize cannot re-promote the parent.
+  if (stepKey === "personalDetails") {
+    next.profileSetup = "pending";
+  }
+  if (stepKey === "bodyAnalytics") {
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      next[key] = "pending";
+    }
+  }
   return next;
 }
 
@@ -174,10 +183,19 @@ function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true 
     throw err;
   }
   next[stepKey] = normalized;
+  if (stepKey === "personalDetails" && normalized === "pending") {
+    // profileSetup done ⇒ syncDerived re-promotes personalDetails; clear it on undo.
+    next.profileSetup = "pending";
+  }
   if (stepKey === "bodyAnalytics") {
     if (normalized === "done") {
       for (const key of BODY_ANALYTICS_SUBKEYS) {
         next[key] = "done";
+      }
+    } else {
+      // All three subkeys done ⇒ syncDerived re-promotes bodyAnalytics; clear on undo.
+      for (const key of BODY_ANALYTICS_SUBKEYS) {
+        next[key] = "pending";
       }
     }
   }

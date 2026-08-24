@@ -330,20 +330,32 @@ function mealUiStatus(reviewStatus, photoAiStatus) {
   return "approved";
 }
 
+export function normalizeMealItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .map((item) => {
+      const name = String(item?.name || "").trim();
+      if (!name) return null;
+      const qty = Number(item?.quantityGm);
+      return {
+        name,
+        quantityGm: Number.isFinite(qty) && qty >= 0 ? Math.round(qty * 100) / 100 : 0,
+      };
+    })
+    .filter(Boolean);
+}
+
 export function mapMealLogToUi(log) {
   const category = String(log?.category || "meal");
   const mealType = String(log?.mealType || "").trim();
   const catLabel = MEAL_CATEGORY_LABELS[category] || "Meal";
   const name = mealType ? `${catLabel} · ${mealType}` : catLabel;
-  const items = Array.isArray(log?.items) ? log.items : [];
+  const items = normalizeMealItems(log?.items);
   const itemTags = items
     .map((item) => {
-      const itemName = String(item?.name || "").trim();
-      if (!itemName) return "";
-      const qty = Number(item?.quantityGm);
-      return Number.isFinite(qty) && qty > 0 ? `${itemName} · ${qty} g` : itemName;
-    })
-    .filter(Boolean);
+      const qty = Number(item.quantityGm);
+      return Number.isFinite(qty) && qty > 0 ? `${item.name} · ${qty} g` : item.name;
+    });
   const description = String(log?.description || "").trim();
   const detailedTags = itemTags;
   const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
@@ -357,6 +369,7 @@ export function mapMealLogToUi(log) {
     name,
     time: formatMealEntryTime(log?.entryTime),
     description,
+    items,
     detailedTags,
     macros: hasCountableMacros
       ? roundMacros({

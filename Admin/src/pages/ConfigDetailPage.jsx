@@ -21,7 +21,7 @@ import {
 import { DietPlansSection } from "../components/DietPlansSection.jsx";
 import { TestCatalogSection } from "../components/TestCatalogSection.jsx";
 import { DrfBankSection } from "../components/DrfBankSection.jsx";
-import { GallerySection, GALLERY_MEDIA } from "../components/GallerySection.jsx";
+import { GallerySection } from "../components/GallerySection.jsx";
 import { AiEnableSection } from "../components/AiEnableSection.jsx";
 import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
 import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
@@ -1387,7 +1387,7 @@ export function ConfigDetailPage() {
   const [testCatalog, setTestCatalog] = useState([]);
   const [nutritionBank, setNutritionBank] = useState([]);
   const [rxProtocols, setRxProtocols] = useState([]);
-  const [galleryMedia, setGalleryMedia] = useState(GALLERY_MEDIA);
+  const [galleryMedia, setGalleryMedia] = useState([]);
   const [launchRatings, setLaunchRatings] = useState([]);
   const [launchDomains, setLaunchDomains] = useState([]);
   const [aiCoaches, setAiCoaches] = useState([]);
@@ -1533,7 +1533,12 @@ export function ConfigDetailPage() {
     if (!found) return;
     const current = found.item;
     const legalSlugs = CONFIG_LEGAL_PUBLISH_SLUGS[current.id];
-    const usesPublishHandler = Boolean(legalSlugs) || current.id === "web-fs-social" || current.id === "app-consultancy-amount" || current.id === "app-faq";
+    const usesPublishHandler =
+      Boolean(legalSlugs)
+      || current.id === "web-fs-social"
+      || current.id === "app-consultancy-amount"
+      || current.id === "app-faq"
+      || current.id === "app-language-disable";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1542,7 +1547,9 @@ export function ConfigDetailPage() {
       }
       try {
         const saved = await publish();
-        if (current.id === "web-fs-social" && Array.isArray(saved)) {
+        if (current.id === "app-language-disable") {
+          setHindiOn(Boolean(saved));
+        } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
           setConsultancySettings(saved);
@@ -1755,6 +1762,8 @@ export function ConfigDetailPage() {
             hindiOn={hindiOn}
             setHindiOn={setHindiOn}
             onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-faq":

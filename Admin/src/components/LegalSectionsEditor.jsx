@@ -148,6 +148,8 @@ export function LegalSectionsEditor({
     return true;
   }
 
+  const locked = loading;
+
   function startEdit(section) {
     setShowAdd(false);
     setEditingId(section.id);
@@ -197,7 +199,7 @@ export function LegalSectionsEditor({
   }
 
   async function togglePageLive() {
-    if (busy) return;
+    if (locked) return;
     const next = !live;
     setLive(next);
     applyLocal(sections, { live: next });
@@ -220,8 +222,6 @@ export function LegalSectionsEditor({
     copy.splice(nextIndex, 0, row);
     applyLocal(copy, {}, "Section order updated");
   }
-
-  const locked = loading;
 
   return (
     <div className="ua-cfg-privacy">

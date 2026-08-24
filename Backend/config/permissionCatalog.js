@@ -85,6 +85,7 @@ const PERMISSION_GROUPS_RAW = [
       { to: "health-disorders", label: "Health Disorders", actions: [VIEW, EDIT, DELETE] },
       { to: "yoga", label: "Yoga", actions: [VIEW, EDIT, DELETE] },
       { to: "section-surface-config", label: "Section Surface Config", actions: [VIEW, EDIT] },
+      { to: "media-assets", label: "Media Assets", actions: [VIEW, EDIT, DELETE] },
       { to: "physical-exercises", label: "Physical Exercise", actions: [VIEW, EDIT, DELETE] },
       { to: "supplements", label: "Nutritions", actions: [VIEW, EDIT, DELETE] },
       {

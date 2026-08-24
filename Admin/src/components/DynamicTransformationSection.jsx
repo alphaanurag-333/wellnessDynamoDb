@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   adminCreateTransformation,
   adminDeleteTransformation,
@@ -20,6 +20,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./transformationConfig.css";
 
 const EMPTY_DRAFT = {
@@ -46,8 +47,7 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function PhotoDrop({ previewUrl, disabled, label, tone, onPick, onRemove }) {
-  const inputRef = useRef(null);
+function PhotoDrop({ previewUrl, disabled, label, tone, onRequestPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
@@ -59,7 +59,7 @@ function PhotoDrop({ previewUrl, disabled, label, tone, onPick, onRemove }) {
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
         disabled={disabled}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => onRequestPick?.()}
       >
         {filled ? "Replace photo" : "Upload photo"}
       </button>
@@ -74,18 +74,6 @@ function PhotoDrop({ previewUrl, disabled, label, tone, onPick, onRemove }) {
           ×
         </button>
       ) : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) onPick(file);
-        }}
-      />
     </div>
   );
 }
@@ -235,7 +223,6 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
   const [pendingDelete, setPendingDelete] = useState(null);
   const [cropPending, setCropPending] = useState(null);
   const [pointOptions, setPointOptions] = useState([]);
-  const coverInputRefs = useRef({});
 
   const loadPoints = useCallback(async () => {
     try {
@@ -316,6 +303,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
   }
 
   function openCrop(file, target) {
+    if (!file) return;
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
       return;
@@ -323,6 +311,13 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
     setCropPending({ file, previewUrl: URL.createObjectURL(file), target });
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose image",
+    onFiles: (file, context) => openCrop(file, context),
+    onError: (error) => onToast(error?.message || "Could not attach media"),
+  });
 
   function clearDraftImage(kind) {
     setDraft((prev) => {
@@ -537,7 +532,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                   disabled={busy}
                   label="Before"
                   tone="before"
-                  onPick={(file) => openCrop(file, "draft-old")}
+                  onRequestPick={() => openPicker("draft-old")}
                   onRemove={() => clearDraftImage("old")}
                 />
                 <PhotoDrop
@@ -545,7 +540,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                   disabled={busy}
                   label="After"
                   tone="after"
-                  onPick={(file) => openCrop(file, "draft-new")}
+                  onRequestPick={() => openPicker("draft-new")}
                   onRemove={() => clearDraftImage("new")}
                 />
               </div>
@@ -609,25 +604,11 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                           className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${src ? " is-on" : ""}`}
                           disabled={busy}
                           aria-label={`Replace ${label}`}
-                          onClick={() => coverInputRefs.current[`${entry.id}-${kind}`]?.click()}
+                          onClick={() => openPicker(`${entry.id}:${kind}`)}
                         >
                           {src ? <img className="ua-cfg-rc-cover__img" src={src} alt="" /> : <span aria-hidden="true">📷</span>}
                           <em>{label}</em>
                         </button>
-                        <input
-                          ref={(node) => {
-                            coverInputRefs.current[`${entry.id}-${kind}`] = node;
-                          }}
-                          type="file"
-                          accept="image/*"
-                          hidden
-                          disabled={busy}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = "";
-                            if (file) openCrop(file, `${entry.id}:${kind}`);
-                          }}
-                        />
                       </div>
                     ))}
                   </div>
@@ -792,6 +773,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />
+      {mediaPickerModal}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

@@ -9,9 +9,35 @@ const { docClient } = require("../config/db");
 
 const TABLE = "UserSupplementDosage";
 const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
-const PERIODS = new Set(["morning", "afternoon", "evening"]);
+const PERIOD_ORDER = [
+  "morning",
+  "afternoon",
+  "evening",
+  "before_1st_meal",
+  "before_2nd_meal",
+  "before_3rd_meal",
+  "before_4th_meal",
+  "after_1st_meal",
+  "after_2nd_meal",
+  "after_3rd_meal",
+  "after_4th_meal",
+  "empty_stomach_morning",
+  "empty_stomach_evening",
+  "before_bed_30_mins",
+  "after_morning_snacks",
+  "before_morning_snacks",
+  "after_evening_snacks",
+  "before_evening_snacks",
+];
+const PERIODS = new Set(PERIOD_ORDER);
+const MAX_PERIODS = 5; // 1 day-part + up to 4 meal timings
 const MEAL_RELATIONS = new Set(["before", "after"]);
 const STATUSES = new Set(["active", "stopped"]);
+
+const PERIOD_ORDER_INDEX = PERIOD_ORDER.reduce((acc, id, index) => {
+  acc[id] = index;
+  return acc;
+}, {});
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -45,9 +71,27 @@ function addDaysToDate(isoDate, days) {
   return d.toISOString().slice(0, 10);
 }
 
+function defaultMealRelationForPeriod(period) {
+  if (
+    period === "morning"
+    || period === "afternoon"
+    || period === "evening"
+    || period.startsWith("before_")
+    || period.startsWith("empty_stomach")
+  ) {
+    return "before";
+  }
+  return "after";
+}
+
 function normalizePeriods(periods) {
   if (!Array.isArray(periods) || periods.length === 0) {
     const err = new Error("At least one dosage period is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (periods.length > MAX_PERIODS) {
+    const err = new Error(`Select at most ${MAX_PERIODS} timings`);
     err.name = "ValidationError";
     throw err;
   }
@@ -58,7 +102,7 @@ function normalizePeriods(periods) {
   for (const row of periods) {
     const period = String(row.period || "").trim().toLowerCase();
     if (!PERIODS.has(period)) {
-      const err = new Error("period must be morning, afternoon, or evening");
+      const err = new Error("Invalid dosage timing");
       err.name = "ValidationError";
       throw err;
     }
@@ -76,11 +120,9 @@ function normalizePeriods(periods) {
       throw err;
     }
 
-    const mealRelation = String(row.mealRelation || "").trim().toLowerCase();
+    let mealRelation = String(row.mealRelation || "").trim().toLowerCase();
     if (!MEAL_RELATIONS.has(mealRelation)) {
-      const err = new Error("mealRelation must be before or after");
-      err.name = "ValidationError";
-      throw err;
+      mealRelation = defaultMealRelationForPeriod(period);
     }
 
     normalized.push({
@@ -90,8 +132,9 @@ function normalizePeriods(periods) {
     });
   }
 
-  const order = { morning: 0, afternoon: 1, evening: 2 };
-  normalized.sort((a, b) => (order[a.period] ?? 0) - (order[b.period] ?? 0));
+  normalized.sort(
+    (a, b) => (PERIOD_ORDER_INDEX[a.period] ?? 999) - (PERIOD_ORDER_INDEX[b.period] ?? 999)
+  );
   return normalized;
 }
 
@@ -281,6 +324,8 @@ async function stopUserSupplementDosage(id) {
 
 module.exports = {
   PERIODS,
+  PERIOD_ORDER,
+  MAX_PERIODS,
   MEAL_RELATIONS,
   createUserSupplementDosage,
   getUserSupplementDosageById,

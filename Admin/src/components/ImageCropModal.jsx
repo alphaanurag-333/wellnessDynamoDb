@@ -19,6 +19,8 @@ export function ImageCropModal({
   defaultRatio = "Original",
   originalAspectCss = "16 / 9",
   originalAspectNumber = 16 / 9,
+  showFrameworks = false,
+  backdropClassName = "",
   onClose,
   onConfirm,
 }) {
@@ -149,7 +151,11 @@ export function ImageCropModal({
   const disabled = busy || cropping;
 
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+    <div
+      className={`ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      onClick={onClose}
+      role="presentation"
+    >
       <div
         className="ua-cfg-mv-upload-modal ua-cfg-pt-upload-modal"
         onClick={(event) => event.stopPropagation()}
@@ -223,6 +229,22 @@ export function ImageCropModal({
             <span className="ua-cfg-mv-upload-modal__grid" aria-hidden="true" />
           </div>
         </div>
+
+        {showFrameworks ? (
+          <div className="ua-cfg-mv-upload-modal__frameworks">
+            <span className="ua-cfg-mv-upload-modal__frameworks-label">How it will sit in your frameworks</span>
+            <div className="ua-cfg-mv-upload-modal__frameworks-row">
+              <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--web">
+                <span>Web</span>
+                <div />
+              </div>
+              <div className="ua-cfg-mv-upload-modal__framework ua-cfg-mv-upload-modal__framework--app is-active">
+                <span>App</span>
+                <div />
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="ua-cfg-mv-upload-modal__zoom">
           <button

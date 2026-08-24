@@ -366,6 +366,21 @@ const PERIOD_TONE = {
   afternoon: "noon",
   evening: "evening",
   night: "night",
+  before_1st_meal: "morning",
+  before_2nd_meal: "noon",
+  before_3rd_meal: "evening",
+  before_4th_meal: "evening",
+  after_1st_meal: "morning",
+  after_2nd_meal: "noon",
+  after_3rd_meal: "evening",
+  after_4th_meal: "evening",
+  empty_stomach_morning: "morning",
+  empty_stomach_evening: "evening",
+  before_bed_30_mins: "night",
+  after_morning_snacks: "morning",
+  before_morning_snacks: "morning",
+  after_evening_snacks: "evening",
+  before_evening_snacks: "evening",
 };
 
 const PERIOD_LABEL = {
@@ -373,6 +388,21 @@ const PERIOD_LABEL = {
   afternoon: "Noon",
   evening: "Evening",
   night: "Night",
+  before_1st_meal: "Before 1st Meal",
+  before_2nd_meal: "Before 2nd Meal",
+  before_3rd_meal: "Before 3rd Meal",
+  before_4th_meal: "Before 4th Meal",
+  after_1st_meal: "After 1st Meal",
+  after_2nd_meal: "After 2nd Meal",
+  after_3rd_meal: "After 3rd Meal",
+  after_4th_meal: "After 4th Meal",
+  empty_stomach_morning: "Empty Stomach (Morning)",
+  empty_stomach_evening: "Empty Stomach (Evening)",
+  before_bed_30_mins: "30 mins Before Bed",
+  after_morning_snacks: "After Morning Snacks",
+  before_morning_snacks: "Before Morning Snacks",
+  after_evening_snacks: "After Evening Snacks",
+  before_evening_snacks: "Before Evening Snacks",
 };
 
 function buildSupplements(dosages, today) {
@@ -385,10 +415,11 @@ function buildSupplements(dosages, today) {
     const periods = Array.isArray(row.periods) ? row.periods : [];
     const first = periods[0];
     const noteParts = [];
-    if (first?.mealRelation) {
+    if (first?.period && PERIOD_LABEL[first.period]) {
+      noteParts.push(PERIOD_LABEL[first.period]);
+    } else if (first?.mealRelation) {
       noteParts.push(first.mealRelation === "before" ? "Before meal" : "After meal");
     }
-    if (PERIOD_LABEL[first?.period]) noteParts.push(PERIOD_LABEL[first.period]);
     return {
       name: row.name || "Nutrition",
       note: noteParts.join(" · ") || row.unit || "",

@@ -81,6 +81,9 @@ const adminReferralTreeRoutes = require("../adminRoutes/adminReferralTreeRoutes"
 const adminEnergyExchangeRoutes = require("../adminRoutes/adminEnergyExchangeRoutes");
 const adminProgramCatalogRoutes = require("../adminRoutes/adminProgramCatalogRoutes");
 const adminSectionSurfaceConfigRoutes = require("../adminRoutes/adminSectionSurfaceConfigRoutes");
+const adminMediaAssetRoutes = require("../adminRoutes/adminMediaAssetRoutes");
+
+
 const router = express.Router();
 
 router.use("/auth", accountAuthRoutes);
@@ -170,6 +173,7 @@ router.use("/health-tools", adminHealthToolRoutes);
 router.use("/health-recipes", adminHealthRecipeRoutes);
 router.use("/yoga", adminYogaRoutes);
 router.use("/section-surface-config", adminSectionSurfaceConfigRoutes);
+router.use("/media-assets", adminMediaAssetRoutes);
 router.use("/physical-exercises", adminPhysicalExerciseRoutes);
 router.use("/supplements", adminSupplementRoutes);
 router.use("/medical-condition-questions", adminMedicalConditionQuestionRoutes);

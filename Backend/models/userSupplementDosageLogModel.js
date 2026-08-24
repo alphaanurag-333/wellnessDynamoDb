@@ -33,7 +33,7 @@ function normalizeLogDate(value) {
 function normalizePeriod(value) {
   const period = String(value || "").trim().toLowerCase();
   if (!PERIODS.has(period)) {
-    const err = new Error("period must be morning, afternoon, or evening");
+    const err = new Error("Invalid dosage timing");
     err.name = "ValidationError";
     throw err;
   }
