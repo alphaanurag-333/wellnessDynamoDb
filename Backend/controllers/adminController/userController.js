@@ -46,7 +46,16 @@ async function resolveSubscriptionExpiryUserIds(query = {}) {
 exports.listUsersController = asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
-  const { status, search, userTier, assignmentStatus, parentCoachId, clientCategory } = req.query;
+  const {
+    status,
+    search,
+    userTier,
+    assignmentStatus,
+    parentCoachId,
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+  } = req.query;
   const subscriptionExpiryUserIds = await resolveSubscriptionExpiryUserIds(req.query);
   if (Array.isArray(subscriptionExpiryUserIds) && subscriptionExpiryUserIds.length === 0) {
     return res.status(200).json({
@@ -62,6 +71,8 @@ exports.listUsersController = asyncHandler(async (req, res) => {
         search,
         userTier: userTier || "all",
         clientCategory,
+        excludeUserTier,
+        excludeClientCategory,
         subscriptionExpiryUserIds,
       })
     : await listUsers({
@@ -72,6 +83,8 @@ exports.listUsersController = asyncHandler(async (req, res) => {
         userTier,
         assignmentStatus,
         clientCategory,
+        excludeUserTier,
+        excludeClientCategory,
         subscriptionExpiryUserIds,
       });
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));

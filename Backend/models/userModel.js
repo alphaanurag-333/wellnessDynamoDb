@@ -208,6 +208,43 @@ function withLegacyId(item) {
   return { ...item, _id: item.id };
 }
 
+function parseCsvValues(value) {
+  if (value == null || value === "") return [];
+  const parts = Array.isArray(value)
+    ? value.flatMap((entry) => String(entry || "").split(","))
+    : String(value).split(",");
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+function parseExcludeUserTiers(value) {
+  return new Set(
+    parseCsvValues(value)
+      .map((part) => normalizeUserTier(part, ""))
+      .filter(Boolean),
+  );
+}
+
+function parseExcludeClientCategories(value) {
+  return new Set(
+    parseCsvValues(value)
+      .map((part) => normalizeClientCategory(part, ""))
+      .filter(Boolean),
+  );
+}
+
+function applyUserListExclusions(users, excludeUserTiers, excludeClientCategories) {
+  let next = users;
+  if (excludeUserTiers?.size) {
+    next = next.filter((row) => !excludeUserTiers.has(normalizeUserTier(row.userTier)));
+  }
+  if (excludeClientCategories?.size) {
+    next = next.filter(
+      (row) => !excludeClientCategories.has(normalizeClientCategory(row.clientCategory)),
+    );
+  }
+  return next;
+}
+
 function normalizeProfileImageField(value) {
   if (value == null || String(value).trim() === "") return null;
   const objectKey = normalizeStoredMedia(String(value).trim());
@@ -654,6 +691,8 @@ async function listUsersByParentCoachId(
     scope = "all",
     unpaginated = false,
     clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
     subscriptionExpiryUserIds,
   } = {}
 ) {
@@ -664,6 +703,8 @@ async function listUsersByParentCoachId(
 
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+  const excludeUserTiers = parseExcludeUserTiers(excludeUserTier);
+  const excludeClientCategories = parseExcludeClientCategories(excludeClientCategory);
   const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
   const normalizedScope = String(scope || "all").toLowerCase().trim();
@@ -727,6 +768,7 @@ async function listUsersByParentCoachId(
   if (normalizedCategory) {
     rows = rows.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
   }
+  rows = applyUserListExclusions(rows, excludeUserTiers, excludeClientCategories);
 
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
@@ -1286,12 +1328,16 @@ async function listUsers({
   userTier,
   assignmentStatus,
   clientCategory,
+  excludeUserTier,
+  excludeClientCategory,
   subscriptionExpiryUserIds,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedTier = userTier ? normalizeUserTier(userTier, "") : "";
   const normalizedAssignment = assignmentStatus ? normalizeAssignmentStatus(assignmentStatus) : "";
   const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
+  const excludeUserTiers = parseExcludeUserTiers(excludeUserTier);
+  const excludeClientCategories = parseExcludeClientCategories(excludeClientCategory);
   const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
     ? new Set(
         subscriptionExpiryUserIds
@@ -1332,6 +1378,7 @@ async function listUsers({
         (row) => normalizeClientCategory(row.clientCategory) === normalizedCategory,
       );
     }
+    users = applyUserListExclusions(users, excludeUserTiers, excludeClientCategories);
 
     const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
     const normalizedSearch = String(searchFilter.search || "").trim().toLowerCase();
@@ -1352,7 +1399,13 @@ async function listUsers({
     };
   }
 
-  const needsPostFilter = Boolean(normalizedTier || normalizedAssignment || normalizedCategory);
+  const needsPostFilter = Boolean(
+    normalizedTier
+    || normalizedAssignment
+    || normalizedCategory
+    || excludeUserTiers.size
+    || excludeClientCategories.size,
+  );
   const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
 
   // When filtering by tier/assignment in memory, load the full status set first, then page.
@@ -1383,6 +1436,7 @@ async function listUsers({
   if (normalizedCategory) {
     users = users.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
   }
+  users = applyUserListExclusions(users, excludeUserTiers, excludeClientCategories);
 
   if (needsPostFilter) {
     const paged = paginateItems(users, page, limit, 200);

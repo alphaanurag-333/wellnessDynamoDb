@@ -105,6 +105,7 @@ export function PendingPage() {
     () => `ua-pending-note:${account?.id || viewAs || "staff"}`,
     [account?.id, viewAs],
   );
+  const stampKey = `${noteKey}:at`;
   const [note, setNote] = useState("");
   const [savedNote, setSavedNote] = useState("");
   const [locked, setLocked] = useState(true);
@@ -180,6 +181,7 @@ export function PendingPage() {
   function saveNote() {
     try {
       localStorage.setItem(noteKey, note);
+      localStorage.setItem(stampKey, new Date().toISOString());
     } catch {
       // The note still remains available for this session.
     }

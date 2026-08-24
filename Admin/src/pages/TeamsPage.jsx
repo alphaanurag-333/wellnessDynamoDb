@@ -526,7 +526,7 @@ function CreateMemberModal({
         </div>
         <form className="ua-teams-create__form" onSubmit={handleSubmit} noValidate>
           <div className="ua-teams-create__body">
-            <div className="ua-teams-create__section">Personal</div>
+            {/* <div className="ua-teams-create__section">Personal</div> */}
             <div className="ua-teams-create__grid">
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label-row">
@@ -592,7 +592,7 @@ function CreateMemberModal({
               {errors.bio ? <span className="ua-teams-create__error">{errors.bio}</span> : null}
             </label>
 
-            <div className="ua-teams-create__section">Contact</div>
+            {/* <div className="ua-teams-create__section">Contact</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--contact">
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
@@ -638,7 +638,7 @@ function CreateMemberModal({
               </label>
             </div>
 
-            <div className="ua-teams-create__section">Location</div>
+            {/* <div className="ua-teams-create__section">Location</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--location">
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
@@ -734,7 +734,7 @@ function CreateMemberModal({
               </label>
             </div>
 
-            <div className="ua-teams-create__section">Role</div>
+            {/* <div className="ua-teams-create__section">Role</div> */}
             <label className="ua-teams-create__field">
               <span className="ua-teams-create__label">
                 Role <span aria-hidden="true">*</span>
