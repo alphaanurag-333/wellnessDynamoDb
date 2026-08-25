@@ -25,6 +25,19 @@ export async function sendTeamReminder({ accountIds, message } = {}) {
   }
 }
 
+export async function sendTeamWhatsAppReminder({ accountIds, message } = {}) {
+  try {
+    const { data } = await api.post(
+      "/account/dashboard/team-reminders/whatsapp",
+      { accountIds, message },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchTeamMember(id) {
   try {
     const { data } = await api.get(`/account/access/members/${encodeURIComponent(id)}`, {

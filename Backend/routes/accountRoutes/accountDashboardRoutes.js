@@ -5,6 +5,7 @@ const {
   getStaffDashboardStatistics,
   listStaffDashboardPayments,
   sendTeamRemindersController,
+  sendTeamWhatsAppRemindersController,
   proxyDashboardMedia,
 } = require("../../controllers/adminController/dashboardController");
 const { listPendingTasksController } = require("../../controllers/adminController/pendingTasksController");
@@ -64,6 +65,13 @@ router.post(
   protectAccount,
   dashboardViewAuth,
   sendTeamRemindersController
+);
+
+router.post(
+  "/team-reminders/whatsapp",
+  protectAccount,
+  dashboardViewAuth,
+  sendTeamWhatsAppRemindersController
 );
 
 module.exports = router;

@@ -3,6 +3,7 @@ import {
   getCommitmentLetterConfig,
   listCommitmentLetterCoaches,
   saveCommitmentLetterText,
+  sendCommitmentLetterWhatsAppReminder,
 } from "../api/coachContentApi.js";
 import {
   COMMITMENT_LETTER_DEFAULT,
@@ -97,7 +98,10 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
     [coach.name, version],
   );
   const [message, setMessage] = useState(defaultMessage);
+  const [busyPush, setBusyPush] = useState(false);
+  const [busyWhatsApp, setBusyWhatsApp] = useState(false);
   const canReset = message !== defaultMessage;
+  const busy = busyPush || busyWhatsApp;
 
   useEffect(() => {
     setMessage(defaultMessage);
@@ -105,14 +109,36 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
 
   useEffect(() => {
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !busy) onClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [busy, onClose]);
+
+  async function sendWhatsApp() {
+    const body = String(message || "").trim();
+    if (!body) {
+      onToast("Write a reminder message first");
+      return;
+    }
+    if (busy) return;
+    setBusyWhatsApp(true);
+    try {
+      const data = await sendCommitmentLetterWhatsAppReminder({
+        accountId: coach.id,
+        message: body,
+      });
+      onToast(data?.message || `WhatsApp sent to ${coach.name}`);
+      onClose();
+    } catch (error) {
+      onToast(error?.message || "Failed to send WhatsApp");
+    } finally {
+      setBusyWhatsApp(false);
+    }
+  }
 
   return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop" onClick={() => { if (!busy) onClose(); }} role="presentation">
       <div
         className="ua-team-modal ua-team-modal--remind ua-cfg-cl-remind"
         onClick={(event) => event.stopPropagation()}
@@ -127,7 +153,7 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
               Commitment letter v{version} · unsigned
             </div>
           </div>
-          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
+          <button type="button" className="ua-team-modal__close" onClick={() => { if (!busy) onClose(); }} aria-label="Close">
             ×
           </button>
         </div>
@@ -139,7 +165,7 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
               <button
                 type="button"
                 className={`ua-team-remind__reset${canReset ? "" : " ua-team-remind__reset--muted"}`}
-                disabled={!canReset}
+                disabled={!canReset || busy}
                 onClick={() => setMessage(defaultMessage)}
               >
                 Reset to suggested
@@ -150,6 +176,7 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
               value={message}
               onChange={(event) => setMessage(event.target.value)}
               rows={4}
+              disabled={busy}
             />
           </div>
         </div>
@@ -158,22 +185,23 @@ function CommitmentRemindModal({ coach, version, onClose, onToast }) {
           <button
             type="button"
             className="ua-team-remind__push"
+            disabled={busy}
             onClick={() => {
+              setBusyPush(true);
               onToast(`Reminder pushed to ${coach.name.split(" ")[0]}'s app`);
+              setBusyPush(false);
               onClose();
             }}
           >
-            <span aria-hidden="true">📱</span> Push to app
+            <span aria-hidden="true">📱</span> {busyPush ? "Sending…" : "Push to app"}
           </button>
           <button
             type="button"
             className="ua-team-remind__whatsapp"
-            onClick={() => {
-              onToast(`WhatsApp sent to ${coach.name}`);
-              onClose();
-            }}
+            disabled={busy || !message.trim()}
+            onClick={sendWhatsApp}
           >
-            <span aria-hidden="true">💬</span> Send on WhatsApp
+            <span aria-hidden="true">💬</span> {busyWhatsApp ? "Sending…" : "Send on WhatsApp"}
           </button>
         </div>
       </div>

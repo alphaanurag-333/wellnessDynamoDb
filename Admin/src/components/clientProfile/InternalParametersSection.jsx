@@ -997,11 +997,11 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
       {catalog.length ? (
         published ? (
           <div className="ua-cp-ip-banner ua-cp-ip-banner--sent">
-            ✓ Sent to {firstName(user)} in the app · {formatDisplayDate(recommended.reportDate)} · {selectedIds.length} tests
+            ✓ Sent to {firstName(user)} on WhatsApp and in the app · {formatDisplayDate(recommended.reportDate)} · {selectedIds.length} tests
           </div>
         ) : (
           <div className="ua-cp-ip-banner">
-            Unpublished changes — publishing sends the updated list to {firstName(user)} in the app.
+            Unpublished changes — publishing sends the updated list to {firstName(user)} on WhatsApp and in the app.
           </div>
         )
       ) : null}
@@ -1926,8 +1926,15 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   async function handlePublish(payload) {
     try {
       setBusy(true);
-      await createUserTestRecommendation(userId, payload);
-      onToast?.(`Test list sent to ${firstName(user)} in the app`);
+      const result = await createUserTestRecommendation(userId, payload);
+      const wa = result?.whatsapp;
+      if (wa?.sent) {
+        onToast?.(`Test list sent to ${firstName(user)} on WhatsApp and in the app`);
+      } else if (wa && !wa.sent) {
+        onToast?.(`Test list sent in the app · WhatsApp skipped (${wa.reason || "not sent"})`);
+      } else {
+        onToast?.(`Test list sent to ${firstName(user)} in the app`);
+      }
       await reload();
       return true;
     } catch (err) {

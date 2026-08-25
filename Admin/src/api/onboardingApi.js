@@ -12,11 +12,11 @@ function userPath(userId, suffix = "") {
   return `/account/users/${encodeURIComponent(userId)}${suffix}`;
 }
 
-export async function pushOnboardingReminder(userId, { message, stepLabel } = {}) {
+export async function pushOnboardingReminder(userId, { message, stepLabel, channel } = {}) {
   try {
     const { data } = await api.post(
       userPath(userId, "/onboarding-reminder"),
-      { message, stepLabel },
+      { message, stepLabel, channel },
       { headers: authHeader() },
     );
     return data;
@@ -238,6 +238,20 @@ export async function reviewUserPresentablePic(userId, { action } = {}) {
   }
 }
 
+export async function deleteUserPresentablePic(userId, { historyIndex } = {}) {
+  try {
+    const q = new URLSearchParams();
+    if (historyIndex != null && historyIndex !== "") q.set("historyIndex", String(historyIndex));
+    const { data } = await api.delete(
+      `/account/heal-users/${encodeURIComponent(userId)}/presentable-pic${q.toString() ? `?${q}` : ""}`,
+      { headers: authHeader() },
+    );
+    return data.user;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserProtocol(userId) {
   try {
     const { data } = await api.get(`/account/heal-users/${encodeURIComponent(userId)}/protocol`, {
@@ -338,7 +352,11 @@ export async function createUserTestRecommendation(userId, payload) {
       payload,
       { headers: authHeader() },
     );
-    return data.recommended || data.recommendation;
+    return {
+      recommendation: data.recommended || data.recommendation,
+      whatsapp: data.whatsapp || null,
+      message: data.message || null,
+    };
   } catch (error) {
     normalizeApiError(error);
   }

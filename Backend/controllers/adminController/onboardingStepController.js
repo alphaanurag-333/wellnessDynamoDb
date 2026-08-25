@@ -13,6 +13,8 @@ const {
 const {
   dispatchOnboardingReminderNotification,
 } = require("../../services/notificationDispatchService");
+const { sendWhatsAppText } = require("../../utils/whatsapp");
+const { resolveWhatsappNumber } = require("../../services/meetingAssigneeService");
 
 function readUserId(req) {
   return String(req.params.userId || req.params.id || "").trim();
@@ -117,6 +119,47 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
 
   const nextIncompleteStep = getNextIncompleteStep(user.paidOnboardingStepStatus);
   const stepLabel = String(req.body?.stepLabel || nextIncompleteStep || "").trim();
+  const channel = String(req.body?.channel || "push").trim().toLowerCase();
+
+  if (channel === "whatsapp") {
+    const wa = resolveWhatsappNumber(user);
+    if (!wa) throw new AppError("No WhatsApp number on this client", 400);
+
+    const firstName =
+      String(user?.name || "there")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)[0] || "there";
+    const paramMessage = stepLabel
+      ? `your next onboarding step is '${stepLabel}'. Please complete it in the app when you get a moment.`
+      : message;
+
+    const result = await sendWhatsAppText({
+      toPhoneCountryCode: wa.phoneCountryCode,
+      toPhone: wa.phone,
+      message,
+      // Matches utility template: Hi {{1}}, {{2}}
+      params: `${firstName.replace(/,/g, " ")},${paramMessage.replace(/,/g, " ")}`,
+      purpose: "reminder",
+    });
+    if (!result.sent) {
+      const reason = result.reason || "WhatsApp send failed";
+      const isConfig =
+        reason.includes("BHASHSMS_") ||
+        reason.includes("not_configured") ||
+        reason.includes("approved utility template");
+      throw new AppError(reason, isConfig ? 400 : 502);
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: `WhatsApp sent to ${user.name || "client"}`,
+      channel: "whatsapp",
+      to: result.to || null,
+      messageId: result.messageId || null,
+      stepLabel: stepLabel || null,
+    });
+  }
 
   const { notification, push } = await dispatchOnboardingReminderNotification({
     userId: user.id,
@@ -135,6 +178,7 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
       : noDevice
         ? "Reminder saved in the app inbox, but this user has no push device registered"
         : "Reminder saved in the app inbox",
+    channel: "push",
     notificationId: notification?.id || null,
     push: {
       delivered,
