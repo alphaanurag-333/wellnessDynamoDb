@@ -1,6 +1,5 @@
 import { FaApple, FaGooglePlay } from "react-icons/fa";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
-import { resolveMobileAppUrl } from "../utils/mobileAppLink.js";
 import { SiteButton } from "./SiteButton.jsx";
 
 function StoreBadge({ href, label, icon: Icon, tone }) {
@@ -18,14 +17,20 @@ function StoreBadge({ href, label, icon: Icon, tone }) {
         <Icon size={20} />
       </span>
       <span className="site-app-badge__text">
-        <small>Download on</small>
+        <small>{label === "Google Play" ? "Get it on" : "Download on"}</small>
         <strong>{label}</strong>
       </span>
     </a>
   );
 }
 
-export function AppDownloadButtons({ variant = "badges", block = false, label, tone = "dark" }) {
+export function AppDownloadButtons({
+  variant = "badges",
+  block = false,
+  label,
+  tone = "dark",
+  appleFirst = false,
+}) {
   const { mobileApp, appName } = useSiteConfig();
   const { androidUrl, iosUrl, ctaLabel, primaryUrl } = mobileApp;
   const displayLabel = label || ctaLabel;
@@ -38,13 +43,33 @@ export function AppDownloadButtons({ variant = "badges", block = false, label, t
     );
   }
 
-  const resolvedAndroid = androidUrl || resolveMobileAppUrl({ androidUrl, iosUrl, appName });
-  const resolvedIos = iosUrl || resolveMobileAppUrl({ iosUrl, androidUrl, appName });
+  // Prefer admin-configured store URLs; fall back to device-aware search only if needed.
+  const resolvedAndroid =
+    androidUrl ||
+    (appName
+      ? `https://play.google.com/store/search?q=${encodeURIComponent(appName)}&c=apps`
+      : "");
+  const resolvedIos =
+    iosUrl ||
+    (appName ? `https://apps.apple.com/us/search?term=${encodeURIComponent(appName)}` : "");
+  const apple = <StoreBadge href={resolvedIos} label="App Store" icon={FaApple} tone={tone} />;
+  const play = <StoreBadge href={resolvedAndroid} label="Google Play" icon={FaGooglePlay} tone={tone} />;
+
+  if (!resolvedAndroid && !resolvedIos) return null;
 
   return (
     <div className={`site-app-badges site-app-badges--${tone}${block ? " site-app-badges--block" : ""}`}>
-      <StoreBadge href={resolvedAndroid} label="Google Play" icon={FaGooglePlay} tone={tone} />
-      <StoreBadge href={resolvedIos} label="App Store" icon={FaApple} tone={tone} />
+      {appleFirst ? (
+        <>
+          {apple}
+          {play}
+        </>
+      ) : (
+        <>
+          {play}
+          {apple}
+        </>
+      )}
     </div>
   );
 }

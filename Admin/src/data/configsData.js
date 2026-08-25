@@ -365,7 +365,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-social",
           name: "FS · Social media links",
-          note: "Facebook, Instagram, YouTube, LinkedIn",
+          note: "Facebook, Instagram, YouTube, LinkedIn, Play Store, App Store",
           owner: "Admin / Support",
           app: false,
           web: true,

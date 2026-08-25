@@ -308,6 +308,8 @@ async function createAppConfig() {
     youtube:        "",
     instagram:      "",
     linkedin:       "",
+    android_app_link: "",
+    ios_app_link:   "",
     app_details:    "",
     app_footer_text:"",
     improved_user:      "",

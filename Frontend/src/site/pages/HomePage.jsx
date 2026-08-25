@@ -7,6 +7,7 @@ import {
 import TestimonialsSection from "../components/TestimonialsSection.jsx";
 // import BmiCalculator from "../components/BmiCalculator.jsx";
 import WellnessHero from "../components/WellnessHero.jsx";
+import AppHeroSection from "../components/AppHeroSection.jsx";
 import Methodology from "../components/Methodology.jsx";
 import About from "../components/About.jsx";
 import FinalCTA from "../components/FinalCTA.jsx";
@@ -29,6 +30,7 @@ export function HomePage() {
       <RealHealingSlider />
       <ServicesSection />
       <TestimonialsSection />
+      <AppHeroSection />
       {/* <CommunitySection /> */}
       {/* <BmiCalculator /> */}
       <FinalCTA />
