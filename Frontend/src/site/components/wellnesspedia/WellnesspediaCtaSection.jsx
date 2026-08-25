@@ -1,30 +1,63 @@
 import { FaFacebook, FaGoogle } from "react-icons/fa";
+import { useSiteConfig } from "../../hooks/useSiteConfig.js";
+
+function starsForRating(rating) {
+  const value = Math.min(5, Math.max(0, Number(rating) || 0));
+  const filled = Math.round(value);
+  return "★".repeat(filled) + "☆".repeat(5 - filled);
+}
+
+const PLATFORM_ICON = {
+  google: FaGoogle,
+  facebook: FaFacebook,
+};
 
 export default function WellnesspediaCtaSection() {
+  const { socialProof } = useSiteConfig();
+
+  if (!socialProof?.length) return null;
+
   return (
     <section className="wp-section wp-lower-cta" aria-label="Social proof">
       <div className="site-container">
         <div className="wp-social-proof">
-          <article className="wp-social-card">
-            <strong className="wp-social-card__score">4.9</strong>
-            <div className="wp-social-card__stars" aria-hidden>
-              {"★★★★★"}
-            </div>
-            <div className="wp-social-card__meta">
-              <FaGoogle aria-hidden />
-              <span>500+ Reviews</span>
-            </div>
-          </article>
-          <article className="wp-social-card">
-            <strong className="wp-social-card__score">4.8</strong>
-            <div className="wp-social-card__stars" aria-hidden>
-              {"★★★★★"}
-            </div>
-            <div className="wp-social-card__meta">
-              <FaFacebook aria-hidden />
-              <span>1.2K Followers</span>
-            </div>
-          </article>
+          {socialProof.map((card) => {
+            const Icon = PLATFORM_ICON[card.platform] || FaGoogle;
+            const body = (
+              <>
+                <strong className="wp-social-card__score">{card.score}</strong>
+                {card.showStars ? (
+                  <div className="wp-social-card__stars" aria-hidden>
+                    {starsForRating(card.rating)}
+                  </div>
+                ) : null}
+                <div className="wp-social-card__meta">
+                  <Icon aria-hidden />
+                  <span>{card.meta}</span>
+                </div>
+              </>
+            );
+
+            if (card.href) {
+              return (
+                <a
+                  key={card.key}
+                  className="wp-social-card"
+                  href={card.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {body}
+                </a>
+              );
+            }
+
+            return (
+              <article key={card.key} className="wp-social-card">
+                {body}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
