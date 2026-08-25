@@ -1,7 +1,7 @@
 const { getMessaging } = require("../config/firebase");
 
 const FCM_BATCH_SIZE = 500;
-const DEFAULT_ANDROID_CHANNEL_ID = "default";
+const DEFAULT_ANDROID_CHANNEL_ID = "ir_wellness_default";
 
 function chunkArray(items, size) {
   const chunks = [];
@@ -18,23 +18,28 @@ function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
       title: String(title || "IR Wellness").trim() || "IR Wellness",
       body: String(body || "").trim(),
     },
+    android: {
+      priority: "high",
+      notification: {
+        channelId: DEFAULT_ANDROID_CHANNEL_ID,
+        sound: "default",
+        defaultSound: true,
+      },
+    },
+    apns: {
+      payload: {
+        aps: {
+          sound: "default",
+        },
+      },
+    },
   };
 
   if (imageUrl) {
     message.notification.imageUrl = imageUrl;
-    message.android = {
-      priority: "high",
-      notification: { imageUrl, channelId: DEFAULT_ANDROID_CHANNEL_ID },
-    };
-    message.apns = {
-      payload: { aps: { "mutable-content": 1 } },
-      fcm_options: { image: imageUrl },
-    };
-  } else {
-    message.android = {
-      priority: "high",
-      notification: { channelId: DEFAULT_ANDROID_CHANNEL_ID },
-    };
+    message.android.notification.imageUrl = imageUrl;
+    message.apns.payload.aps["mutable-content"] = 1;
+    message.apns.fcm_options = { image: imageUrl };
   }
 
   if (data && Object.keys(data).length > 0) {

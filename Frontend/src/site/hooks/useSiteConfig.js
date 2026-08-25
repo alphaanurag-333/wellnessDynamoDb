@@ -199,13 +199,19 @@ export function useSiteConfig() {
     };
 
     // Driven by Admin → Configs → Google review (`common-google-review` / App Config).
+    const ratingValue = formatRating(config?.average_rating);
+    const ratingNumber = Number(str(config?.average_rating).replace(/[^\d.]/g, "")) || 0;
+    const reviewsValue = formatMetric(config?.google_reviews) || str(config?.google_reviews);
+    const facebookFollowers =
+      formatMetric(config?.facebook_followers) || str(config?.facebook_followers);
+
     const stats = [
       {
         key: "rating",
-        value: formatRating(config?.average_rating),
+        value: ratingValue,
         label: "Average Rating",
         showStars: true,
-        rating: Number(str(config?.average_rating).replace(/[^\d.]/g, "")) || 0,
+        rating: ratingNumber,
       },
       {
         key: "success",
@@ -226,6 +232,37 @@ export function useSiteConfig() {
         showStars: false,
       },
     ].filter((card) => card.value);
+
+    // Wellnesspedia lower CTA — same rating on both cards; reviews vs followers in meta.
+    const socialProof = [];
+    if (ratingValue || reviewsValue) {
+      const reviewsMeta = reviewsValue
+        ? (/review/i.test(reviewsValue) ? reviewsValue : `${reviewsValue} Reviews`)
+        : "Google Reviews";
+      socialProof.push({
+        key: "google",
+        platform: "google",
+        score: ratingValue || reviewsValue,
+        rating: ratingValue ? ratingNumber : 0,
+        showStars: Boolean(ratingValue),
+        meta: reviewsMeta,
+        href: "",
+      });
+    }
+    if (ratingValue || facebookFollowers) {
+      const followersMeta = facebookFollowers
+        ? (/follow/i.test(facebookFollowers) ? facebookFollowers : `${facebookFollowers} Followers`)
+        : "Followers";
+      socialProof.push({
+        key: "facebook",
+        platform: "facebook",
+        score: ratingValue || facebookFollowers,
+        rating: ratingValue ? ratingNumber : 0,
+        showStars: Boolean(ratingValue),
+        meta: followersMeta,
+        href: str(config?.facebook),
+      });
+    }
 
     const social = SOCIAL_FIELDS.map(({ key, label, icon }) => ({
       key,
@@ -258,6 +295,7 @@ export function useSiteConfig() {
       contact,
       testimonials: TESTIMONIALS_SECTION,
       stats,
+      socialProof,
       social,
       consultancyAmount: amountLabel,
     };

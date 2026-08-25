@@ -27,6 +27,10 @@ import {
   listUserWellnessAssignments,
   unassignUserWellnessItem,
 } from "../../api/wellnessLibraryApi.js";
+import {
+  fetchUserDailyReflectionSettings,
+  saveUserDailyReflectionSettings,
+} from "../../api/dailyReflectionApi.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function isLiveUserId(userId) {
@@ -350,7 +354,10 @@ function SleepPanel({
   );
 }
 
-function ContentCard({ item, onToggle, busy }) {
+function ContentCard({ item, onToggle, onSetDailyReflection, busy, showDailyReflection }) {
+  const isAudio = item.type === "audio";
+  const forDailyReflection = Boolean(item.forDailyReflection);
+
   return (
     <div className="ua-cp-bms-content-card">
       <div className="ua-cp-bms-content-card__thumb" aria-hidden="true">
@@ -362,18 +369,34 @@ function ContentCard({ item, onToggle, busy }) {
             {item.type === "audio" ? "Audio" : item.type === "ytlink" ? "YouTube" : "Video"}
           </span>
           {item.duration ? <span className="ua-cp-bms-content-card__duration">{item.duration}</span> : null}
+          {forDailyReflection ? (
+            <span className="ua-cp-bms-content-card__drf-badge">Daily Reflection</span>
+          ) : null}
         </div>
         <strong className="ua-cp-bms-content-card__title">{item.title}</strong>
         <span className="ua-cp-bms-content-card__source">{item.source || (item.ytLink ? "YouTube" : "")}</span>
       </div>
-      <button
-        type="button"
-        className={`ua-cp-bms-content-card__action${item.inApp ? " ua-cp-bms-content-card__action--in" : ""}`}
-        disabled={busy}
-        onClick={() => onToggle(item)}
-      >
-        {item.inApp ? "✓ In user app" : "Add to app"}
-      </button>
+      <div className="ua-cp-bms-content-card__actions">
+        <button
+          type="button"
+          className={`ua-cp-bms-content-card__action${item.inApp ? " ua-cp-bms-content-card__action--in" : ""}`}
+          disabled={busy}
+          onClick={() => onToggle(item)}
+        >
+          {item.inApp ? "✓ In user app" : "Add to app"}
+        </button>
+        {showDailyReflection && isAudio ? (
+          <button
+            type="button"
+            className={`ua-cp-bms-content-card__action ua-cp-bms-content-card__action--drf${forDailyReflection ? " ua-cp-bms-content-card__action--drf-on" : ""}`}
+            disabled={busy || !item.inApp}
+            title={!item.inApp ? "Add to app first" : undefined}
+            onClick={() => onSetDailyReflection?.(item)}
+          >
+            {forDailyReflection ? "✓ Daily Reflection" : "Use for Daily Reflection"}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -384,12 +407,15 @@ function ContentLibraryPanel({
   onFilterChange,
   filterOptions,
   onToggle,
+  onSetDailyReflection,
+  showDailyReflection,
   hint,
   loading,
   emptyLabel,
   busy,
 }) {
   const selectedCount = items.filter((i) => i.inApp).length;
+  const dailyReflectionTitle = items.find((i) => i.forDailyReflection)?.title;
 
   const filtered = useMemo(() => {
     if (filter === "in-app") return items.filter((i) => i.inApp);
@@ -404,6 +430,9 @@ function ContentLibraryPanel({
         <SegFilter options={filterOptions} value={filter} onChange={onFilterChange} />
         <span className="ua-cp-bms-library-toolbar__count">
           <strong>{selectedCount}</strong> selected for user app
+          {showDailyReflection && dailyReflectionTitle ? (
+            <> · Daily Reflection: <strong>{dailyReflectionTitle}</strong></>
+          ) : null}
         </span>
       </div>
       <p className="ua-cp-bms-library-hint">{hint}</p>
@@ -412,7 +441,14 @@ function ContentLibraryPanel({
       ) : filtered.length ? (
         <div className="ua-cp-bms-content-list">
           {filtered.map((item) => (
-            <ContentCard key={item.id} item={item} onToggle={onToggle} busy={busy} />
+            <ContentCard
+              key={item.id}
+              item={item}
+              onToggle={onToggle}
+              onSetDailyReflection={onSetDailyReflection}
+              showDailyReflection={showDailyReflection}
+              busy={busy}
+            />
           ))}
         </div>
       ) : (
@@ -453,6 +489,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [exerciseItems, setExerciseItems] = useState([]);
   const [libraryLoading, setLibraryLoading] = useState({ mental: false, yoga: false, exercise: false });
   const [libraryBusy, setLibraryBusy] = useState(false);
+  const [dailyReflectionAudioId, setDailyReflectionAudioId] = useState(null);
 
   const [mentalFilter, setMentalFilter] = useState("all");
   const [yogaFilter, setYogaFilter] = useState("all");
@@ -557,16 +594,24 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     async function loadLibrary() {
       setLibraryLoading((prev) => ({ ...prev, [kind]: true }));
       try {
-        const [{ items }, assignments] = await Promise.all([
+        const [{ items }, assignments, reflectionSettings] = await Promise.all([
           adminListWellnessLibrary(kind, null, { page: 1, limit: 200, status: "active" }),
           canAssign ? listUserWellnessAssignments(kind, userId) : Promise.resolve([]),
+          kind === "mental" && canAssign
+            ? fetchUserDailyReflectionSettings(userId).catch(() => null)
+            : Promise.resolve(null),
         ]);
         if (cancelled) return;
         const assigned = new Map((assignments || []).map((row) => [row.itemId, row.assignmentId]));
+        const reflectionAudioId = reflectionSettings?.dailyReflectionAudioId
+          ? String(reflectionSettings.dailyReflectionAudioId)
+          : null;
+        if (kind === "mental") setDailyReflectionAudioId(reflectionAudioId);
         setters[kind]((items || []).map((item) => ({
           ...item,
           inApp: assigned.has(item.id),
           assignmentId: assigned.get(item.id) || "",
+          forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
         })));
       } catch (error) {
         if (!cancelled) onToast(error?.message || "Failed to load library");
@@ -632,8 +677,18 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     try {
       if (item.inApp && item.assignmentId) {
         await unassignUserWellnessItem(kind, userId, item.assignmentId);
+        if (kind === "mental" && dailyReflectionAudioId === item.id) {
+          try {
+            await saveUserDailyReflectionSettings(userId, { dailyReflectionAudioId: null });
+            setDailyReflectionAudioId(null);
+          } catch {
+            // Assignment removed; clearing DRF audio is best-effort.
+          }
+        }
         setters[kind]((list) => list.map((entry) => (
-          entry.id === item.id ? { ...entry, inApp: false, assignmentId: "" } : entry
+          entry.id === item.id
+            ? { ...entry, inApp: false, assignmentId: "", forDailyReflection: false }
+            : entry
         )));
         onToast("Removed from user app");
       } else {
@@ -646,6 +701,37 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
       }
     } catch (error) {
       onToast(error?.message || "Failed to update selection");
+    } finally {
+      setLibraryBusy(false);
+    }
+  }
+
+  async function setDailyReflectionAudio(item) {
+    if (!userId || !canAssign || !canEdit) return;
+    if (item.type !== "audio") {
+      onToast("Only audio can be used for Daily Reflection");
+      return;
+    }
+    if (!item.inApp) {
+      onToast("Add this audio to the user app first");
+      return;
+    }
+    if (libraryBusy) return;
+
+    const nextId = dailyReflectionAudioId === item.id ? null : item.id;
+    setLibraryBusy(true);
+    try {
+      await saveUserDailyReflectionSettings(userId, { dailyReflectionAudioId: nextId });
+      setDailyReflectionAudioId(nextId);
+      setMentalItems((list) => list.map((entry) => ({
+        ...entry,
+        forDailyReflection: nextId === entry.id,
+      })));
+      onToast(nextId
+        ? `"${item.title}" set for Daily Reflection form`
+        : "Daily Reflection audio cleared");
+    } catch (error) {
+      onToast(error?.message || "Could not update Daily Reflection audio");
     } finally {
       setLibraryBusy(false);
     }
@@ -759,10 +845,12 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           onFilterChange={setMentalFilter}
           filterOptions={mentalFilters}
           onToggle={(item) => toggleContent("mental", item)}
+          onSetDailyReflection={setDailyReflectionAudio}
+          showDailyReflection
           loading={libraryLoading.mental}
           busy={libraryBusy}
           emptyLabel="No mental wellbeing items yet. Add them in Config → Common."
-          hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app."
+          hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app, and which one audio plays on the Daily Reflection form."
         />
       ) : null}
 

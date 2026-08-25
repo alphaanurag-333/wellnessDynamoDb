@@ -168,7 +168,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     { key: "phone", label: "Phone", editable: true },
     { key: "whatsapp", label: "WhatsApp", editable: true },
     { key: "address", label: "Complete address", editable: true },
-    { key: "state", label: "State", editable: true },
+    { key: "state", label: "State", editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
     { key: "goal", label: "Goal", editable: true },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },

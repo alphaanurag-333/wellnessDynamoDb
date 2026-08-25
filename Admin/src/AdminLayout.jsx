@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS, UPDATED_ADMIN_PATHS } from "./data/dashboardData.js";
+import { BrandLoader } from "./components/BrandLoader.jsx";
 import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { AdminHeader } from "./components/AdminHeader.jsx";
@@ -95,7 +96,9 @@ export function AdminLayout() {
           />
 
           <div className="page-shell">
-            <Outlet context={{ showToast }} />
+            <Suspense fallback={<BrandLoader variant="page" label="Loading…" />}>
+              <Outlet context={{ showToast }} />
+            </Suspense>
           </div>
         </div>
 

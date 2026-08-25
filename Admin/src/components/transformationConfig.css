@@ -103,3 +103,74 @@
     padding: 8px 10px;
   }
 }
+
+/* Data-point chips — view modal + list cards */
+.updated-admin .ua-cfg-tf-chips,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chips,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 4px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-chips {
+  margin: 10px 0 0;
+}
+
+.updated-admin .ua-cfg-tf-chip,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 9999px;
+  background: #f3f4f6;
+  box-sizing: border-box;
+  line-height: 1.3;
+}
+
+.updated-admin .ua-cfg-tf-chip dt,
+.updated-admin .ua-cfg-tf-chip__label,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip dt {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+.updated-admin .ua-cfg-tf-chip dd,
+.updated-admin .ua-cfg-tf-chip__value,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip dd {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.updated-admin .ua-cfg-tf-chip dd::before,
+.updated-admin .ua-cfg-tf-chip__value::before,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip dd::before {
+  content: "·";
+  display: inline-block;
+  margin: 0 6px;
+  font-weight: 400;
+  color: #9ca3af;
+}

@@ -126,6 +126,56 @@ export async function fetchYoga(params = {}) {
   }
 }
 
+export async function fetchConfigDropdown(slug) {
+  try {
+    const { data } = await api.get(
+      `/public/misc/config-dropdowns/${encodeURIComponent(slug)}`
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function fetchConfigDropdownOptions(slug) {
+  try {
+    const data = await fetchConfigDropdown(slug);
+    const options = Array.isArray(data?.list?.options) ? data.list.options : [];
+    return options
+      .filter((row) => row && row.on !== false)
+      .map((row) => ({
+        value: String(row.value || "").trim(),
+        label: String(row.label || row.value || "").trim(),
+        sortOrder: Number(row.sortOrder) || 0,
+      }))
+      .filter((row) => row.value || row.label);
+  } catch {
+    return [];
+  }
+}
+
+/** Section App/Web kill switch. Missing config → treat as enabled. */
+export async function fetchSectionSurfaceConfig(section) {
+  try {
+    const { data } = await api.get(
+      `/public/misc/section-surface-config/${encodeURIComponent(section)}`
+    );
+    return data?.data || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function isSectionLiveOnWeb(section) {
+  try {
+    const config = await fetchSectionSurfaceConfig(section);
+    if (!config) return true;
+    return config.webOn !== false;
+  } catch {
+    return true;
+  }
+}
+
 export async function fetchActiveBanners(params = {}) {
   try {
     const { data } = await api.get("/public/misc/banners", { params });

@@ -35,18 +35,35 @@ function resolveTargetMonth(query) {
   return candidate;
 }
 
-function pickAssignedAudio(assignments) {
-  const audioAssignment = (assignments || []).find(
-    (row) => String(row?.mentalWellbeing?.type || "").toLowerCase() === "audio"
-  );
+function mapAssignedAudio(audioAssignment) {
   if (!audioAssignment?.mentalWellbeing) return null;
   const item = audioAssignment.mentalWellbeing;
   return {
     id: audioAssignment.id || audioAssignment._id,
+    mentalWellbeingId: audioAssignment.mentalWellbeingId || item.id || item._id || null,
     title: item.title,
     type: item.type,
     link: item.link || item.file || "",
   };
+}
+
+function pickAssignedAudio(assignments, preferredMentalWellbeingId) {
+  const audioAssignments = (assignments || []).filter(
+    (row) => String(row?.mentalWellbeing?.type || "").toLowerCase() === "audio"
+  );
+  if (!audioAssignments.length) return null;
+
+  const preferredId = String(preferredMentalWellbeingId || "").trim();
+  if (preferredId) {
+    const preferred = audioAssignments.find(
+      (row) =>
+        String(row.mentalWellbeingId || "") === preferredId ||
+        String(row?.mentalWellbeing?.id || row?.mentalWellbeing?._id || "") === preferredId
+    );
+    if (preferred) return mapAssignedAudio(preferred);
+  }
+
+  return mapAssignedAudio(audioAssignments[0]);
 }
 
 exports.getMyDailyReflectionController = asyncHandler(async (req, res) => {
@@ -68,7 +85,10 @@ exports.getMyDailyReflectionController = asyncHandler(async (req, res) => {
     activities: snapshot.enabledActivities,
     tracking: snapshot.tracking,
     todayLog,
-    assignedAudio: pickAssignedAudio(assignments),
+    assignedAudio: pickAssignedAudio(
+      assignments,
+      snapshot.settings?.dailyReflectionAudioId
+    ),
   });
 });
 

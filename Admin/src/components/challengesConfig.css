@@ -65,7 +65,7 @@
 .updated-admin .ua-cfg-ch-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .updated-admin .ua-cfg-ch-field {
@@ -268,7 +268,7 @@
 
 .updated-admin .ua-cfg-ch-card__meta {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: #6b728f;
 }
 
@@ -331,8 +331,8 @@
 
 .updated-admin .ua-cfg-ch-ops__block h5 {
   margin: 0 0 8px;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 760;
   color: #1b1f3b;
 }
 
@@ -369,8 +369,8 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 2px;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 760;
   color: #1b1f3b;
 }
 

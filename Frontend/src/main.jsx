@@ -5,8 +5,6 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { store } from "./store/index.js";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "sweetalert2/dist/sweetalert2.min.css";
-import "./admin-panel.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

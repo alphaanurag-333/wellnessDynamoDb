@@ -18,6 +18,7 @@ const {
   enrichUser,
   assertUniqueEmail,
   assertUniquePhone,
+  assertUniqueWhatsapp,
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
@@ -104,6 +105,17 @@ exports.createUserController = asyncHandler(async (req, res) => {
 
   await assertUniqueEmail(fields.email);
   await assertUniquePhone(fields.phoneCountryCode, fields.phone);
+
+  const sameAsMobile = Boolean(fields.whatsappSameAsMobile);
+  const whatsappCc = sameAsMobile
+    ? fields.phoneCountryCode
+    : fields.whatsappCountryCode || fields.phoneCountryCode;
+  const whatsappPhone = sameAsMobile
+    ? fields.phone
+    : fields.whatsappPhone || null;
+  if (whatsappPhone) {
+    await assertUniqueWhatsapp(whatsappCc, whatsappPhone);
+  }
 
   const uploadedProfile = await uploadFileFromRequest(req, "user");
   if (uploadedProfile) fields.profileImage = uploadedProfile;
@@ -389,5 +401,6 @@ exports.deletePresentablePicController = asyncHandler(async (req, res) => {
 exports.parseUserFields = parseUserFields;
 exports.assertUniqueEmail = assertUniqueEmail;
 exports.assertUniquePhone = assertUniquePhone;
+exports.assertUniqueWhatsapp = assertUniqueWhatsapp;
 exports.enrichUser = enrichUser;
 exports.buildUserUpdatesFromBody = buildUserUpdatesFromBody;

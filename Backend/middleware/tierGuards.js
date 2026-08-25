@@ -19,6 +19,23 @@ function canAccessPaidOnboardingWizard(user) {
   return Boolean(user?.programPurchased);
 }
 
+function userHasAssignedWellnessCoach(user) {
+  if (!user) return false;
+  if (String(user.assignmentStatus || "").toLowerCase() === "assigned") {
+    return true;
+  }
+  const parentId = user.parentCoachId != null ? String(user.parentCoachId).trim() : "";
+  return Boolean(parentId);
+}
+
+function assertAssignedCoachForOnboarding(user) {
+  if (userHasAssignedWellnessCoach(user)) return;
+  throw new AppError(
+    "A wellness coach is not assigned yet. Onboarding unlocks once your coach is assigned.",
+    403
+  );
+}
+
 /**
  * Blocks access to paid Heal features unless user is Heal,
  * or Maintenance with an active FY Energy Exchange subscription.
@@ -112,6 +129,8 @@ const requirePaidOnboardingPending = asyncHandler(async (req, res, next) => {
     throw new AppError("Paid onboarding already completed", 409);
   }
 
+  assertAssignedCoachForOnboarding(user);
+
   req.currentUser = user;
   next();
 });
@@ -148,6 +167,11 @@ const requirePaidOnboardingAccess = asyncHandler(async (req, res, next) => {
 
   if (!canAccessPaidOnboardingWizard(user)) {
     throw new AppError("Complete payment before starting onboarding", 403);
+  }
+
+  // During incomplete onboarding, body-analytics writes require a coach.
+  if (!user.paidOnboardingCompleted) {
+    assertAssignedCoachForOnboarding(user);
   }
 
   req.currentUser = user;

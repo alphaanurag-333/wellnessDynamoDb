@@ -1,9 +1,13 @@
 /* -------------------------------------------------------------------------- */
-/*  Public marketing site — design tokens + component styles                  */
+/*  Public marketing site ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ design tokens + component styles                  */
 /*  Media queries are grouped at the end of this file.                        */
 /* -------------------------------------------------------------------------- */
 
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap");
+
+.swal2-container {
+  z-index: 10000 !important;
+}
 
 /* ---------- Design tokens (type, spacing, radii, shared utilities) ---------- */
 
@@ -83,7 +87,7 @@
   --radius-xs: var(--radius-sm);
 }
 
-/* Shared section utility — prefer this over ad-hoc py-5 / 70–90px padding */
+/* Shared section utility ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ prefer this over ad-hoc py-5 / 70ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ90px padding */
 .section-spacing {
   padding-top: var(--section-padding-y);
   padding-bottom: var(--section-padding-y);
@@ -1993,7 +1997,7 @@ font-size: var(--fs-sm);
 .swiper.heroSwiper,
 .heroSwiper--loading {
   width: 100%;
-  /* Matches admin banner crop 1920×640 (3:1) */
+  /* Matches admin banner crop 1920ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ640 (3:1) */
   height: clamp(200px, 33.333vw, 640px);
   min-height: 0;
   max-height: none;
@@ -3495,7 +3499,6 @@ padding: 0;
   min-height: 220px;
   height: auto;
   padding: 40px 0 72px;
-  background-image: url("../site/images/contact-bg.png");
   display: flex;
   align-items: center;
 background-repeat: no-repeat;
@@ -5038,7 +5041,7 @@ transition: var(--transition);
 }
 
 .aboutFaqAccordion .accordion-button:not(.collapsed)::after {
-  content: "−";
+  content: "ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃËÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ";
 transform: rotate(180deg);
 color: var(--primary);
 }
@@ -6687,7 +6690,7 @@ box-shadow: var(--shadow-sm);
   margin-inline: auto;
 }
 
-/* Slider story cards — separate from category cards above */
+/* Slider story cards ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ separate from category cards above */
 .transformation-story-card {
   width: 100%;
   height: 100%;
@@ -9341,7 +9344,7 @@ flex-shrink: 0;
 /* SMALL DEVICES */
 
 /* -------------------------------------------------------------------------- */
-/*  About page — tighter section rhythm + responsive layouts                  */
+/*  About page ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ tighter section rhythm + responsive layouts                  */
 /* -------------------------------------------------------------------------- */
 
 .about-page.about-wellness {
@@ -9493,7 +9496,7 @@ flex-shrink: 0;
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Home page — unified section rhythm + responsive polish                    */
+/*  Home page ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ unified section rhythm + responsive polish                    */
 /* -------------------------------------------------------------------------- */
 
 .home-page {
@@ -10177,7 +10180,7 @@ flex-shrink: 0;
 @media (max-width: 992px) {
 .swiper.heroSwiper,
   .heroSwiper--loading {
-    /* Matches mobile banner crop 1080×480 (~2.25:1) */
+    /* Matches mobile banner crop 1080ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ480 (~2.25:1) */
     height: clamp(160px, 44.444vw, 320px);
   }
 .hero-overlay {
@@ -11509,7 +11512,7 @@ font-size: 0.62rem;
   }
 .swiper.heroSwiper,
   .heroSwiper--loading {
-    /* ~1080×480 mobile crop on narrow phones */
+    /* ~1080ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ480 mobile crop on narrow phones */
     height: clamp(190px, 44.444vw, 220px);
   }
 .champion-section,
@@ -12857,5 +12860,2116 @@ bottom: -18px;
     right: 15px;
     bottom: 20px;
     font-size: 13px;
+  }
+}
+/* ============================================================
+   Wellnesspedia page ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ sections, cards, modals
+   ============================================================ */
+
+.wellnesspedia-page {
+  background: #fff;
+  padding-bottom: 0;
+}
+
+.wellnesspedia-page .wellnesspedia-hero.heroSwiper {
+  margin-bottom: 0;
+}
+
+.wellnesspedia-page .wp-section {
+  padding: 1.5rem 0 0.85rem;
+}
+
+.wellnesspedia-page .wp-section:first-of-type,
+.wellnesspedia-page .wellnesspedia-hero + .wp-section,
+.wellnesspedia-page .app-hero + .wp-section {
+  padding-top: 1.15rem;
+}
+
+.wellnesspedia-page .wp-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.wellnesspedia-page .wp-section__header h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.wellnesspedia-page .wp-section__loading,
+.wellnesspedia-page .wp-section__empty {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.wellnesspedia-page .wp-section__loading--more {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+/* Filter chips ÃÆÃÆÃâÃÆÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃâÃÆÃâÃâÃâ Swiper free-mode horizontal scroll */
+.wellnesspedia-page .wp-filter-chips-wrap {
+  margin: 0 0 0.75rem;
+}
+
+.wellnesspedia-page .wp-filter-chips-swiper {
+  margin: 0;
+  padding: 0.05rem 0 0.2rem;
+  overflow: hidden;
+}
+
+.wellnesspedia-page .wp-filter-chips-slide {
+  width: auto !important;
+  height: auto;
+}
+
+.wellnesspedia-page .wp-filter-chip {
+  flex: 0 0 auto;
+  border: 1px solid #d7dde5;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.wellnesspedia-page .wp-filter-chip.is-active,
+.wellnesspedia-page .wp-filter-chip:hover {
+  background: var(--primary, #e7863a);
+  border-color: var(--primary, #e7863a);
+  color: #fff;
+}
+
+.wellnesspedia-page .wp-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #fff1e6;
+  color: var(--primary, #e7863a);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* Stable carousel stage ÃÆÃÆÃâÃÆÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃâÃÆÃâÃâÃâ avoids layout bump on category change */
+.wellnesspedia-page .wp-carousel-stage {
+  position: relative;
+  min-height: 220px;
+}
+
+.wellnesspedia-page .wp-carousel-stage__body {
+  position: relative;
+}
+
+.wellnesspedia-page .wp-carousel-stage__body.is-refreshing .wp-content-swiper {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(0.05);
+}
+
+.wellnesspedia-page .wp-carousel-stage__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(1px);
+}
+
+.wellnesspedia-page .wp-carousel-spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #f1f5f9;
+  border-top-color: var(--primary, #e7863a);
+  animation: wp-spin 0.7s linear infinite;
+}
+
+@keyframes wp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.wellnesspedia-page .wp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__track {
+  display: flex;
+  gap: 14px;
+  overflow: hidden;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__card {
+  flex: 0 0 calc(86% - 7px);
+  max-width: 320px;
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__media {
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e8eef5 37%, #f1f5f9 63%);
+  background-size: 400% 100%;
+  animation: wp-shimmer 1.2s ease-in-out infinite;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__lines {
+  padding: 0.65rem 0.75rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__line {
+  display: block;
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e8eef5 37%, #f1f5f9 63%);
+  background-size: 400% 100%;
+  animation: wp-shimmer 1.2s ease-in-out infinite;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__line--title {
+  width: 72%;
+  height: 12px;
+}
+
+.wellnesspedia-page .wp-carousel-skeleton__line--short {
+  width: 48%;
+}
+
+@keyframes wp-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@media (min-width: 640px) {
+  .wellnesspedia-page .wp-carousel-skeleton__card {
+    flex-basis: calc(50% - 8px);
+  }
+}
+
+/* Content swiper ÃÆÃÆÃâÃÆÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃâÃÆÃâÃâÃâ¬ÃÆÃÆÃâÃâÃÆÃâÃâÃâ equal-height slides in each row */
+.wellnesspedia-page .wp-content-swiper {
+  overflow: hidden;
+  padding-bottom: 0.15rem;
+}
+
+.wellnesspedia-page .wp-content-swiper .swiper-wrapper {
+  align-items: stretch;
+}
+
+.wellnesspedia-page .wp-content-swiper .swiper-slide {
+  height: auto;
+  display: flex;
+}
+
+.wellnesspedia-page .wp-content-swiper .swiper-slide > * {
+  width: 100%;
+}
+
+/* Recipe cards */
+.wellnesspedia-page .wp-recipe-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  text-align: left;
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  padding: 0;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.wellnesspedia-page .wp-recipe-card:hover {
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.wellnesspedia-page .wp-recipe-card__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #f1f5f9;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.wellnesspedia-page .wp-recipe-card__media img,
+.wellnesspedia-page .wp-recipe-card__placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wellnesspedia-page .wp-recipe-card__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.92);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.wellnesspedia-page .wp-recipe-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  padding: 0.65rem 0.8rem 0.75rem;
+  min-height: 5.5rem;
+}
+
+.wellnesspedia-page .wp-recipe-card__title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.wellnesspedia-page .wp-recipe-card__title-row h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.25em * 2);
+}
+
+.wellnesspedia-page .wp-recipe-card__body p {
+  margin: 0;
+  margin-top: auto;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.4em * 2);
+}
+
+/* Health tools */
+.wellnesspedia-page .wp-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.wellnesspedia-page .wp-tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  min-height: 150px;
+  border: none;
+  border-radius: 18px;
+  padding: 1.25rem 0.75rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.wellnesspedia-page .wp-tool-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
+}
+
+.wellnesspedia-page .wp-tool-card--orange { background: #fff1e6; color: #e11d48; }
+.wellnesspedia-page .wp-tool-card--purple { background: #f3e8ff; color: #7c3aed; }
+.wellnesspedia-page .wp-tool-card--pink { background: #fce7f3; color: #db2777; }
+.wellnesspedia-page .wp-tool-card--yellow { background: #fef9c3; color: #ca8a04; }
+
+.wellnesspedia-page .wp-tool-card__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  display: grid;
+  place-items: center;
+}
+
+.wellnesspedia-page .wp-tool-card__title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: #1e293b;
+  text-align: center;
+}
+
+/* Yoga cards */
+.wellnesspedia-page .wp-yoga-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wellnesspedia-page .wp-yoga-card__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.wellnesspedia-page .wp-yoga-card__media img,
+.wellnesspedia-page .wp-yoga-card__placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wellnesspedia-page .wp-yoga-card__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+.wellnesspedia-page .wp-yoga-card__desc {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Disorders */
+.wellnesspedia-page .wp-disorder-card {
+  height: 100%;
+  min-height: 220px;
+  border: 1px solid #e5e7eb;
+  border-top-width: 4px;
+  border-radius: 14px;
+  padding: 1.1rem 1.15rem 1.25rem;
+  background: #fff;
+}
+
+.wellnesspedia-page .wp-disorder-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.wellnesspedia-page .wp-disorder-card__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.wellnesspedia-page .wp-disorder-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #475569;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.wellnesspedia-page .wp-disorder-card__empty {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+/* Lower CTA + social */
+.wellnesspedia-page .wp-consult-card {
+  border: 1px solid #e8ecf1;
+  border-radius: 18px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  background: #fff;
+  margin-bottom: 1.5rem;
+}
+
+.wellnesspedia-page .wp-consult-card h2 {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.wellnesspedia-page .wp-consult-card p {
+  margin: 0 auto 1.25rem;
+  max-width: 640px;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.wellnesspedia-page .wp-consult-card__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary, #e7863a);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.2s ease;
+}
+
+.wellnesspedia-page .wp-consult-card__btn:hover {
+  filter: brightness(0.95);
+  color: #fff;
+}
+
+.wellnesspedia-page .wp-social-proof {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.wellnesspedia-page .wp-social-card {
+  border: 1px solid #e8ecf1;
+  border-radius: 16px;
+  padding: 1.35rem 1rem;
+  text-align: center;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+
+.wellnesspedia-page .wp-social-card__score {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.1;
+}
+
+.wellnesspedia-page .wp-social-card__stars {
+  color: var(--primary, #e7863a);
+  letter-spacing: 0.12em;
+  margin: 0.35rem 0 0.65rem;
+  font-size: 0.95rem;
+}
+
+.wellnesspedia-page .wp-social-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Modals */
+.wp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.wp-modal {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: min(92vh, 900px);
+  overflow: auto;
+  background: #fdfbf7;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  padding: 1.35rem 1.35rem 1.5rem;
+}
+
+.wp-modal--wide {
+  width: min(860px, 100%);
+}
+
+.wp-modal__close {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary, #e7863a);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.wp-modal__header {
+  padding-right: 2.5rem;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 6;
+}
+
+.wp-modal__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+  color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.wp-modal__info {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #94a3b8;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  font-style: normal;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.wp-modal__info:hover {
+  border-color: var(--primary, #e7863a);
+  color: var(--primary, #e7863a);
+  background: #fff7ed;
+}
+
+.wp-modal__info.is-open {
+  border-color: var(--primary, #e7863a);
+  background: var(--primary, #e7863a);
+  color: #fff;
+}
+
+.wp-modal.is-info-open {
+  overflow: hidden;
+}
+
+.wp-modal__body {
+  position: relative;
+}
+
+.wp-calc-info {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0.1rem 0.1rem 0.25rem;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wp-calc-info__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(253, 251, 247, 0.72);
+  cursor: pointer;
+}
+
+.wp-calc-info__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  margin: 0 auto 0.25rem;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+  padding: 1.15rem 2.35rem 1.1rem 1.05rem;
+}
+
+.wp-calc-info__close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary, #e7863a);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.wp-info-panel--bmi,
+.wp-info-panel--bmr,
+.wp-info-panel--bodyfat,
+.wp-info-panel--visceral {
+  padding-right: 0.6rem;
+}
+
+.wp-info-panel__kicker {
+  margin: 0 0 0.75rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-info-panel__kicker--center {
+  text-align: center;
+  margin-bottom: 0.65rem;
+}
+
+.wp-info-tiers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wp-info-tiers li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.58rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.wp-info-tiers .wp-tier-name,
+.wp-info-tiers .wp-tier-range {
+  color: inherit;
+}
+
+.wp-info-tiers .wp-tier-range {
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wp-info-panel--bmr .wp-info-panel__inner {
+  background: #f7f1e8;
+  border-radius: 16px;
+  padding: 0.85rem 0.75rem 0.75rem;
+}
+
+.wp-info-bmr-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wp-info-bmr-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.wp-info-bmr-rows .wp-bmr-table__name {
+  align-items: center;
+  min-width: 0;
+  color: #334155;
+  flex: 1;
+}
+
+.wp-info-bmr-rows .wp-dot {
+  margin-top: 0;
+}
+
+.wp-info-bmr-rows strong {
+  color: #1e293b;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.wp-info-panel--bmr .wp-bmr-note {
+  margin: 0.7rem 0 0;
+  text-align: left;
+}
+
+.wp-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff7ed;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.wp-info-table th,
+.wp-info-table td {
+  padding: 0.62rem 0.55rem;
+  text-align: center;
+  font-size: 0.84rem;
+}
+
+.wp-info-table th {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-info-table th.is-accent {
+  color: var(--primary, #e7863a);
+}
+
+.wp-info-table td {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.wp-info-table tbody tr + tr td {
+  border-top: 1px solid rgba(231, 134, 58, 0.16);
+}
+
+.wp-info-table--lines {
+  background: transparent;
+}
+
+.wp-info-table--lines td.is-muted {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.wp-info-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+}
+
+.wp-info-source__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary, #e7863a);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.wp-info-panel--visceral {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wp-info-sheet {
+  background: #f7f1e8;
+  border-radius: 16px;
+  padding: 0.75rem 0.7rem 0.55rem;
+}
+
+.wp-info-sheet .wp-info-table th,
+.wp-info-sheet .wp-info-table td {
+  padding: 0.5rem 0.4rem;
+}
+
+.wp-info-sheet .wp-info-table td:first-child,
+.wp-info-sheet .wp-info-table th:first-child {
+  text-align: left;
+}
+
+.wp-info-sheet .wp-info-table td:last-child,
+.wp-info-sheet .wp-info-table th:last-child {
+  text-align: right;
+}
+
+@media (min-width: 641px) {
+  .wp-modal.is-info-open .wp-modal__body {
+    min-height: min(52vh, 440px);
+  }
+}
+
+@media (max-width: 640px) {
+  .wp-modal-overlay:has(.wp-calc-modal) {
+    align-items: flex-end;
+    padding: 0.45rem;
+    padding-bottom: max(0.45rem, env(safe-area-inset-bottom));
+  }
+
+  .wp-modal.wp-calc-modal {
+    width: 100%;
+    max-height: min(94vh, 100%);
+    padding: 0.85rem 0.8rem 0.95rem;
+    border-radius: 18px 18px 14px 14px;
+  }
+
+  .wp-modal.wp-calc-modal .wp-modal__close {
+    top: 0.7rem;
+    right: 0.7rem;
+    width: 30px;
+    height: 30px;
+  }
+
+  .wp-calc-modal .wp-modal__header {
+    margin-bottom: 0.7rem;
+    padding-right: 2.2rem;
+  }
+
+  .wp-calc-modal .wp-modal__title {
+    font-size: 1.05rem;
+    gap: 0.3rem;
+  }
+
+  .wp-calc-modal .wp-modal__info {
+    width: 16px;
+    height: 16px;
+    font-size: 0.62rem;
+  }
+
+  .wp-calc-modal .wp-modal__desc {
+    margin-top: 0.3rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .wp-calc-modal .wp-calc-form {
+    padding: 0.7rem 0.65rem 0.75rem;
+    border-radius: 12px;
+  }
+
+  .wp-calc-modal .wp-calc-form__grid {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .wp-calc-modal .wp-field {
+    gap: 0.28rem;
+  }
+
+  .wp-calc-modal .wp-field label {
+    font-size: 0.78rem;
+  }
+
+  .wp-calc-modal .wp-field input {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.88rem;
+    border-radius: 8px;
+  }
+
+  .wp-calc-modal .wp-gender-toggle,
+  .wp-calc-modal .wp-unit-toggle {
+    padding: 0.12rem;
+    border-radius: 8px;
+  }
+
+  .wp-calc-modal .wp-gender-toggle button,
+  .wp-calc-modal .wp-unit-toggle button {
+    padding: 0.32rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .wp-calc-modal .wp-calc-submit {
+    margin-top: 0.75rem;
+    padding: 0.72rem 0.8rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  .wp-calc-info {
+    padding: 0;
+  }
+
+  .wp-calc-info__card {
+    width: 100%;
+    padding: 0.7rem 2rem 0.7rem 0.65rem;
+    border-radius: 14px;
+  }
+
+  .wp-calc-info__close {
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 24px;
+    height: 24px;
+  }
+
+  .wp-info-panel__kicker {
+    margin-bottom: 0.5rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+  }
+
+  .wp-info-tiers {
+    gap: 0.28rem;
+  }
+
+  .wp-info-tiers li {
+    padding: 0.42rem 0.55rem;
+    font-size: 0.78rem;
+    border-radius: 10px;
+    gap: 0.4rem;
+  }
+
+  .wp-info-tiers .wp-tier-range {
+    font-size: 0.72rem;
+  }
+
+  .wp-info-panel--bmr .wp-info-panel__inner,
+  .wp-info-sheet {
+    padding: 0.55rem 0.45rem 0.5rem;
+    border-radius: 12px;
+  }
+
+  .wp-info-bmr-rows {
+    gap: 0.28rem;
+  }
+
+  .wp-info-bmr-rows li {
+    padding: 0.4rem 0.5rem;
+    gap: 0.4rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
+  }
+
+  .wp-info-bmr-rows strong {
+    font-size: 0.72rem;
+  }
+
+  .wp-info-panel--bmr .wp-bmr-note,
+  .wp-info-source {
+    margin-top: 0.45rem;
+    font-size: 0.62rem;
+  }
+
+  .wp-info-table th,
+  .wp-info-table td {
+    padding: 0.4rem 0.28rem;
+    font-size: 0.72rem;
+  }
+
+  .wp-info-table th {
+    font-size: 0.58rem;
+  }
+
+  .wp-info-panel--visceral {
+    gap: 0.5rem;
+  }
+
+  .wp-tier-dot,
+  .wp-info-bmr-rows .wp-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+@media (max-width: 400px) {
+  .wp-modal.wp-calc-modal {
+    padding: 0.7rem 0.65rem 0.8rem;
+  }
+
+  .wp-calc-modal .wp-modal__title {
+    font-size: 0.98rem;
+  }
+
+  .wp-calc-modal .wp-modal__desc {
+    font-size: 0.7rem;
+    line-height: 1.35;
+  }
+
+  .wp-info-bmr-rows li {
+    font-size: 0.66rem;
+    padding: 0.34rem 0.42rem;
+  }
+
+  .wp-info-bmr-rows strong,
+  .wp-info-tiers li,
+  .wp-info-table td {
+    font-size: 0.66rem;
+  }
+}
+
+.wp-modal__desc {
+  margin: 0.45rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.wp-calc-form {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.wp-calc-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.wp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wp-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.wp-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.wp-field input {
+  width: 100%;
+  border: 1px solid #dbe3ee;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.wp-field.is-invalid > input,
+.wp-field.is-invalid .wp-input-unit,
+.wp-field.is-invalid .wp-height-feet input {
+  border-color: #ef4444;
+  background: #fff7f7;
+}
+
+.wp-field__error {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #dc2626;
+  line-height: 1.3;
+}
+
+.wp-gender-toggle,
+.wp-unit-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 0.2rem;
+}
+
+.wp-gender-toggle button,
+.wp-unit-toggle button {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.wp-gender-toggle button.is-active,
+.wp-unit-toggle button.is-active {
+  background: var(--primary, #e7863a);
+  color: #fff;
+}
+
+.wp-input-unit {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid #dbe3ee;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding-right: 0.75rem;
+}
+
+.wp-input-unit input {
+  border: none;
+  background: transparent;
+  flex: 1;
+}
+
+.wp-input-unit span {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.wp-height-feet {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.wp-calc-submit {
+  width: 100%;
+  margin-top: 1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary, #e7863a);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+}
+
+.wp-calc-submit:hover {
+  filter: brightness(0.96);
+}
+
+.wp-result-label {
+  margin: 0 0 0.75rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-bmi-result,
+.wp-bmr-result,
+.wp-bodyfat-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.wp-bmi-result__gauge-panel,
+.wp-bmi-result__tiers,
+.wp-bmr-result__circle-panel,
+.wp-bmr-result__table-panel,
+.wp-bodyfat-result__rings {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.wp-bmi-gauge {
+  text-align: center;
+}
+
+.wp-bmi-gauge__svg {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+}
+
+.wp-bmi-gauge__value {
+  margin: 0.25rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.wp-bmi-result__tiers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.wp-bmi-result__tiers li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.wp-tier-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.wp-tier-name {
+  font-weight: 600;
+  color: #334155;
+}
+
+.wp-tier-range {
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.wp-bmr-circle {
+  width: 160px;
+  height: 160px;
+  margin: 0.5rem auto 1rem;
+  border-radius: 50%;
+  border: 8px solid var(--primary, #e7863a);
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.wp-bmr-circle strong {
+  font-size: 2rem;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.wp-bmr-circle span {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-bmr-table-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+  margin-bottom: 0.5rem;
+}
+
+.wp-bmr-table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wp-bmr-table li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.88rem;
+}
+
+.wp-bmr-table__name {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  color: #475569;
+}
+
+.wp-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 0.35rem;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.wp-bmr-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.wp-ring-pair {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wp-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 6px solid var(--primary, #e7863a);
+  outline: 1px solid rgba(231, 134, 58, 0.35);
+  outline-offset: 4px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background: #fff;
+}
+
+.wp-ring--sm {
+  width: 88px;
+  height: 88px;
+  border-width: 5px;
+}
+
+.wp-ring strong {
+  font-size: 1.6rem;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.wp-ring--sm strong {
+  font-size: 1.2rem;
+}
+
+.wp-ring span {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-bodyfat-result__meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.wp-meta-card {
+  background: #fff4eb;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem;
+}
+
+.wp-meta-card--wide {
+  grid-column: 1 / -1;
+}
+
+.wp-meta-card span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+.wp-meta-card strong {
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.wp-accent-text {
+  color: var(--primary, #e7863a) !important;
+}
+
+.wp-visceral-result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.wp-visceral-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  background: #f1f5f9;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.wp-visceral-metric {
+  text-align: center;
+}
+
+.wp-visceral-metric > span {
+  display: block;
+  margin-bottom: 0.55rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  font-weight: 650;
+}
+
+.wp-visceral-metric .wp-ring {
+  margin: 0 auto;
+}
+
+.wp-visceral-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.wp-ref-table {
+  background: #fff;
+  border-radius: 14px;
+  padding: 0.9rem;
+}
+
+.wp-ref-table h4 {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.wp-ref-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.wp-ref-table th,
+.wp-ref-table td {
+  text-align: left;
+  padding: 0.45rem 0.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+}
+
+.wp-ref-table th {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Media detail modal (recipe / yoga) */
+.wp-media-modal {
+  width: min(560px, calc(100% - 2rem));
+  max-height: min(90vh, 860px);
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+/* Chromium: backdrop-filter on overlay double-paints <video> */
+.wp-modal-overlay:has(.wp-media-modal) {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.wp-media-modal .wp-modal__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wp-media-modal__shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  overflow: hidden;
+}
+
+.wp-media-modal .wp-modal__close {
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 36px;
+  height: 36px;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.wp-media-modal__media {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  max-height: min(46vh, 360px);
+  background: #000;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.wp-media-modal.is-playing .wp-media-modal__media {
+  aspect-ratio: 16 / 9;
+  max-height: min(50vh, 400px);
+}
+
+.wp-media-modal__media img,
+.wp-media-modal__placeholder,
+.wp-media-modal__player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.wp-media-modal__media img,
+.wp-media-modal__placeholder {
+  object-fit: cover;
+}
+
+.wp-media-modal__player {
+  object-fit: cover;
+  background: #000;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  z-index: 1;
+}
+
+.wp-media-modal__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 2;
+  width: 64px;
+  height: 64px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.95);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+  transition: transform 0.15s ease;
+}
+
+.wp-media-modal__play:hover {
+  transform: scale(1.05);
+}
+
+.wp-media-modal__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.2rem 1.35rem 1.5rem;
+  background: #fff;
+}
+
+.wp-media-modal__title {
+  margin: 0 0 0.85rem;
+  padding-right: 2rem;
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  font-weight: 750;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+.wp-media-modal__specs {
+  list-style: none;
+  margin: 0 0 0.95rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.wp-media-modal__specs .wp-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  border-radius: 999px;
+  background: #fff1e6;
+  color: var(--primary, #e7863a);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.32rem 0.7rem;
+  line-height: 1.25;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.wp-media-modal__desc {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .wp-modal-overlay:has(.wp-media-modal) {
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .wp-media-modal {
+    width: 100%;
+    max-height: min(88vh, 100%);
+    border-radius: 18px;
+    margin: auto;
+  }
+
+  .wp-media-modal__media {
+    aspect-ratio: 16 / 11;
+    max-height: 38vh;
+  }
+
+  .wp-media-modal.is-playing .wp-media-modal__media {
+    aspect-ratio: 16 / 9;
+    max-height: 42vh;
+  }
+
+  .wp-media-modal__play {
+    width: 56px;
+    height: 56px;
+  }
+
+  .wp-media-modal__content {
+    padding: 1rem 1rem 1.25rem;
+  }
+
+  .wp-media-modal__title {
+    margin-bottom: 0.7rem;
+    padding-right: 1.75rem;
+    font-size: 1.05rem;
+  }
+
+  .wp-media-modal__specs {
+    gap: 0.35rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .wp-media-modal__specs .wp-chip-badge {
+    font-size: 0.7rem;
+    padding: 0.28rem 0.55rem;
+  }
+
+  .wp-media-modal__desc {
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+}
+
+@media (min-width: 900px) {
+  .wp-media-modal {
+    width: min(600px, calc(100% - 2.5rem));
+  }
+
+  .wp-media-modal__media {
+    max-height: min(48vh, 380px);
+  }
+
+  .wp-media-modal__content {
+    padding: 1.35rem 1.5rem 1.65rem;
+  }
+}
+
+@media (max-width: 992px) {
+  .wellnesspedia-page .wp-tools-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wp-bmi-result,
+  .wp-bmr-result,
+  .wp-bodyfat-result,
+  .wp-visceral-tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .wellnesspedia-page .wp-section {
+    padding: 1.1rem 0 0.65rem;
+  }
+
+  .wellnesspedia-page .wellnesspedia-hero + .wp-section,
+  .wellnesspedia-page .app-hero + .wp-section {
+    padding-top: 0.9rem;
+  }
+
+  .wellnesspedia-page .wp-section__header {
+    margin-bottom: 0.5rem;
+  }
+
+  .wellnesspedia-page .wp-section__header h2 {
+    font-size: 1.15rem;
+  }
+
+  .wellnesspedia-page .wp-filter-chips-wrap {
+    margin-bottom: 0.6rem;
+  }
+
+  .wellnesspedia-page .wp-filter-chip {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .wellnesspedia-page .wp-carousel-stage {
+    min-height: 200px;
+  }
+
+  .wellnesspedia-page .wp-recipe-card__media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .wellnesspedia-page .wp-recipe-card__body {
+    padding: 0.55rem 0.7rem 0.65rem;
+  }
+
+  .wellnesspedia-page .wp-recipe-card__title-row h3 {
+    font-size: 0.9rem;
+  }
+
+  .wellnesspedia-page .wp-recipe-card__body p {
+    font-size: 0.75rem;
+    -webkit-line-clamp: 2;
+  }
+
+  .wellnesspedia-page .wp-yoga-card__media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .wellnesspedia-page .wp-tools-grid,
+  .wellnesspedia-page .wp-social-proof {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .wellnesspedia-page .wp-tool-card {
+    min-height: 118px;
+    padding: 1rem 0.65rem;
+  }
+
+  .wellnesspedia-page .wp-consult-card {
+    padding: 1.15rem 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .wp-calc-form__grid,
+  .wp-visceral-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .wp-modal--wide {
+    width: min(860px, calc(100% - 0.75rem));
+  }
+
+  .wp-media-modal {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+}
+
+.wellnesspedia-page .wp-yoga-card__body {
+  padding: 0.55rem 0.1rem 0;
+}
+
+.wellnesspedia-page .wp-yoga-card__title {
+  margin: 0 0 0.2rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+/* ---------- App hero (home + Wellnesspedia) ---------- */
+.app-hero {
+  --app-hero-green: #1f5b3a;
+  --app-hero-orange: var(--primary, #e7863a);
+  --app-hero-blue: #3b82f6;
+  --app-hero-navy: #1e3a5f;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: clamp(1.25rem, 3vw, 2rem) 0;
+  background:
+    radial-gradient(900px 320px at 0% 0%, rgba(232, 136, 79, 0.18), transparent 55%),
+    radial-gradient(820px 360px at 100% 100%, rgba(122, 201, 154, 0.22), transparent 52%),
+    linear-gradient(180deg, #fbf8f4 0%, #f3f7f2 100%);
+}
+
+.app-hero__glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(42px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-hero__glow--orange {
+  width: 240px;
+  height: 240px;
+  top: -90px;
+  left: -50px;
+  background: rgba(231, 134, 58, 0.22);
+}
+
+.app-hero__glow--mint {
+  width: 280px;
+  height: 280px;
+  right: -60px;
+  bottom: -100px;
+  background: rgba(122, 201, 154, 0.26);
+}
+
+.app-hero__leaf {
+  position: absolute;
+  width: 72px;
+  right: 18%;
+  bottom: 8%;
+  color: rgba(61, 155, 82, 0.16);
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(12deg);
+}
+
+.app-hero__grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(180px, 0.7fr);
+  align-items: center;
+  gap: clamp(1rem, 3vw, 2.5rem);
+}
+
+.app-hero__copy {
+  max-width: 34rem;
+}
+
+.app-hero__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.app-hero__brand img {
+  width: 72px;
+  height: auto;
+  object-fit: contain;
+}
+
+.app-hero__brand p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--app-hero-navy);
+}
+
+.app-hero__title {
+  margin: 0 0 0.45rem;
+  font-size: clamp(1.55rem, 2.6vw, 2.2rem);
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--app-hero-green);
+}
+
+.app-hero__title span {
+  display: block;
+}
+
+.app-hero__title em {
+  font-style: normal;
+  color: var(--app-hero-orange);
+}
+
+.app-hero__title em.is-blue {
+  color: var(--app-hero-blue);
+}
+
+.app-hero__sub {
+  margin: 0 0 1rem;
+  max-width: 28rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #5b6470;
+}
+
+.app-hero .site-app-badges {
+  gap: 0.65rem;
+}
+
+.app-hero .site-app-badge {
+  min-height: 46px;
+  min-width: 152px;
+  border-radius: 10px;
+  padding: 0.45rem 0.9rem;
+  gap: 0.5rem;
+}
+
+.app-hero .site-app-badge__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-hero .site-app-badge small {
+  font-size: 0.55rem;
+}
+
+.app-hero .site-app-badge strong {
+  font-size: 0.84rem;
+}
+
+.app-hero__visual {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-hero__image {
+  display: block;
+  width: min(100%, 240px);
+  height: auto;
+  max-height: 340px;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(30, 58, 95, 0.2));
+}
+
+.wellnesspedia-page .app-hero,
+.home-page .app-hero {
+  padding: clamp(1.15rem, 2.8vw, 1.85rem) 0;
+}
+
+@media (max-width: 991px) {
+  .app-hero__grid {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .app-hero__visual {
+    order: -1;
+  }
+
+  .app-hero__copy {
+    max-width: 36rem;
+    margin: 0 auto;
+  }
+
+  .app-hero__brand {
+    align-items: center;
+  }
+
+  .app-hero__sub {
+    margin-inline: auto;
+  }
+
+  .app-hero .site-app-badges {
+    justify-content: center;
+  }
+
+  .app-hero__image {
+    width: min(100%, 180px);
+    max-height: 250px;
+  }
+
+  .app-hero__leaf {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-hero {
+    padding: 1.1rem 0 1.25rem;
+  }
+
+  .app-hero__brand img {
+    width: 58px;
+  }
+
+  .app-hero__title {
+    font-size: 1.35rem;
+  }
+
+  .app-hero .site-app-badge {
+    min-width: 0;
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+
+  .app-hero__image {
+    width: min(100%, 150px);
+    max-height: 220px;
+  }
+
+  .app-hero__leaf {
+    display: none;
   }
 }

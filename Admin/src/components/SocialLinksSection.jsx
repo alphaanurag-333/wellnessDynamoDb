@@ -30,6 +30,8 @@ function SocialGlyph({ icon }) {
     icon === "linkedin" ? "💼" :
     icon === "x" ? "𝕏" :
     icon === "facebook" ? "f" :
+    icon === "play" ? "G" :
+    icon === "apple" ? "A" :
     icon === "globe" ? "🌐" :
     "🔗";
 
@@ -49,7 +51,7 @@ export function SocialLinksSection({
   registerPublishHandler,
   onLocalChange,
   labelPlaceholder = "Label · e.g. Facebook",
-  urlPlaceholder = "URL · e.g. facebook.com/irwellness",
+  urlPlaceholder = "URL · e.g. facebook.com/irwellness or play.google.com/store/apps/details?id=…",
 }) {
   const deferPublish = persistToAppConfig && Boolean(registerPublishHandler);
   const [loading, setLoading] = useState(persistToAppConfig);
@@ -217,7 +219,7 @@ export function SocialLinksSection({
           : deferPublish
             ? "Shown in the website footer. Edits stay local until you publish."
             : persistToAppConfig
-              ? "Shown in the website footer. Facebook, Instagram, YouTube, and LinkedIn are saved to App Config."
+              ? "Footer social links plus Google Play and App Store URLs for the website download buttons. Saved to App Config."
               : "Shown in the website footer."
       }
       actions={

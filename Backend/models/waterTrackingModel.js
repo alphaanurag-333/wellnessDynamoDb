@@ -16,6 +16,7 @@ const DEFAULT_GOAL_GLASSES = 0;
 const DEFAULT_GLASS_SIZE_ML = 250;
 const MIN_GOAL_GLASSES = 0;
 const MAX_GOAL_GLASSES = 99;
+const MAX_DAILY_GLASSES = 50;
 
 function dayRecordKey(date) {
   return `${DAY_KEY_PREFIX}${date}`;
@@ -44,8 +45,10 @@ function normalizeGoalGlasses(value) {
 
 function normalizeGlassCount(value) {
   const n = Number.parseInt(String(value ?? ""), 10);
-  if (!Number.isFinite(n) || n < 0 || n > 999) {
-    const err = new Error("glassCount must be an integer between 0 and 999");
+  if (!Number.isFinite(n) || n < 0 || n > MAX_DAILY_GLASSES) {
+    const err = new Error(
+      `glassCount must be an integer between 0 and ${MAX_DAILY_GLASSES}`
+    );
     err.name = "ValidationError";
     throw err;
   }

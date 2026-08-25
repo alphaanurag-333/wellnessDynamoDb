@@ -5,7 +5,7 @@ const DEFERRED_PUBLISH_CONFIGS = new Set([
   ...Object.keys(CONFIG_LEGAL_PUBLISH_SLUGS),
   "web-fs-social",
   "app-consultancy-amount",
-  "app-faq",
+  "app-language-disable",
 ]);
 
 function publishBody(item) {

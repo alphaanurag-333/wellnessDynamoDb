@@ -1,73 +1,68 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Link, useOutletContext, useParams } from "react-router-dom";
-import { ConfigPreviewModal, previewHintForItem } from "../components/ConfigPreviewModal.jsx";
-import { ConfigPublishModal } from "../components/ConfigPublishModal.jsx";
-import { ProgramSetupModal } from "../components/ProgramSetupModal.jsx";
+import { previewHintForItem } from "../data/configPreviewHint.js";
+import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
+import { ONBOARDING_COACHES } from "../data/onboardingVideoData.js";
+import { COMMITMENT_LETTER_DEFAULT } from "../data/commitmentLetterData.js";
 import {
-  MeasurementVideoSection,
-  MEASUREMENT_GUIDE,
-  MEASUREMENT_PARAMETERS,
-} from "../components/MeasurementVideoSection.jsx";
-import {
-  OnboardingVideoSection,
-  ONBOARDING_COACHES,
-} from "../components/OnboardingVideoSection.jsx";
-import { HealthProgressTrackersPanel } from "../components/ConfigAppRemainingSections.jsx";
-import { MedicalQuestionnairePanel } from "../components/MedicalQuestionnairePanel.jsx";
-import { PrakritiAssessmentSection } from "../components/PrakritiAssessmentSection.jsx";
-import {
+  AboutSection,
+  AiEnableSection,
+  AppContentSection,
+  AppSubscriptionFySection,
+  BannerSection,
+  ChallengesSection,
   CommitmentLetterSection,
-  COMMITMENT_LETTER_DEFAULT,
-} from "../components/CommitmentLetterSection.jsx";
-import { DietPlansSection } from "../components/DietPlansSection.jsx";
-import { TestCatalogSection } from "../components/TestCatalogSection.jsx";
-import { DrfBankSection } from "../components/DrfBankSection.jsx";
-import { GallerySection } from "../components/GallerySection.jsx";
-import { AiEnableSection } from "../components/AiEnableSection.jsx";
-import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
-import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
-import { GstSection } from "../components/GstSection.jsx";
-import { ConsultancyAmountSection } from "../components/ConsultancyAmountSection.jsx";
-import { AppSubscriptionFySection } from "../components/AppSubscriptionFySection.jsx";
-import { DpaSection } from "../components/DpaSection.jsx";
-import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
-import { TermsAndConditionsSection } from "../components/TermsAndConditionsSection.jsx";
-import { CommunityGuidelinesSection } from "../components/CommunityGuidelinesSection.jsx";
-import { LegalSectionsEditor } from "../components/LegalSectionsEditor.jsx";
-import { LaunchSection } from "../components/LaunchSection.jsx";
-import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
-import { ChallengesSection } from "../components/ChallengesSection.jsx";
-import { CouponsSection } from "../components/CouponsSection.jsx";
-import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
-import { DynamicProgramTestimonialsSection } from "../components/DynamicProgramTestimonialsSection.jsx";
-import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
-import { SocialLinksSection } from "../components/SocialLinksSection.jsx";
-import { LegalBlocksSection } from "../components/LegalBlocksSection.jsx";
-import { ContactDetailsSection } from "../components/ContactDetailsSection.jsx";
-import { AppContentSection } from "../components/AppContentSection.jsx";
-import { LogoSlotsSection } from "../components/LogoSlotsSection.jsx";
-import { LocationsSection } from "../components/LocationsSection.jsx";
-import { BannerSection } from "../components/BannerSection.jsx";
-import { DynamicChampionSection } from "../components/DynamicChampionSection.jsx";
-import { DynamicBirthdaySection } from "../components/DynamicBirthdaySection.jsx";
-import { DynamicTransformationSection } from "../components/DynamicTransformationSection.jsx";
-import { DynamicClientReviewSection } from "../components/DynamicClientReviewSection.jsx";
-import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
-import { DynamicVoiceOfHealingSection } from "../components/DynamicVoiceOfHealingSection.jsx";
-import { DynamicCofounderSection } from "../components/DynamicCofounderSection.jsx";
-import { AboutSection } from "../components/AboutSection.jsx";
-import { DynamicLeadershipSection } from "../components/DynamicLeadershipSection.jsx";
-import { DynamicWellnessTeamSection } from "../components/DynamicWellnessTeamSection.jsx";
-import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSection.jsx";
-import { DropdownsSection } from "../components/DropdownsSection.jsx";
-import { HealthDisordersSection } from "../components/HealthDisordersSection.jsx";
-import { RecipesSection } from "../components/RecipesSection.jsx";
-import { YogaSection } from "../components/YogaSection.jsx";
-import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx";
-import { RxBankSection } from "../components/RxBankSection.jsx";
-import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
+  CommunityGuidelinesSection,
+  ConfigPreviewModal,
+  ConfigPublishModal,
+  ConsultancyAmountSection,
+  ContactDetailsSection,
+  CouponsSection,
+  DietPlansSection,
+  DpaSection,
+  DrfBankSection,
+  DropdownsSection,
+  DynamicBirthdaySection,
+  DynamicChampionSection,
+  DynamicClientReviewSection,
+  DynamicCofounderSection,
+  DynamicGoogleReviewSection,
+  DynamicLeadershipSection,
+  DynamicProgramTestimonialsSection,
+  DynamicRealPeopleSection,
+  DynamicTransformationSection,
+  DynamicVoiceOfHealingSection,
+  DynamicWellnessTeamSection,
+  FaqConfigPanel,
+  FeatureFlagsSection,
+  FooterSettingSection,
+  GallerySection,
+  GstSection,
+  HealthDisordersSection,
+  HealthProgressTrackersPanel,
+  LanguageDisableSection,
+  LaunchSection,
+  LegalBlocksSection,
+  LegalSectionsEditor,
+  LocationsSection,
+  LogoSlotsSection,
+  MeasurementVideoSection,
+  MedicalQuestionnairePanel,
+  NutritionBankSection,
+  OnboardingVideoSection,
+  PaymentGatewaySection,
+  PrakritiAssessmentSection,
+  PrivacyPolicySection,
+  ProgramSetupModal,
+  RecipesSection,
+  RxBankSection,
+  SocialLinksSection,
+  TermsAndConditionsSection,
+  TestCatalogSection,
+  WellnessLibrarySection,
+  YogaSection,
+} from "./lazyConfigSections.js";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
-import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
@@ -1288,8 +1283,6 @@ const PREVIEW_CONFIGS = new Set([
   "app-diet-plans",
   "app-test-catalog",
   "app-nutrition-bank",
-  "app-challenges",
-  "app-coupons",
   "app-rx-bank",
   "app-gallery",
   "app-launch",
@@ -1299,7 +1292,6 @@ const PREVIEW_CONFIGS = new Set([
   "web-program-testimonials",
   "web-footer",
   "web-fs-social",
-  "web-fs-links",
   "web-fs-privacy",
   "web-fs-tos",
   "web-fs-guidelines",
@@ -1319,17 +1311,40 @@ const PREVIEW_CONFIGS = new Set([
   "common-about",
   "common-google-review",
   "common-dropdowns",
+  "common-health-disorders",
   "common-recipes",
   "common-yoga",
 ]);
 
-function PreviewActions({ item, onOpen, onPublish, canPublish }) {
+/** Header Publish only where confirm actually persists (handler or checkout options). */
+const PUBLISH_CONFIGS = new Set([
+  "app-language-disable",
+  "app-program",
+  "app-subscriptions",
+  "app-consultancy-amount",
+  "app-tos",
+  "app-dpa",
+  "web-fs-social",
+  "web-fs-privacy",
+  "web-fs-tos",
+  "web-fs-guidelines",
+  "web-fs-contact",
+  "web-fs-text",
+  "common-about",
+]);
+
+function PreviewActions({ item, onOpen, onPublish, showPreview, canPublish }) {
+  if (!showPreview && !canPublish) return null;
   return (
     <>
-      <span className="ua-cfg-preview-hint">{previewHintForItem(item)}</span>
-      <button type="button" className="ua-cfg-btn ua-cfg-btn--muted" onClick={onOpen}>
-        Preview
-      </button>
+      {showPreview ? (
+        <>
+          <span className="ua-cfg-preview-hint">{previewHintForItem(item)}</span>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--muted" onClick={onOpen}>
+            Preview
+          </button>
+        </>
+      ) : null}
       {canPublish ? (
         <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onPublish}>
           Publish
@@ -1400,7 +1415,6 @@ export function ConfigDetailPage() {
   const [programStories, setProgramStories] = useState([]);
   const [footerBottomLine, setFooterBottomLine] = useState("");
   const [socialLinks, setSocialLinks] = useState([]);
-  const [websiteLinks, setWebsiteLinks] = useState(WEBSITE_FOOTER_LINKS);
   const [privacyBlocks, setPrivacyBlocks] = useState(PRIVACY_BLOCKS);
   const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
   const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
@@ -1542,7 +1556,6 @@ export function ConfigDetailPage() {
       Boolean(legalSlugs)
       || current.id === "web-fs-social"
       || current.id === "app-consultancy-amount"
-      || current.id === "app-faq"
       || current.id === "app-language-disable";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
@@ -1573,9 +1586,6 @@ export function ConfigDetailPage() {
           setContactPageBlocks(saved.blocks);
         } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
           setFooterTextBlocks(saved.blocks);
-        } else if (current.id === "app-faq") {
-          if (Array.isArray(saved?.items)) setFaqItems(saved.items);
-          if (saved?.editor) setFaqEditor((prev) => ({ ...prev, ...saved.editor }));
         }
         setLegalLocalDirty(false);
         onToast(`${current.name} published`);
@@ -1586,7 +1596,7 @@ export function ConfigDetailPage() {
     }
 
     if (current.id !== "app-program" && current.id !== "app-subscriptions") {
-      onToast(`${current.name} published`);
+      onToast("Nothing to publish on this page");
       return;
     }
 
@@ -1705,8 +1715,6 @@ export function ConfigDetailPage() {
                   )
               : item.id === "web-fs-social"
                 ? socialLinks.some((entry) => String(entry.url || "").trim())
-              : item.id === "web-fs-links"
-                ? websiteLinks.length > 0
               : item.id === "web-fs-privacy"
                 ? privacyBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-tos" || item.id === "app-tos"
@@ -1751,7 +1759,7 @@ export function ConfigDetailPage() {
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
               : item.id === "common-health-disorders"
-                ? hdEditor.appOn && hdItems.some((entry) => entry.status === "active")
+                ? (hdEditor.appOn || hdEditor.webOn) && hdItems.some((entry) => entry.status === "active")
               : item.id === "common-recipes"
                 ? (rcEditor.appOn || rcEditor.webOn) && rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
@@ -1762,6 +1770,7 @@ export function ConfigDetailPage() {
             ? Boolean(item.live)
             : Boolean(item.on);
   const showPreview = PREVIEW_CONFIGS.has(item.id);
+  const showPublish = canEditConfig && PUBLISH_CONFIGS.has(item.id);
 
   function renderBody() {
     switch (item.id) {
@@ -1783,8 +1792,6 @@ export function ConfigDetailPage() {
             editor={faqEditor}
             setEditor={setFaqEditor}
             onToast={onToast}
-            registerPublishHandler={registerLegalPublishHandler}
-            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-program":
@@ -2104,15 +2111,6 @@ export function ConfigDetailPage() {
             onLocalChange={handleLegalLocalChange}
           />
         );
-      case "web-fs-links":
-        return (
-          <SocialLinksSection
-            links={websiteLinks}
-            setLinks={setWebsiteLinks}
-            onToast={onToast}
-            defaultIcon="globe"
-          />
-        );
       case "web-fs-privacy":
         return (
           <PrivacyPolicySection
@@ -2373,12 +2371,13 @@ export function ConfigDetailPage() {
       <PageHeader
         title={item.name}
         subtitle={item.note}
-        actions={showPreview ? (
+        actions={showPreview || showPublish ? (
           <PreviewActions
             item={item}
             onOpen={() => setPreviewOpen(true)}
             onPublish={() => setPublishOpen(true)}
-            canPublish={canEditConfig}
+            showPreview={showPreview}
+            canPublish={showPublish}
           />
         ) : null}
       />
@@ -2395,11 +2394,12 @@ export function ConfigDetailPage() {
         </div>
       ) : null}
 
-      <ConfigPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        item={item}
-        previewState={{
+      <Suspense fallback={null}>
+        <ConfigPreviewModal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          item={item}
+          previewState={{
           hindiOn,
           faqItems,
           faqEditor,
@@ -2435,7 +2435,6 @@ export function ConfigDetailPage() {
           programStories,
           footerBottomLine,
           socialLinks,
-          websiteLinks,
           privacyBlocks,
           tosBlocks,
           guidelineBlocks,
@@ -2467,20 +2466,25 @@ export function ConfigDetailPage() {
           aboutBlocks,
           grStats,
           dropdownLists,
+          hdEditor,
+          hdItems,
           rcEditor,
           rcItems,
           ygEditor,
           ygItems,
           featureFlags,
         }}
-      />
+        />
+      </Suspense>
 
-      <ConfigPublishModal
-        open={publishOpen && canEditConfig}
-        onClose={() => setPublishOpen(false)}
-        item={item}
-        onConfirm={publishConfig}
-      />
+      <Suspense fallback={null}>
+        <ConfigPublishModal
+          open={publishOpen && showPublish}
+          onClose={() => setPublishOpen(false)}
+          item={item}
+          onConfirm={publishConfig}
+        />
+      </Suspense>
 
       {canViewConfig ? (
         <div className="ua-cfg-detail__body">
@@ -2493,7 +2497,9 @@ export function ConfigDetailPage() {
                 : { pointerEvents: "none", opacity: 0.72, userSelect: "none" }
             }
           >
-            {renderBody()}
+            <Suspense fallback={<p className="ua-cfg-panel__sub">Loading editor…</p>}>
+              {renderBody()}
+            </Suspense>
           </div>
         </div>
       ) : null}

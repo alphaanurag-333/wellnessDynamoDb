@@ -60,11 +60,11 @@ export async function createOnboardingMeetingSlots(userId, payload) {
   }
 }
 
-export async function acceptOnboardingMeetingRequest(userId, meetingId) {
+export async function acceptOnboardingMeetingRequest(userId, meetingId, payload = {}) {
   try {
     const { data } = await api.post(
       userPath(userId, `/onboarding-meetings/${encodeURIComponent(meetingId)}/accept-request`),
-      {},
+      payload,
       { headers: authHeader() },
     );
     return data.meeting;

@@ -486,6 +486,26 @@ async function getActiveDropdownValues(slug) {
     .filter(Boolean);
 }
 
+/** Only these lists expose pack/unit/price on public options. Recipe categories do not. */
+const COMMERCE_OPTION_SLUGS = new Set();
+
+function toPublicOption(row, slug) {
+  const option = {
+    id: row.id,
+    label: row.label,
+    value: row.value,
+    icon: row.icon || "",
+    on: row.on,
+    sortOrder: row.sortOrder,
+  };
+  if (COMMERCE_OPTION_SLUGS.has(slug)) {
+    option.packSize = Number(row.packSize) || 0;
+    option.unit = String(row.unit || "").trim();
+    option.price = Number(row.price) || 0;
+  }
+  return option;
+}
+
 function toPublicList(list, { activeOptionsOnly = false } = {}) {
   if (!list) return null;
   let options = list.options || [];
@@ -498,17 +518,7 @@ function toPublicList(list, { activeOptionsOnly = false } = {}) {
     wide: Boolean(list.wide),
     status: list.status,
     sortOrder: list.sortOrder,
-    options: options.map((row) => ({
-      id: row.id,
-      label: row.label,
-      value: row.value,
-      icon: row.icon || "",
-      on: row.on,
-      sortOrder: row.sortOrder,
-      packSize: Number(row.packSize) || 0,
-      unit: String(row.unit || "").trim(),
-      price: Number(row.price) || 0,
-    })),
+    options: options.map((row) => toPublicOption(row, list.slug)),
   };
 }
 

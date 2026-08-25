@@ -21,7 +21,7 @@ const {
   createUser,
   getUserById,
   getUserByEmail,
-  getUserByPhone,
+  getUserByWhatsapp,
   updateUser,
   normalizeEmail,
   normalizePhone,
@@ -33,6 +33,8 @@ const {
   parseFcmIdFromBody,
   assertUniqueEmail,
   assertUniquePhone,
+  assertUniqueWhatsapp,
+  getEffectiveWhatsapp,
   buildUserUpdatesFromBody,
   deleteUserAccountByPhoneOtp,
   sendProfilePhoneChangeOtp: sendProfilePhoneChangeOtpHelper,
@@ -82,15 +84,16 @@ async function resolveUserByIdentifier({ email, phone, phoneCountryCode }) {
     return getUserByEmail(normalizedEmail);
   }
   if (normalizedPhone) {
-    return getUserByPhone(phoneCountryCode, normalizedPhone);
+    return getUserByWhatsapp(phoneCountryCode, normalizedPhone);
   }
   return null;
 }
 
-function assertRegistrationAvailable(email, phoneCountryCode, phone) {
+function assertRegistrationAvailable(email, phoneCountryCode, phone, whatsappCountryCode, whatsappPhone) {
   return Promise.all([
     assertUniqueEmail(email),
     assertUniquePhone(phoneCountryCode, phone),
+    assertUniqueWhatsapp(whatsappCountryCode, whatsappPhone),
   ]);
 }
 
@@ -162,7 +165,13 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
     countryCode: delivery.phoneCountryCode,
   });
 
-  await assertRegistrationAvailable(email, phoneCountryCode, phone);
+  await assertRegistrationAvailable(
+    email,
+    phoneCountryCode,
+    phone,
+    delivery.phoneCountryCode,
+    delivery.phone
+  );
 
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
@@ -219,7 +228,13 @@ exports.registerUser = asyncHandler(async (req, res) => {
     otp
   );
 
-  await assertRegistrationAvailable(fields.email, fields.phoneCountryCode, fields.phone);
+  await assertRegistrationAvailable(
+    fields.email,
+    fields.phoneCountryCode,
+    fields.phone,
+    delivery.phoneCountryCode,
+    delivery.phone
+  );
 
   if (!fields.termsAccepted) {
     throw new AppError("termsAccepted must be true", 400);
@@ -327,10 +342,11 @@ exports.sendLoginOtp = asyncHandler(async (req, res) => {
 
   await updateUser(user.id, { otp, otpExpire });
 
+  const effectiveWhatsapp = getEffectiveWhatsapp(user);
   await deliverOtp({
     email: user.email,
-    phone: user.phone,
-    phoneCountryCode: user.phoneCountryCode,
+    phone: effectiveWhatsapp.phone || user.phone,
+    phoneCountryCode: effectiveWhatsapp.countryCode || user.phoneCountryCode,
     otp,
   });
 
@@ -492,10 +508,11 @@ exports.sendDeleteAccountOtp = asyncHandler(async (req, res) => {
 
   await updateUser(user.id, { otp, otpExpire });
 
+  const effectiveWhatsapp = getEffectiveWhatsapp(user);
   await deliverOtp({
     email: user.email,
-    phone: user.phone,
-    phoneCountryCode: user.phoneCountryCode,
+    phone: effectiveWhatsapp.phone || user.phone,
+    phoneCountryCode: effectiveWhatsapp.countryCode || user.phoneCountryCode,
     otp,
   });
 

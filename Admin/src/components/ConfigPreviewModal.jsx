@@ -19,7 +19,7 @@ function previewSurfaces(item) {
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "3:4" });
     return surfaces;
   }
-  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga") {
+  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders") {
     if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
     return surfaces;
@@ -34,7 +34,7 @@ function surfaceSubtitle(surfaces, activeId, item) {
   if (item?.id === "common-transformation" || item?.id === "common-real-people") {
     return "Common asset · renders on both surfaces · 3:4";
   }
-  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga") {
+  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-health-disorders") {
     return "Common asset · renders on both surfaces · 16:9";
   }
   if (item?.id === "app-faq") {
@@ -1370,6 +1370,79 @@ function ClientReviewPreview({ editor = {}, published = [] }) {
   );
 }
 
+function HealthDisordersPreview({ editor = {}, items = [] }) {
+  const live = items.filter((entry) => entry.status === "active" || entry.live);
+  const featured = live[0];
+  const webOn = editor.webOn !== false;
+  const appOn = editor.appOn !== false;
+  const title = featured?.title || "Health disorders";
+  const symptoms = Array.isArray(featured?.symptoms) ? featured.symptoms.slice(0, 4) : [];
+
+  return (
+    <div className="ua-cfg-tf-live">
+      {webOn ? (
+        <div className="ua-cfg-tf-live__pane">
+          <span className="ua-cfg-bn-preview__label is-web">Website</span>
+          <div className="ua-cfg-pt-live-preview">
+            <div className="ua-cfg-pt-live-preview__bar">
+              <span className="ua-cfg-pt-live-preview__brand">IR</span>
+              <strong>Health Disorders</strong>
+              <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
+            </div>
+            <p className="ua-cfg-ft-preview__copy">{title}</p>
+            {symptoms.length ? (
+              <ul className="ua-cfg-hd-preview__list">
+                {symptoms.map((symptom) => (
+                  <li key={symptom}>{symptom}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="ua-cfg-ft-preview__copy">Clinical symptoms appear here.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+      {appOn ? (
+        <div className="ua-cfg-tf-live__pane ua-cfg-tf-live__pane--app">
+          <span className="ua-cfg-bn-preview__label is-app">App</span>
+          <div className="ua-cfg-bn-preview__phone ua-cfg-tf-live__phone">
+            <div className="ua-cfg-bn-preview__phone-bar">
+              <span>9:41</span>
+              <strong>Disorders</strong>
+              <span aria-hidden="true">🔔</span>
+            </div>
+            <div className="ua-cfg-tf-live__app-body">
+              <div className="ua-cfg-tf-live__app-head">
+                <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                <strong>Health Disorders</strong>
+              </div>
+              <p>{title}</p>
+              {symptoms.length ? (
+                <ul className="ua-cfg-hd-preview__list ua-cfg-hd-preview__list--app">
+                  {symptoms.map((symptom) => (
+                    <li key={symptom}>{symptom}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="ua-cfg-preview-content__nav" aria-hidden="true">
+                <span className="is-active">⌂</span>
+                <span>▦</span>
+                <span>☑</span>
+                <span>👤</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!webOn && !appOn ? (
+        <div className="ua-cfg-preview-modal__empty">
+          <p>Turn on App or Web to preview this asset.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" }) {
   const live = items.filter((entry) => entry.live);
   const featured = live[0];
@@ -1606,12 +1679,11 @@ function FooterSettingPreview({ bottomLine, surface, item }) {
 }
 
 function SocialLinksPreview({ links = [], surface, item }) {
-  const isWebsite = item?.id === "web-fs-links";
   const body = (
     <div className="ua-cfg-ft-preview">
       <div className="ua-cfg-ft-preview__bar">
         <span className="ua-cfg-pt-live-preview__brand">IR</span>
-        <strong>{isWebsite ? "Website links" : "Footer"}</strong>
+        <strong>Footer</strong>
         <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
       </div>
       {links.length ? (
@@ -1623,7 +1695,7 @@ function SocialLinksPreview({ links = [], surface, item }) {
           ))}
         </div>
       ) : (
-        <div className="ua-cfg-pt-preview__empty">{isWebsite ? "No website links yet." : "No social links yet."}</div>
+        <div className="ua-cfg-pt-preview__empty">No social links yet.</div>
       )}
     </div>
   );
@@ -2077,14 +2149,6 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
-    case "web-fs-links":
-      return (
-        <SocialLinksPreview
-          links={previewState.websiteLinks ?? []}
-          surface={surface}
-          item={item}
-        />
-      );
     case "web-fs-privacy":
       return (
         <LegalBlocksPreview
@@ -2284,6 +2348,13 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "common-health-disorders":
+      return (
+        <HealthDisordersPreview
+          editor={previewState.hdEditor ?? {}}
+          items={previewState.hdItems ?? []}
+        />
+      );
     case "common-recipes":
       return (
         <VoicePreview
@@ -2369,7 +2440,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </button>
         </div>
 
-        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" ? (
+        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" && item.id !== "common-health-disorders" ? (
           <div className="ua-cfg-preview-modal__tabs" role="tablist">
             {surfaces.map((surface) => (
               <button
@@ -2386,7 +2457,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </div>
         ) : null}
 
-        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" ? "dual" : activeSurface}`}>
+        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders" ? "dual" : activeSurface}`}>
           {surfaces.length ? (
             renderPreviewBody(item, activeSurface, previewState)
           ) : (
@@ -2400,63 +2471,4 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
   );
 }
 
-export function previewHintForItem(item) {
-  if (item.id === "app-language-disable") {
-    return "Toggle Hindi, then open Preview";
-  }
-  if (item.id === "app-faq" || item.id === "app-medical-questionnaire" || item.id === "app-prakriti") {
-    return "Edit questions, then open Preview";
-  }
-  if (item.id === "app-program" || item.id === "app-subscriptions") {
-    return "Set pricing, then open Preview";
-  }
-  if (item.id === "app-gst") {
-    return "Set GST percentage and collection, then open Preview";
-  }
-  if (item.id === "app-consultancy-amount") {
-    return "Set consultancy fee and tax, then Publish to save. Preview shows unsaved edits.";
-  }
-  if (item.id === "app-payment-gateway") {
-    return "Pick a gateway, then open Preview";
-  }
-  if (item.id === "app-measurement-video") {
-    return "Set the guide, then open Preview";
-  }
-  if (item.id === "app-health-progress") {
-    return "Add or toggle trackers, then open Preview";
-  }
-  if (item.id === "app-test-catalog") {
-    return "Add tests, then open Preview";
-  }
-  if (item.id === "feature-flags") {
-    return "Toggle flags, then open Preview";
-  }
-  if (item.id === "web-program-testimonials" || item.id === "web-logo" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-recipes" || item.id === "common-yoga") {
-    return "Upload something, then open Preview";
-  }
-  if (item.id === "web-footer") {
-    return "Edit the footer text, then open Preview";
-  }
-  if (item.id === "web-fs-social") {
-    return "Edit the links, then open Preview";
-  }
-  if (item.id === "web-fs-links") {
-    return "Edit the links, then open Preview";
-  }
-  if (item.id === "web-fs-privacy" || item.id === "web-fs-tos" || item.id === "app-tos" || item.id === "web-fs-guidelines" || item.id === "web-fs-text") {
-    return "Edit the copy, then open Preview";
-  }
-  if (item.id === "web-fs-contact") {
-    return "Edit the details, then open Preview";
-  }
-  if (item.id === "web-location") {
-    return "Edit the locations, then open Preview";
-  }
-  if (item.id === "app-dpa" || item.tags?.includes("Text")) {
-    return "Edit the copy, then open Preview";
-  }
-  if (item.upload || item.tags?.includes("Upload")) {
-    return "Upload something, then open Preview";
-  }
-  return "Open Preview before you publish";
-}
+export { previewHintForItem } from "../data/configPreviewHint.js";

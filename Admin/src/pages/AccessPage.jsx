@@ -1115,8 +1115,10 @@ function RolesPermissionsTab({ onToast }) {
                 onClick={() => selectRole(r.id)}
               >
                 <div className="ua-ac-role-card__top">
-                  <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
-                  <span className="ua-ac-role-card__name">{r.name}</span>
+                  <span className="ua-ac-role-card__label">
+                    <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
+                    <span className="ua-ac-role-card__name">{r.name}</span>
+                  </span>
                   <span className="ua-ac-role-card__pill">
                     {g >= TOTAL_PERM_SLOTS ? `all ${TOTAL_PERM_SLOTS}` : `${g}/${TOTAL_PERM_SLOTS}`}
                   </span>
@@ -1148,7 +1150,7 @@ function RolesPermissionsTab({ onToast }) {
             <p className="ua-ac-role-detail__desc">{role.desc}</p>
           </div>
           <div className="ua-ac-role-detail__controls">
-              <div style={{ fontSize: "11.5px", color: "rgb(138, 151, 172)", fontWeight: "650" }} >Data scope</div>
+              <div style={{ fontSize: "11.5px", color: "rgb(138, 151, 172)", fontWeight: "600" }} >Data scope</div>
             <div className="ua-ac-scope">
               {["All", "Team", "Assigned"].map((s) => (
                 <button

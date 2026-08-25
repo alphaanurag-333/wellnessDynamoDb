@@ -1,9 +1,3 @@
-import fatLossImg from "../images/fat-loss.jpg";
-import diabetesImg from "../images/diabetes-banner.png";
-import thyroidImg from "../images/thyroid-banner.png";
-import pcodImg from "../images/pcod-banner.png";
-import gutImg from "../images/gut-health-banner.png";
-
 export const CONSULTATION_WHATSAPP = "https://wa.me/919372109740";
 
 export const programPages = {
@@ -13,7 +7,6 @@ export const programPages = {
     eyebrow: "India Redefining Wellness",
     description:
       "Achieve your ideal weight with personalized nutrition, effective workouts, and ongoing coach support for a healthier lifestyle.",
-    image: fatLossImg,
     imageAlt: "Fat loss wellness program",
     paragraphs: [
       "According to a recent study published in Lancet, India is among the top three most obese nations, with nearly 70% of the population being overweight.",
@@ -29,7 +22,6 @@ export const programPages = {
     eyebrow: "India Redefining Wellness",
     description:
       "Take control of your health through personalized nutrition, targeted exercise, and expert guidance—aimed at reducing medication dependence and improving wellbeing.",
-    image: diabetesImg,
     imageAlt: "Diabetes reversal wellness program",
     paragraphs: [
       "An ICMR study says India has over 100 mn diabetics & 136 mn pre-diabetics (Source: Economic Times).",
@@ -47,7 +39,6 @@ export const programPages = {
     eyebrow: "India Redefining Wellness",
     description:
       "Restore balance and optimize thyroid function with customized nutrition, targeted exercise, and expert guidance for hypo- and hyperthyroidism.",
-    image: thyroidImg,
     imageAlt: "Thyroid care wellness program",
     paragraphs: [
       "Nearly every third Indian suffers from a thyroid disorder (Source: Economic Times).",
@@ -65,7 +56,6 @@ export const programPages = {
     eyebrow: "India Redefining Wellness",
     description:
       "A holistic approach to managing Polycystic Ovary Syndrome with personalized nutrition, tailored exercise, and hormonal balance strategies.",
-    image: pcodImg,
     imageAlt: "PCOD and PCOS wellness program",
     paragraphs: [
       "According to a recent study, ‘One in five women suffers from PCOD in India’ (Source Indian Express).",
@@ -82,7 +72,6 @@ export const programPages = {
     eyebrow: "India Redefining Wellness",
     description:
       "Promote a healthy digestive system with personalized nutrition, probiotics, and expert advice to improve digestion, immunity, and overall wellbeing.",
-    image: gutImg,
     imageAlt: "Gut health wellness program",
     aboutMode: "gut",
     paragraphs: [

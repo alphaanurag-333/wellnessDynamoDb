@@ -107,12 +107,19 @@ function normalizeBedtime(value) {
   return `${match[1]}:${match[2]}`;
 }
 
+function normalizeDailyReflectionAudioId(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const id = String(value).trim();
+  return id || null;
+}
+
 function formatSettings(item) {
   const stored = item?.activities && typeof item.activities === "object" ? item.activities : {};
   return {
     activities: normalizeActivitySettings(stored),
     selectedQuestionIds: normalizeSelectedQuestionIds(item?.selectedQuestionIds),
     bedtime: typeof item?.bedtime === "string" ? item.bedtime : null,
+    dailyReflectionAudioId: normalizeDailyReflectionAudioId(item?.dailyReflectionAudioId),
     updatedAt: item?.updatedAt ?? null,
   };
 }
@@ -194,6 +201,12 @@ async function upsertSettingsFields(userId, fields = {}) {
   if (fields.bedtime !== undefined) {
     exprValues[":bedtime"] = normalizeBedtime(fields.bedtime) || "22:30";
     setExpr += ", bedtime = :bedtime";
+  }
+  if (fields.dailyReflectionAudioId !== undefined) {
+    exprValues[":dailyReflectionAudioId"] = normalizeDailyReflectionAudioId(
+      fields.dailyReflectionAudioId
+    );
+    setExpr += ", dailyReflectionAudioId = :dailyReflectionAudioId";
   }
   if (Object.keys(exprValues).length <= 2) {
     const err = new Error("No valid settings fields provided");
@@ -350,4 +363,5 @@ module.exports = {
   monthDateRange,
   formatDayLog,
   formatSettings,
+  normalizeDailyReflectionAudioId,
 };

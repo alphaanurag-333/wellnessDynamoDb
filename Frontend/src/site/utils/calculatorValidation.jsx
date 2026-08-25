@@ -1,4 +1,5 @@
 import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 /** True when value is a finite number greater than 0. */
 export function isPositiveNumber(value) {
@@ -70,13 +71,27 @@ export function isValidMeasurement(value, unit = "cm") {
   return isInRange(value, 20, 200);
 }
 
+const NAV_KEYS = new Set([
+  "Backspace",
+  "Delete",
+  "Tab",
+  "Escape",
+  "Enter",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+]);
+
 /**
- * Block typing of -, +, e, E (scientific / negative number entry).
- * Allow digits, one decimal point, and navigation/edit keys.
+ * Block letters, signs, and scientific notation. Allow digits, one decimal, and nav keys.
  */
 export function blockInvalidCalculatorNumberKeyDown(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (["-", "+", "e", "E"].includes(e.key)) {
+  if (NAV_KEYS.has(e.key)) return;
+  if (e.key.length === 1 && !/[\d.]/.test(e.key)) {
     e.preventDefault();
   }
 }
@@ -84,9 +99,27 @@ export function blockInvalidCalculatorNumberKeyDown(e) {
 /** Same as above, plus block decimal for whole-number fields (age, feet, etc.). */
 export function blockInvalidIntegerKeyDown(e) {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (["-", "+", "e", "E", ".", ","].includes(e.key)) {
+  if (NAV_KEYS.has(e.key)) return;
+  if (e.key.length === 1 && !/\d/.test(e.key)) {
     e.preventDefault();
   }
+}
+
+/** Extra guard for IME / paste-like insertions of non-numeric text. */
+export function blockNonDecimalBeforeInput(e) {
+  if (e.data == null) return;
+  if (!/^[\d.]+$/.test(e.data)) {
+    e.preventDefault();
+    return;
+  }
+  if (e.data.includes(".") && String(e.target?.value || "").includes(".")) {
+    e.preventDefault();
+  }
+}
+
+export function blockNonIntegerBeforeInput(e) {
+  if (e.data == null) return;
+  if (!/^\d+$/.test(e.data)) e.preventDefault();
 }
 
 /**
@@ -129,9 +162,19 @@ export function sanitizePositiveInteger(raw, { max = null } = {}) {
 }
 
 /**
- * @param {{ label: string, valid: boolean, hint?: string }[]} checks
- * @returns {Promise<boolean>} true when all required fields pass
+ * @param {{ id?: string, label: string, valid: boolean, hint?: string }[]} checks
+ * @returns {Record<string, string>}
  */
+export function collectCalculatorErrors(checks) {
+  const errors = {};
+  for (const check of checks || []) {
+    if (check.valid) continue;
+    const key = check.id || check.label;
+    errors[key] = check.hint || check.label;
+  }
+  return errors;
+}
+
 export async function validateCalculatorFields(checks) {
   const failed = (checks || []).filter((c) => !c.valid);
   if (failed.length === 0) return true;

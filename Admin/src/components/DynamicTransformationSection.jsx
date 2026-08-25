@@ -161,35 +161,38 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-tf-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="tf-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>
-            <p className="ua-cfg-rc-view__tag">Transformation</p>
+            {/* <p className="ua-cfg-rc-view__tag">Transformation</p> */}
             <h3 id="tf-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
-            <p>{formatRecipeDate(entry.updatedAt)}</p>
+            {/* <p>{formatRecipeDate(entry.updatedAt)}</p>
             <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
               {entry.live ? "Live" : "Hidden"}
-            </span>
+            </span> */}
           </div>
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-tf-view__body">
-          <div className="ua-cfg-tf-view__compare">
-            <div className="ua-cfg-tf-view__shot">
+          <div className="ua-cfg-tf-view__compare mrgtegrid " style={{gap:"4px"}}>
+            <div className="ua-cfg-tf-view__shot" style={{borderTopRightRadius:"0px",borderBottomRightRadius:"0px"}}>
               {entry.oldImage ? <img src={entry.oldImage} alt={`${entry.name} before`} /> : <div className="ua-cfg-tf-view__empty">No before photo</div>}
               <span>Before</span>
             </div>
-            <div className="ua-cfg-tf-view__shot">
+            <div className="ua-cfg-tf-view__shot" style={{borderTopLeftRadius:"0px",borderBottomLeftRadius:"0px"}}>
               {entry.newImage ? <img src={entry.newImage} alt={`${entry.name} after`} /> : <div className="ua-cfg-tf-view__empty">No after photo</div>}
               <span>After</span>
             </div>
           </div>
-          {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p> : null}
-          <dl className="ua-cfg-rc-view__meta">
-            {points.map((row) => (
-              <div key={row.id || row.field}>
-                <dt>{asCopyString(row.label) || row.field}</dt>
-                <dd>{asCopyString(row.value)}</dd>
-              </div>
-            ))}
-          </dl>
+          {points.length ? (
+            <dl className="ua-cfg-tf-chips">
+              {points.map((row) => (
+                <div key={row.id || row.field} className="ua-cfg-tf-chip" style={{padding:"5px 7px"}}>
+                  <dt style={{fontSize:"9px"}}>{asCopyString(row.label) || row.field}</dt>
+                  <dd style={{fontSize:"9px"}}>{asCopyString(row.value)}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy" style={{textAlign:"justify",fontSize:"12.5px"}}>{asCopyString(entry.description)}</p> : null}
+          
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
@@ -721,10 +724,11 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                       <>
                         {asCopyString(entry.description) ? <p className="ua-cfg-tf-item__story">{asCopyString(entry.description)}</p> : null}
                         {points.length ? (
-                          <div className="ua-cfg-tf-points">
+                          <div className="ua-cfg-tf-chips">
                             {points.map((row) => (
-                              <span key={row.id || row.field} className="ua-cfg-tf-point">
-                                <b>{row.label}</b> {row.value}
+                              <span key={row.id || row.field} className="ua-cfg-tf-chip">
+                                <span className="ua-cfg-tf-chip__label">{asCopyString(row.label)}</span>
+                                <span className="ua-cfg-tf-chip__value">{asCopyString(row.value)}</span>
                               </span>
                             ))}
                           </div>

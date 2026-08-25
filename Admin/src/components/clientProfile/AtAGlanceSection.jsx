@@ -26,6 +26,7 @@ import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
 import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
+import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
@@ -104,6 +105,17 @@ function formatMeetingSlotLabel(startIso, endIso) {
   return `${date} · ${range}`;
 }
 
+function resolveRequestedSlots(meeting) {
+  if (!meeting) return [];
+  if (Array.isArray(meeting.requestedSlots) && meeting.requestedSlots.length) {
+    return meeting.requestedSlots;
+  }
+  if (meeting.requestedStartAt && meeting.requestedEndAt) {
+    return [{ id: "legacy", startAt: meeting.requestedStartAt, endAt: meeting.requestedEndAt }];
+  }
+  return [];
+}
+
 function waterHydrationTip(metric) {
   const current = parseInt(String(metric.value).replace(/[^\d]/g, ""), 10);
   const goal = parseInt(String(metric.goal).replace(/[^\d]/g, ""), 10);
@@ -141,7 +153,7 @@ function GlanceHeader({ user, onOpenReview }) {
         </p>
       </div>
       <div className="ua-cp-glance-head__badges">
-        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
+        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="When have they met their wellness coach?">
           ⏱️ Last reviewed {user.lastReviewed || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
@@ -761,6 +773,7 @@ function OnboardingStatusCard({
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
   const [stepNotes, setStepNotes] = useState(() => buildInitialStepNotes(buildInitialDone(user)));
   const [scheduleModal, setScheduleModal] = useState(null);
+  const [reviewRequestModal, setReviewRequestModal] = useState(null);
   const [rcaOpen, setRcaOpen] = useState(false);
   const [rcaNotes, setRcaNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -978,9 +991,10 @@ function OnboardingStatusCard({
             const isCurrent = !step.done && step.n === currentStep.n;
             const note = stepNotes[step.n];
             const meeting = meetings.find((row) => row.stepKey === step.key && ["slots_offered", "time_requested", "confirmed"].includes(row.status));
-            const requestedTimeLabel = meeting?.status === "time_requested"
-              ? formatMeetingSlotLabel(meeting.requestedStartAt, meeting.requestedEndAt)
-              : "";
+            const requestedSlots = meeting?.status === "time_requested" ? resolveRequestedSlots(meeting) : [];
+            const requestedTimeLabels = requestedSlots
+              .map((slot) => formatMeetingSlotLabel(slot.startAt, slot.endAt))
+              .filter(Boolean);
             const confirmedSlot = meeting?.status === "confirmed"
               ? (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0]
               : null;
@@ -990,9 +1004,11 @@ function OnboardingStatusCard({
             const meetingNote = meeting?.status === "slots_offered"
               ? "Slots offered — waiting for client"
               : meeting?.status === "time_requested"
-                ? requestedTimeLabel
-                  ? `Client requested ${requestedTimeLabel}`
-                  : "Client requested another time"
+                ? requestedSlots.length > 1
+                  ? `Client requested ${requestedSlots.length} times`
+                  : requestedTimeLabels[0]
+                    ? `Client requested ${requestedTimeLabels[0]}`
+                    : "Client requested another time"
                 : meeting?.status === "confirmed"
                   ? confirmedTimeLabel
                     ? `Meeting confirmed · ${confirmedTimeLabel}`
@@ -1025,20 +1041,15 @@ function OnboardingStatusCard({
                       type="button"
                       className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
                       disabled={busy}
-                      onClick={async () => {
-                        try {
-                          setBusy(true);
-                          await acceptOnboardingMeetingRequest(user.id, meeting.id);
-                          onToast("Requested time accepted");
-                          loadMeetings();
-                        } catch (err) {
-                          onToast(err?.message || "Failed to accept request");
-                        } finally {
-                          setBusy(false);
-                        }
+                      onClick={() => {
+                        setReviewRequestModal({
+                          meeting,
+                          stepLabel: step.label,
+                          slots: requestedSlots,
+                        });
                       }}
                     >
-                      Accept time
+                      {requestedSlots.length > 1 ? "Review times" : "Accept time"}
                     </button>
                     <button
                       type="button"
@@ -1119,6 +1130,46 @@ function OnboardingStatusCard({
               loadMeetings();
             } catch (err) {
               onToast(err?.message || "Failed to send slots");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
+      ) : null}
+
+      {reviewRequestModal ? (
+        <ReviewRequestedTimesModal
+          userName={user.name}
+          stepLabel={reviewRequestModal.stepLabel}
+          slots={reviewRequestModal.slots}
+          busy={busy}
+          onClose={() => {
+            if (!busy) setReviewRequestModal(null);
+          }}
+          onAccept={async (slot) => {
+            try {
+              setBusy(true);
+              await acceptOnboardingMeetingRequest(user.id, reviewRequestModal.meeting.id, {
+                requestedSlotId: slot.id,
+              });
+              onToast("Requested time accepted");
+              setReviewRequestModal(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to accept request");
+            } finally {
+              setBusy(false);
+            }
+          }}
+          onReject={async () => {
+            try {
+              setBusy(true);
+              await rejectOnboardingMeetingRequest(user.id, reviewRequestModal.meeting.id);
+              onToast("Request rejected");
+              setReviewRequestModal(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to reject request");
             } finally {
               setBusy(false);
             }
@@ -1412,7 +1463,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       ) : null}
 
       {reviewOpen ? (
-        <ReviewHistoryModal user={user} onClose={() => setReviewOpen(false)} onNavigate={onNavigate} />
+        <ReviewHistoryModal user={user} onClose={() => setReviewOpen(false)} />
       ) : null}
 
       {remindersOpen ? (
