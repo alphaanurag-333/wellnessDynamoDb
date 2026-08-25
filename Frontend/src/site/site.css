@@ -20,9 +20,9 @@
   /* Typography scale */
   --font-size-display: clamp(2rem, 4vw, 2.75rem);
   --font-size-h1: 2.2rem;
-  --font-size-h2: 2rem;
-  --font-size-h3: 1.5rem;
-  --font-size-h4: 1.25rem;
+  --font-size-h2: clamp(1.2rem, 2.2vw, 1.6rem);
+  --font-size-h3: 1.25rem;
+  --font-size-h4: 1.125rem;
   --font-size-h5: 1.125rem;
   --font-size-h6: 1rem;
   --font-size-body: 1rem;
@@ -128,7 +128,7 @@
 .site-shell .h3 {
   font-family: var(--font-family-base);
   font-size: var(--font-size-h3);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   line-height: var(--line-height-heading);
 }
 
@@ -156,6 +156,7 @@
 .site-shell p,
 .site-shell .lead {
   font-size: var(--font-size-body);
+  font-weight: var(--fw-regular);
   line-height: var(--line-height-body);
 }
 
@@ -1694,8 +1695,8 @@ a:hover {
 }
 
 .site-header__name {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: var(--font-size-h4);
+  font-weight: var(--fw-bold);
   color: var(--site-navy, var(--text-heading));
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -1719,9 +1720,9 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: var(--font-navbar);
-  font-size: clamp(13px, 1.05vw, 16px);
-  font-weight: var(--fw-medium);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
   color: var(--header-link);
   text-decoration: none;
   background: transparent;
@@ -2068,7 +2069,7 @@ font-size: var(--fs-sm);
   width: 100%;
   height: 100%;
   pointer-events: none;
-  background: linear-gradient(90deg, rgb(94 94 94 / 62%) 0%, rgb(203 203 203 / 32%) 45%, rgb(255 255 255 / 18%) 100%);
+  /* background: linear-gradient(90deg, rgb(94 94 94 / 62%) 0%, rgb(203 203 203 / 32%) 45%, rgb(255 255 255 / 18%) 100%); */
   /* background: linear-gradient(
     90deg,
     rgba(0, 0, 0, 0.62) 0%,
@@ -2299,7 +2300,7 @@ margin-bottom: 20px;
 
 .wellness-hero__title {
   margin: 0;
-font-size: var(--font-size-h1);
+font-size: var(--font-size-h2);
   line-height: 1.08;
   font-weight: var(--fw-bold);
   color: var(--text-heading);
@@ -2464,7 +2465,7 @@ color: var(--text-body);
 .methodology__header h2 {
   margin: 0;
   color: var(--primary);
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
   line-height: 1.1;
 }
@@ -2473,40 +2474,48 @@ color: var(--text-body);
   margin: 16px auto 0;
   max-width: 749px;
   color: var(--text-body);
-  font-size: var(--font-size-lg);
-  line-height: 1.5;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  font-weight: var(--fw-regular);
 }
 
 .methodology__cards {
   display: flex;
-  justify-content: space-around;
-  align-items: stretch;
+  justify-content: center;
+  align-items: flex-start;
   gap: var(--space-5);
   flex-wrap: wrap;
 }
 
 .methodology-card {
   width: 28.8%;
-background: var(--bg-card);
-border-radius: 34px;
-box-shadow: 0 20px 60px rgba(231, 134, 58, 0.08);
-overflow: hidden;
-transition: var(--transition);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(231, 134, 58, 0.1);
+  box-shadow: 0 12px 32px rgba(52, 43, 39, 0.06);
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.methodology-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(231, 134, 58, 0.14);
 }
 
 .methodology-card__image {
   width: 100%;
-  height: 255px;
+  height: 220px;
   overflow: hidden;
 }
 
 .methodology-card__image img {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  padding: 10px 10px 0;
   display: block;
-  border-radius: 42px;
-  object-fit: fill;
+  border-radius: 22px;
+  object-fit: cover;
   transition: transform 0.8s ease;
 }
 
@@ -2515,58 +2524,107 @@ transition: var(--transition);
 }
 
 .methodology-card__content {
-  padding: 0px 20px 38px;
-  text-align: center;
-  padding: 0px 20px 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 20px 24px;
   text-align: center;
   position: relative;
-  margin-bottom: var(--space-6);
-  height: calc(100% - 255px);
+  margin-bottom: 0;
+  min-height: 0;
+  height: auto;
 }
 
 .methodology-card__content h3 {
   margin: 0;
-color: var(--text-heading);
-font-size: var(--font-size-h3);
+  color: var(--text-heading);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-h3);
   font-weight: var(--fw-bold);
-  line-height: 1.3;
+  line-height: var(--line-height-heading);
 }
 .methodology-card__content h5,
 h5.pillar-card__head-title {
-  margin: 8px 0;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 4px 0 0;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
   text-align: center;
 }
-.methodology-card__content p {
-  margin: 12px 0 34px;
-color: var(--text-body);
-font-size: 17px;
-  line-height: 1.6;
-  text-align: left;
-  min-height: 130px;
+.methodology-card__content p,
+.methodology-card__desc {
+  margin: 8px 0 0;
+  color: var(--text-body);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-body);
+  font-weight: var(--fw-regular);
+  line-height: var(--line-height-body);
+  min-height: 0;
   text-align: justify;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
-.methodology-card__content button {
-  position: absolute;
-  left: 20px;
-  bottom: 38px;
-  width: calc(100% - 40px);
-  height: 45px;
+.methodology-card__content p.methodology-card__desc--expanded,
+.methodology-card__desc--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.methodology-card__more {
+  margin: 6px 0 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-end;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
+  transition: var(--transition, opacity 0.2s ease);
+}
+
+.methodology-card__more svg {
+  flex-shrink: 0;
+}
+
+.methodology-card__more:hover {
+  opacity: 0.85;
+}
+
+.methodology-card__cta {
+  position: static;
+  width: 100%;
+  height: 44px;
+  margin-top: 14px;
   border: none;
   border-radius: var(--radius-pill);
-  background: var(--primary-100);
-  color: var(--primary);
-  font-size: 16px;
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.methodology-card__content button:hover {
   background: var(--primary);
   color: var(--text-white);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(231, 134, 58, 0.28);
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.methodology-card__cta:hover {
+  background: #d5742c;
+  color: var(--text-white);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(231, 134, 58, 0.34);
 }
 
 /* --------Clientabout--------- */
@@ -2743,17 +2801,23 @@ transition: transform 0.8s ease;
 
 .success-card {
   width: 100%;
-  min-height: 100%;
-  height: 100%;
+  min-height: 0;
+  height: auto;
   box-sizing: border-box;
-background: #fff;
-  border: 1px solid var(--border-color, #ece3dd);
+  background: #fff;
+  border: 1px solid rgba(231, 134, 58, 0.1);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-padding: var(--space-5);
-display: flex;
+  box-shadow: 0 12px 32px rgba(52, 43, 39, 0.06);
+  padding: var(--space-4);
+  display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.success-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(231, 134, 58, 0.12);
 }
 
 .success-card__top {
@@ -2802,7 +2866,7 @@ color: #008228;
 
 .success-card__review {
   margin: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
 }
 
@@ -2839,7 +2903,8 @@ color: #008228;
   outline: none;
   cursor: pointer;
   color: var(--primary);
-  font-size: var(--fs-xs, 0.8125rem);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
   transition: var(--transition, opacity 0.2s ease);
   align-self: flex-end;
@@ -2855,8 +2920,7 @@ color: #008228;
 
 .success-card__author {
   margin: 0;
-  margin-top: auto;
-  padding-top: var(--space-2);
+  padding-top: 0;
 font-size: var(--font-size-small);
   line-height: 1.4;
   font-weight: var(--fw-semibold);
@@ -3128,7 +3192,7 @@ text-align: center;
 .final-cta__title {
   margin: 0;
 color: var(--text-white);
-font-size: var(--font-size-display);
+font-size: var(--font-size-h2);
   line-height: 0.95;
   font-weight: var(--fw-bold);
 /* max-width: 961px; */
@@ -4146,7 +4210,7 @@ color: var(--primary);
 .wellness__title {
   margin: 0;
 margin-bottom: 10px;
-  font-size: var(--font-size-display);
+  font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
   font-weight: var(--fw-bold);
   color: var(--text-heading);
@@ -4706,11 +4770,13 @@ color: var(--primary);
   outline: none;
   cursor: pointer;
   color: var(--primary);
-  font-size: var(--font-size-body);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
   transition: var(--transition);
   padding: 0;
-  min-height: var(--touch-target);
+  min-height: 0;
 }
 
 .leadership__link svg {
@@ -4742,7 +4808,7 @@ color: var(--primary);
 .pillars__title {
   margin: 0;
   color: var(--primary);
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
   line-height: 1.1;
 }
@@ -4759,7 +4825,7 @@ font-weight: var(--fw-regular);
 .pillars__wrapper {
   width: 100%;
 display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: space-between;
 gap: 28px;
 }
@@ -4768,14 +4834,13 @@ gap: 28px;
 
 .pillar-card {
   width: 33.333%;
-background: var(--card-bg);
-border-radius: 22px;
-/* padding: 34px 30px; */
-position: relative;
-overflow: hidden;
-border: 1px solid var(--border-light);
-box-shadow: var(--shadow-sm);
-transition: var(--transition);
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(231, 134, 58, 0.1);
+  box-shadow: 0 12px 32px rgba(52, 43, 39, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .pillar-card:hover {
@@ -4809,7 +4874,7 @@ transition: var(--transition);
   align-items: center;
   justify-content: center;
   color: var(--primary);
-  margin-bottom: 34px;
+  margin-bottom: 16px;
   transition: var(--transition);
 }
 .pillar-card__icon img {
@@ -4824,24 +4889,23 @@ transition: var(--transition);
 }
 
 .pillar-card__content {
-  margin: 0 25px;
-  margin-bottom: 34px;
+  margin: 0 20px 20px;
 }
 
 .pillar-card__title {
   margin: 0;
 color: var(--text-heading);
-font-size: var(--font-size-h2);
+font-size: var(--font-size-h4);
 font-weight: var(--fw-semibold);
-line-height: 1.3;
+line-height: var(--line-height-heading);
   text-align: center;
 }
 
 .pillar-card__description {
-  margin-top: 18px;
+  margin-top: 8px;
 color: var(--text-body);
-font-size: 16px;
-line-height: 25px;
+font-size: var(--font-size-body);
+line-height: var(--line-height-body);
 font-weight: var(--fw-regular);
   text-align: justify;
 }
@@ -4928,7 +4992,7 @@ letter-spacing: 2px;
 .aboutFaq__title {
   margin: 20px 0 0;
 color: var(--text-heading);
-font-size: var(--font-size-h1);
+font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
 line-height: 1.18;
 }
@@ -4938,8 +5002,8 @@ line-height: 1.18;
   color: var(--primary);
 }
 .aboutFaq__para {
-  font-size: 16px;
-  margin-top: 16px;
+  font-size: var(--font-size-body);
+  margin-top: 12px;
   color: var(--text-body);
   font-weight: 500;
   text-align: justify;
@@ -4948,20 +5012,20 @@ line-height: 1.18;
 /* ACCORDION */
 
 .aboutFaqAccordion {
-  margin-top: 45px;
+  margin-top: 20px;
 }
 
 .aboutFaqAccordion .accordion-item {
   border: none;
   border-radius: var(--radius-md);
   overflow: hidden;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   background: var(--card-bg);
   box-shadow: var(--shadow-sm);
 }
 
 .aboutFaqAccordion .accordion-button {
-  padding: 22px 24px;
+  padding: 16px 18px;
   background: var(--card-bg);
   color: var(--text-heading);
   box-shadow: none;
@@ -5017,32 +5081,35 @@ transition: var(--transition);
 /* BODY */
 
 .aboutFaqAccordion .accordion-body {
-  padding: 0 24px 24px 88px;
+  padding: 0 18px 16px 80px;
 color: var(--text-body);
-font-size: 16px;
-  line-height: 30px;
+font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   text-align: justify;
 }
 
 /* CUSTOM ARROW */
 
 .aboutFaqAccordion .accordion-button::after {
+  flex-shrink: 0;
   width: 18px;
   height: 18px;
-background-image: none;
-content: "+";
-font-size: var(--font-size-h3);
+  margin-left: auto;
+  overflow: hidden;
+  background-image: none;
+  content: "+";
+  font-size: var(--font-size-h3);
   font-weight: var(--fw-medium);
-color: var(--primary);
-display: flex;
+  color: var(--primary);
+  display: flex;
   align-items: center;
   justify-content: center;
-transition: var(--transition);
+  transition: var(--transition);
 }
 
 .aboutFaqAccordion .accordion-button:not(.collapsed)::after {
-  content: "ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÂ¢ÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃËÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ";
-transform: rotate(180deg);
+  content: "\2212";
+transform: none;
 color: var(--primary);
 }
 
@@ -5326,7 +5393,7 @@ margin-bottom: 22px;
 .wellness-toolkit__title {
   margin: 0px;
 font-family: var(--font-primary);
-font-size: var(--font-size-h1);
+font-size: var(--font-size-h2);
   line-height: var(--line-height-heading);
 font-weight: var(--fw-bold);
 color: var(--text-heading);
@@ -6365,9 +6432,10 @@ box-shadow: var(--shadow-sm);
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  margin: 6px 8px 0;
+  margin: 4px 8px 0;
   color: var(--primary);
-  font-size: 12px;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
   text-decoration: none;
   transition: color var(--transition);
@@ -6485,7 +6553,7 @@ box-shadow: var(--shadow-sm);
 .header-left h2 {
   margin: 0 0 14px;
   color: var(--text-heading);
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
   line-height: 1.2;
 }
@@ -6638,7 +6706,7 @@ box-shadow: var(--shadow-sm);
 }
 
 .program-testimonial-card__link {
-  margin-top: auto;
+  margin-top: 8px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -6648,7 +6716,8 @@ box-shadow: var(--shadow-sm);
   outline: none;
   cursor: pointer;
   color: var(--primary);
-  font-size: var(--fs-base);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
   transition: var(--transition);
 }
@@ -6773,8 +6842,8 @@ box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 12px;
-  padding: 18px 20px 22px;
+  gap: 8px;
+  padding: 12px 16px 16px;
 }
 
 .transformation-story-card__body h3 {
@@ -6901,7 +6970,7 @@ box-shadow: var(--shadow-sm);
 .monthly-champions__title {
   margin: 0 0 12px;
   color: var(--text-heading);
-  font-size: clamp(28px, 4vw, 35px);
+  font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
   line-height: 1.15;
 }
@@ -7048,7 +7117,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .champion-info__more {
-  margin-top: 8px;
+  margin-top: 6px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -7058,8 +7127,10 @@ background-image: url("../site/images/birthday-card-bg.png");
   outline: none;
   cursor: pointer;
   color: var(--primary);
-  font-size: 13px;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
   transition: var(--transition);
   min-height: auto;
   position: relative;
@@ -7185,7 +7256,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 .healing-title {
   margin: 0;
   color: #0f172a;
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-h2);
   font-weight: var(--fw-semibold);
   line-height: 1.1;
   margin-bottom: var(--section-header-mb);
@@ -7216,7 +7287,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 
 .realHealingSwiper .swiper-wrapper {
   display: flex !important;
-  align-items: stretch !important;
+  align-items: flex-start !important;
 }
 
 .realHealingSwiper .swiper-slide {
@@ -7224,31 +7295,32 @@ background-image: url("../site/images/birthday-card-bg.png");
   height: auto !important;
   box-sizing: border-box;
   min-width: 0;
-  align-self: stretch;
+  align-self: flex-start;
 }
 
 .real-healing-card {
   background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  border: 1px solid rgba(231, 134, 58, 0.1);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(52, 43, 39, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   min-width: 0;
-  flex: 1 1 auto;
-  align-self: stretch;
-  min-height: 100%;
-  height: 100%;
+  flex: 0 1 auto;
+  align-self: flex-start;
+  min-height: 0;
+  height: auto;
   box-sizing: border-box;
   overflow: visible;
-  transition: box-shadow var(--transition, 0.2s ease);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .real-healing-card:hover {
-  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(231, 134, 58, 0.12);
 }
 
 .real-healing-card--expanded {
@@ -7337,12 +7409,14 @@ background-image: url("../site/images/birthday-card-bg.png");
   outline: none;
   cursor: pointer;
   color: var(--primary);
-  font-size: var(--fs-xs);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
   transition: var(--transition);
   align-self: flex-end;
   flex-shrink: 0;
-  min-height: 1.25rem;
+  min-height: 0;
 }
 
 .real-healing-more--spacer {
@@ -7364,11 +7438,11 @@ background-image: url("../site/images/birthday-card-bg.png");
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-top: auto;
+  margin-top: 4px;
   min-width: 0;
   width: 100%;
   flex-shrink: 0;
-  padding-bottom: 2px;
+  padding-bottom: 0;
 }
 
 .real-healing-profile {
@@ -8501,7 +8575,7 @@ flex-shrink: 0;
 .static-page-title {
   margin: 0;
   color: var(--text-heading);
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: var(--font-size-h2);
   line-height: 1.1;
   font-weight: var(--fw-bold);
   letter-spacing: -0.5px;
@@ -9474,11 +9548,11 @@ flex-shrink: 0;
 
 .about-page .pillar-card__description,
 .about-page .pillar-card__description p {
-  margin-top: 12px;
+  margin-top: 8px;
   margin-bottom: 0;
   color: var(--text-body);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
   text-align: justify;
 }
 
@@ -9636,7 +9710,7 @@ flex-shrink: 0;
 }
 
 .contentsizes {
-    font-size: clamp(1.55rem, 4vw, 2rem);
+    font-size: var(--font-size-h2);
     font-weight: 700;
     text-align: center;
     margin-bottom: 10px;
@@ -9668,10 +9742,10 @@ flex-shrink: 0;
 @media (max-width: 640px) {
 :root {
     --font-size-display: 1.875rem;
-    --font-size-h1: 1.875rem;
-    --font-size-h2: 1.5rem;
-    --font-size-h3: 1.25rem;
-    --font-size-h4: 1.000rem;
+    --font-size-h1: 1.5rem;
+    --font-size-h2: 1.15rem;
+    --font-size-h3: 1.05rem;
+    --font-size-h4: 1rem;
     --font-size-lg: 1.0625rem;
     --section-padding-y: var(--section-padding-y-mobile);
     --section-header-mb: var(--space-5);
@@ -9983,16 +10057,16 @@ flex-shrink: 0;
     margin-bottom: var(--section-header-mb);
   }
 .pillars__title {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
   }
 .pillar-card {
     /* padding: 30px 26px; */
   }
 .pillar-card__title {
-    font-size: var(--font-size-h3);
+    font-size: var(--font-size-h4);
   }
 .pillar-card__description {
-    font-size: 16px;
+    font-size: var(--font-size-body);
     line-height: 29px;
     text-align: justify;
   }
@@ -10023,7 +10097,7 @@ flex-shrink: 0;
 
 @media (max-width: 1200px) {
 .wellness__title {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
   }
 .wellness__text {
     width: 100%;
@@ -10074,12 +10148,12 @@ flex-shrink: 0;
     margin-bottom: 26px;
   }
 .pillar-card__title {
-    font-size: var(--font-size-h3);
+    font-size: var(--font-size-h4);
   }
 .pillar-card__description {
-    margin-top: 14px;
-    font-size: 15px;
-    line-height: 27px;
+    margin-top: 8px;
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
     text-align: justify;
   }
   .bmi-left {
@@ -10183,14 +10257,14 @@ flex-shrink: 0;
     /* Matches mobile banner crop 1080ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ480 (~2.25:1) */
     height: clamp(160px, 44.444vw, 320px);
   }
-.hero-overlay {
+/* .hero-overlay {
     background: linear-gradient(
       180deg,
       rgba(0, 0, 0, 0.15) 0%,
       rgba(0, 0, 0, 0.35) 45%,
       rgba(0, 0, 0, 0.72) 100%
     );
-  }
+  } */
 .hero-content {
            position: absolute;
         left: 4%;
@@ -10478,7 +10552,7 @@ flex-shrink: 0;
     max-width: 100%;
   } */
 .wellness__title {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
   }
 .wellness__text {
     width: 80%;
@@ -10638,7 +10712,7 @@ flex-shrink: 0;
     padding-bottom: 0;
   }
 .wellness-toolkit__title {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
     line-height: var(--line-height-heading);
   }
 .wellness-toolkit__description {
@@ -10921,10 +10995,10 @@ gap: 45px;
     bottom: var(--space-3);
   }
 .methodology__header h2 {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
   }
 .methodology__header p {
-    font-size: 16px;
+    font-size: var(--font-size-body);
     text-align: justify;
   }
 .methodology__cards {
@@ -10934,14 +11008,13 @@ gap: 45px;
     width: 100%;
   }
 .methodology-card__image {
-    height: 235px;
+    height: 200px;
   }
 .methodology-card__content h3 {
     font-size: var(--font-size-h4);
   }
 .methodology-card__content p {
     min-height: auto;
-    font-size: 16px;
   }
 .about-section {
     padding: var(--section-padding-y) 0;
@@ -11106,7 +11179,7 @@ gap: 45px;
     padding: var(--space-6) 0 0;
   }
 .wellness__title {
-    font-size: var(--font-size-h1);
+    font-size: var(--font-size-h2);
     line-height: 1.15;
   }
 .wellness__text {
@@ -11232,9 +11305,9 @@ border-radius: 18px;
     font-size: var(--font-size-h4);
   }
 .pillar-card__description {
-    margin-top: 12px;
-    font-size: 15px;
-    line-height: 28px;
+    margin-top: 8px;
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
     text-align: justify;
   }
 .aboutFaq {
@@ -11543,8 +11616,9 @@ font-size: 0.62rem;
 .wellness-hero__title{
     font-size: var(--font-size-h3);
   }
-  .wellness-hero__description , .methodology__header p{
-    font-size: 14px;
+  .wellness-hero__description,
+  .methodology__header p{
+    font-size: var(--font-size-body);
     text-align: justify;
   }
   .wellness-btn--primary{
@@ -11556,7 +11630,7 @@ font-size: 0.62rem;
   .wellness-hero__stat-card h4{
     font-size: var(--font-size-h3);
   }
-  .methodology-card__content p , .transformation-story-card__body p{
+  .transformation-story-card__body p{
     font-size: 14px;
     text-align: justify;
   }
@@ -11591,8 +11665,8 @@ font-size: 0.62rem;
 .mobile-nav {
     padding: 15px;
   }
-.methodology-card__content button {
-    bottom: 0;
+.methodology-card__cta {
+    width: 100%;
   }
 .bmi-section {
     padding: var(--space-6) var(--space-4);
@@ -11753,8 +11827,8 @@ font-size: 0.62rem;
     font-size: var(--font-size-h4);
   }
 .pillar-card__description {
-    font-size: 14px;
-    line-height: 26px;
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
     text-align: justify;
   }
 .resources-header .site-container {
@@ -12627,7 +12701,7 @@ bottom: -18px;
 .home-page .healing-title,
   .home-page .methodology__header h2,
   .home-page .success-stories__header h2 {
-    font-size: var(--font-size-h3);
+    font-size: var(--font-size-h2);
   }
 }
 
@@ -12895,9 +12969,11 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-section__header h2 {
   margin: 0;
-  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
-  font-weight: 700;
-  color: #1a1a1a;
+  font-family: var(--site-font-heading);
+  font-size: var(--font-size-h2);
+  font-weight: var(--fw-bold);
+  line-height: var(--line-height-heading);
+  color: var(--site-navy);
 }
 
 .wellnesspedia-page .wp-section__loading,
@@ -14664,10 +14740,6 @@ bottom: -18px;
     margin-bottom: 0.5rem;
   }
 
-  .wellnesspedia-page .wp-section__header h2 {
-    font-size: 1.15rem;
-  }
-
   .wellnesspedia-page .wp-filter-chips-wrap {
     margin-bottom: 0.6rem;
   }
@@ -14972,4 +15044,140 @@ bottom: -18px;
   .app-hero__leaf {
     display: none;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Shared public UI: type hierarchy, cards, buttons                          */
+/* -------------------------------------------------------------------------- */
+
+/* Section titles */
+.site-heading,
+.methodology__header h2,
+.home-page .methodology__header h2,
+.success-stories__header h2,
+.home-page .success-stories__header h2,
+.wellness__title,
+.wellness-hero__title,
+.wellness-toolkit__title,
+.pillars__title,
+.aboutFaq__title,
+.medicalBoard__heading h2,
+.about-page .medicalBoard__heading h2,
+.monthly-champions__title,
+.healing-title,
+.home-page .healing-title,
+.voice-title,
+.success-stories-page .voice-title,
+.header-left h2,
+.transformation-heading h2,
+.static-page-title,
+.wellnesspedia-page .wp-section__header h2,
+.contentsizes,
+.final-cta__title,
+.about-page .final-cta__title,
+.program-highlight__heading h2,
+.program-about__heading {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-h2) !important;
+  font-weight: var(--fw-bold) !important;
+  line-height: var(--line-height-heading) !important;
+}
+
+/* Large card titles */
+.methodology-card__content h3,
+.pillar-card__title,
+.transformation-story-card__body h3,
+.champion-title,
+.program-condition-card__title,
+.program-testimonial-card__name,
+.leadership__title,
+.aboutFaqAccordion__question {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-h3) !important;
+  font-weight: var(--fw-bold) !important;
+  line-height: var(--line-height-heading) !important;
+}
+
+/* Compact card titles */
+.wellnesspedia-page .wp-recipe-card__title-row h3,
+.wellnesspedia-page .wp-yoga-card__title,
+.wellnesspedia-page .wp-tool-card__title,
+.transformation-category-card h4 {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-h4) !important;
+  font-weight: var(--fw-semibold) !important;
+  line-height: var(--line-height-heading) !important;
+}
+
+/* Names / subtitles */
+.methodology-card__content h5,
+h5.pillar-card__head-title,
+.champion-info h4,
+.real-healing-profile h4,
+.success-card__author,
+.leadership__author h4 {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-body) !important;
+  font-weight: var(--fw-semibold) !important;
+  line-height: var(--line-height-heading) !important;
+}
+
+/* Body copy */
+.methodology-card__content p,
+.methodology-card__desc,
+.methodology__header p,
+.success-card__review p,
+.real-healing-review,
+.champion-info p,
+.transformation-story-card__body p,
+.program-testimonial-card__quote p,
+.pillar-card__description,
+.pillar-card__description p,
+.leadership__description,
+.aboutFaqAccordion .accordion-body,
+.aboutFaq__para,
+.wellness-hero__description,
+.wellness__text,
+.success-text,
+.transformation-heading p,
+.static-page-content p {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-body) !important;
+  font-weight: var(--fw-regular) !important;
+  line-height: var(--line-height-body) !important;
+}
+
+/* Text links */
+.methodology-card__more,
+.success-card__more,
+.real-healing-more,
+.champion-info__more,
+.leadership__link,
+.program-testimonial-card__link,
+.transformation-category-card__more {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-small) !important;
+  font-weight: var(--fw-semibold) !important;
+}
+
+.methodology-card,
+.success-card,
+.pillar-card,
+.real-healing-card,
+.transformation-story-card,
+.program-testimonial-card,
+.wellnesspedia-page .wp-recipe-card,
+.wellnesspedia-page .wp-yoga-card,
+.wellnesspedia-page .wp-disorder-card {
+  border-radius: var(--radius-lg);
+}
+
+.methodology-card__cta,
+.final-cta__button,
+.wellness-btn--primary,
+.site-header__cta {
+  font-family: var(--font-family-base) !important;
+  font-size: var(--font-size-small) !important;
+  font-weight: var(--fw-semibold) !important;
+  border-radius: var(--radius-pill) !important;
 }

@@ -101,11 +101,11 @@ export function SiteHero() {
             </picture>
           </div>
           <div className="hero-overlay" />
-          <div className="hero-content">
-            {/* <span className="hero-label">PREMIUM COLLECTION</span> */}
+          {/* <div className="hero-content">
+            <span className="hero-label">PREMIUM COLLECTION</span> 
             <h1 className="hero-title">{slide.title}</h1>
             {slide.description ? <p className="hero-description">{slide.description}</p> : null}
-          </div>
+          </div> */}
         </SwiperSlide>
       ))}
     </Swiper>
