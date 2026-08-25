@@ -190,11 +190,11 @@ export function DashboardChallengesCard({ onToast }) {
         </div>
       </div>
 
-      <div className="ops-challenge__foot">
+      {/* <div className="ops-challenge__foot">
         <button type="button" className="ops-challenge__manage" onClick={goManage}>
           Manage challenges
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

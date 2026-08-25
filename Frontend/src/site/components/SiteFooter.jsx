@@ -221,10 +221,7 @@ export function SiteFooter() {
         </div>
 
         <div className="site-footer__bottom">
-          <div className="site-footer__bottom-meta">
-            <p className="text-dark">{copyrightLine}</p>
-            {creditLine ? <p className="site-footer__credit text-dark fw-semibold">{creditLine}</p> : null}
-          </div>
+         
 
           <nav className="site-footer__bottom-links" aria-label="Legal links">
             {legalLinks.map((link, index) => (
@@ -238,6 +235,10 @@ export function SiteFooter() {
               </Fragment>
             ))}
           </nav>
+          <div className="site-footer__bottom-meta">
+            <p className="text-dark">{copyrightLine}</p>
+            {/* {creditLine ? <p className="site-footer__credit text-dark fw-semibold">{creditLine}</p> : null} */}
+          </div>
         </div>
       </div>
     </footer>

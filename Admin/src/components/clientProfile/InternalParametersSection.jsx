@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
 import {
   INTERNAL_PARAMS,
@@ -21,11 +21,35 @@ import {
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 
 const GOAL_PRESET_CATEGORIES = {
-  "Fat Loss": ["Cardiac", "Diabetes"],
-  "Diabetes Reversal": ["Diabetes"],
+  "Fat Loss": ["Cardiac", "Diabetes", "Lipid Profile", "HbA1c", "CBC", "Hematology", "Metabolic"],
+  "Diabetes Reversal": ["Diabetes", "HbA1c", "Glucose"],
   "Thyroid Care": ["Thyroid"],
-  "PCOD / PCOS": ["Thyroid", "Hormones"],
+  "PCOD / PCOS": ["Thyroid", "Hormones", "PCOD", "PCOS"],
 };
+
+function presetMatchKeys(goal) {
+  return (GOAL_PRESET_CATEGORIES[goal] || []).map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean);
+}
+
+function textMatchesPreset(value, keys) {
+  const n = String(value || "").trim().toLowerCase();
+  if (!n) return false;
+  return keys.some((key) => n === key || n.includes(key));
+}
+
+function groupMatchesPreset(group, goal) {
+  const keys = presetMatchKeys(goal);
+  if (!keys.length || !group) return false;
+  if (textMatchesPreset(group.name, keys) || textMatchesPreset(group.id, keys)) return true;
+  return (group.tests || []).some((test) => {
+    if (typeof test === "string") return textMatchesPreset(test, keys);
+    return textMatchesPreset(test?.category, keys) || textMatchesPreset(test?.name, keys);
+  });
+}
+
+function groupsForPreset(allGroups, goal) {
+  return (allGroups || []).filter((group) => groupMatchesPreset(group, goal));
+}
 
 function slugify(value) {
   return String(value || "")
@@ -236,7 +260,7 @@ function SummaryCards({ lastReport, nextDue, alertText, historyCount, historyOpe
       <button type="button" className="ua-cp-ip-summary__history-btn" onClick={onToggleHistory}>
         {historyOpen ? "▴ Hide report history" : `Report history · ${historyCount}`}
       </button>
-      {alertText ? <span className="ua-cp-ip-summary__alert">{alertText}</span> : null}
+      {alertText ? <span className="ua-cp-ip-summary__alert" style={{fontWeight:'400'}}>{alertText}</span> : null}
     </div>
   );
 }
@@ -487,10 +511,20 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
   );
 }
 
-function NamespaceSearch({ groups, namespaces, onAdd, onToast }) {
+function pinnedGroupIds(groups, selectedMap) {
+  return groups
+    .filter((group) => group.tests.some((test) => selectedMap[test.id]))
+    .map((group) => group.id);
+}
+
+function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
+  const openRef = useRef(false);
+  const listId = useId();
   const existingIds = useMemo(() => new Set(groups.map((g) => g.id)), [groups]);
 
   const options = useMemo(() => {
@@ -498,53 +532,138 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast }) {
     return namespaces.filter((ns) => {
       if (existingIds.has(ns.id)) return false;
       if (!q) return true;
-      return ns.name.toLowerCase().includes(q);
+      return String(ns.name || "").toLowerCase().includes(q);
     });
   }, [search, existingIds, namespaces]);
 
   useEffect(() => {
-    if (!open) return undefined;
-    function onDocClick(e) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    openRef.current = open;
   }, [open]);
 
+  useEffect(() => {
+    setActive(0);
+  }, [search, open, options.length]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDocPointerDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        openRef.current = false;
+      }
+    }
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [open]);
+
+  function setListOpen(next) {
+    if (disabled) return;
+    setOpen(next);
+    openRef.current = next;
+    if (next) {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      inputRef.current?.blur();
+    }
+  }
+
+  function toggleList(e) {
+    if (disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setListOpen(!openRef.current);
+  }
+
   function pick(ns) {
+    if (!ns || disabled) return;
     onAdd(ns);
     setSearch("");
-    setOpen(false);
-    onToast(`${ns.name} added`);
+    setListOpen(false);
+    onToast?.(`${ns.name} added`);
   }
+
+  function onKeyDown(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setListOpen(false);
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setListOpen(true);
+      if (!options.length) return;
+      setActive((i) => (i + 1) % options.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setListOpen(true);
+      if (!options.length) return;
+      setActive((i) => (i - 1 + options.length) % options.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (!openRef.current) {
+        setListOpen(true);
+        return;
+      }
+      if (!options.length) return;
+      pick(options[active] || options[0]);
+    }
+  }
+
+  const showList = open && !disabled;
 
   return (
     <div className="ua-cp-ip-search-wrap" ref={wrapRef}>
-      <div className={`ua-cp-ip-search${open && options.length ? " ua-cp-ip-search--open" : ""}`}>
-        <span className="ua-cp-ip-search__icon" aria-hidden="true">🔍</span>
+      <div
+        className={`ua-cp-ip-search${showList ? " ua-cp-ip-search--open" : ""}`}
+        onPointerDown={toggleList}
+      >
+        <span className="ua-cp-ip-search__icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.2-3.2" />
+          </svg>
+        </span>
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Add a test namespace…"
+          placeholder="+ Add a test category…"
           value={search}
+          disabled={disabled}
           onChange={(e) => {
             setSearch(e.target.value);
-            setOpen(true);
+            setListOpen(true);
           }}
-          onFocus={() => setOpen(true)}
-          aria-expanded={open && options.length > 0}
+          onKeyDown={onKeyDown}
+          aria-expanded={showList}
           aria-haspopup="listbox"
-          aria-controls="ua-cp-ip-ns-list"
+          aria-controls={listId}
+          aria-autocomplete="list"
         />
       </div>
-      {open && options.length ? (
-        <ul id="ua-cp-ip-ns-list" className="ua-cp-ip-ns-dropdown" role="listbox">
-          {options.map((ns) => (
+      {showList ? (
+        <ul id={listId} className="ua-cp-ip-ns-dropdown" role="listbox">
+          {options.length ? options.map((ns, index) => (
             <li key={ns.id}>
-              <button type="button" role="option" className="ua-cp-ip-ns-dropdown__item" onClick={() => pick(ns)}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={index === active}
+                className={`ua-cp-ip-ns-dropdown__item${index === active ? " is-active" : ""}`}
+                onMouseEnter={() => setActive(index)}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  pick(ns);
+                }}
+              >
                 {ns.name}
               </button>
             </li>
-          ))}
+          )) : (
+            <li className="ua-cp-ip-ns-dropdown__empty">
+              {existingIds.size >= namespaces.length ? "All categories added" : "No matching categories"}
+            </li>
+          )}
         </ul>
       ) : null}
     </div>
@@ -567,6 +686,13 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
 
   const [selected, setSelected] = useState(initialSelected);
   const [groups, setGroups] = useState(INTERNAL_PARAMS.testGroups);
+  const namespaceCatalog = useMemo(() => {
+    const map = new Map();
+    [...INTERNAL_PARAMS.testGroups, ...INTERNAL_PARAMS.testNamespaces].forEach((ns) => {
+      if (!map.has(ns.id)) map.set(ns.id, ns);
+    });
+    return [...map.values()];
+  }, []);
 
   const totalSelected = useMemo(() => {
     return groups.reduce((sum, g) => sum + countSelected(g, selected).n, 0);
@@ -578,12 +704,24 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
   }
 
   function togglePreset(goal) {
-    setFocusedPreset(goal);
-    setPresets((prev) => {
-      const next = prev.includes(goal) ? [] : [goal];
-      onToast(next.includes(goal) ? `${goal} preset applied` : `Removed ${goal} preset`);
-      return next;
-    });
+    const applying = !presets.includes(goal);
+    setFocusedPreset(applying ? goal : "");
+    setPresets(applying ? [goal] : []);
+
+    if (applying) {
+      const nextGroups = groupsForPreset(namespaceCatalog, goal);
+      setGroups(nextGroups);
+      const nextSelected = {};
+      nextGroups.forEach((group) => {
+        flattenTests(group).forEach((test) => { nextSelected[`${group.id}:${test}`] = true; });
+      });
+      setSelected(nextSelected);
+      onToast(nextGroups.length ? `${goal} preset applied` : `No tests in catalog for ${goal}`);
+    } else {
+      setGroups([]);
+      setSelected({});
+      onToast(`Removed ${goal} preset`);
+    }
     markDirty();
   }
 
@@ -675,7 +813,7 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
       ) : null}
 
       <div className="ua-cp-ip-preset">
-        <span className="ua-cp-ip-preset__label">Quick preset · goal</span>
+        <p className="ua-cp-ip-preset__label">Quick preset · goal</p>
         <div className="ua-cp-ip-preset__pills">
           {INTERNAL_PARAMS.goalPresets.map((g) => (
             <button
@@ -690,7 +828,9 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
         </div>
       </div>
 
-      <NamespaceSearch groups={groups} namespaces={INTERNAL_PARAMS.testNamespaces} onAdd={addNamespace} onToast={onToast} />
+      {canEdit ? (
+        <NamespaceSearch groups={groups} namespaces={namespaceCatalog} onAdd={addNamespace} onToast={onToast} />
+      ) : null}
 
       {groups.map((group) => {
         const counts = countSelected(group, selected);
@@ -845,13 +985,17 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
   const [focusedPreset, setFocusedPreset] = useState("");
   const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
   const [dirty, setDirty] = useState(!recommended);
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [search, setSearch] = useState("");
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    const initial = selectedFromRecommendation(catalog, recommended);
+    return pinnedGroupIds(catalogGroups(catalog), initial);
+  });
 
   useEffect(() => {
-    setSelected(selectedFromRecommendation(catalog, recommended));
+    const nextSelected = selectedFromRecommendation(catalog, recommended);
+    setSelected(nextSelected);
     setReportDate(recommended?.reportDate || todayIso());
     setDirty(!recommended);
+    setPinnedIds(pinnedGroupIds(catalogGroups(catalog), nextSelected));
   }, [catalog, recommended]);
 
   const selectedIds = useMemo(
@@ -859,18 +1003,10 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     [selected],
   );
 
-  const visibleGroups = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return allGroups
-      .filter((group) => !categoryFilter || group.id === categoryFilter)
-      .map((group) => ({
-        ...group,
-        tests: q
-          ? group.tests.filter((test) => String(test.name || "").toLowerCase().includes(q))
-          : group.tests,
-      }))
-      .filter((group) => group.tests.length);
-  }, [allGroups, categoryFilter, search]);
+  const visibleGroups = useMemo(
+    () => allGroups.filter((group) => pinnedIds.includes(group.id)),
+    [allGroups, pinnedIds],
+  );
 
   function markDirty() {
     setDirty(true);
@@ -906,38 +1042,42 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
         group.tests.forEach((test) => { copy[test.id] = false; });
         return copy;
       });
-      setCategoryFilter((current) => (current === id ? "" : current));
     }
+    setPinnedIds((ids) => ids.filter((entry) => entry !== id));
     markDirty();
-    onToast("Category cleared from selection");
+    onToast("Category removed");
   }
 
-  function togglePreset(goal) {
-    setFocusedPreset(goal);
-    const applying = !presets.includes(goal);
-    const next = applying ? [goal] : [];
-    setPresets(next);
-
-    const allPresetCategories = new Set(
-      Object.values(GOAL_PRESET_CATEGORIES)
-        .flat()
-        .map((c) => String(c || "").toLowerCase()),
-    );
-    const categories = new Set(
-      (GOAL_PRESET_CATEGORIES[goal] || []).map((c) => String(c || "").toLowerCase()),
-    );
-
-    setSelected((current) => {
-      const copy = { ...current };
-      catalog.forEach((test) => {
-        const cat = String(test.category || "").toLowerCase();
-        if (!allPresetCategories.has(cat)) return;
-        copy[test.id] = applying && categories.has(cat);
-      });
+  function addCategory(group) {
+    if (!group || pinnedIds.includes(group.id)) return;
+    setPinnedIds((ids) => [...ids, group.id]);
+    setSelected((prev) => {
+      const copy = { ...prev };
+      group.tests.forEach((test) => { copy[test.id] = true; });
       return copy;
     });
     markDirty();
-    onToast(applying ? `${goal} preset applied` : `Removed ${goal} preset`);
+  }
+
+  function togglePreset(goal) {
+    const applying = !presets.includes(goal);
+    setFocusedPreset(applying ? goal : "");
+    setPresets(applying ? [goal] : []);
+
+    const matched = applying ? groupsForPreset(allGroups, goal) : [];
+    const nextSelected = {};
+    catalog.forEach((test) => { nextSelected[test.id] = false; });
+    matched.forEach((group) => {
+      group.tests.forEach((test) => { nextSelected[test.id] = true; });
+    });
+    setSelected(nextSelected);
+    setPinnedIds(matched.map((group) => group.id));
+    markDirty();
+    onToast(
+      applying
+        ? (matched.length ? `${goal} preset applied` : `No tests in catalog for ${goal}`)
+        : `Removed ${goal} preset`,
+    );
   }
 
   function presetClass(goal) {
@@ -1008,28 +1148,8 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
       {catalog.length ? (
         <>
-          <div className="ua-cp-ip-rec__toolbar">
-            <input
-              type="search"
-              className="ua-cp-ip-rec__search"
-              placeholder="Search tests…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className="ua-cp-ip-rec__search"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-            >
-              <option value="">All categories</option>
-              {allGroups.map((group) => (
-                <option key={group.id} value={group.id}>{group.name}</option>
-              ))}
-            </select>
-          </div>
-
           <div className="ua-cp-ip-preset">
-            <span className="ua-cp-ip-preset__label">Quick preset · goal</span>
+            <p className="ua-cp-ip-preset__label">Quick preset · goal</p>
             <div className="ua-cp-ip-preset__pills">
               {INTERNAL_PARAMS.goalPresets.map((g) => (
                 <button
@@ -1043,7 +1163,15 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
               ))}
             </div>
           </div>
-
+          {canEdit ? (
+            <NamespaceSearch
+              groups={visibleGroups}
+              namespaces={allGroups}
+              onAdd={addCategory}
+              onToast={onToast}
+              disabled={busy}
+            />
+          ) : null}
           {visibleGroups.length ? visibleGroups.map((group) => {
             const counts = countGroup(group);
             const allOn = counts.total > 0 && counts.n === counts.total;
@@ -1051,7 +1179,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
             return (
               <div key={group.id} className="ua-cp-ip-test-group">
                 <div className="ua-cp-ip-test-group__head">
-                  <button
+                  <button style={{borderRadius:"5px"}}
                     type="button"
                     className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
                     onClick={() => toggleGroup(group)}
@@ -1061,9 +1189,9 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
                   </button>
                   <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
                   <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
-                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Clear category">×</button>
+                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove category">×</button>
                 </div>
-                <div className="ua-cp-ip-test-group__grid">
+                <div className="ua-cp-ip-test-group__grid" style={{padding:"10px 40px 10px"}}>
                   {group.tests.map((test) => (
                     <label key={test.id} className="ua-cp-ip-test-item">
                       <input
@@ -1071,7 +1199,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
                         checked={!!selected[test.id]}
                         onChange={() => toggleTest(test.id)}
                       />
-                      <span className={`ua-cp-ip-check${selected[test.id] ? " ua-cp-ip-check--on" : ""}`}>
+                      <span style={{borderRadius:"5px"}} className={`ua-cp-ip-check${selected[test.id] ? " ua-cp-ip-check--on" : ""}`}>
                         {selected[test.id] ? "✓" : ""}
                       </span>
                       <span className="ua-cp-ip-test-item__label">{test.name}</span>
@@ -1081,7 +1209,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
               </div>
             );
           }) : (
-            <p>No tests match this search.</p>
+            <p className="ua-cp-ip-assign-history__empty">No categories added yet. Search above to add tests from the catalog.</p>
           )}
         </>
       ) : (
