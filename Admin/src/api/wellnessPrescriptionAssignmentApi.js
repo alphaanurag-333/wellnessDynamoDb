@@ -75,6 +75,10 @@ export function mapWellnessPrescriptionAssignment(row, catalog = []) {
   const id = row.id || row._id;
   if (!id) return null;
   const sections = groupAssignmentItems(row.items, catalog);
+  const canEdit = row.canEdit === true
+    || (row.editableUntil
+      ? new Date(row.editableUntil).getTime() > Date.now()
+      : false);
   return {
     id: String(id),
     userId: String(row.userId || ""),
@@ -87,6 +91,8 @@ export function mapWellnessPrescriptionAssignment(row, catalog = []) {
     createdById: String(row.createdById || "").trim(),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    editableUntil: row.editableUntil || null,
+    canEdit,
   };
 }
 
@@ -137,6 +143,26 @@ export async function assignUserWellnessPrescription(userId, { date, protocols }
   try {
     const { data } = await api.post(
       assignmentsBase(userId),
+      {
+        date,
+        protocols: (Array.isArray(protocols) ? protocols : []).map((protocol) => ({
+          catalogId: protocol.catalogId || undefined,
+          title: protocol.title,
+          points: Array.isArray(protocol.points) ? protocol.points : [],
+        })),
+      },
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return mapWellnessPrescriptionAssignment(data.assignment);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function republishUserWellnessPrescription(userId, assignmentId, { date, protocols } = {}) {
+  try {
+    const { data } = await api.put(
+      `${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}`,
       {
         date,
         protocols: (Array.isArray(protocols) ? protocols : []).map((protocol) => ({

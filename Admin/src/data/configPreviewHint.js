@@ -2,7 +2,7 @@ export function previewHintForItem(item) {
   if (item.id === "app-language-disable") {
     return "Toggle Hindi, then open Preview";
   }
-  if (item.id === "app-faq" || item.id === "app-medical-questionnaire") {
+  if (item.id === "app-faq" || item.id === "app-medical-questionnaire" || item.id === "app-prakriti") {
     return "Edit questions, then open Preview";
   }
   if (item.id === "app-program" || item.id === "app-subscriptions") {
@@ -57,6 +57,9 @@ export function previewHintForItem(item) {
     return "Edit the footer text, then open Preview";
   }
   if (item.id === "web-fs-social") {
+    return "Edit the links, then open Preview";
+  }
+  if (item.id === "web-fs-links") {
     return "Edit the links, then open Preview";
   }
   if (

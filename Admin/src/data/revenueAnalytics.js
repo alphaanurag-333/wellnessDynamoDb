@@ -1,8 +1,19 @@
 export const PRODUCT_COLORS = {
   program: "#2b8f5b",
-  consultancy: "#0d9488",
   app: "#ec7a45",
+  consultancy: "#0d9488",
+  challenge: "#7c3aed",
   avg: "#a855f7",
+};
+
+/** Order matches Revenue by product on the dashboard. */
+export const REVENUE_PRODUCT_ORDER = ["program", "app", "consultancy", "challenge"];
+
+export const REVENUE_PRODUCT_META = {
+  program: { key: "program", name: "Wellness programs", color: PRODUCT_COLORS.program },
+  app: { key: "app", name: "App users", color: PRODUCT_COLORS.app },
+  consultancy: { key: "consultancy", name: "PWC", color: PRODUCT_COLORS.consultancy },
+  challenge: { key: "challenge", name: "Challenges", color: PRODUCT_COLORS.challenge },
 };
 
 export function asRevenueNumber(value) {
@@ -22,15 +33,25 @@ export function formatPaymentAmount(value) {
   return `Rs. ${Math.round(asRevenueNumber(value)).toLocaleString("en-IN")}`;
 }
 
-function monthRow({ month, program, consultancy, app, onboarded = 0, payments = [] }) {
+function buildProductBreakdown({ program = 0, app = 0, consultancy = 0, challenge = 0 } = {}) {
+  const total = program + app + consultancy + challenge;
+  return REVENUE_PRODUCT_ORDER.map((key) => {
+    const meta = REVENUE_PRODUCT_META[key];
+    const value = { program, app, consultancy, challenge }[key] || 0;
+    return {
+      key: meta.key,
+      name: meta.name,
+      value,
+      pct: total ? Math.round((value / total) * 100) : 0,
+      color: meta.color,
+    };
+  });
+}
+
+function monthRow({ month, program, consultancy, app, challenge = 0, onboarded = 0, payments = [] }) {
   const [year, monthNum] = month.split("-").map(Number);
   const label = new Date(year, monthNum - 1, 1).toLocaleString("en-IN", { month: "short" });
-  const total = program + consultancy + app;
-  const products = [
-    { key: "program", name: "Wellness programs", value: program, pct: total ? Math.round((program / total) * 100) : 0, color: PRODUCT_COLORS.program },
-    { key: "app", name: "App users", value: app, pct: total ? Math.round((app / total) * 100) : 0, color: PRODUCT_COLORS.app },
-    { key: "consultancy", name: "PWC", value: consultancy, pct: total ? Math.round((consultancy / total) * 100) : 0, color: PRODUCT_COLORS.consultancy },
-  ];
+  const total = program + consultancy + app + challenge;
   return {
     month,
     label,
@@ -38,8 +59,9 @@ function monthRow({ month, program, consultancy, app, onboarded = 0, payments = 
     program,
     consultancy,
     app,
+    challenge,
     total,
-    products,
+    products: buildProductBreakdown({ program, app, consultancy, challenge }),
     onboarded,
     payments: Array.isArray(payments) ? payments : [],
   };
@@ -64,11 +86,7 @@ export function resolveRevenueAnalytics(statistics) {
 }
 
 function emptyProductBreakdown() {
-  return [
-    { key: "program", name: "Wellness program", value: 0, pct: 0, color: PRODUCT_COLORS.program },
-    { key: "consultancy", name: "PWC", value: 0, pct: 0, color: PRODUCT_COLORS.consultancy },
-    { key: "app", name: "App users", value: 0, pct: 0, color: PRODUCT_COLORS.app },
-  ];
+  return buildProductBreakdown();
 }
 
 function fromLegacyStatistics(statistics) {
@@ -97,8 +115,9 @@ function fromLegacyStatistics(statistics) {
   const months = monthRows.map((row) => {
     const program = asRevenueNumber(row.program ?? row.revenue);
     const consultancy = asRevenueNumber(row.consultancy);
+    const challenge = asRevenueNumber(row.challenge);
     const app = asRevenueNumber(row.app);
-    const total = asRevenueNumber(row.revenue ?? program + consultancy + app);
+    const total = asRevenueNumber(row.revenue ?? program + consultancy + app + challenge);
     const monthIndex = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].indexOf(row.label);
     return {
       ...monthRow({
@@ -109,7 +128,8 @@ function fromLegacyStatistics(statistics) {
             : "2026-04"),
         program,
         consultancy,
-        app: app || Math.max(0, total - program - consultancy),
+        challenge,
+        app: app || Math.max(0, total - program - consultancy - challenge),
       }),
       payments: Array.isArray(row.payments) ? row.payments : [],
     };

@@ -296,9 +296,12 @@ async function dispatchWellnessPrescriptionAssignedNotification({
   userId,
   assignmentId,
   coachName,
+  updated = false,
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
-  const message = `${name} has shared new wellness prescriptions for you.`;
+  const message = updated
+    ? `${name} has updated your wellness prescriptions.`
+    : `${name} has shared new wellness prescriptions for you.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -306,7 +309,7 @@ async function dispatchWellnessPrescriptionAssignedNotification({
     message,
     referenceId: assignmentId,
     referenceType: "coach_assigned_wellness_prescription",
-    title: "New wellness prescriptions",
+    title: updated ? "Wellness prescriptions updated" : "New wellness prescriptions",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));

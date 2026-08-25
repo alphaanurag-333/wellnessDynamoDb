@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { formatLongDate } from "../../api/usersApi.js";
 import {
   assignUserWellnessPrescription,
   listActiveWellnessPrescriptionPool,
   listUserWellnessPrescriptions,
+  republishUserWellnessPrescription,
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { sectionsSummary, totalPoints } from "../../data/prescriptionData.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+
+const EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 function todayIsoDate() {
   const d = new Date();
@@ -43,6 +46,32 @@ function authorLabel(assignment, user) {
     return String(user?.awc || "").trim() || "Assistant coach";
   }
   return String(user?.coach || "").trim() || "Coach";
+}
+
+function getEditDeadline(assignment) {
+  if (assignment?.editableUntil) {
+    const ms = new Date(assignment.editableUntil).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  }
+  const createdMs = new Date(assignment?.createdAt || 0).getTime();
+  if (!Number.isFinite(createdMs) || createdMs <= 0) return null;
+  return createdMs + EDIT_WINDOW_MS;
+}
+
+function isWithinEditWindow(assignment, nowMs = Date.now()) {
+  const deadline = getEditDeadline(assignment);
+  if (deadline) return deadline > nowMs;
+  return assignment?.canEdit === true;
+}
+
+function formatEditWindowLabel(deadlineMs, nowMs = Date.now()) {
+  if (!deadlineMs || deadlineMs <= nowMs) return null;
+  const remainingMs = deadlineMs - nowMs;
+  const hours = Math.floor(remainingMs / 3600000);
+  const mins = Math.floor((remainingMs % 3600000) / 60000);
+  if (hours >= 1) return `${hours}h ${mins}m left to edit & re-publish`;
+  if (mins >= 1) return `${mins}m left to edit & re-publish`;
+  return "Less than a minute left to edit & re-publish";
 }
 
 function assignmentToHistoryEntry(assignment, { current = false, unsaved = false, user, sections } = {}) {
@@ -188,8 +217,8 @@ function HistoryRow({ entry, expanded, onToggle, onRestore, canRestore }) {
 export function PrescriptionSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
-  const { can } = useViewAs();
-  const canWrite = can("console.diet.create");
+  const { canCreate, canEdit } = useClientSectionPermissions("prescription");
+  const canWrite = canCreate || canEdit;
   const poolRef = useRef(null);
 
   const [sections, setSections] = useState([]);
@@ -203,10 +232,23 @@ export function PrescriptionSection({ user, onToast }) {
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const dirty = !sectionsEqual(sections, savedSections);
   const hasPoints = sections.some((section) => section.points.some((point) => String(point).trim()));
-  const canSave = canWrite && isHealClient && dirty && hasPoints && !saving && !loading;
+  const withinEditWindow = Boolean(recommended && isWithinEditWindow(recommended, nowMs));
+  const editDeadlineMs = recommended ? getEditDeadline(recommended) : null;
+  const editWindowLabel = withinEditWindow ? formatEditWindowLabel(editDeadlineMs, nowMs) : null;
+  const canRepublish = Boolean(withinEditWindow && recommended?.id && (canEdit || canCreate));
+  const canPublishNew = Boolean(canCreate);
+  const editorUnlocked = Boolean(canWrite && isHealClient && (canRepublish || canPublishNew));
+  const canSave = editorUnlocked && dirty && hasPoints && !saving && !loading;
+
+  useEffect(() => {
+    if (!withinEditWindow || !editDeadlineMs) return undefined;
+    const id = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, [withinEditWindow, editDeadlineMs]);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -233,6 +275,7 @@ export function PrescriptionSection({ user, onToast }) {
       setHistoryRows(nextHistory);
       setSections(nextSections);
       setSavedSections(cloneSections(nextSections));
+      setNowMs(Date.now());
     } catch (err) {
       setError(err?.message || "Failed to load wellness prescriptions");
       onToast?.(err?.message || "Failed to load wellness prescriptions");
@@ -256,6 +299,7 @@ export function PrescriptionSection({ user, onToast }) {
   }, [poolOpen]);
 
   function addFromPool(protocol) {
+    if (!editorUnlocked) return;
     setSections((list) => [
       ...list,
       {
@@ -271,6 +315,7 @@ export function PrescriptionSection({ user, onToast }) {
   }
 
   function addCustomProtocol() {
+    if (!editorUnlocked) return;
     const title = customTitle.trim();
     if (!title) return;
     setSections((list) => [
@@ -282,14 +327,17 @@ export function PrescriptionSection({ user, onToast }) {
   }
 
   function updateSection(id, next) {
+    if (!editorUnlocked) return;
     setSections((list) => list.map((s) => (s.id === id ? next : s)));
   }
 
   function removeSection(id) {
+    if (!editorUnlocked) return;
     setSections((list) => list.filter((s) => s.id !== id));
   }
 
   function restoreHistory(entry) {
+    if (!editorUnlocked) return;
     setSections(cloneSections(entry.sections).map((section) => ({
       ...section,
       id: `${section.id}-${Date.now()}`,
@@ -311,14 +359,19 @@ export function PrescriptionSection({ user, onToast }) {
     }
     setSaving(true);
     try {
-      await assignUserWellnessPrescription(userId, {
-        date: todayIsoDate(),
-        protocols,
-      });
-      onToast?.("Prescription saved and synced to app");
+      const payload = { date: todayIsoDate(), protocols };
+      if (canRepublish) {
+        await republishUserWellnessPrescription(userId, recommended.id, payload);
+        onToast?.("Prescription re-published to user app");
+      } else {
+        await assignUserWellnessPrescription(userId, payload);
+        onToast?.("Prescription saved and synced to app");
+      }
       await load();
     } catch (err) {
-      onToast?.(err?.message || "Could not save wellness prescription");
+      onToast?.(err?.message || (canRepublish
+        ? "Could not re-publish wellness prescription"
+        : "Could not save wellness prescription"));
     } finally {
       setSaving(false);
     }
@@ -344,7 +397,10 @@ export function PrescriptionSection({ user, onToast }) {
     return <p className="ua-page-head__sub">Client is required to load wellness prescriptions.</p>;
   }
 
-  const editorDisabled = !canWrite || !isHealClient || saving || loading;
+  const editorDisabled = !editorUnlocked || saving || loading;
+  const saveLabel = saving
+    ? (canRepublish ? "Re-publishing…" : "Saving…")
+    : (canRepublish ? "Re-Publish" : "Save & sync to user app");
 
   return (
     <div className="ua-cp-section ua-cp-rx">
@@ -357,6 +413,18 @@ export function PrescriptionSection({ user, onToast }) {
       {error && !loading ? <p className="ua-page-head__sub" style={{ color: "#b42318" }}>{error}</p> : null}
       {!isHealClient && !loading ? (
         <p className="ua-page-head__sub">Wellness prescriptions can only be assigned to Heal (paid) clients.</p>
+      ) : null}
+      {isHealClient && !loading && recommended && withinEditWindow ? (
+        <p className="ua-cp-rx-window ua-cp-rx-window--open">
+          Editable for 12 hours after publish. {editWindowLabel}.
+        </p>
+      ) : null}
+      {isHealClient && !loading && recommended && !withinEditWindow ? (
+        <p className="ua-cp-rx-window ua-cp-rx-window--closed">
+          {canPublishNew
+            ? "The 12-hour edit window has closed. Saving will publish a new prescription and move the current one to history."
+            : "The 12-hour edit window has closed. This prescription can no longer be edited."}
+        </p>
       ) : null}
 
       <div className="ua-cp-rx-toolbar">
@@ -421,7 +489,7 @@ export function PrescriptionSection({ user, onToast }) {
         onClick={handleSave}
         disabled={!canSave}
       >
-        {saving ? "Saving…" : "Save & sync to user app"}
+        {saveLabel}
       </button>
 
       <div className="ua-cp-rx-history">
@@ -440,7 +508,7 @@ export function PrescriptionSection({ user, onToast }) {
               expanded={expandedHistoryId === entry.id}
               onToggle={() => setExpandedHistoryId((id) => (id === entry.id ? null : entry.id))}
               onRestore={() => restoreHistory(entry)}
-              canRestore={canWrite && isHealClient && !saving}
+              canRestore={editorUnlocked && !saving}
             />
           ))}
         </div>

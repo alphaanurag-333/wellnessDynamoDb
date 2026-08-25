@@ -185,3 +185,7 @@ export const WellnessLibrarySection = named(
 );
 export const RxBankSection = named(() => import("../components/RxBankSection.jsx"), "RxBankSection");
 export const FaqConfigPanel = named(() => import("../components/FaqConfigPanel.jsx"), "FaqConfigPanel");
+export const PrakritiAssessmentSection = named(
+  () => import("../components/PrakritiAssessmentSection.jsx"),
+  "PrakritiAssessmentSection",
+);

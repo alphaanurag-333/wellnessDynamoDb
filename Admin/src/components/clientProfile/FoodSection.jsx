@@ -22,6 +22,7 @@ import {
   reviewUserMealLog,
   updateUserMealLog,
   updateUserMealTrackingMode,
+  updateUserWaterGoal,
   analyzeUserMealLog,
 } from "../../api/mealTrackingApi.js";
 import { updateUserDietPlanEnabled } from "../../api/dietPlanCatalogApi.js";
@@ -244,7 +245,12 @@ function MealCard({
   const needsAi = meal.aiStatus === "none";
   const declined = meal.aiStatus === "declined";
   const canManualInsert = needsAi || declined;
-  const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !needsAi && !declined);
+  const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !declined);
+  const canRunAi =
+    Boolean(meal.photoUrl)
+    && (meal.photoAiStatus === "none" || meal.photoAiStatus === "failed")
+    && meal.aiStatus !== "rejected"
+    && meal.aiStatus !== "declined";
 
   useEffect(() => {
     setDraft(emptyMealDraft(meal));
@@ -331,7 +337,14 @@ function MealCard({
                 <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
               </>
             ) : meal.aiStatus === "review" || meal.aiStatus === "approved" ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+              <>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+                {canRunAi && canEdit ? (
+                  <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                    <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+                  </button>
+                ) : null}
+              </>
             ) : meal.aiStatus === "rejected" ? (
               <span className="ua-cp-food-meal__status">Rejected</span>
             ) : (
@@ -449,7 +462,7 @@ function WaterChartCard({ chart, goal, todayDay }) {
   );
 }
 
-function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit }) {
+function WaterGoalBar({ goal, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit, saving }) {
   return (
     <div className="ua-cp-food-water-goal">
       {editing ? (
@@ -460,12 +473,15 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
             className="ua-cp-food-water-goal__input"
             value={draftGoal}
             min={1}
-            max={20}
+            max={99}
+            disabled={saving}
             onChange={(e) => onDraftChange(Number(e.target.value) || 1)}
           />
           <span className="ua-cp-food-water-goal__unit">glasses / day</span>
-          <button type="button" className="ua-cp-food-water-goal__cancel" onClick={onCancel}>Cancel</button>
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={onSave}>Save</button>
+          <button type="button" className="ua-cp-food-water-goal__cancel" disabled={saving} onClick={onCancel}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" disabled={saving} onClick={onSave}>
+            {saving ? "Saving…" : "Save"}
+          </button>
         </>
       ) : (
         <>
@@ -473,14 +489,8 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
           {canEdit ? (
             <button type="button" className="ua-cp-food-water-goal__set" onClick={onStartEdit}>Set target</button>
           ) : null}
-          {dietPlanOn ? (
-            <span className="ua-cp-food-water-goal__badge ua-cp-food-water-goal__badge--ok">Client can set in app</span>
-          ) : null}
         </>
       )}
-      {dietPlanOn && editing ? (
-        <span className="ua-cp-food-water-goal__badge ua-cp-food-water-goal__badge--locked">App editing locked</span>
-      ) : null}
     </div>
   );
 }
@@ -500,6 +510,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [waterGoal, setWaterGoal] = useState(8);
   const [waterGoalEditing, setWaterGoalEditing] = useState(false);
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
+  const [waterGoalSaving, setWaterGoalSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [waterRange, setWaterRange] = useState(() => defaultWaterRange(today));
   const [macroTargets, setMacroTargets] = useState(() => macroTargetsFromTdee(0, 0));
@@ -544,6 +555,25 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   useEffect(() => {
     setDietPlanOn(user?.dietPlanEnabled !== false);
   }, [user?.dietPlanEnabled]);
+
+  useEffect(() => {
+    if (!live) return;
+    const storedMode = user?.mealTrackingMode === "detailed_macro" ? "detailed" : "macro";
+    if (storedMode === mode) return;
+    // Prefer the user's saved meal mode when the URL didn't pin one.
+    if (searchParams.get("mode")) return;
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (storedMode === "detailed") {
+        p.set("mode", "detailed");
+        if (!p.get("tab") || p.get("tab") === "macro") p.set("tab", "detailed-macro");
+      } else {
+        p.delete("mode");
+        if (p.get("tab") === "detailed-macro") p.delete("tab");
+      }
+      return p;
+    }, { replace: true });
+  }, [live, mode, searchParams, setSearchParams, user?.mealTrackingMode]);
 
   useEffect(() => {
     if (!live) return undefined;
@@ -798,10 +828,29 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }
   }
 
-  function saveWaterGoal() {
-    setWaterGoal(waterGoalDraft);
-    setWaterGoalEditing(false);
-    onToast(live ? "Water goal is set by the client in the app" : "Water goal updated");
+  async function saveWaterGoal() {
+    const nextGoal = Math.min(99, Math.max(1, Number(waterGoalDraft) || 1));
+    if (!live) {
+      setWaterGoal(nextGoal);
+      setWaterGoalDraft(nextGoal);
+      setWaterGoalEditing(false);
+      onToast?.("Water goal updated");
+      return;
+    }
+    if (waterGoalSaving) return;
+    setWaterGoalSaving(true);
+    try {
+      const result = await updateUserWaterGoal(userId, nextGoal);
+      const saved = Number(result?.settings?.goalGlasses ?? result?.day?.goalGlasses ?? nextGoal);
+      setWaterGoal(saved);
+      setWaterGoalDraft(saved);
+      setWaterGoalEditing(false);
+      onToast?.("Water intake goal updated");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to update water goal");
+    } finally {
+      setWaterGoalSaving(false);
+    }
   }
 
   const macroTabs = [
@@ -930,12 +979,12 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             />
             <WaterGoalBar
               goal={waterGoal}
-              dietPlanOn={dietPlanOn}
               editing={waterGoalEditing}
               draftGoal={waterGoalDraft}
-              canEdit={canEdit && !live}
+              canEdit={canEdit}
+              saving={waterGoalSaving}
               onStartEdit={() => { setWaterGoalDraft(waterGoal); setWaterGoalEditing(true); }}
-              onCancel={() => setWaterGoalEditing(false)}
+              onCancel={() => { setWaterGoalEditing(false); setWaterGoalDraft(waterGoal); }}
               onSave={saveWaterGoal}
               onDraftChange={setWaterGoalDraft}
             />

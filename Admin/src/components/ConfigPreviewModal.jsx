@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { previewHintForItem } from "../data/configPreviewHint.js";
 import {
   COMMITMENT_LETTER_DEFAULT,
   normalizeCommitmentLetterText,
@@ -846,6 +845,64 @@ function LaunchPreview({ domains, surface, item }) {
             </div>
           ) : (
             <div className="ua-cfg-preview-launch__empty">No live domains yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function PrakritiPreview({ questions, surface, item }) {
+  const shown = (questions ?? []).filter((entry) => entry.shown);
+  const groups = ["Vata", "Pitta", "Kapha"].map((category) => ({
+    category,
+    rows: shown
+      .filter((entry) => String(entry.category || "").toLowerCase() === category.toLowerCase())
+      .slice(0, 3),
+  }));
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-launch ua-cfg-preview-launch--app">
+          <div className="ua-cfg-preview-launch__head">
+            <span className="ua-cfg-preview-launch__back" aria-hidden="true">‹</span>
+            <strong>Prakriti assessment</strong>
+          </div>
+          <p className="ua-cfg-preview-launch__intro">
+            Tick the statements that describe the client. Dominant dosha becomes their Prakṛti.
+          </p>
+          {shown.length ? (
+            <div className="ua-cfg-preview-launch__domains">
+              {groups.map((group) => (
+                <div key={group.category} className="ua-cfg-preview-launch__domain">
+                  <div className="ua-cfg-preview-launch__domain-head">
+                    <strong>{group.category}</strong>
+                    <span>
+                      {shown.filter(
+                        (entry) =>
+                          String(entry.category || "").toLowerCase() === group.category.toLowerCase(),
+                      ).length}
+                      /10
+                    </span>
+                  </div>
+                  <ul>
+                    {group.rows.map((row) => (
+                      <li key={row.id}>{row.question}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-launch__empty">No live Prakriti statements yet.</div>
           )}
         </div>
       </div>
@@ -2051,6 +2108,14 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-prakriti":
+      return (
+        <PrakritiPreview
+          questions={previewState.prakritiQuestions ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-ai-enable":
       return (
         <AiEnablePreview
@@ -2406,5 +2471,4 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
   );
 }
 
-export { previewHintForItem };
-
+export { previewHintForItem } from "../data/configPreviewHint.js";
