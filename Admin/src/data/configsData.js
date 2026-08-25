@@ -374,17 +374,6 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
         },
         {
-          id: "web-fs-links",
-          name: "FS · Website links (Coming soon)",
-          note: "Primary site navigation links",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
           id: "web-fs-privacy",
           name: "FS · Privacy policy",
           note: "Legal copy",

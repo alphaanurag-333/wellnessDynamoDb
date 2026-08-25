@@ -1621,12 +1621,11 @@ function FooterSettingPreview({ bottomLine, surface, item }) {
 }
 
 function SocialLinksPreview({ links = [], surface, item }) {
-  const isWebsite = item?.id === "web-fs-links";
   const body = (
     <div className="ua-cfg-ft-preview">
       <div className="ua-cfg-ft-preview__bar">
         <span className="ua-cfg-pt-live-preview__brand">IR</span>
-        <strong>{isWebsite ? "Website links" : "Footer"}</strong>
+        <strong>Footer</strong>
         <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
       </div>
       {links.length ? (
@@ -1638,7 +1637,7 @@ function SocialLinksPreview({ links = [], surface, item }) {
           ))}
         </div>
       ) : (
-        <div className="ua-cfg-pt-preview__empty">{isWebsite ? "No website links yet." : "No social links yet."}</div>
+        <div className="ua-cfg-pt-preview__empty">No social links yet.</div>
       )}
     </div>
   );
@@ -2084,14 +2083,6 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
-    case "web-fs-links":
-      return (
-        <SocialLinksPreview
-          links={previewState.websiteLinks ?? []}
-          surface={surface}
-          item={item}
-        />
-      );
     case "web-fs-privacy":
       return (
         <LegalBlocksPreview
@@ -2455,9 +2446,6 @@ export function previewHintForItem(item) {
     return "Edit the footer text, then open Preview";
   }
   if (item.id === "web-fs-social") {
-    return "Edit the links, then open Preview";
-  }
-  if (item.id === "web-fs-links") {
     return "Edit the links, then open Preview";
   }
   if (item.id === "web-fs-privacy" || item.id === "web-fs-tos" || item.id === "app-tos" || item.id === "web-fs-guidelines" || item.id === "web-fs-text") {

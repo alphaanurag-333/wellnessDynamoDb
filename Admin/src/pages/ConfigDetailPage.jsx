@@ -66,7 +66,6 @@ import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx
 import { RxBankSection } from "../components/RxBankSection.jsx";
 import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
-import { WEBSITE_FOOTER_LINKS } from "../data/websiteLinksConfigData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
@@ -1295,7 +1294,6 @@ const PREVIEW_CONFIGS = new Set([
   "web-program-testimonials",
   "web-footer",
   "web-fs-social",
-  "web-fs-links",
   "web-fs-privacy",
   "web-fs-tos",
   "web-fs-guidelines",
@@ -1416,7 +1414,6 @@ export function ConfigDetailPage() {
   const [programStories, setProgramStories] = useState([]);
   const [footerBottomLine, setFooterBottomLine] = useState("");
   const [socialLinks, setSocialLinks] = useState([]);
-  const [websiteLinks, setWebsiteLinks] = useState(WEBSITE_FOOTER_LINKS);
   const [privacyBlocks, setPrivacyBlocks] = useState(PRIVACY_BLOCKS);
   const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
   const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
@@ -1713,8 +1710,6 @@ export function ConfigDetailPage() {
                   )
               : item.id === "web-fs-social"
                 ? socialLinks.some((entry) => String(entry.url || "").trim())
-              : item.id === "web-fs-links"
-                ? websiteLinks.length > 0
               : item.id === "web-fs-privacy"
                 ? privacyBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-tos" || item.id === "app-tos"
@@ -2099,15 +2094,6 @@ export function ConfigDetailPage() {
             onLocalChange={handleLegalLocalChange}
           />
         );
-      case "web-fs-links":
-        return (
-          <SocialLinksSection
-            links={websiteLinks}
-            setLinks={setWebsiteLinks}
-            onToast={onToast}
-            defaultIcon="globe"
-          />
-        );
       case "web-fs-privacy":
         return (
           <PrivacyPolicySection
@@ -2361,7 +2347,7 @@ export function ConfigDetailPage() {
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>
@@ -2428,7 +2414,6 @@ export function ConfigDetailPage() {
           programStories,
           footerBottomLine,
           socialLinks,
-          websiteLinks,
           privacyBlocks,
           tosBlocks,
           guidelineBlocks,
