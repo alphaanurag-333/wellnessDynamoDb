@@ -16,6 +16,7 @@ import {
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 
 const MAX_TIMINGS = 4;
+const MAX_DAY_PARTS = 3;
 
 const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -68,11 +69,19 @@ function formatPeriodCardLabel(period) {
   return label;
 }
 
-function toggleMealTiming(list, id, checked) {
+function toggleLimitedOption(list, id, checked, max) {
   if (!checked) return list.filter((x) => x !== id);
   if (list.includes(id)) return list;
-  if (list.length >= MAX_TIMINGS) return list;
+  if (list.length >= max) return list;
   return [...list, id];
+}
+
+function dayPartButtonLabel(selected) {
+  if (!selected.length) return "Morning / Afternoon / Evening…";
+  if (selected.length === DAY_PART_OPTIONS.length) return "All day parts";
+  return selected
+    .map((id) => DAY_PART_OPTIONS.find((row) => row.id === id)?.label || id)
+    .join(", ");
 }
 
 function isHealClientUser(user) {
@@ -606,13 +615,15 @@ export function NutritionsSection({ user, onToast }) {
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
   const [addSupp, setAddSupp] = useState("");
-  const [addDayPart, setAddDayPart] = useState("");
+  const [addDayParts, setAddDayParts] = useState([]);
   const [addPeriods, setAddPeriods] = useState([]);
   const [addQty, setAddQty] = useState(1);
   const [addStart, setAddStart] = useState(todayIsoDate);
+  const [dayPartOpen, setDayPartOpen] = useState(false);
   const [timingOpen, setTimingOpen] = useState(false);
+  const dayPartRef = useRef(null);
   const timingRef = useRef(null);
-  const selectedPeriodCount = (addDayPart ? 1 : 0) + addPeriods.length;
+  const selectedPeriodCount = addDayParts.length + addPeriods.length;
 
   const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
@@ -708,6 +719,9 @@ export function NutritionsSection({ user, onToast }) {
 
   useEffect(() => {
     function onDocClick(event) {
+      if (dayPartRef.current && !dayPartRef.current.contains(event.target)) {
+        setDayPartOpen(false);
+      }
       if (timingRef.current && !timingRef.current.contains(event.target)) {
         setTimingOpen(false);
       }
@@ -908,7 +922,7 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   async function addDosageCard() {
-    const periods = [...(addDayPart ? [addDayPart] : []), ...addPeriods];
+    const periods = [...addDayParts, ...addPeriods];
     if (!addSupp || !periods.length) return;
     setSaving(true);
     try {
@@ -927,8 +941,9 @@ export function NutritionsSection({ user, onToast }) {
       });
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
       onToast(`Added ${name} ×${periods.length}`);
-      setAddDayPart("");
+      setAddDayParts([]);
       setAddPeriods([]);
+      setDayPartOpen(false);
       setTimingOpen(false);
       await load({ silent: true });
     } catch (err) {
@@ -1126,7 +1141,7 @@ export function NutritionsSection({ user, onToast }) {
       ) : (
         <>
           <p className="ua-cp-dosage-hint">
-            Pick a nutrition, choose morning / afternoon / evening, select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.
+            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.
           </p>
           <div className="ua-cp-dosage-add">
             {/* 1. Nutrition (one select) */}
@@ -1142,18 +1157,50 @@ export function NutritionsSection({ user, onToast }) {
               ))}
             </select>
 
-            {/* 2. Morning / Afternoon / Evening (one select) */}
-            <select
-              className="ua-cp-dosage-daypart"
-              value={addDayPart}
-              onChange={(e) => setAddDayPart(e.target.value)}
-              disabled={!canWrite || saving || !isHealClient}
-            >
-              <option value="">Morning / Afternoon / Evening…</option>
-              {DAY_PART_OPTIONS.map((t) => (
-                <option key={t.id} value={t.id}>{t.label}</option>
-              ))}
-            </select>
+            {/* 2. Morning / Afternoon / Evening (multi-select) */}
+            <div className="ua-cp-timing-wrap ua-cp-dosage-daypart" ref={dayPartRef}>
+              <button
+                type="button"
+                className={`ua-cp-timing-btn${dayPartOpen ? " is-open" : ""}${addDayParts.length ? " has-value" : ""}`}
+                disabled={!canWrite || saving || !isHealClient}
+                onClick={() => {
+                  setTimingOpen(false);
+                  setDayPartOpen((o) => !o);
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={dayPartOpen}
+              >
+                <span className="ua-cp-timing-btn__label">
+                  {dayPartButtonLabel(addDayParts)}
+                </span>
+                <span className="ua-cp-timing-btn__chevron" aria-hidden="true" />
+              </button>
+              {dayPartOpen ? (
+                <div className="ua-cp-timing-menu ua-cp-timing-menu--daypart" role="listbox" aria-multiselectable="true">
+                  <div className="ua-cp-timing-menu__tools">
+                    <span className="ua-cp-timing-menu__limit">Multi-select · Max {MAX_DAY_PARTS}</span>
+                    <button type="button" onClick={() => setAddDayParts([])}>Clear</button>
+                  </div>
+                  {DAY_PART_OPTIONS.map((t) => {
+                    const checked = addDayParts.includes(t.id);
+                    const atLimit = addDayParts.length >= MAX_DAY_PARTS && !checked;
+                    return (
+                      <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={atLimit}
+                          onChange={(e) => {
+                            setAddDayParts((list) => toggleLimitedOption(list, t.id, e.target.checked, MAX_DAY_PARTS));
+                          }}
+                        />
+                        {t.label}
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
 
             {/* 3. Meal timings (checkbox, max 4) */}
             <div className="ua-cp-timing-wrap" ref={timingRef}>
@@ -1161,7 +1208,10 @@ export function NutritionsSection({ user, onToast }) {
                 type="button"
                 className={`ua-cp-timing-btn${timingOpen ? " is-open" : ""}${addPeriods.length ? " has-value" : ""}`}
                 disabled={!canWrite || saving || !isHealClient}
-                onClick={() => setTimingOpen((o) => !o)}
+                onClick={() => {
+                  setDayPartOpen(false);
+                  setTimingOpen((o) => !o);
+                }}
                 aria-haspopup="listbox"
                 aria-expanded={timingOpen}
               >
@@ -1188,7 +1238,7 @@ export function NutritionsSection({ user, onToast }) {
                           checked={checked}
                           disabled={atLimit}
                           onChange={(e) => {
-                            setAddPeriods((list) => toggleMealTiming(list, t.id, e.target.checked));
+                            setAddPeriods((list) => toggleLimitedOption(list, t.id, e.target.checked, MAX_TIMINGS));
                           }}
                         />
                         {t.label}

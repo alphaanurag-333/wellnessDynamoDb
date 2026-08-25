@@ -15210,6 +15210,11 @@
   flex: 0 1 220px;
 }
 
+.updated-admin .ua-cp-timing-menu--daypart {
+  width: 240px;
+  max-height: none;
+}
+
 .updated-admin .ua-cp-dosage-qty {
   width: 56px;
   text-align: center;
