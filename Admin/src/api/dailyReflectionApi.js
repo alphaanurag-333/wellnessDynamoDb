@@ -85,6 +85,9 @@ export function mapDailyReflectionSettings(data) {
       meal: mapTrackingMetric(data?.tracking?.meal),
     },
     bedtime: String(data?.bedtime || "22:30"),
+    dailyReflectionAudioId: data?.dailyReflectionAudioId
+      ? String(data.dailyReflectionAudioId)
+      : null,
     todayScore,
     todayLog: data?.todayLog || null,
     scoring: data?.scoring || null,
@@ -103,11 +106,15 @@ export async function fetchUserDailyReflectionSettings(userId) {
   }
 }
 
-export async function saveUserDailyReflectionSettings(userId, { selectedQuestionIds, activities, bedtime } = {}) {
+export async function saveUserDailyReflectionSettings(
+  userId,
+  { selectedQuestionIds, activities, bedtime, dailyReflectionAudioId } = {}
+) {
   const payload = {};
   if (selectedQuestionIds !== undefined) payload.selectedQuestionIds = selectedQuestionIds;
   if (activities !== undefined) payload.activities = activities;
   if (bedtime !== undefined) payload.bedtime = bedtime;
+  if (dailyReflectionAudioId !== undefined) payload.dailyReflectionAudioId = dailyReflectionAudioId;
   try {
     const { data } = await api.patch(settingsBase(userId), payload, {
       headers: authHeader(tokenOrStored()),

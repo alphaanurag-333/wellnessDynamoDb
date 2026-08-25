@@ -46,7 +46,9 @@ describe("waterTracking validation", () => {
   it("normalizes glass count", () => {
     assert.equal(normalizeGlassCount(0), 0);
     assert.equal(normalizeGlassCount(20), 20);
+    assert.equal(normalizeGlassCount(50), 50);
     assert.throws(() => normalizeGlassCount(-1), /ValidationError/);
+    assert.throws(() => normalizeGlassCount(51), /ValidationError/);
   });
 
   it("formats day log payload using stored goal when present", () => {

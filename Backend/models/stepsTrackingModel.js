@@ -109,6 +109,13 @@ function externalIdsSignature(ids) {
 function shouldReplaceDay(existing, incoming) {
   if (!existing) return true;
 
+  // Always keep accumulating — steps past the daily goal must still sync.
+  const existingCount = Number(existing.stepCount ?? 0);
+  const incomingCount = Number(incoming.stepCount ?? 0);
+  if (Number.isFinite(incomingCount) && incomingCount > existingCount) {
+    return true;
+  }
+
   const existingSynced = String(existing.syncedAt || existing.updatedAt || "");
   const incomingSynced = String(incoming.syncedAt || "");
   if (incomingSynced && incomingSynced > existingSynced) return true;
