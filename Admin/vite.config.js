@@ -85,6 +85,17 @@ function imageDownloadProxy() {
 
 export default defineConfig({
   plugins: [react(), imageDownloadProxy()],
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("ckeditor5") || id.includes("@ckeditor")) return "ckeditor";
+          if (id.includes("country-state-city")) return "geo-country-state";
+        },
+      },
+    },
+  },
   server: {
     port: 5174,
     strictPort: true,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
 import { BrandLoader } from "../components/BrandLoader.jsx";
@@ -39,7 +39,10 @@ import {
 } from "../api/usersApi.js";
 import { fetchTeamMembers } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
-import { CreateUserModal } from "../components/CreateUserModal.jsx";
+
+const CreateUserModal = lazy(() =>
+  import("../components/CreateUserModal.jsx").then((mod) => ({ default: mod.CreateUserModal })),
+);
 
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "All status" },
@@ -1346,12 +1349,14 @@ export function UsersPage() {
       ) : null}
 
       {canCreate ? (
-        <CreateUserModal
-          open={createOpen}
-          onClose={() => setCreateOpen(false)}
-          onToast={onToast}
-          onCreated={() => refreshUsers()}
-        />
+        <Suspense fallback={null}>
+          <CreateUserModal
+            open={createOpen}
+            onClose={() => setCreateOpen(false)}
+            onToast={onToast}
+            onCreated={() => refreshUsers()}
+          />
+        </Suspense>
       ) : null}
 
       {deleteTarget ? (

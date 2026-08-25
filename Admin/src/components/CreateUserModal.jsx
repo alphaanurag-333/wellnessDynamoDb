@@ -1,9 +1,10 @@
-import { City, Country, State } from "country-state-city";
+import Country from "country-state-city/lib/country.js";
+import State from "country-state-city/lib/state.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
 import { createUser, GENDER_UI_OPTIONS } from "../api/usersApi.js";
-import { PHONE_COUNTRY_OPTIONS, phoneLengthForDial } from "../data/indiaLocations.js";
+import { PHONE_COUNTRY_OPTIONS, INDIA_STATE_CITIES, phoneLengthForDial } from "../data/indiaLocations.js";
 import {
   DOB_MAX_AGE_YEARS,
   DOB_MIN_AGE_YEARS,
@@ -294,11 +295,9 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     [form.countryIso],
   );
   const cities = useMemo(() => {
-    if (!form.countryIso) return [];
-    if (form.stateIso) return City.getCitiesOfState(form.countryIso, form.stateIso) || [];
-    if (!states.length) return City.getCitiesOfCountry(form.countryIso) || [];
-    return [];
-  }, [form.countryIso, form.stateIso, states.length]);
+    if (form.countryIso !== "IN" || !form.state) return [];
+    return (INDIA_STATE_CITIES[form.state] || []).map((name) => ({ name }));
+  }, [form.countryIso, form.state]);
   const stateOptions = useMemo(
     () => states.map((state) => ({ value: state.isoCode, label: state.name })),
     [states],

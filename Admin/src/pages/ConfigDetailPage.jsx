@@ -1,70 +1,66 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Link, useOutletContext, useParams } from "react-router-dom";
-import { ConfigPreviewModal, previewHintForItem } from "../components/ConfigPreviewModal.jsx";
-import { ConfigPublishModal } from "../components/ConfigPublishModal.jsx";
-import { ProgramSetupModal } from "../components/ProgramSetupModal.jsx";
+import { previewHintForItem } from "../data/configPreviewHint.js";
+import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
+import { ONBOARDING_COACHES } from "../data/onboardingVideoData.js";
+import { COMMITMENT_LETTER_DEFAULT } from "../data/commitmentLetterData.js";
 import {
-  MeasurementVideoSection,
-  MEASUREMENT_GUIDE,
-  MEASUREMENT_PARAMETERS,
-} from "../components/MeasurementVideoSection.jsx";
-import {
-  OnboardingVideoSection,
-  ONBOARDING_COACHES,
-} from "../components/OnboardingVideoSection.jsx";
-import { HealthProgressTrackersPanel } from "../components/ConfigAppRemainingSections.jsx";
-import { MedicalQuestionnairePanel } from "../components/MedicalQuestionnairePanel.jsx";
-import {
+  AboutSection,
+  AiEnableSection,
+  AppContentSection,
+  AppSubscriptionFySection,
+  BannerSection,
+  ChallengesSection,
   CommitmentLetterSection,
-  COMMITMENT_LETTER_DEFAULT,
-} from "../components/CommitmentLetterSection.jsx";
-import { DietPlansSection } from "../components/DietPlansSection.jsx";
-import { TestCatalogSection } from "../components/TestCatalogSection.jsx";
-import { DrfBankSection } from "../components/DrfBankSection.jsx";
-import { GallerySection } from "../components/GallerySection.jsx";
-import { AiEnableSection } from "../components/AiEnableSection.jsx";
-import { PaymentGatewaySection } from "../components/PaymentGatewaySection.jsx";
-import { LanguageDisableSection } from "../components/LanguageDisableSection.jsx";
-import { GstSection } from "../components/GstSection.jsx";
-import { ConsultancyAmountSection } from "../components/ConsultancyAmountSection.jsx";
-import { AppSubscriptionFySection } from "../components/AppSubscriptionFySection.jsx";
-import { DpaSection } from "../components/DpaSection.jsx";
-import { PrivacyPolicySection } from "../components/PrivacyPolicySection.jsx";
-import { TermsAndConditionsSection } from "../components/TermsAndConditionsSection.jsx";
-import { CommunityGuidelinesSection } from "../components/CommunityGuidelinesSection.jsx";
-import { LegalSectionsEditor } from "../components/LegalSectionsEditor.jsx";
-import { LaunchSection } from "../components/LaunchSection.jsx";
-import { NutritionBankSection } from "../components/NutritionBankSection.jsx";
-import { ChallengesSection } from "../components/ChallengesSection.jsx";
-import { CouponsSection } from "../components/CouponsSection.jsx";
-import { FeatureFlagsSection } from "../components/FeatureFlagsSection.jsx";
-import { DynamicProgramTestimonialsSection } from "../components/DynamicProgramTestimonialsSection.jsx";
-import { FooterSettingSection } from "../components/FooterSettingSection.jsx";
-import { SocialLinksSection } from "../components/SocialLinksSection.jsx";
-import { LegalBlocksSection } from "../components/LegalBlocksSection.jsx";
-import { ContactDetailsSection } from "../components/ContactDetailsSection.jsx";
-import { AppContentSection } from "../components/AppContentSection.jsx";
-import { LogoSlotsSection } from "../components/LogoSlotsSection.jsx";
-import { LocationsSection } from "../components/LocationsSection.jsx";
-import { BannerSection } from "../components/BannerSection.jsx";
-import { DynamicChampionSection } from "../components/DynamicChampionSection.jsx";
-import { DynamicBirthdaySection } from "../components/DynamicBirthdaySection.jsx";
-import { DynamicTransformationSection } from "../components/DynamicTransformationSection.jsx";
-import { DynamicClientReviewSection } from "../components/DynamicClientReviewSection.jsx";
-import { DynamicRealPeopleSection } from "../components/DynamicRealPeopleSection.jsx";
-import { DynamicVoiceOfHealingSection } from "../components/DynamicVoiceOfHealingSection.jsx";
-import { DynamicCofounderSection } from "../components/DynamicCofounderSection.jsx";
-import { AboutSection } from "../components/AboutSection.jsx";
-import { DynamicLeadershipSection } from "../components/DynamicLeadershipSection.jsx";
-import { DynamicWellnessTeamSection } from "../components/DynamicWellnessTeamSection.jsx";
-import { DynamicGoogleReviewSection } from "../components/DynamicGoogleReviewSection.jsx";
-import { DropdownsSection } from "../components/DropdownsSection.jsx";
-import { HealthDisordersSection } from "../components/HealthDisordersSection.jsx";
-import { RecipesSection } from "../components/RecipesSection.jsx";
-import { YogaSection } from "../components/YogaSection.jsx";
-import { WellnessLibrarySection } from "../components/WellnessLibrarySection.jsx";
-import { RxBankSection } from "../components/RxBankSection.jsx";
-import { FaqConfigPanel } from "../components/FaqConfigPanel.jsx";
+  CommunityGuidelinesSection,
+  ConfigPreviewModal,
+  ConfigPublishModal,
+  ConsultancyAmountSection,
+  ContactDetailsSection,
+  CouponsSection,
+  DietPlansSection,
+  DpaSection,
+  DrfBankSection,
+  DropdownsSection,
+  DynamicBirthdaySection,
+  DynamicChampionSection,
+  DynamicClientReviewSection,
+  DynamicCofounderSection,
+  DynamicGoogleReviewSection,
+  DynamicLeadershipSection,
+  DynamicProgramTestimonialsSection,
+  DynamicRealPeopleSection,
+  DynamicTransformationSection,
+  DynamicVoiceOfHealingSection,
+  DynamicWellnessTeamSection,
+  FaqConfigPanel,
+  FeatureFlagsSection,
+  FooterSettingSection,
+  GallerySection,
+  GstSection,
+  HealthDisordersSection,
+  HealthProgressTrackersPanel,
+  LanguageDisableSection,
+  LaunchSection,
+  LegalBlocksSection,
+  LegalSectionsEditor,
+  LocationsSection,
+  LogoSlotsSection,
+  MeasurementVideoSection,
+  MedicalQuestionnairePanel,
+  NutritionBankSection,
+  OnboardingVideoSection,
+  PaymentGatewaySection,
+  PrivacyPolicySection,
+  ProgramSetupModal,
+  RecipesSection,
+  RxBankSection,
+  SocialLinksSection,
+  TermsAndConditionsSection,
+  TestCatalogSection,
+  WellnessLibrarySection,
+  YogaSection,
+} from "./lazyConfigSections.js";
 import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
@@ -2377,11 +2373,12 @@ export function ConfigDetailPage() {
         </div>
       ) : null}
 
-      <ConfigPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        item={item}
-        previewState={{
+      <Suspense fallback={null}>
+        <ConfigPreviewModal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          item={item}
+          previewState={{
           hindiOn,
           faqItems,
           faqEditor,
@@ -2453,14 +2450,17 @@ export function ConfigDetailPage() {
           ygItems,
           featureFlags,
         }}
-      />
+        />
+      </Suspense>
 
-      <ConfigPublishModal
-        open={publishOpen && showPublish}
-        onClose={() => setPublishOpen(false)}
-        item={item}
-        onConfirm={publishConfig}
-      />
+      <Suspense fallback={null}>
+        <ConfigPublishModal
+          open={publishOpen && showPublish}
+          onClose={() => setPublishOpen(false)}
+          item={item}
+          onConfirm={publishConfig}
+        />
+      </Suspense>
 
       {canViewConfig ? (
         <div className="ua-cfg-detail__body">
@@ -2473,7 +2473,9 @@ export function ConfigDetailPage() {
                 : { pointerEvents: "none", opacity: 0.72, userSelect: "none" }
             }
           >
-            {renderBody()}
+            <Suspense fallback={<p className="ua-cfg-panel__sub">Loading editor…</p>}>
+              {renderBody()}
+            </Suspense>
           </div>
         </div>
       ) : null}

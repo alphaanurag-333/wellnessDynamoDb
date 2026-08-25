@@ -1,27 +1,39 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route } from "react-router-dom";
-import { AdminLayout } from "../AdminLayout.jsx";
 import { AppConfigBrandingSync } from "../components/AppConfigBrandingSync.jsx";
+import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ViewAsProvider, useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
-import { AccessPage } from "../pages/AccessPage.jsx";
-import { CalendarPage } from "../pages/CalendarPage.jsx";
-import { ConfigsPage } from "../pages/ConfigsPage.jsx";
-import { ConfigDetailPage } from "../pages/ConfigDetailPage.jsx";
-import { DashboardPage } from "../pages/DashboardPage.jsx";
-import { PendingPage } from "../pages/PendingPage.jsx";
-import { SopPage } from "../pages/SopPage.jsx";
-import { TeamsPage } from "../pages/TeamsPage.jsx";
-import { TeamMemberPage } from "../pages/TeamMemberPage.jsx";
-import { MyContentPage } from "../pages/MyContentPage.jsx";
-import { CommitmentLettersPage } from "../pages/CommitmentLettersPage.jsx";
-import { AdminNotFoundPage } from "../pages/AdminNotFoundPage.jsx";
-import { UsersLayout } from "../pages/UsersLayout.jsx";
-import { UserDetailPage } from "../pages/UserDetailPage.jsx";
-import { BrandLoader } from "../components/BrandLoader.jsx";
 import { AdminLoginPage } from "../pages/AdminLoginPage.jsx";
-import { NotificationsPage } from "../pages/NotificationsPage.jsx";
-import { ContactInquiriesPage } from "../pages/ContactInquiriesPage.jsx";
-import { ReferralTreePage } from "../pages/ReferralTreePage.jsx";
+
+function lazyNamed(importer, exportName) {
+  return lazy(() => importer().then((mod) => ({ default: mod[exportName] })));
+}
+
+const AdminLayout = lazyNamed(() => import("../AdminLayout.jsx"), "AdminLayout");
+const AccessPage = lazyNamed(() => import("../pages/AccessPage.jsx"), "AccessPage");
+const CalendarPage = lazyNamed(() => import("../pages/CalendarPage.jsx"), "CalendarPage");
+const ConfigsPage = lazyNamed(() => import("../pages/ConfigsPage.jsx"), "ConfigsPage");
+const ConfigDetailPage = lazyNamed(() => import("../pages/ConfigDetailPage.jsx"), "ConfigDetailPage");
+const DashboardPage = lazyNamed(() => import("../pages/DashboardPage.jsx"), "DashboardPage");
+const PendingPage = lazyNamed(() => import("../pages/PendingPage.jsx"), "PendingPage");
+const SopPage = lazyNamed(() => import("../pages/SopPage.jsx"), "SopPage");
+const TeamsPage = lazyNamed(() => import("../pages/TeamsPage.jsx"), "TeamsPage");
+const TeamMemberPage = lazyNamed(() => import("../pages/TeamMemberPage.jsx"), "TeamMemberPage");
+const MyContentPage = lazyNamed(() => import("../pages/MyContentPage.jsx"), "MyContentPage");
+const CommitmentLettersPage = lazyNamed(
+  () => import("../pages/CommitmentLettersPage.jsx"),
+  "CommitmentLettersPage",
+);
+const AdminNotFoundPage = lazyNamed(() => import("../pages/AdminNotFoundPage.jsx"), "AdminNotFoundPage");
+const UsersLayout = lazyNamed(() => import("../pages/UsersLayout.jsx"), "UsersLayout");
+const UserDetailPage = lazyNamed(() => import("../pages/UserDetailPage.jsx"), "UserDetailPage");
+const NotificationsPage = lazyNamed(() => import("../pages/NotificationsPage.jsx"), "NotificationsPage");
+const ContactInquiriesPage = lazyNamed(
+  () => import("../pages/ContactInquiriesPage.jsx"),
+  "ContactInquiriesPage",
+);
+const ReferralTreePage = lazyNamed(() => import("../pages/ReferralTreePage.jsx"), "ReferralTreePage");
 
 function AdminRoot() {
   return (
@@ -43,7 +55,11 @@ function ProtectedShell() {
     return <Navigate to={UPDATED_ADMIN_PATHS.login} replace />;
   }
 
-  return <AdminLayout />;
+  return (
+    <Suspense fallback={<BrandLoader />}>
+      <AdminLayout />
+    </Suspense>
+  );
 }
 
 export const adminRouteTree = (
