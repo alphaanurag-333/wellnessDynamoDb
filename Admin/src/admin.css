@@ -797,7 +797,7 @@
   right: 0;
   width: min(392px, calc(100vw - 24px));
   max-height: min(440px, calc(100vh - 88px));
-  overflow-y: auto;
+  overflow: hidden;
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -56379,6 +56379,7 @@ scrollbar-width: thin;
     width: auto;
     max-width: none;
     max-height: min(70vh, calc(100dvh - 80px));
+    overflow: hidden;
   }
 
   .updated-admin .sidebar__toggle {
@@ -60243,6 +60244,7 @@ scrollbar-width: thin;
     width: auto;
     max-width: none;
     max-height: min(70vh, calc(100dvh - 80px));
+    overflow: hidden;
   }
 
 
