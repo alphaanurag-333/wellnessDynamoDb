@@ -127,6 +127,7 @@ const {
   requestPresentablePicController,
   patchPresentablePicsSettingsController,
   downloadPresentablePicController,
+  deletePresentablePicController,
 } = require("../../controllers/adminController/userController");
 const {
   getCoachUserCoachInsightController,
@@ -378,6 +379,7 @@ router.get("/:userId/presentable-pic/download", presentablePicView, downloadPres
 router.patch("/:userId/presentable-pics/settings", presentablePicReview, patchPresentablePicsSettingsController);
 router.post("/:userId/presentable-pic/request", presentablePicReview, requestPresentablePicController);
 router.patch("/:userId/presentable-pic/review", presentablePicReview, reviewPresentablePicController);
+router.delete("/:userId/presentable-pic", presentablePicReview, deletePresentablePicController);
 
 const insight = staff("console.diet.view", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" });
 const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });

@@ -7,8 +7,10 @@ import {
   requestUserPresentablePic,
   patchUserPresentablePicsSettings,
   downloadUserPresentablePic,
+  deleteUserPresentablePic,
 } from "../../api/onboardingApi.js";
 import { fetchUser, mapApiUserToRow } from "../../api/usersApi.js";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function isLiveUserId(userId) {
@@ -378,11 +380,14 @@ function PhotoCard({
   onToast,
   onApprove,
   onReject,
+  onDelete,
   reviewBusy,
+  deleteBusy,
   onView,
   onDownload,
   downloadBusy,
   canReview,
+  canDelete,
 }) {
   const status = photoStatusMeta(photo.status);
   const pending = photo?.reviewable !== false && status.tone === "pending";
@@ -428,6 +433,16 @@ function PhotoCard({
                 >
                   {downloadBusy ? "Downloading…" : "Download"}
                 </button>
+                {canDelete ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-present-btn--reject ua-cp-btn--sm"
+                    onClick={onDelete}
+                    disabled={deleteBusy}
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </>
             ) : (
               <button
@@ -471,6 +486,8 @@ function PhotoCard({
 
 export function PresentableSection({ user, onToast, onUserUpdated }) {
   const { canEdit } = useClientSectionPermissions("presentable");
+  const { isAdminView } = useViewAs();
+  const canDeletePic = Boolean(isAdminView);
   const [featureEnabled, setFeatureEnabled] = useState(() => user?.presentablePicsEnabled !== false);
   const [letter, setLetter] = useState(null);
   const [letterLoading, setLetterLoading] = useState(() => isLiveUserId(user?.id));
@@ -481,6 +498,7 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [rejectReason, setRejectReason] = useState("");
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [photoReviewBusy, setPhotoReviewBusy] = useState(false);
+  const [photoDeleteBusy, setPhotoDeleteBusy] = useState(false);
   const [requestBusy, setRequestBusy] = useState(false);
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [downloadBusyId, setDownloadBusyId] = useState(null);
@@ -678,6 +696,34 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  async function deletePresentablePic() {
+    if (!canDeletePic || !live || !user?.id) return;
+    const photo = confirmTarget?.photo;
+    if (!photo?.url) return;
+    setPhotoDeleteBusy(true);
+    try {
+      const historyIndex = presentableHistoryIndex(photo);
+      const updated = await deleteUserPresentablePic(user.id, {
+        ...(historyIndex != null ? { historyIndex } : {}),
+      });
+      await refreshUser(updated, historyIndex == null ? {
+        presentablePic: "",
+        presentablePicStatus: "",
+        presentablePicUploadedAt: "",
+      } : undefined);
+      onToast?.("Presentable pic deleted");
+      setConfirmTarget(null);
+      if (viewPhoto?.id === photo.id) {
+        setViewOpen(false);
+        setViewPhoto(null);
+      }
+    } catch (err) {
+      onToast?.(err?.message || "Failed to delete presentable pic");
+    } finally {
+      setPhotoDeleteBusy(false);
+    }
+  }
+
   const pendingReview = String(letter?.approvalStatus || "").toLowerCase() === "pending";
   const [viewOpen, setViewOpen] = useState(false);
   const [viewUrl, setViewUrl] = useState("");
@@ -859,12 +905,15 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
                     photo={photo}
                     onToast={onToast}
                     reviewBusy={photoReviewBusy}
+                    deleteBusy={photoDeleteBusy}
                     onApprove={() => setConfirmTarget({ type: "approve-photo" })}
                     onReject={() => setConfirmTarget({ type: "reject-photo" })}
+                    onDelete={() => setConfirmTarget({ type: "delete-photo", photo })}
                     onView={openView}
                     onDownload={downloadPhoto}
                     downloadBusy={downloadBusyId === photo.id}
                     canReview={canEdit}
+                    canDelete={canDeletePic}
                   />
                 ))}
               </div>
@@ -907,6 +956,17 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
         confirmTone="danger"
         onClose={() => !photoReviewBusy && setConfirmTarget(null)}
         onConfirm={rejectPresentablePic}
+      />
+
+      <ConfirmModal
+        open={confirmTarget?.type === "delete-photo"}
+        eyebrow="Admin only · permanent"
+        title="Delete this presentable pic?"
+        body="The photo file will be removed and cannot be recovered from this profile."
+        confirmLabel={photoDeleteBusy ? "Deleting…" : "Yes, delete it"}
+        confirmTone="danger"
+        onClose={() => !photoDeleteBusy && setConfirmTarget(null)}
+        onConfirm={deletePresentablePic}
       />
 
       <RejectLetterModal

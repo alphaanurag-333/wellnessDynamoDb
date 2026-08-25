@@ -11,13 +11,15 @@ export function ClientRemindModal({
   nextStepLabel,
   defaultMessage,
   whatsapp,
-  busy = false,
+  busyPush = false,
+  busyWhatsApp = false,
   onClose,
   onPush,
   onWhatsApp,
 }) {
   const [message, setMessage] = useState(defaultMessage);
   const canReset = message !== defaultMessage;
+  const busy = busyPush || busyWhatsApp;
 
   useEffect(() => {
     setMessage(defaultMessage);
@@ -25,14 +27,18 @@ export function ClientRemindModal({
 
   useEffect(() => {
     function onKeyDown(event) {
-      if (event.key === "Escape") onClose?.();
+      if (event.key === "Escape" && !busy) onClose?.();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [busy, onClose]);
 
   const modal = (
-    <div className="ua-team-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+    <div
+      className="ua-team-modal-backdrop ua-cp-modal-backdrop--drawer"
+      onClick={() => { if (!busy) onClose?.(); }}
+      role="presentation"
+    >
       <div
         className="ua-team-modal ua-team-modal--remind ua-client-remind-modal"
         onClick={(e) => e.stopPropagation()}
@@ -47,7 +53,13 @@ export function ClientRemindModal({
               To {user.name} · next step: {nextStepLabel}
             </div>
           </div>
-          <button type="button" className="ua-team-modal__close" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="ua-team-modal__close"
+            onClick={() => { if (!busy) onClose?.(); }}
+            disabled={busy}
+            aria-label="Close"
+          >
             ×
           </button>
         </div>
@@ -59,7 +71,7 @@ export function ClientRemindModal({
               <button
                 type="button"
                 className={`ua-team-remind__reset${canReset ? "" : " ua-team-remind__reset--muted"}`}
-                disabled={!canReset}
+                disabled={!canReset || busy}
                 onClick={() => setMessage(defaultMessage)}
               >
                 Reset to default
@@ -70,6 +82,7 @@ export function ClientRemindModal({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
+              disabled={busy}
             />
             {whatsapp ? (
               <p className="ua-client-remind__whatsapp">
@@ -86,15 +99,15 @@ export function ClientRemindModal({
             disabled={busy || !message.trim()}
             onClick={() => onPush?.(message)}
           >
-            <span aria-hidden="true">📱</span> {busy ? "Sending…" : "Push to app"}
+            <span aria-hidden="true">📱</span> {busyPush ? "Sending…" : "Push to app"}
           </button>
           <button
             type="button"
             className="ua-team-remind__whatsapp"
-            disabled={busy}
+            disabled={busy || !message.trim()}
             onClick={() => onWhatsApp?.(message)}
           >
-            <span aria-hidden="true">💬</span> Send on WhatsApp
+            <span aria-hidden="true">💬</span> {busyWhatsApp ? "Sending…" : "Send on WhatsApp"}
           </button>
         </div>
       </div>

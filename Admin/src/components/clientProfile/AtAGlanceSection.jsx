@@ -766,6 +766,7 @@ function OnboardingStatusCard({
   const [busy, setBusy] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
   const [remindBusy, setRemindBusy] = useState(false);
+  const [remindBusyWhatsApp, setRemindBusyWhatsApp] = useState(false);
   const [meetings, setMeetings] = useState([]);
 
   const loadMeetings = () => {
@@ -922,7 +923,7 @@ function OnboardingStatusCard({
               <button
                 type="button"
                 className="backgrounrd ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
-                disabled={!canRemind || remindBusy}
+                disabled={!canRemind || remindBusy || remindBusyWhatsApp}
                 title={canRemind ? "Remind client" : "You do not have permission to send reminders"}
                 onClick={() => {
                   if (!canRemind) {
@@ -1179,12 +1180,13 @@ function OnboardingStatusCard({
           nextStepLabel={nextStep.label}
           defaultMessage={remindMessage}
           whatsapp={user.whatsapp}
-          busy={remindBusy}
+          busyPush={remindBusy}
+          busyWhatsApp={remindBusyWhatsApp}
           onClose={() => {
-            if (!remindBusy) setRemindOpen(false);
+            if (!remindBusy && !remindBusyWhatsApp) setRemindOpen(false);
           }}
           onPush={async (message) => {
-            if (!user?.id || remindBusy) return;
+            if (!user?.id || remindBusy || remindBusyWhatsApp) return;
             setRemindBusy(true);
             try {
               const data = await pushOnboardingReminder(user.id, {
@@ -1199,9 +1201,27 @@ function OnboardingStatusCard({
               setRemindBusy(false);
             }
           }}
-          onWhatsApp={() => {
-            onToast(`WhatsApp sent to ${user.whatsapp}`);
-            setRemindOpen(false);
+          onWhatsApp={async (message) => {
+            if (!user?.id || remindBusy || remindBusyWhatsApp) return;
+            const body = String(message || "").trim();
+            if (!body) {
+              onToast("Write a reminder message first");
+              return;
+            }
+            setRemindBusyWhatsApp(true);
+            try {
+              const data = await pushOnboardingReminder(user.id, {
+                message: body,
+                stepLabel: nextStep.label,
+                channel: "whatsapp",
+              });
+              onToast(data?.message || `WhatsApp sent to ${user.whatsapp || user.name}`);
+              setRemindOpen(false);
+            } catch (err) {
+              onToast(err?.message || "Failed to send WhatsApp");
+            } finally {
+              setRemindBusyWhatsApp(false);
+            }
           }}
         />
       ) : null}

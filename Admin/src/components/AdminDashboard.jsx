@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchDashboardMediaBlob, fetchDashboardPayments } from "../api/dashboardApi.js";
 import { pushOnboardingReminder } from "../api/onboardingApi.js";
-import { fetchTeamMembers, sendTeamReminder } from "../api/teamsApi.js";
+import { fetchTeamMembers, sendTeamReminder, sendTeamWhatsAppReminder } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
 import { BrandLoader } from "./BrandLoader.jsx";
@@ -974,6 +974,7 @@ export function AdminDashboard({
   const [champExpanded, setChampExpanded] = useState(false);
   const [remindModal, setRemindModal] = useState(null);
   const [remindBusy, setRemindBusy] = useState(false);
+  const [remindBusyWhatsApp, setRemindBusyWhatsApp] = useState(false);
   const [rosterModal, setRosterModal] = useState(null);
   const [programModalTarget, setProgramModalTarget] = useState(null);
   const [progressModalKey, setProgressModalKey] = useState(null);
@@ -1162,7 +1163,7 @@ export function AdminDashboard({
   }
 
   async function handleRemindPush() {
-    if (!remindModal || remindBusy) return;
+    if (!remindModal || remindBusy || remindBusyWhatsApp) return;
 
     if (remindModal.kind === "onboarding") {
       if (!remindModal.userId) {
@@ -1211,6 +1212,59 @@ export function AdminDashboard({
       onToast(err?.message || "Failed to send notification");
     } finally {
       setRemindBusy(false);
+    }
+  }
+
+  async function handleRemindWhatsApp() {
+    if (!remindModal || remindBusy || remindBusyWhatsApp) return;
+
+    if (remindModal.kind === "onboarding") {
+      if (!remindModal.userId) {
+        onToast("Cannot send WhatsApp — client id is missing");
+        return;
+      }
+      const message = String(remindModal.message || "").trim();
+      if (!message) {
+        onToast("Write a reminder message first");
+        return;
+      }
+      setRemindBusyWhatsApp(true);
+      try {
+        const data = await pushOnboardingReminder(remindModal.userId, {
+          message,
+          stepLabel: remindModal.stepLabel,
+          channel: "whatsapp",
+        });
+        onToast(data?.message || "WhatsApp sent");
+        setRemindModal(null);
+      } catch (err) {
+        onToast(err?.message || "Failed to send WhatsApp");
+      } finally {
+        setRemindBusyWhatsApp(false);
+      }
+      return;
+    }
+
+    const accountIds = Array.isArray(remindModal.accountIds) ? remindModal.accountIds : [];
+    const message = String(remindModal.message || "").trim();
+    if (!message) {
+      onToast("Write a reminder message first");
+      return;
+    }
+    if (!accountIds.length) {
+      onToast("No team members to notify");
+      return;
+    }
+
+    setRemindBusyWhatsApp(true);
+    try {
+      const data = await sendTeamWhatsAppReminder({ accountIds, message });
+      onToast(data?.message || `WhatsApp sent to ${accountIds.length} recipient(s)`);
+      setRemindModal(null);
+    } catch (err) {
+      onToast(err?.message || "Failed to send WhatsApp");
+    } finally {
+      setRemindBusyWhatsApp(false);
     }
   }
 
@@ -2479,19 +2533,16 @@ export function AdminDashboard({
         recipientsLoading={Boolean(remindModal?.recipientsLoading)}
         message={remindModal?.message ?? ""}
         defaultMessage={remindModal?.defaultMessage ?? ""}
-        busy={remindBusy}
+        busyPush={remindBusy}
+        busyWhatsApp={remindBusyWhatsApp}
         actionLabel={remindModal?.kind === "onboarding" ? "Push to app" : "Send Notification"}
         actionIcon={remindModal?.kind === "onboarding" ? "📱" : "🔔"}
         onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
         onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
         onPush={handleRemindPush}
-        onWhatsApp={() => {
-          if (remindBusy) return;
-          onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
-          setRemindModal(null);
-        }}
+        onWhatsApp={handleRemindWhatsApp}
         onClose={() => {
-          if (!remindBusy) setRemindModal(null);
+          if (!remindBusy && !remindBusyWhatsApp) setRemindModal(null);
         }}
       />
 

@@ -10,6 +10,8 @@ const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
 const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
+const { sendWhatsAppText } = require("../utils/whatsapp");
+const { resolveWhatsappNumber } = require("./meetingAssigneeService");
 const {
   emitMealLogged,
   emitLabReportUploaded,
@@ -244,7 +246,29 @@ async function dispatchInternalParametersRecommendationNotification({
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
+
+  let whatsapp = null;
+  try {
+    const user = await getUserById(userId);
+    const wa = resolveWhatsappNumber(user);
+    if (wa) {
+      whatsapp = await sendWhatsAppText({
+        toPhoneCountryCode: wa.phoneCountryCode,
+        toPhone: wa.phone,
+        message,
+      });
+    } else {
+      whatsapp = { sent: false, reason: "missing_phone" };
+    }
+  } catch (err) {
+    console.error(
+      "Internal parameters WhatsApp notification failed:",
+      err?.message || err
+    );
+    whatsapp = { sent: false, reason: err?.message || "send_failed" };
+  }
+
+  return { notification, whatsapp };
 }
 
 async function dispatchDietPlanAssignmentNotification({

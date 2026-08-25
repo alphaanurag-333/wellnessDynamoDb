@@ -25,4 +25,11 @@ router.patch(
   appConfigController.updateAppConfigController
 );
 
+router.post(
+  "/commitment-letter/remind-whatsapp",
+  protectAccount,
+  authorizeStaff("console.cf.edit", { admin: "settings.edit" }),
+  appConfigController.remindCommitmentLetterWhatsAppController
+);
+
 module.exports = router;

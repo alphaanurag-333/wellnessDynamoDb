@@ -804,3 +804,19 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     data: toPublicAppConfig(updated),
   });
 });
+
+exports.remindCommitmentLetterWhatsAppController = asyncHandler(async (req, res) => {
+  const accountId = String(req.body?.accountId || req.body?.coachId || "").trim();
+  const message = String(req.body?.message || "").trim();
+  if (!accountId) throw new AppError("accountId is required", 400);
+  if (!message) throw new AppError("message is required", 400);
+
+  const { sendAccountWhatsAppReminder } = require("../../services/teamReminderService");
+  const sent = await sendAccountWhatsAppReminder({ accountId, message });
+
+  return res.status(200).json({
+    status: true,
+    message: `WhatsApp sent to ${sent.name}`,
+    recipient: sent,
+  });
+});

@@ -55,8 +55,40 @@ module.exports = {
   zoomClientSecret: process.env.ZOOM_CLIENT_SECRET || "",
   zoomUserId: process.env.ZOOM_USER_ID || "me",
 
-  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
-  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+  bhashsmsUser: process.env.BHASHSMS_USER || "",
+  bhashsmsPass: process.env.BHASHSMS_PASS || "",
+  bhashsmsSender: process.env.BHASHSMS_SENDER || "BUZWAP",
+  bhashsmsBaseUrl:
+    process.env.BHASHSMS_BASE_URL || "http://bhashsms.com/api/sendmsgutil.php",
+  /** Approved WhatsApp utility template name (Bhash `text` param — not free-form body). */
+  bhashsmsTemplate: process.env.BHASHSMS_TEMPLATE || "invoice_1",
+  /** Template body variables for Bhash `Params` (e.g. "1" or "name,amount"). */
+  bhashsmsTemplateParams:
+    process.env.BHASHSMS_TEMPLATE_PARAMS != null &&
+    String(process.env.BHASHSMS_TEMPLATE_PARAMS).trim() !== ""
+      ? String(process.env.BHASHSMS_TEMPLATE_PARAMS).trim()
+      : "1",
+  /**
+   * Public PDF URL for document/payment templates (invoice_1).
+   * Only used when sendWhatsAppText({ attachDocument: true }) or sendWhatsAppDocument.
+   */
+  bhashsmsDocumentUrl: process.env.BHASHSMS_DOCUMENT_URL || "",
+  bhashsmsDocumentFname: process.env.BHASHSMS_DOCUMENT_FNAME || "PDF File",
+  /**
+   * Approved utility template for Admin reminder / free-text style sends.
+   * Params will be the reminder body. Required unless SplitCredits session text is enabled.
+   */
+  bhashsmsReminderTemplate: process.env.BHASHSMS_REMINDER_TEMPLATE || "",
+  /**
+   * When true, put the app message into Params instead of BHASHSMS_TEMPLATE_PARAMS
+   * (for document/payment templates that accept a body variable).
+   */
+  bhashsmsUseMessageAsParams: process.env.BHASHSMS_USE_MESSAGE_AS_PARAMS === "true",
+  /**
+   * When true, reminder sends use free-form `text` (session message).
+   * Needs SplitCredits / open session on the Bhash WhatsApp account.
+   */
+  bhashsmsAllowSessionText: process.env.BHASHSMS_ALLOW_SESSION_TEXT === "true",
 
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
