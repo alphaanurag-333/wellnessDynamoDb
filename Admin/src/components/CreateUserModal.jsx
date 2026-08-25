@@ -1,15 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { City, Country, State } from "country-state-city";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
 import { createUser, GENDER_UI_OPTIONS } from "../api/usersApi.js";
-import {
-  COUNTRY_OPTIONS,
-  INDIA_STATES,
-  PHONE_COUNTRY_OPTIONS,
-  citiesForState,
-  dialCodeForCountry,
-  phoneLengthForDial,
-} from "../data/indiaLocations.js";
+import { PHONE_COUNTRY_OPTIONS, phoneLengthForDial } from "../data/indiaLocations.js";
 import {
   DOB_MAX_AGE_YEARS,
   DOB_MIN_AGE_YEARS,
@@ -39,6 +33,198 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Disabled" },
 ];
 
+const LOCATION_MENU_LIMIT = 5;
+const ALL_COUNTRIES = [...Country.getAllCountries()].sort((a, b) => a.name.localeCompare(b.name));
+const COUNTRY_SEARCH_OPTIONS = ALL_COUNTRIES.map((country) => ({
+  value: country.isoCode,
+  label: country.name,
+}));
+
+function dialFromPhonecode(phonecode) {
+  const raw = String(phonecode ?? "").trim().replace(/\s+/g, "");
+  if (!raw) return "+91";
+  return raw.startsWith("+") ? raw : `+${raw}`;
+}
+
+function SearchableLocationSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  emptyMessage = "No matches. Type to search.",
+}) {
+  const wrapRef = useRef(null);
+  const menuRef = useRef(null);
+  const listRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [menuPos, setMenuPos] = useState(null);
+
+  const selected = options.find((row) => row.value === value) || null;
+  const inputValue = open && searching ? query : (selected?.label || "");
+  const matches = useMemo(() => {
+    const needle = (open && searching ? query : "").trim().toLowerCase();
+    if (!needle) return options;
+    return options.filter((row) => row.label.toLowerCase().includes(needle));
+  }, [options, open, query, searching]);
+
+  useLayoutEffect(() => {
+    if (!open || disabled) {
+      setMenuPos(null);
+      return undefined;
+    }
+    function place() {
+      const el = wrapRef.current;
+      if (!el) return;
+      const box = el.getBoundingClientRect();
+      setMenuPos({ top: box.bottom + 4, left: box.left, width: box.width });
+    }
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [disabled, open, matches.length]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDoc(event) {
+      const target = event.target;
+      if (wrapRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+      setSearching(false);
+      setQuery("");
+    }
+    function onPageScroll(event) {
+      if (menuRef.current?.contains(event.target)) return;
+      setOpen(false);
+      setSearching(false);
+      setQuery("");
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("scroll", onPageScroll, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("scroll", onPageScroll, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    const active = list?.children[activeIndex];
+    if (!list || !active) return;
+    const listBox = list.getBoundingClientRect();
+    const itemBox = active.getBoundingClientRect();
+    if (itemBox.bottom > listBox.bottom) list.scrollTop += itemBox.bottom - listBox.bottom;
+    else if (itemBox.top < listBox.top) list.scrollTop -= listBox.top - itemBox.top;
+  }, [activeIndex, open]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [open, query]);
+
+  function closeMenu() {
+    setOpen(false);
+    setSearching(false);
+    setQuery("");
+  }
+
+  function choose(row) {
+    onChange(row);
+    closeMenu();
+  }
+
+  function onKeyDown(event) {
+    if (disabled) return;
+    if (event.key === "Escape") {
+      if (!open) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setOpen(true);
+      setActiveIndex((index) => Math.min(index + 1, Math.max(matches.length - 1, 0)));
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+      return;
+    }
+    if (event.key === "Enter" && open && matches[activeIndex]) {
+      event.preventDefault();
+      choose(matches[activeIndex]);
+    }
+  }
+
+  const menu = open && !disabled && menuPos
+    ? createPortal(
+        <div
+          ref={menuRef}
+          className="ua-create-user__suggest"
+          style={{ top: menuPos.top, left: menuPos.left, width: menuPos.width }}
+          role="listbox"
+        >
+          {matches.length ? (
+            <div ref={listRef} className="ua-create-user__suggest-list" role="presentation">
+              {matches.map((row, index) => (
+                <button
+                  type="button"
+                  key={`${row.value}-${index}`}
+                  className={`ua-create-user__suggest-item${index === activeIndex ? " is-active" : ""}${row.value === value ? " is-selected" : ""}`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => choose(row)}
+                  role="option"
+                  aria-selected={row.value === value}
+                >
+                  {row.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-create-user__suggest-empty">{emptyMessage}</div>
+          )}
+          {matches.length > LOCATION_MENU_LIMIT ? (
+            <div className="ua-create-user__suggest-more">
+              Scroll to see more, or type to search.
+            </div>
+          ) : null}
+        </div>,
+        document.body,
+      )
+    : null;
+
+  return (
+    <div className="ua-create-user__combo" ref={wrapRef}>
+      <input
+        className="ua-create-user__input ua-create-user__combo-input"
+        value={inputValue}
+        disabled={disabled}
+        placeholder={placeholder}
+        autoComplete="off"
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+        onFocus={() => {
+          if (!disabled) setOpen(true);
+        }}
+        onChange={(event) => {
+          setSearching(true);
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onKeyDown={onKeyDown}
+      />
+      {menu}
+    </div>
+  );
+}
+
 function emptyForm() {
   return {
     name: "",
@@ -51,14 +237,16 @@ function emptyForm() {
     whatsappCountryCode: "+91",
     whatsappPhone: "",
     country: "",
+    countryIso: "",
     state: "",
+    stateIso: "",
     city: "",
     pincode: "",
     primaryHealthConcern: "",
     primaryHealthConcernOther: "",
     referralCode: "",
     status: "active",
-    termsAccepted: false,
+    termsAccepted: true,
   };
 }
 
@@ -87,6 +275,9 @@ function isOtherConcern(concerns, id) {
 
 export function CreateUserModal({ open, onClose, onCreated, onToast }) {
   const fileRef = useRef(null);
+  const imagePreviewRef = useRef("");
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [concerns, setConcerns] = useState([]);
@@ -95,14 +286,50 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  const indiaSelected = form.country === "India";
+  const indiaSelected = form.countryIso === "IN" || form.country === "India";
   const phoneLen = phoneLengthForDial(form.phoneCountryCode);
   const waLen = phoneLengthForDial(form.whatsappSameAsMobile ? form.phoneCountryCode : form.whatsappCountryCode);
-  const cityOptions = useMemo(() => citiesForState(form.state), [form.state]);
+  const states = useMemo(
+    () => (form.countryIso ? State.getStatesOfCountry(form.countryIso) : []),
+    [form.countryIso],
+  );
+  const cities = useMemo(() => {
+    if (!form.countryIso) return [];
+    if (form.stateIso) return City.getCitiesOfState(form.countryIso, form.stateIso) || [];
+    if (!states.length) return City.getCitiesOfCountry(form.countryIso) || [];
+    return [];
+  }, [form.countryIso, form.stateIso, states.length]);
+  const stateOptions = useMemo(
+    () => states.map((state) => ({ value: state.isoCode, label: state.name })),
+    [states],
+  );
+  const cityOptions = useMemo(
+    () => cities.map((city) => ({ value: city.name, label: city.name })),
+    [cities],
+  );
+  const phoneCountryOptions = useMemo(() => {
+    const options = [...PHONE_COUNTRY_OPTIONS];
+    const used = new Set(options.map((opt) => opt.dial));
+    for (const dial of [form.phoneCountryCode, form.whatsappCountryCode]) {
+      if (!dial || used.has(dial)) continue;
+      used.add(dial);
+      const match = ALL_COUNTRIES.find((country) => dialFromPhonecode(country.phonecode) === dial);
+      options.push({
+        iso: match?.isoCode || dial,
+        dial,
+        label: match ? `${match.name} (${dial})` : dial,
+      });
+    }
+    return options;
+  }, [form.phoneCountryCode, form.whatsappCountryCode]);
   const showOtherConcern = isOtherConcern(concerns, form.primaryHealthConcern);
 
   useEffect(() => {
     if (!open) return undefined;
+    if (imagePreviewRef.current) {
+      URL.revokeObjectURL(imagePreviewRef.current);
+      imagePreviewRef.current = "";
+    }
     setForm(emptyForm());
     setErrors({});
     setImageFile(null);
@@ -125,7 +352,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       });
 
     function onKey(event) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") onCloseRef.current();
     }
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
@@ -135,13 +362,16 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   useEffect(() => {
     return () => {
-      if (imagePreview) URL.revokeObjectURL(imagePreview);
+      if (imagePreviewRef.current) {
+        URL.revokeObjectURL(imagePreviewRef.current);
+        imagePreviewRef.current = "";
+      }
     };
-  }, [imagePreview]);
+  }, []);
 
   if (!open) return null;
 
@@ -151,6 +381,9 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       if (merged.whatsappSameAsMobile) {
         merged.whatsappCountryCode = merged.phoneCountryCode;
         merged.whatsappPhone = merged.phone;
+      } else if (prev.whatsappSameAsMobile) {
+        merged.whatsappPhone = "";
+        merged.whatsappCountryCode = merged.phoneCountryCode;
       }
       return merged;
     });
@@ -160,7 +393,8 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (!IMAGE_TYPES.has(file.type)) {
+    const typeOk = IMAGE_TYPES.has(file.type) || /\.(jpe?g|png|gif|webp)$/i.test(file.name);
+    if (!typeOk) {
       onToast?.("Use JPEG, PNG, GIF, or WebP");
       return;
     }
@@ -168,9 +402,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
       onToast?.("Profile image must be 25 MB or smaller");
       return;
     }
-    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    if (imagePreviewRef.current) URL.revokeObjectURL(imagePreviewRef.current);
+    const previewUrl = URL.createObjectURL(file);
+    imagePreviewRef.current = previewUrl;
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    setImagePreview(previewUrl);
   }
 
   function validate() {
@@ -277,13 +513,13 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
           <div className="ua-create-user__photo">
             <button
               type="button"
-              className="ua-create-user__avatar"
+              className={`ua-create-user__avatar${imagePreview ? " has-photo" : ""}`}
               onClick={() => fileRef.current?.click()}
               disabled={busy}
               aria-label="Choose profile image"
             >
               {imagePreview ? (
-                <img src={imagePreview} alt="" />
+                <img src={imagePreview} alt="Selected profile" />
               ) : (
                 <span>Photo</span>
               )}
@@ -399,7 +635,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                   disabled={busy}
                   onChange={(e) => patch({ phoneCountryCode: e.target.value, phone: "" })}
                 >
-                  {PHONE_COUNTRY_OPTIONS.map((opt) => (
+                  {phoneCountryOptions.map((opt) => (
                     <option key={`${opt.iso}-${opt.dial}`} value={opt.dial}>{opt.label}</option>
                   ))}
                 </select>
@@ -434,7 +670,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                   disabled={busy || form.whatsappSameAsMobile}
                   onChange={(e) => patch({ whatsappCountryCode: e.target.value, whatsappPhone: "" })}
                 >
-                  {PHONE_COUNTRY_OPTIONS.map((opt) => (
+                  {phoneCountryOptions.map((opt) => (
                     <option key={`wa-${opt.iso}-${opt.dial}`} value={opt.dial}>{opt.label}</option>
                   ))}
                 </select>
@@ -464,16 +700,20 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
           <div className="ua-create-user__section">LOCATION</div>
           <div className="ua-create-user__grid">
             <Field label="Country" required error={errors.country}>
-              <select
-                className="ua-create-user__input"
-                value={form.country}
+              <SearchableLocationSelect
+                options={COUNTRY_SEARCH_OPTIONS}
+                value={form.countryIso}
                 disabled={busy}
-                onChange={(e) => {
-                  const country = e.target.value;
-                  const dial = dialCodeForCountry(country);
+                placeholder="Search country"
+                onChange={(option) => {
+                  if (!option) return;
+                  const selected = Country.getCountryByCode(option.value);
+                  const dial = dialFromPhonecode(selected?.phonecode);
                   patch({
-                    country,
+                    countryIso: option.value,
+                    country: selected?.name || option.label,
                     state: "",
+                    stateIso: "",
                     city: "",
                     pincode: "",
                     phoneCountryCode: dial,
@@ -482,55 +722,58 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                     whatsappPhone: "",
                   });
                 }}
-              >
-                <option value="">Select country</option>
-                {COUNTRY_OPTIONS.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+              />
             </Field>
             <Field label="State / region" required error={errors.state}>
-              {indiaSelected ? (
-                <select
-                  className="ua-create-user__input"
-                  value={form.state}
-                  disabled={busy}
-                  onChange={(e) => patch({ state: e.target.value, city: "" })}
-                >
-                  <option value="">Select state</option>
-                  {INDIA_STATES.map((state) => (
-                    <option key={state} value={state}>{state}</option>
-                  ))}
-                </select>
+              {stateOptions.length > 0 ? (
+                <SearchableLocationSelect
+                  key={form.countryIso}
+                  options={stateOptions}
+                  value={form.stateIso}
+                  disabled={busy || !form.countryIso}
+                  placeholder={form.countryIso ? "Search state / region" : "Select country first"}
+                  onChange={(option) => {
+                    if (!option) return;
+                    patch({ stateIso: option.value, state: option.label, city: "" });
+                  }}
+                />
               ) : (
                 <input
                   className="ua-create-user__input"
-                  placeholder="State / region"
+                  placeholder={form.countryIso ? "State / region" : "Select country first"}
                   value={form.state}
-                  disabled={busy}
-                  onChange={(e) => patch({ state: e.target.value })}
+                  disabled={busy || !form.countryIso}
+                  onChange={(e) => patch({ state: e.target.value, stateIso: "" })}
                 />
               )}
             </Field>
             <Field label="City" required error={errors.city}>
-              {indiaSelected ? (
-                <select
-                  className="ua-create-user__input"
+              {cityOptions.length > 0 ? (
+                <SearchableLocationSelect
+                  key={`${form.countryIso}-${form.stateIso}`}
+                  options={cityOptions}
                   value={form.city}
-                  disabled={busy || !form.state}
-                  onChange={(e) => patch({ city: e.target.value })}
-                >
-                  <option value="">{form.state ? "Select city" : "Select state first"}</option>
-                  {cityOptions.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
+                  disabled={busy || !form.countryIso || (states.length > 0 && !form.stateIso)}
+                  placeholder={
+                    states.length > 0 && !form.stateIso ? "Select state first" : "Search city"
+                  }
+                  onChange={(option) => {
+                    if (!option) return;
+                    patch({ city: option.value });
+                  }}
+                />
               ) : (
                 <input
                   className="ua-create-user__input"
-                  placeholder="City"
+                  placeholder={
+                    !form.countryIso
+                      ? "Select country first"
+                      : states.length > 0 && !form.stateIso
+                        ? "Select state first"
+                        : "City"
+                  }
                   value={form.city}
-                  disabled={busy}
+                  disabled={busy || !form.countryIso || (states.length > 0 && !form.stateIso)}
                   onChange={(e) => patch({ city: e.target.value })}
                 />
               )}
@@ -616,7 +859,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
               </Field>
             ) : null}
           </div>
-          <label className={`ua-create-user__check${errors.termsAccepted ? " ua-create-user__check--error" : ""}`}>
+          {/* <label className={`ua-create-user__check${errors.termsAccepted ? " ua-create-user__check--error" : ""}`}>
             <input
               type="checkbox"
               checked={form.termsAccepted}
@@ -628,7 +871,7 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
               <RequiredMark />
             </span>
           </label>
-          {errors.termsAccepted ? <div className="ua-create-user__error">{errors.termsAccepted}</div> : null}
+          {errors.termsAccepted ? <div className="ua-create-user__error">{errors.termsAccepted}</div> : null} */}
         </div>
 
         <div className="ua-create-user__foot">

@@ -506,7 +506,7 @@ export function ExchangeSection({ user, onToast }) {
           >
             🔔 Trigger to app
           </button>
-          <p className="ua-cp-ex-form__note">
+          <p className="ua-cp-ex-form__note" style={{maxWidth:"100%"}}>
             {loadError
               ? loadError
               : emptyConfig
