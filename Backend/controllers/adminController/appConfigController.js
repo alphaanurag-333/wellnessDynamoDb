@@ -597,6 +597,19 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     updates.multilang = normalizeBooleanFlag(req.body.multilang, false);
   }
 
+  if (req.body.support_whatsapp_enabled !== undefined) {
+    updates.support_whatsapp_enabled = normalizeBooleanFlag(
+      req.body.support_whatsapp_enabled,
+      false
+    );
+  }
+  if (req.body.support_whatsapp_number !== undefined) {
+    updates.support_whatsapp_number = String(req.body.support_whatsapp_number ?? "").trim();
+  }
+  if (req.body.support_whatsapp_message !== undefined) {
+    updates.support_whatsapp_message = String(req.body.support_whatsapp_message ?? "").trim();
+  }
+
   for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {
     if (req.body[field] !== undefined) {
       updates[field] = normalizeBodyMeasurementInfoShown(req.body[field], true);

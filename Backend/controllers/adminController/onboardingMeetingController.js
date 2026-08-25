@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { v4: uuidv4 } = require("uuid");
 const { assertStaffCanMutate, resolveStaffActor, getStaffScopeCoachId } = require("../staffAccess");
 const {
   readUserIdParam,
@@ -100,6 +101,9 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
     createdByRole: actor.role,
     ...mirrorRequestedSlots([]),
     selectedSlotId: null,
+    confirmedAt: null,
+    confirmedStartAt: null,
+    confirmedEndAt: null,
   };
 
   let meeting;
@@ -135,24 +139,31 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
   }
 
   const requestedSlotId = String(req.body?.requestedSlotId || req.body?.slotId || "").trim();
+  const bodyStartAt = String(req.body?.startAt || req.body?.requestedStartAt || "").trim();
+  const bodyEndAt = String(req.body?.endAt || req.body?.requestedEndAt || "").trim();
+
+  const sameInstant = (a, b) => {
+    const ta = new Date(a).getTime();
+    const tb = new Date(b).getTime();
+    return Number.isFinite(ta) && Number.isFinite(tb) && ta === tb;
+  };
+
   let chosen = requestedSlotId
     ? requestedSlots.find((s) => String(s.id) === requestedSlotId)
     : null;
 
-  // Legacy single-request accept: if only one slot (or no id sent for a single legacy request), use it.
-  if (!chosen && requestedSlots.length === 1 && !requestedSlotId) {
-    chosen = requestedSlots[0];
-  }
-
-  // Match by startAt/endAt if provided without id
-  if (!chosen && (req.body?.startAt || req.body?.requestedStartAt)) {
-    const startAt = String(req.body?.startAt || req.body?.requestedStartAt || "").trim();
-    const endAt = String(req.body?.endAt || req.body?.requestedEndAt || "").trim();
+  // Match by start/end when id is missing or stale
+  if (!chosen && bodyStartAt) {
     chosen = requestedSlots.find(
       (s) =>
-        String(s.startAt) === startAt &&
-        (!endAt || String(s.endAt) === endAt),
+        sameInstant(s.startAt, bodyStartAt) &&
+        (!bodyEndAt || sameInstant(s.endAt, bodyEndAt)),
     );
+  }
+
+  // Single requested time — accept it even if the client omitted ids
+  if (!chosen && requestedSlots.length === 1) {
+    chosen = requestedSlots[0];
   }
 
   if (!chosen) {
@@ -167,6 +178,11 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
   const startAt = chosen.startAt;
   const endAt = chosen.endAt;
   const durationMinutes = durationFromRange(startAt, endAt, meeting.durationMinutes);
+  const confirmedSlot = {
+    id: chosen.id && String(chosen.id) !== "legacy" ? String(chosen.id) : uuidv4(),
+    startAt,
+    endAt,
+  };
   let zoom;
   try {
     zoom = await createZoomForMeeting({
@@ -181,8 +197,12 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
 
   const updated = await updateOnboardingMeeting(meeting.id, {
     status: "confirmed",
-    selectedSlotId: null,
+    // Replace coach offers with the client's accepted time for every step (launch/briefing/hap/initiation).
+    slots: [confirmedSlot],
+    selectedSlotId: confirmedSlot.id,
     confirmedAt: new Date().toISOString(),
+    confirmedStartAt: startAt,
+    confirmedEndAt: endAt,
     durationMinutes,
     ...mirrorRequestedSlots([]),
     ...zoom,

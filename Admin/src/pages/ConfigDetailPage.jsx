@@ -41,6 +41,7 @@ import {
   HealthDisordersSection,
   HealthProgressTrackersPanel,
   LanguageDisableSection,
+  WhatsappSupportSection,
   LaunchSection,
   LegalBlocksSection,
   LegalSectionsEditor,
@@ -1266,6 +1267,7 @@ function GenericPanel({ item }) {
 
 const PREVIEW_CONFIGS = new Set([
   "app-language-disable",
+  "app-whatsapp-support",
   "app-faq",
   "app-program",
   "app-subscriptions",
@@ -1319,6 +1321,7 @@ const PREVIEW_CONFIGS = new Set([
 /** Header Publish only where confirm actually persists (handler or checkout options). */
 const PUBLISH_CONFIGS = new Set([
   "app-language-disable",
+  "app-whatsapp-support",
   "app-program",
   "app-subscriptions",
   "app-consultancy-amount",
@@ -1361,6 +1364,11 @@ export function ConfigDetailPage() {
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
   const [hindiOn, setHindiOn] = useState(false);
+  const [whatsappSupportSettings, setWhatsappSupportSettings] = useState({
+    enabled: false,
+    number: "",
+    message: "Hi, I need help with the IR Wellness app.",
+  });
   const [faqItems, setFaqItems] = useState([]);
   const [faqEditor, setFaqEditor] = useState({ appOn: true, webOn: true });
   const [hdItems, setHdItems] = useState([]);
@@ -1556,7 +1564,8 @@ export function ConfigDetailPage() {
       Boolean(legalSlugs)
       || current.id === "web-fs-social"
       || current.id === "app-consultancy-amount"
-      || current.id === "app-language-disable";
+      || current.id === "app-language-disable"
+      || current.id === "app-whatsapp-support";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1567,6 +1576,8 @@ export function ConfigDetailPage() {
         const saved = await publish();
         if (current.id === "app-language-disable") {
           setHindiOn(Boolean(saved));
+        } else if (current.id === "app-whatsapp-support" && saved) {
+          setWhatsappSupportSettings(saved);
         } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
@@ -1657,6 +1668,8 @@ export function ConfigDetailPage() {
   const summaryOn =
     item.id === "app-language-disable"
       ? hindiOn
+      : item.id === "app-whatsapp-support"
+        ? Boolean(whatsappSupportSettings?.enabled)
       : item.id === "app-gst"
         ? gstOn
         : item.id === "app-consultancy-amount"
@@ -1779,6 +1792,16 @@ export function ConfigDetailPage() {
           <LanguageDisableSection
             hindiOn={hindiOn}
             setHindiOn={setHindiOn}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-whatsapp-support":
+        return (
+          <WhatsappSupportSection
+            settings={whatsappSupportSettings}
+            setSettings={setWhatsappSupportSettings}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
@@ -2401,6 +2424,7 @@ export function ConfigDetailPage() {
           item={item}
           previewState={{
           hindiOn,
+          whatsappSupportSettings,
           faqItems,
           faqEditor,
           programRows,

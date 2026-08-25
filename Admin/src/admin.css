@@ -20268,6 +20268,14 @@ scrollbar-width: thin;
   max-width: 100%;
 }
 
+.updated-admin .ua-cp-launch-modal__slot-error {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 650;
+  color: #c0392b;
+  line-height: 1.4;
+}
+
 .updated-admin .ua-cp-launch-modal__dates {
   display: flex;
   gap: 8px;
@@ -20447,6 +20455,11 @@ scrollbar-width: thin;
   line-height: 1;
 }
 
+.updated-admin .ua-cp-launch-modal__calendar-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .updated-admin .ua-cp-launch-modal__calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -20475,6 +20488,19 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-launch-modal__calendar-day--empty {
   pointer-events: none;
+}
+
+.updated-admin .ua-cp-launch-modal__calendar-day--outside {
+  color: #9aa6b8;
+}
+
+.updated-admin .ua-cp-launch-modal__calendar-day--disabled,
+.updated-admin .ua-cp-launch-modal__calendar-day:disabled {
+  color: #c5ccd8;
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: transparent;
+  box-shadow: none;
 }
 
 .updated-admin .ua-cp-launch-modal__calendar-day--selected {

@@ -55,6 +55,10 @@ export const LanguageDisableSection = named(
   () => import("../components/LanguageDisableSection.jsx"),
   "LanguageDisableSection",
 );
+export const WhatsappSupportSection = named(
+  () => import("../components/WhatsappSupportSection.jsx"),
+  "WhatsappSupportSection",
+);
 export const GstSection = named(() => import("../components/GstSection.jsx"), "GstSection");
 export const ConsultancyAmountSection = named(
   () => import("../components/ConsultancyAmountSection.jsx"),

@@ -2,6 +2,9 @@ export function previewHintForItem(item) {
   if (item.id === "app-language-disable") {
     return "Toggle Hindi, then open Preview";
   }
+  if (item.id === "app-whatsapp-support") {
+    return "Toggle support, set number and message, then Publish";
+  }
   if (item.id === "app-faq" || item.id === "app-medical-questionnaire" || item.id === "app-prakriti") {
     return "Edit questions, then open Preview";
   }

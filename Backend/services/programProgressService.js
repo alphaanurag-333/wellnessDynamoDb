@@ -338,6 +338,7 @@ function endOfWeek(start) {
 function meetingStartIso(meeting) {
   if (!meeting) return "";
   if (meeting.status === "time_requested") return meeting.requestedStartAt || "";
+  if (meeting.confirmedStartAt) return meeting.confirmedStartAt;
   const slot =
     (meeting.slots || []).find((item) => item.id === meeting.selectedSlotId) ||
     (meeting.slots || [])[0];

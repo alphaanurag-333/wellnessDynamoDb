@@ -24,6 +24,17 @@ export const CONFIG_GROUPS = {
           tags: [],
         },
         {
+          id: "app-whatsapp-support",
+          name: "WhatsApp support",
+          note: "Enable Help & Support in app · number · message template",
+          owner: "Admin / Support",
+          app: true,
+          web: false,
+          live: false,
+          on: false,
+          tags: ["Text"],
+        },
+        {
           id: "app-faq",
           name: "FAQ",
           note: "Question and answer list",

@@ -350,6 +350,82 @@ function LanguagePreview({ hindiOn, surface, item }) {
   );
 }
 
+function WhatsappSupportPreview({ settings, surface, item }) {
+  const enabled = Boolean(settings?.enabled);
+  const number = String(settings?.number || "").trim() || "—";
+  const message = String(settings?.message || "").trim() || "—";
+
+  const body =
+    surface === "web" ? (
+      <div className="ua-cfg-preview-lang ua-cfg-preview-lang--web">
+        <div className="ua-cfg-preview-lang__web-bar">
+          <span>WhatsApp support</span>
+        </div>
+        <div className="ua-cfg-preview-lang__web-body">
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>App drawer button</strong>
+              <span>Help & Support</span>
+            </div>
+            <span className={`ua-cfg-preview-lang__badge${enabled ? " is-on" : ""}`}>
+              {enabled ? "On" : "Off"}
+            </span>
+          </div>
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>Number</strong>
+              <span>{number}</span>
+            </div>
+          </div>
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>Message</strong>
+              <span>{message}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="ua-cfg-preview-phone">
+        <div className="ua-cfg-preview-phone__shell">
+          <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+          <div className="ua-cfg-preview-lang ua-cfg-preview-lang--app">
+            <div className="ua-cfg-preview-lang__app-head">
+              <span className="ua-cfg-preview-lang__back" aria-hidden="true">‹</span>
+              <strong>Menu</strong>
+            </div>
+            <div className="ua-cfg-preview-lang__app-list">
+              {enabled ? (
+                <div className="ua-cfg-preview-lang__row is-active">
+                  <div>
+                    <strong>Help & Support</strong>
+                    <span>Opens WhatsApp · {number}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="ua-cfg-preview-lang__row is-disabled">
+                  <div>
+                    <strong>Help & Support</strong>
+                    <span>Hidden when disabled</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            {enabled ? (
+              <p className="ua-cfg-preview-lang__note">{message}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
 function GstPreview({ gstOn, gstPercent, surface, item }) {
   const amount = 24999;
   const rate = Number(gstPercent);
@@ -1953,6 +2029,14 @@ function renderPreviewBody(item, surface, previewState) {
   switch (item.id) {
     case "app-language-disable":
       return <LanguagePreview hindiOn={previewState.hindiOn} surface={surface} item={item} />;
+    case "app-whatsapp-support":
+      return (
+        <WhatsappSupportPreview
+          settings={previewState.whatsappSupportSettings ?? {}}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-faq": {
       const faqEditor = previewState.faqEditor ?? {};
       const sectionEnabled = surface === "app"
