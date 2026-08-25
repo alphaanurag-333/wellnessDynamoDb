@@ -830,11 +830,11 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
             </Field>
             <Field
               label="Coach referral code"
-              hint="Optional. Example IRW-WC-980 — assigns that Wellness Coach after create / consultancy payment."
+              hint="Optional. Example 7WDW4JST — assigns that Wellness Coach after create / consultancy payment."
             >
               <input
                 className="ua-create-user__input"
-                placeholder="IRW-WC-980"
+                placeholder="7WDW4JST"
                 value={form.referralCode}
                 disabled={busy}
                 autoCapitalize="characters"

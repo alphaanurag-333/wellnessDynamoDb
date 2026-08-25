@@ -896,32 +896,31 @@ function assignedMembershipRoleId(account, primaryRoleKey) {
 }
 
 /**
- * Count accounts assigned to a console Role id.
+ * Find accounts assigned to a console Role id (membership.roleId).
  * System templates can also include legacy rows with no membership.roleId
  * when accountRoleKey + includeUnassigned are set.
  */
-async function countAccountsByConsoleRoleId(
+async function findAccountsByConsoleRoleId(
   consoleRoleId,
-  { status = "active", accountRoleKey = null, includeUnassigned = false } = {}
+  { status = "active", accountRoleKey = null, includeUnassigned = false, idsOnly = false } = {}
 ) {
   const id = String(consoleRoleId || "").trim();
-  if (!id) return 0;
+  if (!id) return idsOnly ? 0 : [];
 
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const expectedRole = accountRoleKey ? normalizeRoleKey(accountRoleKey) : null;
+  const matched = [];
   let total = 0;
   let lastKey;
   do {
     const exprNames = {};
     const exprValues = {};
     let filterExpression;
-    const projection = ["memberships", "defaultRoleKey", "roleKeys"];
 
     if (normalizedStatus) {
       exprNames["#status"] = "status";
       exprValues[":status"] = normalizedStatus;
       filterExpression = "#status = :status";
-      projection.push("#status");
     }
 
     const { Items, LastEvaluatedKey } = await docClient.send(
@@ -930,7 +929,6 @@ async function countAccountsByConsoleRoleId(
         FilterExpression: filterExpression,
         ExpressionAttributeNames: Object.keys(exprNames).length ? exprNames : undefined,
         ExpressionAttributeValues: Object.keys(exprValues).length ? exprValues : undefined,
-        ProjectionExpression: projection.join(", "),
         ExclusiveStartKey: lastKey,
       })
     );
@@ -939,18 +937,52 @@ async function countAccountsByConsoleRoleId(
       const primary = resolvePrimaryRoleKey(item);
       if (expectedRole && primary !== expectedRole) continue;
       const assignedId = assignedMembershipRoleId(item, primary);
-      if (assignedId === id) {
-        total += 1;
-        continue;
-      }
-      if (includeUnassigned && !assignedId && expectedRole && primary === expectedRole) {
-        total += 1;
-      }
+      const hit =
+        assignedId === id ||
+        (includeUnassigned && !assignedId && expectedRole && primary === expectedRole);
+      if (!hit) continue;
+      if (idsOnly) total += 1;
+      else matched.push(item);
     }
     lastKey = LastEvaluatedKey;
   } while (lastKey);
 
-  return total;
+  return idsOnly ? total : matched;
+}
+
+/**
+ * Count accounts assigned to a console Role id.
+ * System templates can also include legacy rows with no membership.roleId
+ * when accountRoleKey + includeUnassigned are set.
+ */
+async function countAccountsByConsoleRoleId(
+  consoleRoleId,
+  { status = "active", accountRoleKey = null, includeUnassigned = false } = {}
+) {
+  return findAccountsByConsoleRoleId(consoleRoleId, {
+    status,
+    accountRoleKey,
+    includeUnassigned,
+    idsOnly: true,
+  });
+}
+
+/**
+ * List full account rows assigned to a console Role id.
+ * Prefer this for custom roles so listing matches memberCountForConsoleRole
+ * (membership.roleId), without relying on a derived account roleKey pre-filter.
+ */
+async function listAccountsByConsoleRoleId(
+  consoleRoleId,
+  { status = "active", accountRoleKey = null, includeUnassigned = false } = {}
+) {
+  const rows = await findAccountsByConsoleRoleId(consoleRoleId, {
+    status,
+    accountRoleKey,
+    includeUnassigned,
+    idsOnly: false,
+  });
+  return rows.map((row) => toPublicAccount(row));
 }
 
 module.exports = {
@@ -980,5 +1012,6 @@ module.exports = {
   listAccountsByParentAccountId,
   countAccountsByRoleKey,
   countAccountsByConsoleRoleId,
+  listAccountsByConsoleRoleId,
   assignedMembershipRoleId,
 };

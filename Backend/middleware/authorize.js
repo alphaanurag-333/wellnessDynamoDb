@@ -141,6 +141,21 @@ function requireSuperAdmin(req, res, next) {
   return next(new AppError("Only the Super Admin can perform this action", 403));
 }
 
+/**
+ * Admin (or Super Admin) only — used for direct client tier conversion.
+ * WC / AWC / other staff with console.cl.edit must not change tiers via API.
+ */
+function requireAdmin(req, res, next) {
+  if (!req.auth) {
+    return next(new AppError("Authentication required", 401));
+  }
+  const role = normalizeRoleKey(req.auth.role);
+  if (req.auth.isSuperAdmin || role === "admin") {
+    return next();
+  }
+  return next(new AppError("Only admins can change user tiers", 403));
+}
+
 /** UI role keys that include the Teams section by default. */
 const TEAMS_NAV_ACCOUNT_ROLES = new Set(
   Object.entries(DEFAULT_NAV_SECTIONS)
@@ -179,6 +194,7 @@ module.exports = {
   authorize,
   authorizeAny,
   authorizeStaff,
+  requireAdmin,
   requireSuperAdmin,
   requireTeamsReadAccess,
 };

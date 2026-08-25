@@ -8,6 +8,7 @@ import { CommunityBroadcastModal } from "./CommunityBroadcastModal.jsx";
 import { BrandLoader } from "./BrandLoader.jsx";
 import { ProgramCategoryModal } from "./ProgramCategoryModal.jsx";
 import { ProgramProgressModal } from "./ProgramProgressModal.jsx";
+import { ReportGenerationModal } from "./ReportGenerationModal.jsx";
 import { TeamRemindModal } from "./TeamRemindModal.jsx";
 import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { PaymentsModal } from "./PaymentsModal.jsx";
@@ -68,17 +69,6 @@ function asNumber(value) {
 
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-
-function downloadBlob(filename, blob) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
 
 function nextPaint() {
   return new Promise((resolve) => {
@@ -229,7 +219,15 @@ function safePixelRatio(width, height, maxSide) {
 
 function skipCaptureNoise(el, { skipImages = false } = {}) {
   if (!(el instanceof Element)) return true;
-  if (el.classList.contains("page-head__actions") || el.classList.contains("ua-dash-export")) return false;
+  if (
+    el.classList.contains("page-head__actions") ||
+    el.classList.contains("ua-dash-export") ||
+    el.classList.contains("ua-dash-export-preview") ||
+    el.classList.contains("ua-dash-report-modal") ||
+    el.classList.contains("ua-cp-modal-backdrop")
+  ) {
+    return false;
+  }
   const tag = el.tagName;
   if (tag === "IFRAME" || tag === "VIDEO" || tag === "CANVAS") return false;
   if (skipImages && (tag === "IMG" || tag === "IMAGE")) return false;
@@ -984,7 +982,10 @@ export function AdminDashboard({
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsError, setPaymentsError] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [exportPreview, setExportPreview] = useState(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const pageRef = useRef(null);
+  const exportPreviewUrlRef = useRef(null);
 
   const champMonthOptions = liveCommunity ? (liveLeaderboard?.months || []) : [];
   const champ = liveCommunity
@@ -1421,6 +1422,25 @@ export function AdminDashboard({
     openTeamRemind(onboardingRemindCopy(row));
   }
 
+  function clearExportPreview() {
+    if (exportPreviewUrlRef.current) {
+      URL.revokeObjectURL(exportPreviewUrlRef.current);
+      exportPreviewUrlRef.current = null;
+    }
+    setExportPreview(null);
+  }
+
+  function downloadExportPreview() {
+    if (!exportPreview?.url) return;
+    const link = document.createElement("a");
+    link.href = exportPreview.url;
+    link.download = exportPreview.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    onToast("Dashboard screenshot saved");
+  }
+
   async function exportDashboard() {
     if (exporting || loading || loadError) return;
     const node = pageRef.current;
@@ -1428,12 +1448,16 @@ export function AdminDashboard({
       onToast("Nothing to export");
       return;
     }
+    clearExportPreview();
     setExporting(true);
     onToast("Capturing dashboard…");
     try {
       const blob = await capturePageScreenshot(node);
-      downloadBlob(`dashboard-${new Date().toISOString().slice(0, 10)}.png`, blob);
-      onToast("Dashboard screenshot saved");
+      const filename = `dashboard-${new Date().toISOString().slice(0, 10)}.png`;
+      const url = URL.createObjectURL(blob);
+      exportPreviewUrlRef.current = url;
+      setExportPreview({ url, filename });
+      onToast("Dashboard preview ready");
     } catch (err) {
       console.error("Dashboard export failed", err);
       onToast("Could not capture screenshot");
@@ -1442,19 +1466,47 @@ export function AdminDashboard({
     }
   }
 
+  useEffect(() => {
+    return () => {
+      if (exportPreviewUrlRef.current) {
+        URL.revokeObjectURL(exportPreviewUrlRef.current);
+        exportPreviewUrlRef.current = null;
+      }
+    };
+  }, []);
+
   const exportButton = canExport ? (
     <button
       type="button"
       className={`btn btn--outline ua-dash-export${exporting ? " ua-dash-export--busy" : ""}`}
-      aria-label={exporting ? "Exporting dashboard" : "Export dashboard"}
-      title="Export dashboard"
+      aria-label={exporting ? "Exporting dashboard" : "Export Dashboard"}
+      title="Export Dashboard"
       disabled={exporting || loading || refreshing || Boolean(loadError)}
       onClick={exportDashboard}
     >
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v12" /><path d="M8 7l4-4 4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></svg>
-      {exporting ? "Capturing…" : "Export report"}
+      {exporting ? "Capturing…" : "Export Dashboard"}
     </button>
   ) : null;
+
+  const reportButton = (
+    <button
+      type="button"
+      className="btn btn--outline ua-dash-export ua-dash-report"
+      aria-label="Report generation"
+      title="Report generation"
+      disabled={loading || refreshing || Boolean(loadError)}
+      onClick={() => setReportModalOpen(true)}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6" />
+        <path d="M8 13h8" />
+        <path d="M8 17h5" />
+      </svg>
+      Report Generation
+    </button>
+  );
 
   function renderDashboardHead(showUpdated = false) {
     return (
@@ -1486,7 +1538,12 @@ export function AdminDashboard({
             ) : null}
           </div>
         </div>
-        {exportButton ? <div className="page-head__actions">{exportButton}</div> : null}
+        {(exportButton || reportButton) ? (
+          <div className="page-head__actions">
+            {exportButton}
+            {reportButton}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -2445,6 +2502,45 @@ export function AdminDashboard({
         onClose={() => setBroadcastModalOpen(false)}
         onSend={confirmBroadcast}
       />
+
+      <ReportGenerationModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        onToast={onToast}
+      />
+
+      {exportPreview ? (
+        <div className="ua-cp-modal-backdrop ua-dash-export-preview" onClick={clearExportPreview} role="presentation">
+          <div
+            className="ua-dash-export-preview__dialog"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ua-dash-export-preview-title"
+          >
+            <div className="ua-dash-export-preview__head">
+              <div>
+                <h3 id="ua-dash-export-preview-title">Export dashboard</h3>
+                <p>Preview the full dashboard image, then download it.</p>
+              </div>
+              <button type="button" className="ua-cp-modal__close" aria-label="Close" onClick={clearExportPreview}>
+                ×
+              </button>
+            </div>
+            <div className="ua-dash-export-preview__body">
+              <img src={exportPreview.url} alt="Dashboard export preview" />
+            </div>
+            <div className="ua-dash-export-preview__actions">
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={clearExportPreview}>
+                Close
+              </button>
+              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={downloadExportPreview}>
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -271,7 +271,7 @@ function ClientLookupPanel({
         <input
           type="text"
           className="ua-cfg-lookup__input"
-          placeholder="Referral code · e.g. IRW-WC-544"
+          placeholder="Referral code · e.g. 7WDW4JST"
           value={code}
           onChange={(event) => setCode(event.target.value)}
           onKeyDown={(event) => {

@@ -17,6 +17,7 @@ const {
   getMembership,
   countAccountsByRoleKey,
   countAccountsByConsoleRoleId,
+  listAccountsByConsoleRoleId,
   assignedMembershipRoleId,
   toPublicAccount,
 } = require("../../models/accountModel");

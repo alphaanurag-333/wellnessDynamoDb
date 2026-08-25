@@ -50,7 +50,7 @@
 
 **Done**
 - Every user gets a referral code
-- Staff formats: WC `IRW-WC-NNN`, AWC `IRW-AWC-NNN` (suffix expands on collision)
+- Staff and user referral codes: random 8-char format (e.g. `7WDW4JST`). Legacy `IRW-WC-*` / `IRW-AWC-*` codes remain valid.
 - Central referral registry (entity type/id, owning WC)
 - Registration accepts referral code → referral history + WC/AWC assignment + parent WC
 - Invalid codes ignored (registration still succeeds)
