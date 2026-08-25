@@ -1115,8 +1115,10 @@ function RolesPermissionsTab({ onToast }) {
                 onClick={() => selectRole(r.id)}
               >
                 <div className="ua-ac-role-card__top">
-                  <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
-                  <span className="ua-ac-role-card__name">{r.name}</span>
+                  <span className="ua-ac-role-card__label">
+                    <span className="ua-ac-role-card__dot" style={{ background: r.color }} />
+                    <span className="ua-ac-role-card__name">{r.name}</span>
+                  </span>
                   <span className="ua-ac-role-card__pill">
                     {g >= TOTAL_PERM_SLOTS ? `all ${TOTAL_PERM_SLOTS}` : `${g}/${TOTAL_PERM_SLOTS}`}
                   </span>
