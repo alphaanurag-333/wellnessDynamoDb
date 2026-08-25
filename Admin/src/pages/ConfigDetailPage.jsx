@@ -14,6 +14,7 @@ import {
 } from "../components/OnboardingVideoSection.jsx";
 import { HealthProgressTrackersPanel } from "../components/ConfigAppRemainingSections.jsx";
 import { MedicalQuestionnairePanel } from "../components/MedicalQuestionnairePanel.jsx";
+import { PrakritiAssessmentSection } from "../components/PrakritiAssessmentSection.jsx";
 import {
   CommitmentLetterSection,
   COMMITMENT_LETTER_DEFAULT,
@@ -1292,6 +1293,7 @@ const PREVIEW_CONFIGS = new Set([
   "app-rx-bank",
   "app-gallery",
   "app-launch",
+  "app-prakriti",
   "app-ai-enable",
   "feature-flags",
   "web-program-testimonials",
@@ -1390,6 +1392,9 @@ export function ConfigDetailPage() {
   const [galleryMedia, setGalleryMedia] = useState([]);
   const [launchRatings, setLaunchRatings] = useState([]);
   const [launchDomains, setLaunchDomains] = useState([]);
+  const [prakritiQuestions, setPrakritiQuestions] = useState([]);
+  const [prakritiThingsToAvoid, setPrakritiThingsToAvoid] = useState([]);
+  const [prakritiRecommendations, setPrakritiRecommendations] = useState([]);
   const [aiCoaches, setAiCoaches] = useState([]);
   const [aiAssistants, setAiAssistants] = useState([]);
   const [programStories, setProgramStories] = useState([]);
@@ -1680,6 +1685,10 @@ export function ConfigDetailPage() {
                     (domain) =>
                       domain.live && domain.questions.some((entry) => entry.enabled),
                   )
+              : item.id === "app-prakriti"
+                ? prakritiQuestions.some((entry) => entry.shown)
+                  || prakritiRecommendations.some((entry) => entry.shown)
+                  || prakritiThingsToAvoid.some((entry) => entry.shown)
               : item.id === "app-ai-enable"
                 ? aiCoaches.some((entry) => entry.enabled)
                   || aiAssistants.some((entry) => entry.enabled)
@@ -2030,6 +2039,18 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
+      case "app-prakriti":
+        return (
+          <PrakritiAssessmentSection
+            questions={prakritiQuestions}
+            setQuestions={setPrakritiQuestions}
+            thingsToAvoid={prakritiThingsToAvoid}
+            setThingsToAvoid={setPrakritiThingsToAvoid}
+            recommendations={prakritiRecommendations}
+            setRecommendations={setPrakritiRecommendations}
+            onToast={onToast}
+          />
+        );
       case "app-ai-enable":
         return (
           <AiEnableSection
@@ -2345,7 +2366,7 @@ export function ConfigDetailPage() {
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-prakriti" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}${item.id === "app-prakriti" ? " ua-cfg-detail--prakriti" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>
@@ -2406,6 +2427,9 @@ export function ConfigDetailPage() {
           galleryMedia,
           launchRatings,
           launchDomains,
+          prakritiQuestions,
+          prakritiThingsToAvoid,
+          prakritiRecommendations,
           aiCoaches,
           aiAssistants,
           programStories,

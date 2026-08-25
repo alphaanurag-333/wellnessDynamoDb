@@ -105,7 +105,7 @@ async function buildTeamRoleCards(stats = {}) {
   }
 }
 const PRODUCT_LABELS = {
-  consultancy: "Consultancy",
+  consultancy: "PWC",
   program: "Programs",
   challenge: "Challenges",
   energy_exchange: "Energy Exchange",
@@ -113,9 +113,9 @@ const PRODUCT_LABELS = {
 };
 const PRODUCT_BUCKETS = [
   { key: "program", name: "Wellness program", barName: "Wellness programs", color: "#2b8f5b" },
+  { key: "app", name: "App users", barName: "App users", color: "#ec7a45" },
   { key: "consultancy", name: "PWC", barName: "PWC", color: "#0d9488" },
   { key: "challenge", name: "Challenges", barName: "Challenges", color: "#7c3aed" },
-  { key: "app", name: "App users", barName: "App users", color: "#ec7a45" },
 ];
 
 const DASHBOARD_PAYMENT_BUCKETS = {
@@ -654,7 +654,7 @@ async function getAdminDashboardStats() {
   const userTiers = [
     { key: "seek", name: "Seek (free)", value: seekUsers },
     { key: "heal", name: "Heal (paid)", value: healUsers },
-    { key: "consultancy_only", name: "Consultancy only", value: consultancyUsers },
+    { key: "consultancy_only", name: "PWC only", value: consultancyUsers },
     { key: "maintenance", name: "Maintenance", value: maintenanceUsers },
   ];
 
@@ -707,6 +707,7 @@ async function getAdminDashboardStats() {
             revenue: row.total,
             program: row.program,
             consultancy: row.consultancy,
+            challenge: row.challenge,
             app: row.app,
           }))
         : buildRevenueByMonth(paidTransactions, monthKeys),
@@ -955,6 +956,7 @@ function mergeRevenueIntoStatistics(statistics, revenueAnalytics) {
             revenue: row.total,
             program: row.program,
             consultancy: row.consultancy,
+            challenge: row.challenge,
             app: row.app,
           }))
         : statistics.charts?.revenueByMonth,

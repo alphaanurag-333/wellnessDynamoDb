@@ -100,6 +100,19 @@ export async function fetchUserWaterTracking(userId, { from, to, days } = {}) {
   }
 }
 
+export async function updateUserWaterGoal(userId, goalGlasses, { date } = {}) {
+  const body = { goalGlasses: Number(goalGlasses) };
+  if (date) body.date = date;
+  try {
+    const { data } = await api.patch(healUserPath(userId, "/water-tracking/goal"), body, {
+      headers: authHeader(),
+    });
+    return data.data || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserDietPlanAssignments(userId) {
   try {
     const { data } = await api.get(healUserPath(userId, "/diet-plan-assignments"), {

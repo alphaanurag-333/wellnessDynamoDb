@@ -57,6 +57,8 @@ import {
 } from "../data/teamStaffData.js";
 import {
   PRODUCT_COLORS,
+  REVENUE_PRODUCT_META,
+  REVENUE_PRODUCT_ORDER,
   findFinancialYear,
   formatRevenue,
   resolveRevenueAnalytics,
@@ -998,7 +1000,7 @@ export function AdminDashboard({
     : { label: "", champion: "—", score: 0 };
   const maxScore = activeLeaderboard[0]?.score ?? 1;
   const tierData = coachTiers.map((tier) => ({
-    label: tier.label === "PWC ONLY" ? "Consultancy only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
+    label: tier.label === "PWC ONLY" ? "PWC only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
     value: tier.value,
     color: tier.color,
   }));
@@ -1074,37 +1076,58 @@ export function AdminDashboard({
   ];
   const trendMax = Math.max(
     1,
-    ...fyMonths.flatMap((row) => [asNumber(row.program), asNumber(row.consultancy)]),
+    ...fyMonths.flatMap((row) => [
+      asNumber(row.program),
+      asNumber(row.app),
+      asNumber(row.consultancy),
+      asNumber(row.challenge),
+    ]),
   );
   const revenueTrend = fyMonths.map((row) => ({
     month: row.month,
     label: row.label,
     total: formatRevenue(row.total),
-    progHeight: Math.round((asNumber(row.program) / trendMax) * 100),
-    consHeight: Math.round((asNumber(row.consultancy) / trendMax) * 100),
+    heights: {
+      program: Math.round((asNumber(row.program) / trendMax) * 100),
+      app: Math.round((asNumber(row.app) / trendMax) * 100),
+      consultancy: Math.round((asNumber(row.consultancy) / trendMax) * 100),
+      challenge: Math.round((asNumber(row.challenge) / trendMax) * 100),
+    },
     active: row.month === selectedMonthRow?.month,
   }));
   const productMonthRow = fyMonths.find((row) => row.month === productMonthKey);
   const fyProductTotals = fyMonths.reduce(
     (acc, row) => {
       acc.program += asNumber(row.program);
-      acc.consultancy += asNumber(row.consultancy);
       acc.app += asNumber(row.app);
+      acc.consultancy += asNumber(row.consultancy);
+      acc.challenge += asNumber(row.challenge);
       return acc;
     },
-    { program: 0, consultancy: 0, app: 0 },
+    { program: 0, app: 0, consultancy: 0, challenge: 0 },
   );
-  const fyProductTotal = fyProductTotals.program + fyProductTotals.consultancy + fyProductTotals.app;
+  const fyProductTotal = REVENUE_PRODUCT_ORDER.reduce(
+    (sum, key) => sum + asNumber(fyProductTotals[key]),
+    0,
+  );
   const productSource = productMonthKey === "all"
     ? {
-      products: [
-        { key: "program", name: "Wellness programs", value: fyProductTotals.program, pct: fyProductTotal ? Math.round((fyProductTotals.program / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.program },
-        { key: "app", name: "App users", value: fyProductTotals.app, pct: fyProductTotal ? Math.round((fyProductTotals.app / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.app },
-        { key: "consultancy", name: "PWC", value: fyProductTotals.consultancy, pct: fyProductTotal ? Math.round((fyProductTotals.consultancy / fyProductTotal) * 100) : 0, color: PRODUCT_COLORS.consultancy },
-      ],
+      products: REVENUE_PRODUCT_ORDER.map((key) => {
+        const meta = REVENUE_PRODUCT_META[key];
+        const value = fyProductTotals[key];
+        return {
+          key,
+          name: meta.name,
+          value,
+          pct: fyProductTotal ? Math.round((value / fyProductTotal) * 100) : 0,
+          color: meta.color,
+        };
+      }),
     }
     : { products: productMonthRow?.products || selectedMonthRow?.products || [] };
-  const productBarOrder = { program: 0, app: 1, consultancy: 2 };
+  const productBarOrder = Object.fromEntries(
+    REVENUE_PRODUCT_ORDER.map((key, index) => [key, index]),
+  );
   const productBars = [...(productSource.products || [])]
     .sort((a, b) => (productBarOrder[a.key] ?? 9) - (productBarOrder[b.key] ?? 9))
     .map((row) => ({
@@ -2347,12 +2370,18 @@ export function AdminDashboard({
                     <div className="chart-card__title">Revenue trend</div>
                     <div className="chart-card__sub">{selectedFy?.label || "Financial year"} · Apr → Mar · tap a month</div>
                   </div>
-                  <div className="chart-legend">
-                    <span><i className="dot dot--green" /> Program</span>
-                    <span><i className="dot dot--purple" /> Consultancy</span>
+                  <div className="chart-legend chart-legend--products">
+                    {REVENUE_PRODUCT_ORDER.map((key) => {
+                      const meta = REVENUE_PRODUCT_META[key];
+                      return (
+                        <span key={key}>
+                          <i className={`dot dot--${key}`} /> {meta.name}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="bar-chart bar-chart--dual">
+                <div className="bar-chart bar-chart--products">
                   {revenueTrend.length ? revenueTrend.map((m) => (
                     <button
                       key={m.month}
@@ -2366,8 +2395,13 @@ export function AdminDashboard({
                     >
                       <span className="bar-group__total">{m.total}</span>
                       <div className="bar-group__bars">
-                        <div className={`bar bar--prog-${m.active ? "active" : "light"}`} style={{ height: `${m.progHeight}%` }} />
-                        <div className={`bar bar--cons-${m.active ? "active" : "light"}`} style={{ height: `${m.consHeight}%` }} />
+                        {REVENUE_PRODUCT_ORDER.map((key) => (
+                          <div
+                            key={key}
+                            className={`bar bar--${key}-${m.active ? "active" : "light"}`}
+                            style={{ height: `${m.heights[key]}%` }}
+                          />
+                        ))}
                       </div>
                       <span className={`bar-group__label${m.active ? " bar-group__label--active" : ""}`}>{m.label}</span>
                     </button>
@@ -2460,7 +2494,7 @@ export function AdminDashboard({
 
               <div className="chart-card">
                 <div className="chart-card__title">Users by tier</div>
-                <div className="chart-card__sub">Seek, Heal, consultancy &amp; maintenance</div>
+                <div className="chart-card__sub">Seek, Heal, PWC &amp; maintenance</div>
                 <div className="tier-chart">
                   <div className="tier-chart__donut">
                     <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>

@@ -1,6 +1,7 @@
 const {
   PutCommand,
   GetCommand,
+  UpdateCommand,
   DeleteCommand,
   QueryCommand,
   ScanCommand,
@@ -10,6 +11,21 @@ const { docClient } = require("../config/db");
 
 const TABLE = "CoachAssignedWellnessPrescription";
 const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach", "admin"]);
+/** WC may edit & re-publish the current assignment within this window of createdAt. */
+const PRESCRIPTION_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+function getPrescriptionEditDeadline(createdAt) {
+  const createdMs = new Date(createdAt || 0).getTime();
+  if (!Number.isFinite(createdMs) || createdMs <= 0) return null;
+  return new Date(createdMs + PRESCRIPTION_EDIT_WINDOW_MS).toISOString();
+}
+
+function isWithinPrescriptionEditWindow(createdAt, now = new Date()) {
+  const createdMs = new Date(createdAt || 0).getTime();
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (!Number.isFinite(createdMs) || createdMs <= 0 || !Number.isFinite(nowMs)) return false;
+  return nowMs - createdMs <= PRESCRIPTION_EDIT_WINDOW_MS;
+}
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -76,6 +92,8 @@ function normalizeSourcePrescriptionIds(ids) {
 function toCoachAssignedWellnessPrescriptionPublic(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const editableUntil = getPrescriptionEditDeadline(row.createdAt);
+  const canEdit = isWithinPrescriptionEditWindow(row.createdAt);
   return {
     id: row.id,
     _id: row._id,
@@ -90,6 +108,8 @@ function toCoachAssignedWellnessPrescriptionPublic(item) {
     createdById: row.createdById,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    editableUntil,
+    canEdit,
   };
 }
 
@@ -144,6 +164,64 @@ async function getCoachAssignedWellnessPrescriptionRecordById(id) {
 async function getCoachAssignedWellnessPrescriptionById(id) {
   const item = await getCoachAssignedWellnessPrescriptionRecordById(id);
   return item ? toCoachAssignedWellnessPrescriptionPublic(item) : null;
+}
+
+async function updateCoachAssignedWellnessPrescription(id, {
+  date,
+  items,
+  sourcePrescriptionIds,
+}) {
+  const assignmentId = String(id || "").trim();
+  if (!assignmentId) throw new Error("id is required");
+
+  const existing = await getCoachAssignedWellnessPrescriptionRecordById(assignmentId);
+  if (!existing) {
+    const err = new Error("Assignment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  if (!isWithinPrescriptionEditWindow(existing.createdAt)) {
+    const err = new Error(
+      "Prescription can only be edited and re-published within 12 hours of publishing"
+    );
+    err.name = "EditWindowExpiredError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const nextDate = date !== undefined && date !== null && String(date).trim()
+    ? normalizeDate(date)
+    : existing.date;
+  const nextItems = items !== undefined ? normalizeItems(items) : existing.items;
+  const nextSources = sourcePrescriptionIds !== undefined
+    ? normalizeSourcePrescriptionIds(sourcePrescriptionIds)
+    : existing.sourcePrescriptionIds || [];
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: assignmentId },
+      UpdateExpression:
+        "SET #date = :date, #items = :items, #sourcePrescriptionIds = :sourcePrescriptionIds, #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#date": "date",
+        "#items": "items",
+        "#sourcePrescriptionIds": "sourcePrescriptionIds",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":date": nextDate,
+        ":items": nextItems,
+        ":sourcePrescriptionIds": nextSources,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toCoachAssignedWellnessPrescriptionPublic(Attributes);
 }
 
 async function queryCoachAssignedWellnessPrescriptionsByUserId(userId) {
@@ -227,13 +305,17 @@ async function isWellnessPrescriptionCatalogReferenced(prescriptionId) {
 }
 
 module.exports = {
+  PRESCRIPTION_EDIT_WINDOW_MS,
   createCoachAssignedWellnessPrescription,
   getCoachAssignedWellnessPrescriptionById,
   getCoachAssignedWellnessPrescriptionRecordById,
+  updateCoachAssignedWellnessPrescription,
   listCoachAssignedWellnessPrescriptionsByUserId,
   deleteCoachAssignedWellnessPrescription,
   isWellnessPrescriptionCatalogReferenced,
   toCoachAssignedWellnessPrescriptionPublic,
+  isWithinPrescriptionEditWindow,
+  getPrescriptionEditDeadline,
   normalizeDate,
   normalizeCreatedByRole,
 };
