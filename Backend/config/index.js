@@ -90,8 +90,6 @@ module.exports = {
    */
   bhashsmsAllowSessionText: process.env.BHASHSMS_ALLOW_SESSION_TEXT === "true",
 
-  geminiApiKey: process.env.GEMINI_API_KEY || "",
-  geminiModel: process.env.GEMINI_MODEL || "gemini-3.6-flash",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   openaiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
 

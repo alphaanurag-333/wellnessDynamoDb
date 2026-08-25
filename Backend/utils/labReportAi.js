@@ -10,9 +10,68 @@ function formatAiDateLabel(value) {
 }
 
 function stripCodeFence(text) {
-  const raw = String(text || "").trim();
-  const fenced = raw.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return (fenced ? fenced[1] : raw).trim();
+  let raw = String(text || "").replace(/^\uFEFF/, "").trim();
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced) raw = fenced[1].trim();
+  return raw;
+}
+
+function extractBalancedJsonObject(text) {
+  const start = String(text || "").indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escape = true;
+        continue;
+      }
+      if (ch === "\"") inString = false;
+      continue;
+    }
+    if (ch === "\"") {
+      inString = true;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function extractAllBalancedJsonObjects(text) {
+  const found = [];
+  const src = String(text || "");
+  let i = 0;
+  while (i < src.length) {
+    const start = src.indexOf("{", i);
+    if (start < 0) break;
+    const obj = extractBalancedJsonObject(src.slice(start));
+    if (!obj) {
+      i = start + 1;
+      continue;
+    }
+    found.push(obj);
+    i = start + obj.length;
+  }
+  return found;
+}
+
+function scoreParsedObject(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return 0;
+  if ("related" in obj || "proteinGm" in obj || "caloriesKcal" in obj) return 3;
+  if ("panels" in obj || "bloodSummary" in obj) return 2;
+  return 1;
 }
 
 function parseAiJson(text) {
@@ -22,22 +81,42 @@ function parseAiJson(text) {
     err.name = "AiParseError";
     throw err;
   }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    const start = raw.indexOf("{");
-    const end = raw.lastIndexOf("}");
-    if (start >= 0 && end > start) {
-      try {
-        return JSON.parse(raw.slice(start, end + 1));
-      } catch {
-        /* fall through */
+
+  const candidates = [];
+  const seen = new Set();
+  const add = (value) => {
+    if (!value || seen.has(value)) return;
+    seen.add(value);
+    candidates.push(value);
+  };
+
+  add(raw);
+  for (const obj of extractAllBalancedJsonObjects(raw)) add(obj);
+
+  const parsedObjects = [];
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (Array.isArray(parsed)) {
+        const firstObject = parsed.find((item) => item && typeof item === "object" && !Array.isArray(item));
+        if (firstObject) parsedObjects.push(firstObject);
+        continue;
       }
+      if (parsed && typeof parsed === "object") parsedObjects.push(parsed);
+    } catch {
+      /* try next */
     }
+  }
+
+  if (!parsedObjects.length) {
     const err = new Error("AI did not return valid JSON");
     err.name = "AiParseError";
     throw err;
   }
+
+  return parsedObjects.reduce((best, obj) =>
+    scoreParsedObject(obj) >= scoreParsedObject(best) ? obj : best
+  );
 }
 
 function normalizeTone(value) {

@@ -13,6 +13,14 @@ test("parseAiJson reads fenced JSON", () => {
   assert.deepEqual(parsed, { panels: [] });
 });
 
+test("parseAiJson prefers meal JSON after thinking text", () => {
+  const parsed = parseAiJson(
+    'Reasoning { "scratch": true } then answer {"related":true,"proteinGm":12,"caloriesKcal":180}'
+  );
+  assert.equal(parsed.related, true);
+  assert.equal(parsed.proteinGm, 12);
+});
+
 test("normalizeTone maps aliases", () => {
   assert.equal(normalizeTone("warning"), "warn");
   assert.equal(normalizeTone("out-of-range"), "bad");
