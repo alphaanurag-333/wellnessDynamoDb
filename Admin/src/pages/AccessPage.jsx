@@ -1148,7 +1148,7 @@ function RolesPermissionsTab({ onToast }) {
             <p className="ua-ac-role-detail__desc">{role.desc}</p>
           </div>
           <div className="ua-ac-role-detail__controls">
-              <div style={{ fontSize: "11.5px", color: "rgb(138, 151, 172)", fontWeight: "650" }} >Data scope</div>
+              <div style={{ fontSize: "11.5px", color: "rgb(138, 151, 172)", fontWeight: "600" }} >Data scope</div>
             <div className="ua-ac-scope">
               {["All", "Team", "Assigned"].map((s) => (
                 <button
