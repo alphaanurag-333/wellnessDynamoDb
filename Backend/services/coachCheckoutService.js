@@ -162,21 +162,41 @@ function isEnabledFlag(value) {
   return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
-function resolveBundledSubscription(config, { includeAppSubscription, subscriptionItemId } = {}) {
-  const requestedId = String(subscriptionItemId || "").trim();
+function resolveBundledSubscription(config, {
+  includeAppSubscription,
+  fyYearCount,
+  fyOffsets,
+} = {}) {
+  // Complimentary FY app subscription is always bundled with program checkout unless explicitly off.
   const enabled =
-    includeAppSubscription === undefined && requestedId
+    includeAppSubscription === undefined
       ? true
       : isEnabledFlag(includeAppSubscription);
   if (!enabled) return null;
 
+  const maxYears = 4;
+  let offsets;
+  if (Array.isArray(fyOffsets) && fyOffsets.length) {
+    offsets = fyOffsets.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n >= 0);
+  } else {
+    const years = Math.min(maxYears, Math.max(1, Number(fyYearCount) || 1));
+    offsets = Array.from({ length: years }, (_, i) => i);
+  }
+  if (!offsets.length) offsets = [0];
+
+  const yearCount = offsets.length;
   const monthlyAmount = Number(config?.energy_exchange_monthly_amount) || 0;
+  const itemName =
+    yearCount === 1
+      ? "Current financial year app subscription"
+      : `${yearCount} financial year app subscription`;
+
   return {
     enabled: true,
     kind: "fy_energy_exchange",
-    itemId: "fy-current",
-    itemName: "Current financial year app subscription",
-    fyOffsets: [0],
+    itemId: yearCount === 1 ? "fy-current" : `fy-${yearCount}y`,
+    itemName,
+    fyOffsets: offsets,
     monthlyAmount,
     includedInProgramPrice: true,
   };
@@ -572,6 +592,8 @@ async function triggerCoachCheckout({
   appHealValidity,
   includeAppSubscription,
   subscriptionItemId,
+  fyYearCount,
+  fyOffsets,
   wellnessCoachId,
   assistantCoachId,
   actor,
@@ -640,7 +662,11 @@ async function triggerCoachCheckout({
 
   const bundledSubscription =
     type === "program"
-      ? resolveBundledSubscription(config, { includeAppSubscription, subscriptionItemId })
+      ? resolveBundledSubscription(config, {
+          includeAppSubscription,
+          fyYearCount,
+          fyOffsets,
+        })
       : null;
 
   const validityHours = parseDurationToHours(linkValidity);
@@ -872,6 +898,7 @@ module.exports = {
   getActiveCoachCheckoutOffer,
   getExpiredCoachCheckoutOffer,
   toPublicCoachProgramOffer,
+  resolveBundledSubscription,
   canActorTriggerCheckout,
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,

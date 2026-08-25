@@ -361,7 +361,7 @@ export function ScheduleMeetingModal({
     start.setHours(0, 0, 0, 0);
     return Array.from({ length: 5 }, (_, index) => {
       const date = new Date(start);
-      date.setDate(start.getDate() + index + 1);
+      date.setDate(start.getDate() + index);
       return {
         id: `d${index}`,
         day: WEEKDAY_FROM_SUN[date.getDay()].toUpperCase(),
@@ -375,7 +375,7 @@ export function ScheduleMeetingModal({
   const [selectedPreset, setSelectedPreset] = useState("d0");
   const [laterDate, setLaterDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 1);
+    d.setHours(0, 0, 0, 0);
     return d;
   });
   const [laterOpen, setLaterOpen] = useState(false);

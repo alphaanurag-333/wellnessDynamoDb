@@ -205,7 +205,14 @@ function LaunchHeldBanner({
         <div className="ua-cp-launch-meet__copy">
           <strong>
             {status === "time_requested"
-              ? `Client requested a time · awaiting ${firstName}`
+              ? (() => {
+                  const count = Array.isArray(meeting?.requestedSlots) && meeting.requestedSlots.length
+                    ? meeting.requestedSlots.length
+                    : (meeting?.requestedStartAt ? 1 : 0);
+                  return count > 1
+                    ? `Client requested ${count} times · awaiting your pick`
+                    : `Client requested a time · awaiting ${firstName}`;
+                })()
               : `${count} slot${count === 1 ? "" : "s"} held · awaiting ${firstName}`}
           </strong>
           <span>{meta || "Waiting for client to pick a slot."}</span>

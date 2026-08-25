@@ -3,7 +3,8 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById } = require("../../models/userModel");
 const {
   isScheduleStepKey,
-  parseIsoDate,
+  normalizeRequestedSlots,
+  mirrorRequestedSlots,
   toUserFacingMeeting,
   getOnboardingMeetingById,
   updateOnboardingMeeting,
@@ -87,8 +88,7 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
     selectedSlotId: slot.id,
     confirmedAt: new Date().toISOString(),
     durationMinutes,
-    requestedStartAt: null,
-    requestedEndAt: null,
+    ...mirrorRequestedSlots([]),
     ...zoom,
   });
 
@@ -110,25 +110,19 @@ exports.requestUserOnboardingMeetingTimeController = asyncHandler(async (req, re
     throw new AppError("This meeting is not open for a time request", 400);
   }
 
-  let requestedStartAt;
-  let requestedEndAt;
+  let requestedSlots;
   try {
-    requestedStartAt = parseIsoDate(req.body?.startAt || req.body?.requestedStartAt, "startAt");
-    requestedEndAt = parseIsoDate(req.body?.endAt || req.body?.requestedEndAt, "endAt");
+    requestedSlots = normalizeRequestedSlots(req.body?.slots || req.body?.requestedSlots, {
+      startAt: req.body?.startAt || req.body?.requestedStartAt,
+      endAt: req.body?.endAt || req.body?.requestedEndAt,
+    });
   } catch (err) {
     throw new AppError(err.message, 400);
-  }
-  if (!requestedStartAt || !requestedEndAt) {
-    throw new AppError("startAt and endAt are required", 400);
-  }
-  if (new Date(requestedEndAt).getTime() <= new Date(requestedStartAt).getTime()) {
-    throw new AppError("endAt must be after startAt", 400);
   }
 
   const updated = await updateOnboardingMeeting(meeting.id, {
     status: "time_requested",
-    requestedStartAt,
-    requestedEndAt,
+    ...mirrorRequestedSlots(requestedSlots),
     selectedSlotId: null,
   });
 

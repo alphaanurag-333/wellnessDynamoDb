@@ -153,6 +153,8 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
     appHealValidity: body.appHealValidity ?? body.app_heal_validity,
     includeAppSubscription: body.includeAppSubscription ?? body.include_app_subscription,
     subscriptionItemId: body.subscriptionItemId ?? body.subscription_item_id,
+    fyYearCount: body.fyYearCount ?? body.fy_year_count,
+    fyOffsets: body.fyOffsets ?? body.fy_offsets,
     wellnessCoachId: body.wellnessCoachId ?? body.wellness_coach_id,
     assistantCoachId: body.assistantCoachId ?? body.assistant_coach_id,
     actor,

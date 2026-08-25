@@ -11,6 +11,7 @@ async function createUserTable() {
       { AttributeName: "id", AttributeType: "S" },
       { AttributeName: "email", AttributeType: "S" },
       { AttributeName: "phoneKey", AttributeType: "S" },
+      { AttributeName: "whatsappKey", AttributeType: "S" },
       { AttributeName: "status", AttributeType: "S" },
       { AttributeName: "createdAt", AttributeType: "S" },
       { AttributeName: "parentCoachId", AttributeType: "S" },
@@ -26,6 +27,11 @@ async function createUserTable() {
       {
         IndexName: "PhoneKeyIndex",
         KeySchema: [{ AttributeName: "phoneKey", KeyType: "HASH" }],
+        Projection: { ProjectionType: "ALL" },
+      },
+      {
+        IndexName: "WhatsappKeyIndex",
+        KeySchema: [{ AttributeName: "whatsappKey", KeyType: "HASH" }],
         Projection: { ProjectionType: "ALL" },
       },
       {

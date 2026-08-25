@@ -31,6 +31,7 @@ const SPARSE_GSI_ATTRIBUTES = new Set([
   "dobMonthDay",
   "referredByUserId",
   "referredByEntityId",
+  "whatsappKey",
 ]);
 
 const USER_ALLOWED_STATUS = ["active", "inactive", "blocked"];
@@ -389,6 +390,7 @@ function buildUserItem(input, { id, now } = {}) {
 
   const email = normalizeEmail(input.email);
   const phoneKey = buildPhoneKey(phoneCountryCode, phone);
+  const whatsappKey = buildPhoneKey(whatsappCountryCode, whatsappPhone);
 
   return {
     id: id || uuidv4(),
@@ -401,6 +403,7 @@ function buildUserItem(input, { id, now } = {}) {
     whatsappSameAsMobile,
     whatsappCountryCode,
     whatsappPhone,
+    whatsappKey,
     dob: normalizeDob(input.dob),
     dobMonthDay: computeDobMonthDay(normalizeDob(input.dob)),
     gender: normalizeGender(input.gender),
@@ -552,8 +555,35 @@ async function getUserByPhone(phoneCountryCode, phone) {
   return withLegacyId(Items?.[0] || null);
 }
 
+async function getUserByWhatsapp(whatsappCountryCode, whatsappPhone) {
+  const users = await listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit: 1 });
+  return users[0] || null;
+}
+
+async function listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit = 25 } = {}) {
+  const whatsappKey = buildPhoneKey(whatsappCountryCode, whatsappPhone);
+  if (!whatsappKey) return [];
+  const { Items } = await docClient.send(
+    new QueryCommand({
+      TableName: TABLE,
+      IndexName: "WhatsappKeyIndex",
+      KeyConditionExpression: "whatsappKey = :whatsappKey",
+      ExpressionAttributeValues: { ":whatsappKey": whatsappKey },
+      Limit: Math.max(1, Math.min(100, Number(limit) || 25)),
+    })
+  );
+  return (Items || []).map((item) => withLegacyId(item));
+}
+
+function resolveEffectiveWhatsappKey(user) {
+  const sameAsMobile = Boolean(user?.whatsappSameAsMobile);
+  const cc = sameAsMobile ? user?.phoneCountryCode : user?.whatsappCountryCode;
+  const phone = sameAsMobile ? user?.phone : user?.whatsappPhone;
+  return buildPhoneKey(cc, phone);
+}
+
 async function updateUser(id, updates) {
-  const blockedFields = new Set(["id", "_id", "createdAt", "phoneKey"]);
+  const blockedFields = new Set(["id", "_id", "createdAt", "phoneKey", "whatsappKey"]);
   const immutableOnceFields = new Set([
     "referredByUserId",
     "referredByCode",
@@ -597,6 +627,21 @@ async function updateUser(id, updates) {
     }
   }
 
+  const whatsappFieldsChanged =
+    updates.phone !== undefined ||
+    updates.phoneCountryCode !== undefined ||
+    updates.whatsappPhone !== undefined ||
+    updates.whatsappCountryCode !== undefined ||
+    updates.whatsappSameAsMobile !== undefined;
+
+  if (whatsappFieldsChanged) {
+    if (merged.whatsappSameAsMobile) {
+      merged.whatsappCountryCode = merged.phoneCountryCode;
+      merged.whatsappPhone = merged.phone;
+    }
+    merged.whatsappKey = resolveEffectiveWhatsappKey(merged);
+  }
+
   if (updates.dob !== undefined) {
     merged.dobMonthDay = computeDobMonthDay(merged.dob);
   }
@@ -607,6 +652,12 @@ async function updateUser(id, updates) {
   }
   if (patchKeys.includes("whatsappSameAsMobile")) {
     patchKeys.push("whatsappCountryCode", "whatsappPhone");
+  }
+  if (whatsappFieldsChanged) {
+    patchKeys.push("whatsappKey");
+    if (merged.whatsappSameAsMobile) {
+      patchKeys.push("whatsappCountryCode", "whatsappPhone");
+    }
   }
   if (patchKeys.includes("dob")) {
     patchKeys.push("dobMonthDay");
@@ -663,8 +714,9 @@ async function deleteUser(id) {
       UpdateExpression:
         "SET #status = :deleted, deletedAt = :deletedAt, updatedAt = :updatedAt, " +
         "deletedEmail = if_not_exists(email, :empty), " +
-        "deletedPhoneKey = if_not_exists(phoneKey, :empty) " +
-        "REMOVE email, phoneKey, passwordHash, otp, otpExpire, resetPasswordToken, " +
+        "deletedPhoneKey = if_not_exists(phoneKey, :empty), " +
+        "deletedWhatsappKey = if_not_exists(whatsappKey, :empty) " +
+        "REMOVE email, phoneKey, whatsappKey, passwordHash, otp, otpExpire, resetPasswordToken, " +
         "resetPasswordExpire, fcm_id, profileImage, presentablePic",
       ExpressionAttributeNames: { "#status": "status" },
       ExpressionAttributeValues: {
@@ -1491,6 +1543,9 @@ module.exports = {
   getUserById,
   getUserByEmail,
   getUserByPhone,
+  getUserByWhatsapp,
+  listUsersByWhatsapp,
+  resolveEffectiveWhatsappKey,
   updateUser,
   deleteUser,
   listUsersByParentCoachId,

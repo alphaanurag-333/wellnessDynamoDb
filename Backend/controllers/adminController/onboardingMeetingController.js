@@ -10,6 +10,8 @@ const {
   isScheduleStepKey,
   holdExpiresAtFrom,
   normalizeSlots,
+  resolveRequestedSlots,
+  mirrorRequestedSlots,
   toPublicOnboardingMeeting,
   createOnboardingMeeting,
   getOnboardingMeetingById,
@@ -96,8 +98,7 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
     coachId: user.parentCoachId || actor.id,
     createdById: actor.id,
     createdByRole: actor.role,
-    requestedStartAt: null,
-    requestedEndAt: null,
+    ...mirrorRequestedSlots([]),
     selectedSlotId: null,
   };
 
@@ -127,12 +128,44 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
   if (meeting.status !== "time_requested") {
     throw new AppError("This meeting does not have a pending time request", 400);
   }
-  const startAt = meeting.requestedStartAt;
-  const endAt = meeting.requestedEndAt;
-  if (!startAt || !endAt) {
+
+  const requestedSlots = resolveRequestedSlots(meeting);
+  if (!requestedSlots.length) {
     throw new AppError("Requested time is missing", 400);
   }
 
+  const requestedSlotId = String(req.body?.requestedSlotId || req.body?.slotId || "").trim();
+  let chosen = requestedSlotId
+    ? requestedSlots.find((s) => String(s.id) === requestedSlotId)
+    : null;
+
+  // Legacy single-request accept: if only one slot (or no id sent for a single legacy request), use it.
+  if (!chosen && requestedSlots.length === 1 && !requestedSlotId) {
+    chosen = requestedSlots[0];
+  }
+
+  // Match by startAt/endAt if provided without id
+  if (!chosen && (req.body?.startAt || req.body?.requestedStartAt)) {
+    const startAt = String(req.body?.startAt || req.body?.requestedStartAt || "").trim();
+    const endAt = String(req.body?.endAt || req.body?.requestedEndAt || "").trim();
+    chosen = requestedSlots.find(
+      (s) =>
+        String(s.startAt) === startAt &&
+        (!endAt || String(s.endAt) === endAt),
+    );
+  }
+
+  if (!chosen) {
+    throw new AppError(
+      requestedSlots.length > 1
+        ? "requestedSlotId is required when multiple times were requested"
+        : "Requested time is missing",
+      400,
+    );
+  }
+
+  const startAt = chosen.startAt;
+  const endAt = chosen.endAt;
   const durationMinutes = durationFromRange(startAt, endAt, meeting.durationMinutes);
   let zoom;
   try {
@@ -151,6 +184,7 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     selectedSlotId: null,
     confirmedAt: new Date().toISOString(),
     durationMinutes,
+    ...mirrorRequestedSlots([]),
     ...zoom,
   });
 
@@ -175,8 +209,7 @@ exports.rejectOnboardingMeetingRequestController = asyncHandler(async (req, res)
 
   const updated = await updateOnboardingMeeting(meeting.id, {
     status: "slots_offered",
-    requestedStartAt: null,
-    requestedEndAt: null,
+    ...mirrorRequestedSlots([]),
     holdExpiresAt: holdExpiresAtFrom(req.body?.hold || "24 hours"),
   });
 

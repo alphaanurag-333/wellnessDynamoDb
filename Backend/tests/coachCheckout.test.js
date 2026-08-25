@@ -7,6 +7,7 @@ const {
   getActiveCoachCheckoutOffer,
   getExpiredCoachCheckoutOffer,
   toPublicCoachProgramOffer,
+  resolveBundledSubscription,
   canActorTriggerCheckout,
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,
@@ -168,6 +169,23 @@ describe("coach program offer DTO", () => {
       monthlyAmount: 200,
       includedInProgramPrice: true,
     });
+  });
+
+  it("bundles complimentary FY subscription by default and supports multi-year offsets", () => {
+    const one = resolveBundledSubscription({ energy_exchange_monthly_amount: 200 }, {});
+    assert.deepEqual(one.fyOffsets, [0]);
+    assert.equal(one.itemId, "fy-current");
+
+    const three = resolveBundledSubscription(
+      { energy_exchange_monthly_amount: 200 },
+      { fyYearCount: 3 },
+    );
+    assert.deepEqual(three.fyOffsets, [0, 1, 2]);
+    assert.equal(three.itemId, "fy-3y");
+    assert.match(three.itemName, /3 financial year/);
+
+    const off = resolveBundledSubscription({}, { includeAppSubscription: false });
+    assert.equal(off, null);
   });
 
   it("prefers the pending offer over a catalog assignment on GET", () => {

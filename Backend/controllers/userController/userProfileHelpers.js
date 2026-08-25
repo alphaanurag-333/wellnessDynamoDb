@@ -39,6 +39,8 @@ const {
   getUserById,
   getUserByEmail,
   getUserByPhone,
+  getUserByWhatsapp,
+  listUsersByWhatsapp,
   updateUser,
   deleteUser,
   toPublicUser,
@@ -361,6 +363,16 @@ async function assertUniquePhone(phoneCountryCode, phone, excludeUserId) {
   }
 }
 
+async function assertUniqueWhatsapp(whatsappCountryCode, whatsappPhone, excludeUserId) {
+  const existing = await listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit: 25 });
+  const conflict = existing.find(
+    (user) => user.status !== "deleted" && user.id !== excludeUserId
+  );
+  if (conflict) {
+    throw new AppError("A user already exists with this WhatsApp number", 409);
+  }
+}
+
 async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req } = {}) {
   const updates = {};
 
@@ -397,6 +409,7 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
           ? whatsappSameRaw
           : Boolean(current.whatsappSameAsMobile);
       if (sameAsMobile) {
+        await assertUniqueWhatsapp(nextCc, nextPhone, current.id);
         updates.whatsappSameAsMobile = true;
         updates.whatsappCountryCode = nextCc;
         updates.whatsappPhone = nextPhone;
@@ -422,6 +435,9 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
       // Number unchanged — allow flag-only updates (e.g. sameAsMobile after OTP
       // already verified that number). Any actual number change requires OTP.
       if (phoneUnchanged) {
+        if (requested.sameAsMobile && requested.phone) {
+          await assertUniqueWhatsapp(requested.countryCode, requested.phone, current.id);
+        }
         updates.whatsappSameAsMobile = Boolean(requested.sameAsMobile);
         if (requested.sameAsMobile) {
           const nextCc =
@@ -664,7 +680,7 @@ async function resolveUserByPhoneInput(phone, phoneCountryCode) {
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) throw new AppError("phone is required", 400);
   const cc = normalizeCountryCode(phoneCountryCode);
-  const user = await getUserByPhone(cc, normalizedPhone);
+  const user = await getUserByWhatsapp(cc, normalizedPhone);
   if (!user) throw new AppError("User not found", 404);
   return user;
 }
@@ -784,6 +800,9 @@ async function sendProfilePhoneChangeOtp(user, { phone, phoneCountryCode }) {
   });
   const cc = normalizeCountryCode(phoneCountryCode || user.phoneCountryCode);
   await assertUniquePhone(cc, normalizedPhone, user.id);
+  if (user.whatsappSameAsMobile) {
+    await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
+  }
 
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
@@ -828,6 +847,9 @@ async function verifyProfilePhoneChangeOtp(user, { phone, phoneCountryCode, otp 
   }
 
   await assertUniquePhone(cc, normalizedPhone, user.id);
+  if (user.whatsappSameAsMobile) {
+    await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
+  }
 
   const updatePayload = {
     phone: normalizedPhone,
@@ -871,6 +893,8 @@ async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCount
     throw new AppError("WhatsApp number is unchanged", 400);
   }
 
+  await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
+
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
 
@@ -913,6 +937,8 @@ async function verifyProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCou
     throw new AppError("WhatsApp number does not match the pending verification request", 400);
   }
 
+  await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
+
   const matchesMobile =
     normalizedPhone === normalizePhone(user.phone) &&
     cc === normalizeCountryCode(user.phoneCountryCode);
@@ -939,6 +965,8 @@ module.exports = {
   enrichUser,
   assertUniqueEmail,
   assertUniquePhone,
+  assertUniqueWhatsapp,
+  getEffectiveWhatsapp,
   buildUserUpdatesFromBody,
   parseProfileImageFromBody,
   resolveUserByPhoneInput,
