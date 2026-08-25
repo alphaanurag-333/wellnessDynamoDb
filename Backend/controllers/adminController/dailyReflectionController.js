@@ -103,6 +103,7 @@ async function buildUserDrfForm(userId, settings) {
     activities: withTodayValues(listCatalogWithSettings(settings), todayLog),
     tracking: snapshot.tracking,
     bedtime: settings.bedtime || DEFAULT_BEDTIME,
+    dailyReflectionAudioId: settings.dailyReflectionAudioId || null,
     scoring: bundle.scoring,
     todayLog: todayLog || null,
     todayScore: todayLog?.submittedAt
@@ -152,13 +153,24 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
   const activities = req.body?.activities;
   const selectedQuestionIds = parseSelectedQuestionIds(req.body);
   const bedtime = req.body?.bedtime;
+  const hasDailyReflectionAudioId = Object.prototype.hasOwnProperty.call(
+    req.body || {},
+    "dailyReflectionAudioId"
+  );
+  const dailyReflectionAudioId = hasDailyReflectionAudioId
+    ? req.body.dailyReflectionAudioId
+    : undefined;
 
   if (
     activities === undefined &&
     selectedQuestionIds === undefined &&
-    bedtime === undefined
+    bedtime === undefined &&
+    !hasDailyReflectionAudioId
   ) {
-    throw new AppError("activities, selectedQuestionIds, or bedtime is required", 400);
+    throw new AppError(
+      "activities, selectedQuestionIds, bedtime, or dailyReflectionAudioId is required",
+      400
+    );
   }
 
   if (activities !== undefined && (activities === null || typeof activities !== "object")) {
@@ -167,7 +179,15 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
 
   let updated;
   try {
-    if (selectedQuestionIds !== undefined || bedtime !== undefined) {
+    const audioOnly =
+      hasDailyReflectionAudioId &&
+      activities === undefined &&
+      selectedQuestionIds === undefined &&
+      bedtime === undefined;
+
+    if (audioOnly) {
+      updated = await upsertSettingsFields(userId, { dailyReflectionAudioId });
+    } else if (selectedQuestionIds !== undefined || bedtime !== undefined) {
       const current = await getSettings(userId);
       const bundle = await loadDrfBundle();
       const nextIds = selectedQuestionIds !== undefined
@@ -180,6 +200,7 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
         ...(activities !== undefined ? { activities } : {}),
         selectedQuestionIds: selectedQuestionIdsFromSections(sections),
         bedtime: bedtime !== undefined ? bedtime : current.bedtime || DEFAULT_BEDTIME,
+        ...(hasDailyReflectionAudioId ? { dailyReflectionAudioId } : {}),
       });
     } else {
       updated = await upsertSettings(userId, activities);

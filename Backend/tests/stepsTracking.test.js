@@ -54,6 +54,20 @@ describe("stepsTracking sync rules", () => {
     assert.equal(shouldReplaceDay(existing, incoming), true);
   });
 
+  it("replaces when step count is higher even if syncedAt is older", () => {
+    const existing = {
+      stepCount: 12000,
+      syncedAt: "2026-06-22T09:00:00.000Z",
+      externalIds: ["a"],
+    };
+    const incoming = {
+      stepCount: 15000,
+      syncedAt: "2026-06-22T08:00:00.000Z",
+      externalIds: ["a"],
+    };
+    assert.equal(shouldReplaceDay(existing, incoming), true);
+  });
+
   it("compares externalIds order-independently", () => {
     assert.equal(externalIdsSignature(["b", "a"]), externalIdsSignature(["a", "b"]));
   });

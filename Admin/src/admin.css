@@ -28135,10 +28135,47 @@ scrollbar-width: thin;
   white-space: nowrap;
 }
 
+.updated-admin .ua-cp-bms-content-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .updated-admin .ua-cp-bms-content-card__action--in {
   background: #5e6ad2;
   border-color: #5e6ad2;
   color: #fff;
+}
+
+.updated-admin .ua-cp-bms-content-card__action--drf {
+  color: #0f766e;
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.updated-admin .ua-cp-bms-content-card__action--drf:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-cp-bms-content-card__action--drf-on {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-bms-content-card__drf-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ccfbf1;
+  color: #0f766e;
 }
 
 .updated-admin .ua-cp-bms-disabled {
@@ -56190,7 +56227,7 @@ scrollbar-width: thin;
     grid-template-columns: 72px 1fr;
     grid-template-areas:
       "thumb body"
-      "action action";
+      "actions actions";
   }
 
   .updated-admin .ua-cp-bms-content-card__thumb {
@@ -56202,8 +56239,9 @@ scrollbar-width: thin;
     grid-area: body;
   }
 
+  .updated-admin .ua-cp-bms-content-card__actions,
   .updated-admin .ua-cp-bms-content-card__action {
-    grid-area: action;
+    grid-area: actions;
     width: 100%;
   }
 

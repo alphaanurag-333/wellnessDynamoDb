@@ -261,8 +261,18 @@ function MealCard({
 
   async function saveEdit() {
     const items = normalizeMealItems(draft.items);
-    if (editing && draft.items.some((item) => !String(item.name || "").trim() && Number(item.quantityGm) > 0)) {
+    if (
+      editing &&
+      draft.items.some((item) => !String(item.name || "").trim() && Number(item.quantityGm) > 0)
+    ) {
       onToast("Each item needs a name");
+      return;
+    }
+    if (
+      editing &&
+      draft.items.some((item) => String(item.name || "").trim() && !(Number(item.quantityGm) > 0))
+    ) {
+      onToast("Each item needs a quantity (g)");
       return;
     }
     try {
