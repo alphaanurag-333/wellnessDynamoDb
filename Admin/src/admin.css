@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --brand-green: linear-gradient(135deg, rgb(52, 165, 106), rgb(124, 199, 154));
   --brand-green-solid: rgb(43, 143, 91);
   --brand-blue: #16233f;
@@ -13666,6 +13666,17 @@
   color: #5a6b85;
 }
 
+.updated-admin .ua-cp-btn--danger {
+  background: #fff;
+  border: 1px solid #fecdca;
+  color: #b42318;
+}
+
+.updated-admin .ua-cp-btn--danger:hover:not(:disabled) {
+  background: #fef3f2;
+  border-color: #fda29b;
+}
+
 .updated-admin .ua-cp-btn--block {
   width: 100%;
   height: 42px;
@@ -16393,6 +16404,18 @@ scrollbar-width: thin;
   background: #f7f8fb;
   border-color: #c5cedb;
   color: #4b5568;
+}
+
+.updated-admin .ua-cp-btn--outline.ua-cp-btn--sm.ua-cp-btn--danger {
+  background: #fff;
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+.updated-admin .ua-cp-btn--outline.ua-cp-btn--sm.ua-cp-btn--danger:hover:not(:disabled) {
+  background: #fef3f2;
+  border-color: #fda29b;
+  color: #b42318;
 }
 
 .updated-admin .ua-cp-ba-photo-grid {
@@ -25540,6 +25563,8 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-food-meal__actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
 }

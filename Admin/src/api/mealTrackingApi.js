@@ -42,6 +42,18 @@ export async function updateUserMealLog(userId, logId, payload) {
   }
 }
 
+export async function deleteUserMealLog(userId, logId) {
+  try {
+    const { data } = await api.delete(
+      healUserPath(userId, `/meal-tracking/${encodeURIComponent(logId)}`),
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function analyzeUserMealLog(userId, logId) {
   try {
     const { data } = await api.post(

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   buildWaterChartFromHistory,
   formatFoodDateInput,
@@ -21,6 +22,7 @@ import {
   fetchUserWaterTracking,
   reviewUserMealLog,
   updateUserMealLog,
+  deleteUserMealLog,
   updateUserMealTrackingMode,
   updateUserWaterGoal,
   analyzeUserMealLog,
@@ -232,8 +234,10 @@ function MealCard({
   analyzing,
   autoEdit,
   canEdit,
+  canDelete,
   onSubmitAi,
   onSaveEdit,
+  onDelete,
   onOpenPhoto,
   onToast,
 }) {
@@ -330,39 +334,51 @@ function MealCard({
           ) : null}
         </div>
         <div className="ua-cp-food-meal__actions">
-          {canEdit ? (
-            editing ? (
-              <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => { setDraft(emptyMealDraft(meal)); setEditing(false); }}>Cancel</button>
-                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
-              </>
-            ) : meal.aiStatus === "review" || meal.aiStatus === "approved" ? (
-              <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
-                {canRunAi && canEdit ? (
+          {canEdit && editing ? (
+            <>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => { setDraft(emptyMealDraft(meal)); setEditing(false); }}>Cancel</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
+            </>
+          ) : (
+            <>
+              {canEdit && (meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
+                <>
+                  <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+                  {canRunAi ? (
+                    <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                      <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+                    </button>
+                  ) : null}
+                </>
+              ) : canEdit && meal.aiStatus === "rejected" ? (
+                <span className="ua-cp-food-meal__status">Rejected</span>
+              ) : canEdit ? (
+                <>
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                    disabled={busy || analyzing}
+                    onClick={startEdit}
+                  >
+                    Manual insert
+                  </button>
                   <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
                     <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
                   </button>
-                ) : null}
-              </>
-            ) : meal.aiStatus === "rejected" ? (
-              <span className="ua-cp-food-meal__status">Rejected</span>
-            ) : (
-              <>
+                </>
+              ) : null}
+              {canDelete ? (
                 <button
                   type="button"
-                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger"
                   disabled={busy || analyzing}
-                  onClick={startEdit}
+                  onClick={() => onDelete(meal)}
                 >
-                  Manual insert
+                  Delete
                 </button>
-                <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
-                  <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
-                </button>
-              </>
-            )
-          ) : null}
+              ) : null}
+            </>
+          )}
         </div>
       </div>
       {showAnalysis ? (
@@ -387,7 +403,7 @@ function MealCard({
   );
 }
 
-function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, onSubmitAi, onSaveEdit, onOpenPhoto, onToast }) {
+function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, canDelete, onSubmitAi, onSaveEdit, onDelete, onOpenPhoto, onToast }) {
   return (
     <div className="ua-cp-food-meals">
       <div style={{color:"rgb(22, 35, 63)"}} className="ua-cp-food-meals__head">
@@ -406,8 +422,10 @@ function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, day
             analyzing={analyzingId === meal.id}
             autoEdit={editAfterAiId === meal.id}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={onSubmitAi}
             onSaveEdit={onSaveEdit}
+            onDelete={onDelete}
             onOpenPhoto={onOpenPhoto}
             onToast={onToast}
           />
@@ -496,7 +514,7 @@ function WaterGoalBar({ goal, editing, draftGoal, onStartEdit, onCancel, onSave,
 }
 
 export function FoodSection({ user, onToast, onUserUpdated }) {
-  const { canEdit } = useClientSectionPermissions("food");
+  const { canEdit, canDelete } = useClientSectionPermissions("food");
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
@@ -520,6 +538,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [modeBusy, setModeBusy] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [editAfterAiId, setEditAfterAiId] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const jumpedToLatestRef = useRef(false);
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
@@ -550,6 +569,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setMeals([]);
     jumpedToLatestRef.current = false;
     setEditAfterAiId("");
+    setPendingDelete(null);
   }, [live, today, userId]);
 
   useEffect(() => {
@@ -828,6 +848,29 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  async function deleteMeal(id) {
+    if (!id) return;
+    if (!live) {
+      setMeals((list) => list.filter((m) => m.id !== id));
+      setPhotoMeal((current) => (current?.id === id ? null : current));
+      setEditAfterAiId((current) => (current === id ? "" : current));
+      onToast("Meal log deleted");
+      return;
+    }
+    setBusyId(id);
+    try {
+      await deleteUserMealLog(userId, id);
+      setMeals((list) => list.filter((m) => m.id !== id));
+      setPhotoMeal((current) => (current?.id === id ? null : current));
+      setEditAfterAiId((current) => (current === id ? "" : current));
+      onToast("Meal log deleted");
+    } catch (err) {
+      onToast(err?.message || "Failed to delete meal log");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function saveWaterGoal() {
     const nextGoal = Math.min(99, Math.max(1, Number(waterGoalDraft) || 1));
     if (!live) {
@@ -929,8 +972,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             dateLabel={dateLabel}
             loading={mealsLoading}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={submitAi}
             onSaveEdit={saveMealEdit}
+            onDelete={setPendingDelete}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
           />
@@ -958,8 +1003,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             dateLabel={dateLabel}
             loading={mealsLoading}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={submitAi}
             onSaveEdit={saveMealEdit}
+            onDelete={setPendingDelete}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
           />
@@ -1000,6 +1047,22 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} appVisible={dietPlanOn} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        tag="Delete meal"
+        title={pendingDelete ? `Delete “${pendingDelete.name}”?` : ""}
+        body="This removes the meal log from this client's food tracking. You can't undo this."
+        cancelLabel="Keep meal"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const meal = pendingDelete;
+          setPendingDelete(null);
+          if (meal?.id) deleteMeal(meal.id);
+        }}
+      />
     </div>
   );
 }
