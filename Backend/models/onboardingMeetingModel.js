@@ -45,6 +45,8 @@ function parseIsoDate(value, fieldName) {
   return date.toISOString();
 }
 
+const MAX_REQUESTED_SLOTS = 4;
+
 function normalizeSlots(rawSlots) {
   if (!Array.isArray(rawSlots) || !rawSlots.length) {
     const err = new Error("At least one slot is required");
@@ -72,6 +74,56 @@ function normalizeSlots(rawSlots) {
   });
 }
 
+/**
+ * Normalize user-proposed alternate times (1–4).
+ * Accepts `slots` array, or legacy single `{ startAt, endAt }` / body fields.
+ */
+function normalizeRequestedSlots(raw, { startAt, endAt } = {}) {
+  let list = Array.isArray(raw) ? raw : null;
+  if (!list || !list.length) {
+    if (startAt && endAt) {
+      list = [{ startAt, endAt }];
+    } else {
+      const err = new Error("At least one requested time slot is required");
+      err.name = "ValidationError";
+      throw err;
+    }
+  }
+  if (list.length > MAX_REQUESTED_SLOTS) {
+    const err = new Error(`At most ${MAX_REQUESTED_SLOTS} requested time slots are allowed`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return normalizeSlots(list);
+}
+
+function resolveRequestedSlots(meeting) {
+  if (!meeting) return [];
+  if (Array.isArray(meeting.requestedSlots) && meeting.requestedSlots.length) {
+    return meeting.requestedSlots;
+  }
+  if (meeting.requestedStartAt && meeting.requestedEndAt) {
+    return [
+      {
+        id: "legacy",
+        startAt: meeting.requestedStartAt,
+        endAt: meeting.requestedEndAt,
+      },
+    ];
+  }
+  return [];
+}
+
+function mirrorRequestedSlots(requestedSlots) {
+  const slots = Array.isArray(requestedSlots) ? requestedSlots : [];
+  const first = slots[0] || null;
+  return {
+    requestedSlots: slots,
+    requestedStartAt: first?.startAt || null,
+    requestedEndAt: first?.endAt || null,
+  };
+}
+
 function holdExpiresAtFrom(hold, now = Date.now()) {
   const label = String(hold || "24 hours").trim();
   const ms = HOLD_OPTIONS_MS[label] || HOLD_OPTIONS_MS["24 hours"];
@@ -91,6 +143,7 @@ function toPublicOnboardingMeeting(item) {
     coachNote: item.coachNote || "",
     durationMinutes: Number(item.durationMinutes) || 45,
     selectedSlotId: item.selectedSlotId || null,
+    requestedSlots: resolveRequestedSlots(item),
     requestedStartAt: item.requestedStartAt || null,
     requestedEndAt: item.requestedEndAt || null,
     zoomMeetingId: item.zoomMeetingId || null,
@@ -147,6 +200,7 @@ function buildItem(input, { id, now }) {
     coachNote: input.coachNote ? String(input.coachNote).trim() : "",
     durationMinutes: Number(input.durationMinutes) || 45,
     selectedSlotId: input.selectedSlotId || null,
+    requestedSlots: Array.isArray(input.requestedSlots) ? input.requestedSlots : [],
     requestedStartAt: input.requestedStartAt || null,
     requestedEndAt: input.requestedEndAt || null,
     zoomMeetingId: input.zoomMeetingId || null,
@@ -200,6 +254,7 @@ async function updateOnboardingMeeting(id, updates) {
     "coachNote",
     "durationMinutes",
     "selectedSlotId",
+    "requestedSlots",
     "requestedStartAt",
     "requestedEndAt",
     "zoomMeetingId",
@@ -353,10 +408,14 @@ module.exports = {
   TABLE,
   MEETING_STATUSES,
   ACTIVE_STATUSES,
+  MAX_REQUESTED_SLOTS,
   SCHEDULE_STEP_KEYS,
   isScheduleStepKey,
   holdExpiresAtFrom,
   normalizeSlots,
+  normalizeRequestedSlots,
+  resolveRequestedSlots,
+  mirrorRequestedSlots,
   parseIsoDate,
   toPublicOnboardingMeeting,
   toUserFacingMeeting,

@@ -363,18 +363,29 @@ export function CounsellingSection({ user, onToast }) {
       ) : null}
 
       <div className="ua-cp-counselling__history">
-        <h3>History</h3>
+        <h3>Review Tracking</h3>
+        <p className="ua-cp-counselling__muted">Same list the client sees as “When have I met my Wellness Coach?”</p>
         {!tracks.length ? (
           <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No sessions yet.</p>
         ) : (
           <div className="ua-cp-counselling__history-list">
-            {tracks.map((track) => (
-              <div key={track.id} className="ua-cp-counselling__history-row">
-                <strong>{STATUS_LABEL[track.status] || track.status}</strong>
-                <span>{formatWhen(track.scheduledAt || track.createdAt)}</span>
-                <span>{track.concern || "Counselling session"}</span>
-              </div>
-            ))}
+            {[...tracks]
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map((track, index) => {
+                const reviewNumber = Math.max(tracks.length - index, 1);
+                const dateLabel = new Date(track.createdAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                return (
+                  <div key={track.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
+                    <strong>Review {reviewNumber}</strong>
+                    <span>{dateLabel}</span>
+                    <span className="ua-cp-counselling__muted">{STATUS_LABEL[track.status] || track.status}</span>
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

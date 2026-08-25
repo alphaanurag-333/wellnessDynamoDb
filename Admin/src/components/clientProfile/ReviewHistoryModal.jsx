@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { fetchHealConsultancyTracks } from "../../api/counsellingApi.js";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
@@ -18,32 +19,43 @@ function StopwatchIcon() {
   );
 }
 
-function CapsuleIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="2.2" y="5.2" width="11.6" height="5.6" rx="2.8" fill="#f4a5a5" />
-      <path d="M8 5.2h5.8a2.8 2.8 0 0 1 0 5.6H8V5.2Z" fill="#f0c75e" />
-      <rect x="2.2" y="5.2" width="11.6" height="5.6" rx="2.8" stroke="#c98b3c" strokeWidth="0.7" />
-      <path d="M8 5.2v5.6" stroke="#c98b3c" strokeWidth="0.7" />
-    </svg>
-  );
-}
-
-function ChevronIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-      <path d="M3.5 1.5 7 5 3.5 8.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+/** Same date shape as the app Review Tracking sheet (`en-US` short month). */
+function formatReviewDate(value) {
+  if (!value) return "—";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "—";
+  return parsed.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 /**
- * Live review history only — never falls back to seed/sample coach notes.
+ * Maps heal consultancy tracks the same way the mobile app does for
+ * "When have I met my Wellness Coach?" / Review Tracking.
  */
-export function ReviewHistoryModal({ user, onClose, onNavigate }) {
-  const entries = Array.isArray(user?.reviewHistory)
-    ? user.reviewHistory.filter(Boolean)
-    : [];
+function mapTracksToReviewItems(tracks, total) {
+  const list = Array.isArray(tracks) ? tracks.filter(Boolean) : [];
+  const sorted = [...list].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  const count = Number(total) > 0 ? Number(total) : sorted.length;
+  return sorted.map((track, index) => ({
+    id: track.id || track._id || `track-${index}`,
+    reviewNumber: Math.max(count - index, 1),
+    date: formatReviewDate(track.createdAt),
+  }));
+}
+
+/**
+ * Live Review Tracking — same heal-consultancy meetings the client sees in-app.
+ */
+export function ReviewHistoryModal({ user, onClose }) {
+  const userId = String(user?.id || user?._id || "").trim();
+  const [loading, setLoading] = useState(Boolean(userId));
+  const [items, setItems] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -52,6 +64,39 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    if (!userId) {
+      setItems([]);
+      setLoading(false);
+      setError("");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+
+    fetchHealConsultancyTracks(userId, { page: 1, limit: 50 })
+      .then((data) => {
+        if (cancelled) return;
+        const tracks = data?.tracks || [];
+        const total = data?.pagination?.total ?? tracks.length;
+        setItems(mapTracksToReviewItems(tracks, total));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setItems([]);
+        setError(err?.message || "Could not load review tracking");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const overlay = (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -67,8 +112,10 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
               <StopwatchIcon />
             </span>
             <div>
-              <div id="review-history-title" className="ua-cp-review-modal__title">Review history</div>
-              <div className="ua-cp-review-modal__sub">{user?.name || "Client"} · coach check-ins over time</div>
+              <div id="review-history-title" className="ua-cp-review-modal__title">Review Tracking</div>
+              <div className="ua-cp-review-modal__sub">
+                {user?.name || "Client"} · when they met their wellness coach
+              </div>
             </div>
           </div>
           <button type="button" className="ua-cp-review-modal__close" onClick={onClose} aria-label="Close">
@@ -77,42 +124,27 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
         </div>
 
         <div className="ua-cp-review-modal__list">
-          {entries.length === 0 ? (
+          {loading ? (
             <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">No review history yet.</p>
+              <p className="ua-cp-review-modal__empty-text">Loading review tracking…</p>
+            </div>
+          ) : error ? (
+            <div className="ua-cp-review-modal__empty">
+              <p className="ua-cp-review-modal__empty-text">{error}</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="ua-cp-review-modal__empty">
+              <p className="ua-cp-review-modal__empty-text">No wellness coach meetings yet.</p>
             </div>
           ) : (
-            entries.map((entry, index) => (
-              <article key={entry.id || `${entry.date}-${index}`} className="ua-cp-review-item">
-                <div className="ua-cp-review-item__rail" aria-hidden="true">
-                  <span className="ua-cp-review-item__dot" />
-                  {index < entries.length - 1 ? <span className="ua-cp-review-item__line" /> : null}
+            <div className="ua-cp-review-track-list">
+              {items.map((item) => (
+                <div key={item.id} className="ua-cp-review-track-row">
+                  <strong className="ua-cp-review-track-row__label">Review {item.reviewNumber}</strong>
+                  <span className="ua-cp-review-track-row__date">{item.date}</span>
                 </div>
-                <div className="ua-cp-review-item__body">
-                  <div className="ua-cp-review-item__top">
-                    <strong className="ua-cp-review-item__date">{entry.date}</strong>
-                    {entry.prescription ? (
-                      <button
-                        type="button"
-                        className="ua-cp-review-item__rx"
-                        onClick={() => {
-                          onClose?.();
-                          onNavigate?.("prescription");
-                        }}
-                      >
-                        <CapsuleIcon />
-                        <span>Wellness prescription</span>
-                        <ChevronIcon />
-                      </button>
-                    ) : null}
-                  </div>
-                  {entry.coach ? (
-                    <div className="ua-cp-review-item__by">by {entry.coach}</div>
-                  ) : null}
-                  <p className="ua-cp-review-item__note">{entry.note}</p>
-                </div>
-              </article>
-            ))
+              ))}
+            </div>
           )}
         </div>
       </div>

@@ -4,6 +4,7 @@ import { PageHeader } from "../components/shared.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { BlockTimeModal } from "../components/clientProfile/BlockTimeModal.jsx";
 import { MiniCalendar, ScheduleMeetingModal } from "../components/clientProfile/ScheduleMeetingModal.jsx";
+import { ReviewRequestedTimesModal } from "../components/clientProfile/ReviewRequestedTimesModal.jsx";
 import {
   acceptOnboardingMeetingRequest,
   cancelOnboardingMeeting,
@@ -116,23 +117,52 @@ function mapCalendarMeetings(meetings) {
     const name = meeting.userName || meeting.userId || "Client";
     const kind = STEP_LABELS[meeting.stepKey] || meeting.stepKey;
     const slot = (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0];
-    const startIso = meeting.status === "time_requested" ? meeting.requestedStartAt : slot?.startAt;
-    const endIso = meeting.status === "time_requested" ? meeting.requestedEndAt : slot?.endAt;
-    if (startIso) {
-      const start = new Date(startIso);
-      const end = endIso ? new Date(endIso) : start;
-      events.push({
-        id: meeting.id,
-        date: ymd(start),
-        start: padTime(start),
-        end: padTime(end),
-        label: `${name} · ${kind}`,
-        type: meeting.status === "confirmed" ? "confirmed" : meeting.status === "slots_offered" ? "held" : "blocked",
-        canDelete: false,
-        status: meeting.status,
+    const requestedSlots = Array.isArray(meeting.requestedSlots) && meeting.requestedSlots.length
+      ? meeting.requestedSlots
+      : (meeting.requestedStartAt && meeting.requestedEndAt
+        ? [{ id: "legacy", startAt: meeting.requestedStartAt, endAt: meeting.requestedEndAt }]
+        : []);
+
+    if (meeting.status === "time_requested") {
+      requestedSlots.forEach((reqSlot, index) => {
+        const startIso = reqSlot.startAt;
+        const endIso = reqSlot.endAt;
+        if (!startIso) return;
+        const start = new Date(startIso);
+        const end = endIso ? new Date(endIso) : start;
+        events.push({
+          id: `${meeting.id}:${reqSlot.id || index}`,
+          date: ymd(start),
+          start: padTime(start),
+          end: padTime(end),
+          label: `${name} · ${kind}`,
+          type: "blocked",
+          canDelete: false,
+          status: meeting.status,
+        });
       });
+    } else {
+      const startIso = slot?.startAt;
+      const endIso = slot?.endAt;
+      if (startIso) {
+        const start = new Date(startIso);
+        const end = endIso ? new Date(endIso) : start;
+        events.push({
+          id: meeting.id,
+          date: ymd(start),
+          start: padTime(start),
+          end: padTime(end),
+          label: `${name} · ${kind}`,
+          type: meeting.status === "confirmed" ? "confirmed" : "held",
+          canDelete: false,
+          status: meeting.status,
+        });
+      }
     }
 
+    const firstRequested = requestedSlots[0];
+    const startIso = meeting.status === "time_requested" ? firstRequested?.startAt : slot?.startAt;
+    const endIso = meeting.status === "time_requested" ? firstRequested?.endAt : slot?.endAt;
     const row = {
       id: meeting.id,
       userId: meeting.userId,
@@ -146,11 +176,15 @@ function mapCalendarMeetings(meetings) {
       time: startIso ? padTime(new Date(startIso)) : "—",
       release: releaseLabel(meeting.holdExpiresAt),
       slots: (meeting.slots || []).map((s) => formatSlotLabel(s.startAt, s.endAt)).filter(Boolean),
-      wants: meeting.requestedStartAt
-        ? [formatSlotLabel(meeting.requestedStartAt, meeting.requestedEndAt)]
-        : [],
+      wants: requestedSlots.map((s) => ({
+        id: s.id,
+        label: formatSlotLabel(s.startAt, s.endAt),
+      })).filter((s) => s.label),
       meta: `${kind} · ${meeting.status.replace("_", " ")}`,
-      reason: meeting.coachNote || "Client requested another time",
+      reason: meeting.coachNote
+        || (requestedSlots.length > 1
+          ? `Client requested ${requestedSlots.length} times`
+          : "Client requested another time"),
       meeting,
     };
 
@@ -188,6 +222,8 @@ export function CalendarPage() {
   const [awaitingOpen, setAwaitingOpen] = useState(false);
   const [changesOpen, setChangesOpen] = useState(false);
   const [scheduleFor, setScheduleFor] = useState(null);
+  const [reviewRequest, setReviewRequest] = useState(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [drag, setDrag] = useState(null);
   const [blockDraft, setBlockDraft] = useState(null);
 
@@ -596,24 +632,37 @@ export function CalendarPage() {
               <p className="ua-cal-change__reason">{entry.reason}</p>
               <div className="ua-cal-change__wants">
                 {entry.wants.map((slot) => (
-                  <span key={slot} className="ua-cal-change__want">{slot}</span>
+                  <span key={slot.id || slot.label} className="ua-cal-change__want">
+                    {slot.label || slot}
+                  </span>
                 ))}
               </div>
               <div className="ua-cal-offer__actions">
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                  onClick={async () => {
-                    try {
-                      await acceptOnboardingMeetingRequest(entry.userId, entry.id);
-                      onToast(`Accepted ${entry.name}'s requested time`);
-                      loadMeetings();
-                    } catch (err) {
-                      onToast(err?.message || "Failed to accept request");
-                    }
+                  onClick={() => {
+                    setReviewRequest({
+                      userId: entry.userId,
+                      meetingId: entry.id,
+                      userName: entry.name,
+                      stepLabel: entry.kind,
+                      slots: (entry.meeting?.requestedSlots?.length
+                        ? entry.meeting.requestedSlots
+                        : entry.wants.map((w) => ({
+                          id: w.id,
+                          startAt: entry.meeting?.requestedStartAt,
+                          endAt: entry.meeting?.requestedEndAt,
+                          label: w.label,
+                        }))).map((slot, index) => ({
+                        id: slot.id || entry.wants[index]?.id || `slot-${index}`,
+                        startAt: slot.startAt,
+                        endAt: slot.endAt,
+                      })),
+                    });
                   }}
                 >
-                  Accept
+                  {entry.wants.length > 1 ? "Review times" : "Accept"}
                 </button>
                 <button
                   type="button"
@@ -662,6 +711,45 @@ export function CalendarPage() {
             ));
             setBlockDraft(null);
             onToast(blockDraft.id ? "Block updated" : "Time blocked");
+          }}
+        />
+      ) : null}
+      {reviewRequest ? (
+        <ReviewRequestedTimesModal
+          userName={reviewRequest.userName}
+          stepLabel={reviewRequest.stepLabel}
+          slots={reviewRequest.slots}
+          busy={reviewBusy}
+          onClose={() => {
+            if (!reviewBusy) setReviewRequest(null);
+          }}
+          onAccept={async (slot) => {
+            try {
+              setReviewBusy(true);
+              await acceptOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId, {
+                requestedSlotId: slot.id,
+              });
+              onToast(`Accepted ${reviewRequest.userName}'s requested time`);
+              setReviewRequest(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to accept request");
+            } finally {
+              setReviewBusy(false);
+            }
+          }}
+          onReject={async () => {
+            try {
+              setReviewBusy(true);
+              await rejectOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId);
+              onToast("Request rejected. Existing slots remain.");
+              setReviewRequest(null);
+              loadMeetings();
+            } catch (err) {
+              onToast(err?.message || "Failed to reject request");
+            } finally {
+              setReviewBusy(false);
+            }
           }}
         />
       ) : null}
