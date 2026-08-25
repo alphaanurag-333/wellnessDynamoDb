@@ -1287,8 +1287,6 @@ const PREVIEW_CONFIGS = new Set([
   "app-diet-plans",
   "app-test-catalog",
   "app-nutrition-bank",
-  "app-challenges",
-  "app-coupons",
   "app-rx-bank",
   "app-gallery",
   "app-launch",
@@ -1317,17 +1315,40 @@ const PREVIEW_CONFIGS = new Set([
   "common-about",
   "common-google-review",
   "common-dropdowns",
+  "common-health-disorders",
   "common-recipes",
   "common-yoga",
 ]);
 
-function PreviewActions({ item, onOpen, onPublish, canPublish }) {
+/** Header Publish only where confirm actually persists (handler or checkout options). */
+const PUBLISH_CONFIGS = new Set([
+  "app-language-disable",
+  "app-program",
+  "app-subscriptions",
+  "app-consultancy-amount",
+  "app-tos",
+  "app-dpa",
+  "web-fs-social",
+  "web-fs-privacy",
+  "web-fs-tos",
+  "web-fs-guidelines",
+  "web-fs-contact",
+  "web-fs-text",
+  "common-about",
+]);
+
+function PreviewActions({ item, onOpen, onPublish, showPreview, canPublish }) {
+  if (!showPreview && !canPublish) return null;
   return (
     <>
-      <span className="ua-cfg-preview-hint">{previewHintForItem(item)}</span>
-      <button type="button" className="ua-cfg-btn ua-cfg-btn--muted" onClick={onOpen}>
-        Preview
-      </button>
+      {showPreview ? (
+        <>
+          <span className="ua-cfg-preview-hint">{previewHintForItem(item)}</span>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--muted" onClick={onOpen}>
+            Preview
+          </button>
+        </>
+      ) : null}
       {canPublish ? (
         <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={onPublish}>
           Publish
@@ -1537,7 +1558,6 @@ export function ConfigDetailPage() {
       Boolean(legalSlugs)
       || current.id === "web-fs-social"
       || current.id === "app-consultancy-amount"
-      || current.id === "app-faq"
       || current.id === "app-language-disable";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
@@ -1568,9 +1588,6 @@ export function ConfigDetailPage() {
           setContactPageBlocks(saved.blocks);
         } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
           setFooterTextBlocks(saved.blocks);
-        } else if (current.id === "app-faq") {
-          if (Array.isArray(saved?.items)) setFaqItems(saved.items);
-          if (saved?.editor) setFaqEditor((prev) => ({ ...prev, ...saved.editor }));
         }
         setLegalLocalDirty(false);
         onToast(`${current.name} published`);
@@ -1581,7 +1598,7 @@ export function ConfigDetailPage() {
     }
 
     if (current.id !== "app-program" && current.id !== "app-subscriptions") {
-      onToast(`${current.name} published`);
+      onToast("Nothing to publish on this page");
       return;
     }
 
@@ -1742,7 +1759,7 @@ export function ConfigDetailPage() {
               : item.id === "common-dropdowns"
                 ? dropdownLists.some((list) => list.options.some((entry) => entry.on))
               : item.id === "common-health-disorders"
-                ? hdEditor.appOn && hdItems.some((entry) => entry.status === "active")
+                ? (hdEditor.appOn || hdEditor.webOn) && hdItems.some((entry) => entry.status === "active")
               : item.id === "common-recipes"
                 ? (rcEditor.appOn || rcEditor.webOn) && rcItems.some((entry) => entry.live)
               : item.id === "common-yoga"
@@ -1753,6 +1770,7 @@ export function ConfigDetailPage() {
             ? Boolean(item.live)
             : Boolean(item.on);
   const showPreview = PREVIEW_CONFIGS.has(item.id);
+  const showPublish = canEditConfig && PUBLISH_CONFIGS.has(item.id);
 
   function renderBody() {
     switch (item.id) {
@@ -1774,8 +1792,6 @@ export function ConfigDetailPage() {
             editor={faqEditor}
             setEditor={setFaqEditor}
             onToast={onToast}
-            registerPublishHandler={registerLegalPublishHandler}
-            onLocalChange={handleLegalLocalChange}
           />
         );
       case "app-program":
@@ -2352,12 +2368,13 @@ export function ConfigDetailPage() {
       <PageHeader
         title={item.name}
         subtitle={item.note}
-        actions={showPreview ? (
+        actions={showPreview || showPublish ? (
           <PreviewActions
             item={item}
             onOpen={() => setPreviewOpen(true)}
             onPublish={() => setPublishOpen(true)}
-            canPublish={canEditConfig}
+            showPreview={showPreview}
+            canPublish={showPublish}
           />
         ) : null}
       />
@@ -2443,6 +2460,8 @@ export function ConfigDetailPage() {
           aboutBlocks,
           grStats,
           dropdownLists,
+          hdEditor,
+          hdItems,
           rcEditor,
           rcItems,
           ygEditor,
@@ -2452,7 +2471,7 @@ export function ConfigDetailPage() {
       />
 
       <ConfigPublishModal
-        open={publishOpen && canEditConfig}
+        open={publishOpen && showPublish}
         onClose={() => setPublishOpen(false)}
         item={item}
         onConfirm={publishConfig}

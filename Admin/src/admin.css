@@ -65258,3 +65258,16 @@ scrollbar-width: thin;
     width: 100%;
   }
 }
+
+.updated-admin .ua-cfg-hd-preview__list {
+  margin: 0.35rem 0 0;
+  padding-left: 1.1rem;
+  color: #475569;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.updated-admin .ua-cfg-hd-preview__list--app {
+  margin: 0.4rem 10px 0;
+  font-size: 0.75rem;
+}

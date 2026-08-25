@@ -360,9 +360,6 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
         editor={editor}
         setEditor={setEditor}
         onToast={onToast}
-        title="App visibility"
-        subtitle="Shown in the mobile app Wellnesspedia screen. Not used on the website yet."
-        showWeb={false}
       />
       <Panel
         title="Health disorders"

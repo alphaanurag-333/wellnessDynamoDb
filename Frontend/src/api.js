@@ -1,5 +1,6 @@
 import axios from "axios";
 
+// Keep in sync with Admin so Configs → Yoga & Pranayam appear on /wellnesspedia.
 const API_BASE = "http://localhost:5000";
 // const API_BASE = "https://wellness-development.developmentalphawizz.com";
 //  const API_BASE = "https://wellness.developmentalphawizz.com:5005";
