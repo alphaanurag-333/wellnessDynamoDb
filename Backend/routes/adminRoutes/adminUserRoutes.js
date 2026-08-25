@@ -1,7 +1,7 @@
 const express = require("express");
 
 const { protectAccount } = require("../../middleware/auth");
-const { authorizeStaff } = require("../../middleware/authorize");
+const { authorizeStaff, requireAdmin } = require("../../middleware/authorize");
 const { optionalUserFile } = require("../../middleware/authMultipart");
 const {
   listUsersController,
@@ -155,10 +155,10 @@ router.post(
   optionalUserFile,
   createUserController
 );
-router.post("/:id/convert-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToHealController);
-router.post("/:id/convert-to-seek", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToSeekController);
-router.post("/:id/convert-to-maintenance", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertUserToMaintenanceController);
-router.post("/:id/maintenance-to-heal", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), convertMaintenanceUserToHealController);
+router.post("/:id/convert-to-heal", protectAccount, requireAdmin, convertUserToHealController);
+router.post("/:id/convert-to-seek", protectAccount, requireAdmin, convertUserToSeekController);
+router.post("/:id/convert-to-maintenance", protectAccount, requireAdmin, convertUserToMaintenanceController);
+router.post("/:id/maintenance-to-heal", protectAccount, requireAdmin, convertMaintenanceUserToHealController);
 router.post("/:id/assign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), assignHealUserController);
 router.post("/:id/reassign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), reassignHealUserController);
 router.patch("/:id", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, updateUserController);

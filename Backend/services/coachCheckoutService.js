@@ -398,10 +398,21 @@ function findStaffReferralCode(staff, id) {
   return normalizeReferralCode(assistant?.referralCode);
 }
 
-/** Prefer the WC/AWC code used to assign the client, not the client's own 8-char code. */
+function isKnownStaffReferralCode(code, staff) {
+  const normalized = normalizeReferralCode(code);
+  if (!normalized) return false;
+  // Legacy IRW-WC-* / IRW-AWC-* codes, or any code currently on the staff roster.
+  if (isStaffReferralCode(normalized)) return true;
+  return Boolean(
+    staff?.coaches?.some((row) => normalizeReferralCode(row.referralCode) === normalized) ||
+      staff?.assistants?.some((row) => normalizeReferralCode(row.referralCode) === normalized)
+  );
+}
+
+/** Prefer the WC/AWC code used to assign the client, not the client's own code. */
 function resolvePwcStaffReferralCode(user = {}, staff, fallbackCoachId = "") {
   const referred = normalizeReferralCode(user.referredByCode);
-  if (isStaffReferralCode(referred)) return referred;
+  if (isKnownStaffReferralCode(referred, staff)) return referred;
 
   const assignedType = String(user.assignedCoachType || "").toLowerCase();
   if (assignedType === "assistant_wellness_coach") {

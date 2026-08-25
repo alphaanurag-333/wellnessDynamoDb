@@ -1457,6 +1457,300 @@
   color: #16233f;
 }
 
+.updated-admin .ua-dash-export-preview {
+  z-index: 420;
+  padding: 16px;
+}
+
+.updated-admin .ua-dash-export-preview__dialog {
+  width: min(1100px, 100%);
+  max-height: min(92vh, 980px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(16, 35, 63, 0.22);
+  overflow: hidden;
+}
+
+.updated-admin .ua-dash-export-preview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #e7ecf4;
+}
+
+.updated-admin .ua-dash-export-preview__head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-export-preview__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted, #6b7a93);
+}
+
+.updated-admin .ua-dash-export-preview__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #eef1f7;
+  padding: 14px;
+}
+
+.updated-admin .ua-dash-export-preview__body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.08);
+}
+
+.updated-admin .ua-dash-export-preview__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid #e7ecf4;
+  background: #fff;
+}
+
+.updated-admin .page-head--dashboard .page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-dash-report-modal {
+  z-index: 430;
+  padding: 16px;
+  align-items: stretch;
+}
+
+.updated-admin .ua-dash-report-modal__dialog {
+  width: min(1080px, 100%);
+  max-height: min(92vh, 920px);
+  display: flex;
+  flex-direction: column;
+  margin: auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(16, 35, 63, 0.22);
+  overflow: hidden;
+}
+
+.updated-admin .ua-dash-report-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #e7ecf4;
+}
+
+.updated-admin .ua-dash-report-modal__head h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-report-modal__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted, #6b7a93);
+}
+
+.updated-admin .ua-dash-report-modal__filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.updated-admin .ua-dash-report-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.updated-admin .ua-dash-report-modal__field > span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6b7a93;
+}
+
+.updated-admin .ua-dash-report-modal__field input[type="date"] {
+  height: 38px;
+  border: 1px solid #dbe3ef;
+  border-radius: 9px;
+  padding: 0 10px;
+  background: #fff;
+  color: #16233f;
+  font: inherit;
+}
+
+.updated-admin .ua-dash-report-modal__field .ua-users-filter {
+  width: 100%;
+}
+
+.updated-admin .ua-dash-report-modal__fields {
+  padding: 12px 18px 14px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.updated-admin .ua-dash-report-modal__fields-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6b7a93;
+  margin-bottom: 8px;
+}
+
+.updated-admin .ua-dash-report-modal__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.updated-admin .ua-dash-report-modal__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #16233f;
+  cursor: pointer;
+  user-select: none;
+}
+
+.updated-admin .ua-dash-report-modal__check input {
+  margin: 0;
+  accent-color: #2b8f5b;
+}
+
+.updated-admin .ua-dash-report-modal__list-wrap {
+  flex: 1;
+  min-height: 220px;
+  overflow: hidden;
+  background: #f7f9fc;
+}
+
+.updated-admin .ua-dash-report-modal__table-scroll {
+  height: 100%;
+  max-height: min(46vh, 420px);
+  overflow: auto;
+}
+
+.updated-admin .ua-dash-report-modal__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 13px;
+}
+
+.updated-admin .ua-dash-report-modal__table th,
+.updated-admin .ua-dash-report-modal__table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.updated-admin .ua-dash-report-modal__table th {
+  position: sticky;
+  top: 0;
+  background: #f3f6fb;
+  color: #5a6b85;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  z-index: 1;
+}
+
+.updated-admin .ua-dash-report-modal__table td {
+  color: #16233f;
+}
+
+.updated-admin .ua-dash-report-modal__empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 24px;
+  color: #6b7a93;
+  text-align: center;
+}
+
+.updated-admin .ua-dash-report-modal__empty p {
+  margin: 0;
+}
+
+.updated-admin .ua-dash-report-modal__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid #e7ecf4;
+  background: #fff;
+}
+
+.updated-admin .ua-dash-report-modal__count {
+  font-size: 12px;
+  color: #6b7a93;
+}
+
+.updated-admin .ua-dash-report-modal__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.updated-admin .ua-dash-report-modal__actions .ua-cfg-btn--primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-dash-report-modal__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .updated-admin .ua-dash-report-modal__filters {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-dash-report-modal__foot {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-dash-report-modal__actions {
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-dash-report-modal__actions .ua-cfg-btn {
+    flex: 1;
+  }
+}
+
 .updated-admin .page-head--split {
   position: relative;
   align-items: center;

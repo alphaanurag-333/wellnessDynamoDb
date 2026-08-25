@@ -227,13 +227,15 @@ function buildPageItems(current, total) {
 export function UsersPage() {
   const navigate = useNavigate();
   const { showToast: onToast } = useOutletContext();
-  const { activeRole, can, dataScope, viewAs, viewAsPersona } = useViewAs();
+  const { activeRole, can, dataScope, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const canCreate = can("console.cl.create");
   const canEdit = can("console.cl.edit");
   const canDelete = can("console.cl.delete");
   const canExport = can("console.cl.export");
+  // Direct tier conversion on this page is admin-only (API enforces the same).
+  const canChangeTier = Boolean(isAdminView);
   // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
   const canAssignCoaches =
     viewAs === "admin" && dataScope === "all" && can("console.ra.edit") && canEdit;
@@ -659,16 +661,18 @@ export function UsersPage() {
   };
 
   const convertTier = (user) => {
+    if (!canChangeTier) return;
     setConversionAsk({ user, direction: "up", ...conversionPrompt(user, "up") });
   };
 
   const downgradeTier = (user) => {
+    if (!canChangeTier) return;
     setConversionAsk({ user, direction: "down", ...conversionPrompt(user, "down") });
   };
 
   const confirmConversion = async () => {
     const ask = conversionAsk;
-    if (!ask?.user) return;
+    if (!canChangeTier || !ask?.user) return;
     const user = ask.user;
     const key = userOverrideKey(user);
     const fromTier = user.tier;
@@ -715,6 +719,7 @@ export function UsersPage() {
   };
 
   const undoTier = async (user) => {
+    if (!canChangeTier) return;
     const key = userOverrideKey(user);
     const undo = tierUndoByKey[key];
     if (!undo || !canUndoTierMove(undo.fromTier, undo.toTier)) return;
@@ -1055,9 +1060,9 @@ export function UsersPage() {
             rows.map((u, i) => {
               const tier = tierStyle(u.tier);
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
-              const tierMoves = canEdit ? listTierMoveOptions(u.tier, u.ageDays) : [];
+              const tierMoves = canChangeTier ? listTierMoveOptions(u.tier, u.ageDays) : [];
               const rowKey = userOverrideKey(u) || u.name;
-              const tierUndo = canEdit ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
+              const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
               const showTierUndo = Boolean(
                 tierUndo
                 && normalizeTier(u.tier) === normalizeTier(tierUndo.toTier)

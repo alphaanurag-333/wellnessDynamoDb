@@ -1,6 +1,6 @@
 /**
- * Backfill referral codes for Wellness Coaches (IRW-WC-NNN) and
- * Assistant Wellness Coaches (IRW-AWC-NNN) that are missing one.
+ * Backfill referral codes for Wellness Coaches and Assistant Wellness Coaches
+ * that are missing one (random 8-char format, e.g. 7WDW4JST).
  *
  * Covers Account (source of truth) plus the legacy WellnessCoach /
  * AssistantWellnessCoach mirrors, and repairs missing ReferralCode registry rows.

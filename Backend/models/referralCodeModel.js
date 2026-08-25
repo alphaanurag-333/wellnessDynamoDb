@@ -99,19 +99,16 @@ async function deleteReferralCodeRecord(referralCode) {
 }
 
 /**
- * Generate a unique referral code.
+ * Generate a unique referral code (8-char random, e.g. 7WDW4JST).
  * @param {{ entityType?: string, maxAttempts?: number }} [options]
- *   entityType wellness_coach → IRW-WC-NNN; assistant_wellness_coach → IRW-AWC-NNN; else random.
+ *   entityType is kept for callers; format is the same for staff and users.
  */
 async function generateUniqueReferralCode(options = {}) {
   const maxAttempts = options.maxAttempts ?? 12;
   const entityType = options.entityType || null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    // Widen the staff numeric suffix as attempts fail — the 3-digit space is small.
-    const candidate = generateReferralCodeForEntity(entityType, {
-      digits: 3 + Math.floor(attempt / 4),
-    });
+    const candidate = generateReferralCodeForEntity(entityType);
     const existing = await getReferralCodeRecord(candidate);
     if (!existing) return candidate;
   }

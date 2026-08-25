@@ -112,9 +112,10 @@ function DosageBadge({ label, tone }) {
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
-  const { can } = useViewAs();
+  const { can, isAdminView } = useViewAs();
   const canEditPii = can("console.pii.edit");
-  const canEditClient = can("console.cl.edit");
+  // Direct tier conversion is admin-only (matches User Management + API).
+  const canChangeTier = Boolean(isAdminView);
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -277,7 +278,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function convertTier() {
-    if (!tierActions.canConvert || !userId || tierBusy) return;
+    if (!canChangeTier || !tierActions.canConvert || !userId || tierBusy) return;
     setTierBusy(true);
     try {
       const updated = currentTier === "Seek to Heal"
@@ -293,7 +294,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function downgradeTier() {
-    if (!tierActions.canDowngrade || !userId || tierBusy) return;
+    if (!canChangeTier || !tierActions.canDowngrade || !userId || tierBusy) return;
     setTierBusy(true);
     try {
       if (currentTier === "Maintenance") {
@@ -433,7 +434,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       </div>
       <div className="ua-cp-personal__badges">
         <span className={`ua-cp-tier-badge ua-cp-tier-badge--${tierBadgeClass(currentTier)}`} style={tierBadgeTone}>{displayTierLabel}</span>
-        {canEditClient && tierActions.canConvert ? (
+        {canChangeTier && tierActions.canConvert ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
@@ -444,7 +445,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             {tierActions.convertLabel}
           </button>
         ) : null}
-        {canEditClient && tierActions.canDowngrade ? (
+        {canChangeTier && tierActions.canDowngrade ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--down"

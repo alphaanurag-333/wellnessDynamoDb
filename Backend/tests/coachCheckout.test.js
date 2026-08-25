@@ -383,8 +383,14 @@ describe("pending order reuse", () => {
 
 describe("PWC staff referral display", () => {
   const staff = {
-    coaches: [{ id: "coach-1", name: "Rahul Mehta", referralCode: "IRW-WC-980" }],
-    assistants: [{ id: "awc-1", name: "E", referralCode: "IRW-AWC-470", wellnessCoachId: "coach-1" }],
+    coaches: [
+      { id: "coach-1", name: "Rahul Mehta", referralCode: "IRW-WC-980" },
+      { id: "coach-2", name: "Anita Rao", referralCode: "7WDW4JST" },
+    ],
+    assistants: [
+      { id: "awc-1", name: "E", referralCode: "IRW-AWC-470", wellnessCoachId: "coach-1" },
+      { id: "awc-2", name: "F", referralCode: "8TAJKDAQ", wellnessCoachId: "coach-2" },
+    ],
   };
 
   it("uses the WC/AWC code the client was referred with", () => {
@@ -394,11 +400,18 @@ describe("PWC staff referral display", () => {
     );
   });
 
+  it("uses a random 8-char staff code when that is the referred-by code", () => {
+    assert.equal(
+      resolvePwcStaffReferralCode({ referredByCode: "7WDW4JST", referralCode: "LLSC4Y8F" }, staff),
+      "7WDW4JST"
+    );
+  });
+
   it("uses the assigned assistant's AWC code when referredBy is not staff", () => {
     assert.equal(
       resolvePwcStaffReferralCode(
         {
-          referralCode: "7WDW4JST",
+          referralCode: "CSUYX8HL",
           assignedCoachId: "awc-1",
           assignedCoachType: "assistant_wellness_coach",
           parentCoachId: "coach-1",
@@ -413,7 +426,7 @@ describe("PWC staff referral display", () => {
     assert.equal(
       resolvePwcStaffReferralCode(
         {
-          referralCode: "8TAJKDAQ",
+          referralCode: "CSUYX8HL",
           assignedCoachId: "coach-1",
           assignedCoachType: "wellness_coach",
           parentCoachId: "coach-1",
