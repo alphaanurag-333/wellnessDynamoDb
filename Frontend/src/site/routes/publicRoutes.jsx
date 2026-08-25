@@ -1,30 +1,36 @@
+import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
 import { SITE_SECTION_ROUTE_PATHS } from "../data/siteSections.js";
 import { PublicLayout } from "../layout/PublicLayout.jsx";
-import { HomePage } from "../pages/HomePage.jsx";
-import { StaticPageView } from "../pages/StaticPageView.jsx";
-import ContactUsSection from "../components/ContactUs.jsx";
-import AboutUsSection from "../components/AboutUsSection.jsx";
-import ResourcesSection from "../components/Resources.jsx";
-import SuccessStories from "../components/SuccessStories.jsx";
-import FatLoss from "../components/FatLoss.jsx";
-import Diabetes from "../components/Diabetes.jsx";
-import Thyroid from "../components/Thyroid.jsx";
-import GutHealth from "../components/GutHealth.jsx";
-import Pcod from "../components/Pcod.jsx";
+
+function lazyNamed(importer, exportName) {
+  return lazy(() => importer().then((mod) => ({ default: mod[exportName] })));
+}
+
+const HomePage = lazyNamed(() => import("../pages/HomePage.jsx"), "HomePage");
+const StaticPageView = lazyNamed(() => import("../pages/StaticPageView.jsx"), "StaticPageView");
+const ContactUsSection = lazy(() => import("../components/ContactUs.jsx"));
+const AboutUsSection = lazy(() => import("../components/AboutUsSection.jsx"));
+const ResourcesSection = lazy(() => import("../components/Resources.jsx"));
+const SuccessStories = lazy(() => import("../components/SuccessStories.jsx"));
+const FatLoss = lazy(() => import("../components/FatLoss.jsx"));
+const Diabetes = lazy(() => import("../components/Diabetes.jsx"));
+const Thyroid = lazy(() => import("../components/Thyroid.jsx"));
+const GutHealth = lazy(() => import("../components/GutHealth.jsx"));
+const Pcod = lazy(() => import("../components/Pcod.jsx"));
 
 export const publicRouteTree = (
   <Route path="/" element={<PublicLayout />}>
     <Route index element={<HomePage />} />
     <Route path="/contact-us" element={<ContactUsSection />} />
-    <Route path="/about-us" element={<AboutUsSection/>} />
-    <Route path="/wellnesspedia" element={<ResourcesSection/>} />
-    <Route path="/success-stories" element={<SuccessStories/>} />
-    <Route path="/fat-loss" element={<FatLoss/>} />
-    <Route path="/diabetes-reversal" element={<Diabetes/>} />
-    <Route path="/thyroid" element={<Thyroid/>} />
-    <Route path="/gut-health" element={<GutHealth/>} />
-    <Route path="/pcod-pcos-reversal" element={<Pcod/>} />
+    <Route path="/about-us" element={<AboutUsSection />} />
+    <Route path="/wellnesspedia" element={<ResourcesSection />} />
+    <Route path="/success-stories" element={<SuccessStories />} />
+    <Route path="/fat-loss" element={<FatLoss />} />
+    <Route path="/diabetes-reversal" element={<Diabetes />} />
+    <Route path="/thyroid" element={<Thyroid />} />
+    <Route path="/gut-health" element={<GutHealth />} />
+    <Route path="/pcod-pcos-reversal" element={<Pcod />} />
 
     <Route
       path="/privacy-policy"

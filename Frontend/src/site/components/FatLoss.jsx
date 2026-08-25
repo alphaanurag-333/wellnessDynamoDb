@@ -1,12 +1,13 @@
 import ProgramPage from "./ProgramPage";
 import TransformationStoriesSection from "./TransformationStoriesSection";
 import { programPages } from "../data/programPages";
+import fatLossImg from "../images/fat-loss.jpg";
 
 const FatLoss = () => {
   const page = programPages.fatLoss;
 
   return (
-    <ProgramPage {...page}>
+    <ProgramPage {...page} image={fatLossImg}>
       <TransformationStoriesSection />
 
       <section className="program-highlight pt-2">

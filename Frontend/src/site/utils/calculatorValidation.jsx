@@ -1,4 +1,5 @@
 import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 /** True when value is a finite number greater than 0. */
 export function isPositiveNumber(value) {

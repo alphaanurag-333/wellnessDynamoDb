@@ -1,11 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { publicRouteTree } from "./site/routes/publicRoutes.jsx";
-import { SiteNotFoundPage } from "./site/pages/SiteNotFoundPage.jsx";
 import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { fetchPublicAppConfig } from "./store/appConfigSlice.js";
 import { mediaUrl } from "./media.js";
+
+const SiteNotFoundPage = lazy(() =>
+  import("./site/pages/SiteNotFoundPage.jsx").then((mod) => ({ default: mod.SiteNotFoundPage })),
+);
 
 function AppConfigSync() {
   const dispatch = useDispatch();
@@ -40,12 +43,14 @@ export default function App() {
   return (
     <>
       <AppConfigSync />
-      <Routes>
-        {publicRouteTree}
-        <Route path="/admin" element={<Navigate to="/" replace />} />
-        <Route path="/admin/*" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<SiteNotFoundPage />} />
-      </Routes>
+      <Suspense fallback={null}>
+        <Routes>
+          {publicRouteTree}
+          <Route path="/admin" element={<Navigate to="/" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<SiteNotFoundPage />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }

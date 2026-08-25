@@ -5,6 +5,10 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap");
 
+.swal2-container {
+  z-index: 10000 !important;
+}
+
 /* ---------- Design tokens (type, spacing, radii, shared utilities) ---------- */
 
 :root {
@@ -3495,7 +3499,6 @@ padding: 0;
   min-height: 220px;
   height: auto;
   padding: 40px 0 72px;
-  background-image: url("../site/images/contact-bg.png");
   display: flex;
   align-items: center;
 background-repeat: no-repeat;

@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { PATH_TO_SECTION_ID } from "../data/siteSections.js";
 import { SiteFooter } from "../components/SiteFooter.jsx";
 import { SiteHeader } from "../components/SiteHeader.jsx";
@@ -33,7 +33,9 @@ export function PublicLayout() {
       </a>
       <SiteHeader />
       <main id="main-content" className="site-main">
-        <Outlet />
+        <Suspense fallback={<div className="site-container" style={{ padding: "48px 16px", minHeight: 240 }} aria-busy="true">Loading…</div>}>
+          <Outlet />
+        </Suspense>
       </main>
       <SiteFooter />
       <ScrollToTopButton/>
