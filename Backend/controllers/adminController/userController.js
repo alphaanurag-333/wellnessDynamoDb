@@ -25,6 +25,7 @@ const { resolveRegistrationReferralFields } = require("../../services/registrati
 const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
 const {
   dispatchPresentablePicRequestNotification,
+  dispatchPresentablePicReviewedNotification,
 } = require("../../services/notificationDispatchService");
 const { getSubscriptionExpiryStats } = require("../../services/subscriptionExpiryStats");
 
@@ -316,6 +317,15 @@ exports.reviewPresentablePicController = asyncHandler(async (req, res) => {
     presentablePicStatus: action,
     presentablePicReviewedAt: new Date().toISOString(),
     presentablePicReviewedById: actor.id,
+  });
+
+  dispatchPresentablePicReviewedNotification({
+    userId,
+    status: action,
+    coachName: actor.displayName || "Your coach",
+    actorUserId: actor.id,
+  }).catch((err) => {
+    console.error("Presentable pic review notification failed:", err?.message || err);
   });
 
   return res.status(200).json({

@@ -53,6 +53,7 @@ const KIND = new Set([
   "program_checkout_triggered",
   "program_assigned",
   "presentable_pic_request",
+  "presentable_pic_reviewed",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 
