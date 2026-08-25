@@ -30,7 +30,7 @@ const PERIOD_ORDER = [
   "before_evening_snacks",
 ];
 const PERIODS = new Set(PERIOD_ORDER);
-const MAX_PERIODS = 5; // 1 day-part + up to 4 meal timings
+const MAX_PERIODS = 7; // up to 3 day-parts + up to 4 meal timings
 const MEAL_RELATIONS = new Set(["before", "after"]);
 const STATUSES = new Set(["active", "stopped"]);
 
