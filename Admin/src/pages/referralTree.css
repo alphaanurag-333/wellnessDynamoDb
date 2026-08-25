@@ -911,7 +911,7 @@ a.ua-rt-name:hover {
   .updated-admin .ua-org-scroll {
     overflow-x: hidden;
     margin: 0;
-    padding: 0 0 4px;
+    padding: 0 10px 4px;
   }
 
   .updated-admin .ua-org-tree {

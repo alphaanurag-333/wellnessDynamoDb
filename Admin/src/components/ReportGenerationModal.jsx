@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchScopedUsers,
   fetchUsers,
@@ -9,6 +10,10 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import { TIER_OPTIONS, UNASSIGNED_COACH, tierLabel } from "../data/usersData.js";
 import { CfgSelect } from "./shared.jsx";
 import { ExportIcon } from "./NavIcons.jsx";
+
+function getModalRoot() {
+  return document.querySelector(".updated-admin") || document.body;
+}
 
 const STATUS_OPTIONS = [
   { value: "", label: "All status" },
@@ -160,7 +165,12 @@ export function ReportGenerationModal({ open, onClose, onToast }) {
       if (event.key === "Escape") onClose?.();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [open, onClose]);
 
   function toggleField(key) {
@@ -201,7 +211,7 @@ export function ReportGenerationModal({ open, onClose, onToast }) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="ua-cp-modal-backdrop ua-dash-report-modal"
       onClick={onClose}
@@ -224,103 +234,105 @@ export function ReportGenerationModal({ open, onClose, onToast }) {
           </button>
         </div>
 
-        <div className="ua-dash-report-modal__filters">
-          <label className="ua-dash-report-modal__field">
-            <span>From date</span>
-            <input
-              type="date"
-              value={fromDate}
-              max={toDate || undefined}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </label>
-          <label className="ua-dash-report-modal__field">
-            <span>To date</span>
-            <input
-              type="date"
-              value={toDate}
-              min={fromDate || undefined}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </label>
-          <div className="ua-dash-report-modal__field">
-            <span>Tier</span>
-            <CfgSelect
-              className="ua-users-filter"
-              ariaLabel="Filter by tier"
-              value={tierFilter}
-              options={TIER_OPTIONS}
-              onChange={setTierFilter}
-            />
+        <div className="ua-dash-report-modal__body">
+          <div className="ua-dash-report-modal__filters">
+            <label className="ua-dash-report-modal__field">
+              <span>From date</span>
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </label>
+            <label className="ua-dash-report-modal__field">
+              <span>To date</span>
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </label>
+            <div className="ua-dash-report-modal__field">
+              <span>Tier</span>
+              <CfgSelect
+                className="ua-users-filter"
+                ariaLabel="Filter by tier"
+                value={tierFilter}
+                options={TIER_OPTIONS}
+                onChange={setTierFilter}
+              />
+            </div>
+            <div className="ua-dash-report-modal__field">
+              <span>Status</span>
+              <CfgSelect
+                className="ua-users-filter"
+                ariaLabel="Filter by status"
+                value={statusFilter}
+                options={STATUS_OPTIONS}
+                onChange={setStatusFilter}
+              />
+            </div>
           </div>
-          <div className="ua-dash-report-modal__field">
-            <span>Status</span>
-            <CfgSelect
-              className="ua-users-filter"
-              ariaLabel="Filter by status"
-              value={statusFilter}
-              options={STATUS_OPTIONS}
-              onChange={setStatusFilter}
-            />
-          </div>
-        </div>
 
-        <div className="ua-dash-report-modal__fields">
-          <div className="ua-dash-report-modal__fields-label">Fields</div>
-          <div className="ua-dash-report-modal__checks">
-            {REPORT_FIELDS.map((field) => (
-              <label key={field.key} className="ua-dash-report-modal__check">
-                <input
-                  type="checkbox"
-                  checked={selectedFields.has(field.key)}
-                  onChange={() => toggleField(field.key)}
-                />
-                <span>{field.label}</span>
-              </label>
-            ))}
+          <div className="ua-dash-report-modal__fields">
+            <div className="ua-dash-report-modal__fields-label">Fields</div>
+            <div className="ua-dash-report-modal__checks">
+              {REPORT_FIELDS.map((field) => (
+                <label key={field.key} className="ua-dash-report-modal__check">
+                  <input
+                    type="checkbox"
+                    checked={selectedFields.has(field.key)}
+                    onChange={() => toggleField(field.key)}
+                  />
+                  <span>{field.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
 
-        <div className="ua-dash-report-modal__list-wrap">
-          {loading ? (
-            <div className="ua-dash-report-modal__empty">
-              <p>Loading users…</p>
-            </div>
-          ) : loadError ? (
-            <div className="ua-dash-report-modal__empty">
-              <p>{loadError}</p>
-              <button type="button" className="btn btn--outline" onClick={loadUsers}>
-                Retry
-              </button>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="ua-dash-report-modal__empty">
-              <p>No users match the selected filters.</p>
-            </div>
-          ) : (
-            <div className="ua-dash-report-modal__table-scroll">
-              <table className="ua-dash-report-modal__table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    {activeFields.map((field) => (
-                      <th key={field.key}>{field.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user, index) => (
-                    <tr key={user.id || `${user.email}-${index}`}>
-                      <td>{index + 1}</td>
+          <div className="ua-dash-report-modal__list-wrap">
+            {loading ? (
+              <div className="ua-dash-report-modal__empty">
+                <p>Loading users…</p>
+              </div>
+            ) : loadError ? (
+              <div className="ua-dash-report-modal__empty">
+                <p>{loadError}</p>
+                <button type="button" className="btn btn--outline" onClick={loadUsers}>
+                  Retry
+                </button>
+              </div>
+            ) : users.length === 0 ? (
+              <div className="ua-dash-report-modal__empty">
+                <p>No users match the selected filters.</p>
+              </div>
+            ) : (
+              <div className="ua-dash-report-modal__table-scroll">
+                <table className="ua-dash-report-modal__table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
                       {activeFields.map((field) => (
-                        <td key={field.key}>{field.get(user) || "—"}</td>
+                        <th key={field.key}>{field.label}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {users.map((user, index) => (
+                      <tr key={user.id || `${user.email}-${index}`}>
+                        <td>{index + 1}</td>
+                        {activeFields.map((field) => (
+                          <td key={field.key}>{field.get(user) || "—"}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="ua-dash-report-modal__foot">
@@ -344,6 +356,7 @@ export function ReportGenerationModal({ open, onClose, onToast }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    getModalRoot(),
   );
 }
