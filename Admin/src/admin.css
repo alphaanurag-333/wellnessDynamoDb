@@ -34177,7 +34177,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-faq-shell .ua-cfg-panel__title {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #16233f;
@@ -34191,7 +34191,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-faq-shell .ua-cfg-panel__head {
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cfg-faq {
@@ -39018,7 +39018,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-tc-select .ua-cfg-select__trigger {
-  height: 42px;
+  height: 38px;
   padding: 0 10px 0 12px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -47219,7 +47219,7 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cfg-ch-field__meta {
@@ -47253,7 +47253,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-ch-field input {
-  height: 42px;
+  height: 38px;
 }
 
 .updated-admin .ua-cfg-ch-photo-toggle {
@@ -48719,8 +48719,8 @@ scrollbar-width: thin;
   border-radius: 12px;
   border: 1px solid #e8edf5;
   background: #f3f4f6;
-  aspect-ratio: 3 / 4;
-  max-height: 280px;
+  aspect-ratio: 0 / 0;
+  max-height: 240px;
 }
 
 .updated-admin .ua-cfg-tf-view__shot img {
@@ -56105,6 +56105,9 @@ scrollbar-width: thin;
     margin-bottom: 14px;
   }
 
+  .mrgtegrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
   .updated-admin .ua-cal-page .page-head__actions {
     width: 100%;
     padding-top: 0;
