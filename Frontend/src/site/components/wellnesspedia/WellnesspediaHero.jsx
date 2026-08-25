@@ -108,12 +108,12 @@ export default function WellnesspediaHero() {
             </picture>
           </div>
           <div className="hero-overlay" />
-          <div className="hero-content">
+          {/* <div className="hero-content">
             <h1 className="hero-title">{slide.title}</h1>
             {slide.description ? (
               <p className="hero-description">{slide.description}</p>
             ) : null}
-          </div>
+          </div> */}
         </SwiperSlide>
       ))}
     </Swiper>
