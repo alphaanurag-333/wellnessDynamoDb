@@ -1265,58 +1265,7 @@ function GenericPanel({ item }) {
   );
 }
 
-const PREVIEW_CONFIGS = new Set([
-  "app-language-disable",
-  "app-whatsapp-support",
-  "app-faq",
-  "app-program",
-  "app-subscriptions",
-  "app-consultancy-amount",
-  "app-gst",
-  "app-payment-gateway",
-  "app-tos",
-  "app-dpa",
-  "app-measurement-video",
-  "app-onboarding-video",
-  "app-medical-questionnaire",
-  "app-health-progress",
-  "app-drf-bank",
-  "app-commitment-letter",
-  "app-diet-plans",
-  "app-test-catalog",
-  "app-nutrition-bank",
-  "app-rx-bank",
-  "app-gallery",
-  "app-launch",
-  "app-prakriti",
-  "app-ai-enable",
-  "feature-flags",
-  "web-program-testimonials",
-  "web-footer",
-  "web-fs-social",
-  "web-fs-privacy",
-  "web-fs-tos",
-  "web-fs-guidelines",
-  "web-fs-contact",
-  "web-fs-text",
-  "web-logo",
-  "web-location",
-  "common-banner",
-  "common-champion",
-  "common-birthday",
-  "common-transformation",
-  "common-client-review",
-  "common-real-people",
-  "common-voice",
-  "common-leadership",
-  "common-wellness-team",
-  "common-about",
-  "common-google-review",
-  "common-dropdowns",
-  "common-health-disorders",
-  "common-recipes",
-  "common-yoga",
-]);
+const PREVIEW_CONFIGS = new Set(Object.keys(CONFIG_LEGAL_PUBLISH_SLUGS));
 
 /** Header Publish only where confirm actually persists (handler or checkout options). */
 const PUBLISH_CONFIGS = new Set([
@@ -2304,7 +2253,6 @@ export function ConfigDetailPage() {
             editor={ldEditor}
             setEditor={setLdEditor}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-wellness-team":

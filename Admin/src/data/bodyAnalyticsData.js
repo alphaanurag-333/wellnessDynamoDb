@@ -27,7 +27,7 @@ const METABOLIC_FIELDS = [
   { label: "Body fat %", field: "bodyFatPercent", suffix: "%", decimals: 1 },
   { label: "Visceral fat %", field: "visceralFatPercent", suffix: "%", decimals: 1 },
   { label: "Est. visceral fat", field: "estimatedVisceralFat", decimals: 0 },
-  { label: "Waist-height ratio", field: "waistHeightRatio", decimals: 2 },
+  { label: "Waist - hip ratio", field: "waistHipRatio", decimals: 2 },
 ];
 
 function hasNumericValue(value) {
@@ -156,9 +156,40 @@ export function buildMeasurementRows(records, mode, unit, columns) {
   });
 }
 
-export function buildMetabolicRows(records, mode, columns) {
+function latestWaistHipRatioByPeriod(records, mode) {
+  const stored = latestMetricValueByPeriod(records, mode, "waistHipRatio");
+  const waistHistory = latestMetricValueByPeriod(records, mode, "waistCm");
+  const hipHistory = latestMetricValueByPeriod(records, mode, "hipCm");
+  const keys = new Set([
+    ...Object.keys(stored),
+    ...Object.keys(waistHistory),
+    ...Object.keys(hipHistory),
+  ]);
+  const values = {};
+  for (const key of keys) {
+    if (hasNumericValue(stored[key])) {
+      values[key] = Number(stored[key]);
+      continue;
+    }
+    const waist = parseNum(waistHistory[key]);
+    const hip = parseNum(hipHistory[key]);
+    if (waist != null && hip != null && hip > 0) {
+      values[key] = Number((waist / hip).toFixed(2));
+    }
+  }
+  return values;
+}
+
+export function buildMetabolicRows(records, mode, columns, measurementRecords = []) {
+  const ratioSource = [
+    ...(Array.isArray(records) ? records : []),
+    ...(Array.isArray(measurementRecords) ? measurementRecords : []),
+  ];
+
   return METABOLIC_FIELDS.map(({ label, field, suffix = "", decimals = 1 }) => {
-    const history = latestMetricValueByPeriod(records, mode, field);
+    const history = field === "waistHipRatio"
+      ? latestWaistHipRatioByPeriod(ratioSource, mode)
+      : latestMetricValueByPeriod(records, mode, field);
     const values = columns.map((column) => formatValue(history[column], suffix, decimals));
     const latest = values[0];
     const previous = values[1];

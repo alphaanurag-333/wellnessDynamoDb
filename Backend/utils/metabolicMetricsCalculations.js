@@ -123,12 +123,21 @@ function assessVisceralFatRisk(waistHeightRatio) {
   return "Very High Metabolic Risk";
 }
 
-function computeVisceralFat({ gender, age, heightCm, waistCm }) {
+/** Waist-to-hip ratio (WHR). Distinct from waist-to-height used for visceral fat. */
+function computeWaistHipRatio(waistCm, hipCm) {
+  const w = Number(waistCm);
+  const h = Number(hipCm);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
+  return Number((w / h).toFixed(2));
+}
+
+function computeVisceralFat({ gender, age, heightCm, waistCm, hipCm }) {
   const h = Number(heightCm);
   const w = Number(waistCm);
   const a = Number(age);
   if (!h || !w || h <= 0 || w <= 0) return null;
 
+  // Visceral fat estimation uses waist-to-height ratio (WHtR), not waist-to-hip.
   const waistHeightRatio = Number((w / h).toFixed(2));
   let level;
   if (isFemaleGender(gender)) {
@@ -140,8 +149,10 @@ function computeVisceralFat({ gender, age, heightCm, waistCm }) {
   if (level > 30) level = 30;
 
   const visceralFatPercent = Number(((level / 30) * 100).toFixed(1));
+  const waistHipRatio = computeWaistHipRatio(w, hipCm);
   return {
     waistHeightRatio,
+    ...(waistHipRatio != null ? { waistHipRatio } : {}),
     estimatedVisceralFat: level,
     visceralFatPercent,
     riskAssessment: assessVisceralFatRisk(waistHeightRatio),
@@ -283,10 +294,12 @@ function buildMetricSnapshot(metricType, inputs) {
         "Unable to calculate body fat from provided values. Verify neck and waist measurements and that values are in centimeters."
       );
     }
+    const waistHipRatio = computeWaistHipRatio(waistCm, hipCm);
     return {
       ...base,
       bodyFatPercent: bodyFat.bodyFatPercent,
       leanMuscleMassPercent: bodyFat.leanMuscleMassPercent,
+      ...(waistHipRatio != null ? { waistHipRatio } : {}),
     };
   }
 
@@ -294,11 +307,12 @@ function buildMetricSnapshot(metricType, inputs) {
     if (!heightCm || !waistCm || !age) {
       throw new Error("age, heightCm, and waistCm are required for visceral fat");
     }
-    const visceral = computeVisceralFat({ gender, age, heightCm, waistCm });
+    const visceral = computeVisceralFat({ gender, age, heightCm, waistCm, hipCm });
     if (!visceral) throw new Error("Unable to calculate visceral fat from provided values");
     return {
       ...base,
       waistHeightRatio: visceral.waistHeightRatio,
+      ...(visceral.waistHipRatio != null ? { waistHipRatio: visceral.waistHipRatio } : {}),
       estimatedVisceralFat: visceral.estimatedVisceralFat,
       visceralFatPercent: visceral.visceralFatPercent,
       visceralFatRisk: visceral.riskAssessment,
@@ -379,6 +393,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
     items.map((log) => ({
       id: log.id,
       waistHeightRatio: log.waistHeightRatio,
+      waistHipRatio: log.waistHipRatio,
       estimatedVisceralFat: log.estimatedVisceralFat,
       visceralFatPercent: log.visceralFatPercent,
       visceralFatRisk: log.visceralFatRisk,
@@ -459,6 +474,7 @@ function buildDashboardFromLogs(logs, { formatChartDate }) {
       current: visceralLatest
         ? {
             waistHeightRatio: visceralLatest.waistHeightRatio,
+            waistHipRatio: visceralLatest.waistHipRatio ?? null,
             estimatedVisceralFat: visceralLatest.estimatedVisceralFat,
             visceralFatPercent: visceralLatest.visceralFatPercent,
             riskAssessment: visceralLatest.visceralFatRisk,
@@ -498,6 +514,7 @@ module.exports = {
   computeTdeeByActivity,
   resolvePrimaryTdee,
   computeBodyFat,
+  computeWaistHipRatio,
   assessVisceralFatRisk,
   computeVisceralFat,
   computeFattyLiverIndex,

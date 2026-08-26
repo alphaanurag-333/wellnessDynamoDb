@@ -48030,7 +48030,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cfg-bn-drop.is-filled p,
@@ -48133,7 +48133,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-bn-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -48236,7 +48236,7 @@ scrollbar-width: thin;
   align-items: center;
   justify-content: center;
   min-height: 88px;
-  background: linear-gradient(135deg, #dbeafe 0%, #fed7aa 100%);
+  /* background: linear-gradient(135deg, #dbeafe 0%, #fed7aa 100%); */
   color: #64748b;
   font-size: 12px;
   font-weight: 800;
@@ -48248,7 +48248,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner.is-on {

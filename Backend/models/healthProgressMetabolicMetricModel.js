@@ -32,6 +32,7 @@ function buildMetabolicMetricItem(input, { id, now, createdAt }) {
     bodyFatPercent: toNumberOrNull(input.bodyFatPercent),
     leanMuscleMassPercent: toNumberOrNull(input.leanMuscleMassPercent),
     waistHeightRatio: toNumberOrNull(input.waistHeightRatio),
+    waistHipRatio: toNumberOrNull(input.waistHipRatio),
     estimatedVisceralFat: toNumberOrNull(input.estimatedVisceralFat),
     visceralFatPercent: toNumberOrNull(input.visceralFatPercent),
     visceralFatRisk: input.visceralFatRisk ? String(input.visceralFatRisk) : null,
