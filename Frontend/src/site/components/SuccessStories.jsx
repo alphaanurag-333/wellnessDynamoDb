@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { handleMediaImageError } from "../../media.js";
 import successImg from "../images/about-one.png";
 import diabetesImg from "../images/diabetes.png";
@@ -219,6 +219,7 @@ const SuccessStories = () => {
                   </p>
                   <NavLink to={item.url} className="transformation-category-card__more">
                     Read More
+                    <ArrowRight size={16} aria-hidden />
                   </NavLink>
                 </article>
               </SwiperSlide>
