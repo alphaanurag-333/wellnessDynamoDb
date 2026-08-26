@@ -1,137 +1,108 @@
 require("dotenv").config();
 
+const nodeEnv = process.env.NODE_ENV || "development";
 const jwtSecret = process.env.JWT_SECRET;
 
+function str(name, fallback = "") {
+  const value = process.env[name];
+  if (value == null) return fallback;
+  const trimmed = String(value).trim();
+  return trimmed === "" ? fallback : trimmed;
+}
+
+function bool(name, fallback = false) {
+  const value = process.env[name];
+  if (value == null || String(value).trim() === "") return fallback;
+  return String(value).trim() === "true";
+}
+
+function num(name, fallback) {
+  const parsed = Number(process.env[name]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function cronEnabled(name) {
+  if (process.env[name] === "true") return true;
+  if (process.env[name] === "false") return false;
+  return nodeEnv === "production";
+}
+
 module.exports = {
-  port: Number(process.env.PORT) || 5000,
-  nodeEnv: process.env.NODE_ENV || "development",
+  port: num("PORT", 5000),
+  nodeEnv,
 
   jwtSecret,
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || "1h",
+  jwtExpiresIn: str("JWT_EXPIRES_IN", "1h"),
+  jwtRefreshSecret: str("JWT_REFRESH_SECRET", jwtSecret),
+  jwtRefreshExpiresIn: str("JWT_REFRESH_EXPIRES_IN", "7d"),
+  jwtResetPasswordSecret: str("JWT_RESET_PASSWORD_SECRET", jwtSecret),
+  jwtResetPasswordExpiresIn: str("JWT_RESET_PASSWORD_EXPIRES_IN", "1h"),
+  jwtVerifyEmailSecret: str("JWT_VERIFY_EMAIL_SECRET", jwtSecret),
+  jwtVerifyEmailExpiresIn: str("JWT_VERIFY_EMAIL_EXPIRES_IN", "1h"),
+  jwtMfaExpiresIn: str("JWT_MFA_EXPIRES_IN", "5m"),
 
-  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || jwtSecret,
-  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  adminRegistrationEnabled: bool("ADMIN_REGISTRATION_ENABLED"),
 
-  jwtResetPasswordSecret:
-    process.env.JWT_RESET_PASSWORD_SECRET || jwtSecret,
-  jwtResetPasswordExpiresIn:
-    process.env.JWT_RESET_PASSWORD_EXPIRES_IN || "1h",
+  exposeOtpInResponse: bool("EXPOSE_OTP_IN_RESPONSE"),
+  otpLength: num("OTP_LENGTH", 6),
+  otpExpiresMinutes: num("OTP_EXPIRES_MINUTES", 10),
+  totpIssuer: str("TOTP_ISSUER", "Wellness Admin"),
+  totpMaxFailedAttempts: num("TOTP_MAX_FAILED_ATTEMPTS", 5),
 
-  jwtVerifyEmailSecret: process.env.JWT_VERIFY_EMAIL_SECRET || jwtSecret,
-  jwtVerifyEmailExpiresIn: process.env.JWT_VERIFY_EMAIL_EXPIRES_IN || "1h",
-
-  adminRegistrationEnabled:
-    process.env.ADMIN_REGISTRATION_ENABLED === "true",
-
-  exposeOtpInResponse: process.env.EXPOSE_OTP_IN_RESPONSE === "true",
-  otpLength: Number(process.env.OTP_LENGTH) || 6,
-  otpExpiresMinutes: Number(process.env.OTP_EXPIRES_MINUTES) || 10,
-
-  /** Google Authenticator (TOTP) for staff portal login */
-  totpIssuer: process.env.TOTP_ISSUER || "Wellness Admin",
-  jwtMfaExpiresIn: process.env.JWT_MFA_EXPIRES_IN || "5m",
-  totpMaxFailedAttempts: Number(process.env.TOTP_MAX_FAILED_ATTEMPTS) || 5,
-
-  awsRegion: process.env.AWS_REGION || "ap-south-1",
+  awsRegion: str("AWS_REGION", "ap-south-1"),
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  dynamodbSkipVerify: process.env.DYNAMODB_SKIP_VERIFY === "true",
-
-  // S3 bucket region can differ from DynamoDB (e.g. Mumbai bucket + Singapore tables)
-  awsS3Region:
-    process.env.AWS_S3_REGION || process.env.AWS_REGION || "ap-south-1",
+  dynamodbSkipVerify: bool("DYNAMODB_SKIP_VERIFY"),
+  awsS3Region: str("AWS_S3_REGION", str("AWS_REGION", "ap-south-1")),
   awsS3BucketName: process.env.AWS_S3_BUCKET_NAME,
-  awsS3PublicBaseUrl: process.env.AWS_S3_PUBLIC_BASE_URL || "",
+  awsS3PublicBaseUrl: str("AWS_S3_PUBLIC_BASE_URL"),
 
-  firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "",
+  firebaseServiceAccountPath: str("FIREBASE_SERVICE_ACCOUNT_PATH"),
 
-  mockPayments: process.env.MOCK_PAYMENTS === "true",
+  mockPayments: bool("MOCK_PAYMENTS"),
   autoConfirmMockPayments:
-    process.env.AUTO_CONFIRM_MOCK_PAYMENT !== "false" &&
-    (process.env.NODE_ENV || "development") !== "production",
+    process.env.AUTO_CONFIRM_MOCK_PAYMENT !== "false" && nodeEnv !== "production",
 
-  zoomAccountId: process.env.ZOOM_ACCOUNT_ID || "",
-  zoomClientId: process.env.ZOOM_CLIENT_ID || "",
-  zoomClientSecret: process.env.ZOOM_CLIENT_SECRET || "",
-  zoomUserId: process.env.ZOOM_USER_ID || "me",
+  zoomAccountId: str("ZOOM_ACCOUNT_ID"),
+  zoomClientId: str("ZOOM_CLIENT_ID"),
+  zoomClientSecret: str("ZOOM_CLIENT_SECRET"),
+  zoomUserId: str("ZOOM_USER_ID", "me"),
 
-  bhashsmsUser: process.env.BHASHSMS_USER || "",
-  bhashsmsPass: process.env.BHASHSMS_PASS || "",
-  bhashsmsSender: process.env.BHASHSMS_SENDER || "BUZWAP",
-  bhashsmsBaseUrl:
-    process.env.BHASHSMS_BASE_URL || "http://bhashsms.com/api/sendmsgutil.php",
-  /** Approved WhatsApp utility template name (Bhash `text` param — not free-form body). */
-  bhashsmsTemplate: process.env.BHASHSMS_TEMPLATE || "invoice_1",
-  /** Template body variables for Bhash `Params` (e.g. "1" or "name,amount"). */
-  bhashsmsTemplateParams:
-    process.env.BHASHSMS_TEMPLATE_PARAMS != null &&
-    String(process.env.BHASHSMS_TEMPLATE_PARAMS).trim() !== ""
-      ? String(process.env.BHASHSMS_TEMPLATE_PARAMS).trim()
-      : "1",
-  /**
-   * Public PDF URL for document/payment templates (invoice_1).
-   * Only used when sendWhatsAppText({ attachDocument: true }) or sendWhatsAppDocument.
-   */
-  bhashsmsDocumentUrl: process.env.BHASHSMS_DOCUMENT_URL || "",
-  bhashsmsDocumentFname: process.env.BHASHSMS_DOCUMENT_FNAME || "PDF File",
-  /**
-   * Approved utility template for Admin reminder / free-text style sends.
-   * Params will be the reminder body. Required unless SplitCredits session text is enabled.
-   */
-  bhashsmsReminderTemplate: process.env.BHASHSMS_REMINDER_TEMPLATE || "",
-  /**
-   * When true, put the app message into Params instead of BHASHSMS_TEMPLATE_PARAMS
-   * (for document/payment templates that accept a body variable).
-   */
-  bhashsmsUseMessageAsParams: process.env.BHASHSMS_USE_MESSAGE_AS_PARAMS === "true",
-  /**
-   * When true, reminder sends use free-form `text` (session message).
-   * Needs SplitCredits / open session on the Bhash WhatsApp account.
-   */
-  bhashsmsAllowSessionText: process.env.BHASHSMS_ALLOW_SESSION_TEXT === "true",
+  bhashsmsUser: str("BHASHSMS_USER"),
+  bhashsmsPass: str("BHASHSMS_PASS"),
+  bhashsmsSender: str("BHASHSMS_SENDER", "BUZWAP"),
+  bhashsmsBaseUrl: str("BHASHSMS_BASE_URL", "http://bhashsms.com/api/sendmsgutil.php"),
+  bhashsmsAuthBaseUrl: str("BHASHSMS_AUTH_BASE_URL", "http://bhashsms.com/api/sendmsg.php"),
+  bhashsmsOtpTemplate: str("BHASHSMS_OTP_TEMPLATE", "ir_otp01"),
+  bhashsmsTemplate: str("BHASHSMS_TEMPLATE", "invoice_1"),
+  bhashsmsTemplateParams: str("BHASHSMS_TEMPLATE_PARAMS", "1"),
+  bhashsmsDocumentUrl: str("BHASHSMS_DOCUMENT_URL"),
+  bhashsmsDocumentFname: str("BHASHSMS_DOCUMENT_FNAME", "PDF File"),
+  bhashsmsReminderTemplate: str("BHASHSMS_REMINDER_TEMPLATE"),
+  bhashsmsUseMessageAsParams: bool("BHASHSMS_USE_MESSAGE_AS_PARAMS"),
+  bhashsmsAllowSessionText: bool("BHASHSMS_ALLOW_SESSION_TEXT"),
 
-  openaiApiKey: process.env.OPENAI_API_KEY || "",
-  openaiModel: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+  openaiApiKey: str("OPENAI_API_KEY"),
+  openaiModel: str("OPENAI_MODEL", "gpt-4.1-mini"),
 
-  birthdayJobTimezone: process.env.BIRTHDAY_JOB_TIMEZONE || "Asia/Kolkata",
-  // 12:05 AM daily — minute 5, hour 0
-  birthdayJobCronSchedule: process.env.BIRTHDAY_JOB_CRON_SCHEDULE || "5 0 * * *",
-  birthdayJobCronEnabled:
-    process.env.BIRTHDAY_JOB_CRON_ENABLED === "true" ||
-    (process.env.BIRTHDAY_JOB_CRON_ENABLED !== "false" &&
-      (process.env.NODE_ENV || "development") === "production"),
+  birthdayJobTimezone: str("BIRTHDAY_JOB_TIMEZONE", "Asia/Kolkata"),
+  birthdayJobCronSchedule: str("BIRTHDAY_JOB_CRON_SCHEDULE", "5 0 * * *"),
+  birthdayJobCronEnabled: cronEnabled("BIRTHDAY_JOB_CRON_ENABLED"),
 
-  energyExchangeFyCronTimezone:
-    process.env.ENERGY_EXCHANGE_FY_CRON_TIMEZONE || "Asia/Kolkata",
-  // 12:05 AM IST daily
-  energyExchangeFyCronSchedule:
-    process.env.ENERGY_EXCHANGE_FY_CRON_SCHEDULE || "5 0 * * *",
-  energyExchangeFyCronEnabled:
-    process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED === "true" ||
-    (process.env.ENERGY_EXCHANGE_FY_CRON_ENABLED !== "false" &&
-      (process.env.NODE_ENV || "development") === "production"),
+  energyExchangeFyCronTimezone: str("ENERGY_EXCHANGE_FY_CRON_TIMEZONE", "Asia/Kolkata"),
+  energyExchangeFyCronSchedule: str("ENERGY_EXCHANGE_FY_CRON_SCHEDULE", "5 0 * * *"),
+  energyExchangeFyCronEnabled: cronEnabled("ENERGY_EXCHANGE_FY_CRON_ENABLED"),
 
-  monthlyChampionCronTimezone: process.env.MONTHLY_CHAMPION_CRON_TIMEZONE || "Asia/Kolkata",
-  // 12:10 AM on the 1st of every month — evaluates the month that just ended
-  monthlyChampionCronSchedule: process.env.MONTHLY_CHAMPION_CRON_SCHEDULE || "10 0 1 * *",
-  monthlyChampionCronEnabled:
-    process.env.MONTHLY_CHAMPION_CRON_ENABLED === "true" ||
-    (process.env.MONTHLY_CHAMPION_CRON_ENABLED !== "false" &&
-      (process.env.NODE_ENV || "development") === "production"),
+  monthlyChampionCronTimezone: str("MONTHLY_CHAMPION_CRON_TIMEZONE", "Asia/Kolkata"),
+  monthlyChampionCronSchedule: str("MONTHLY_CHAMPION_CRON_SCHEDULE", "10 0 1 * *"),
+  monthlyChampionCronEnabled: cronEnabled("MONTHLY_CHAMPION_CRON_ENABLED"),
 
-  challengeLifecycleCronTimezone:
-    process.env.CHALLENGE_LIFECYCLE_CRON_TIMEZONE || "Asia/Kolkata",
-  // Hourly IST — grant/revoke challenge access around start/end dates
-  challengeLifecycleCronSchedule:
-    process.env.CHALLENGE_LIFECYCLE_CRON_SCHEDULE || "15 * * * *",
-  challengeLifecycleCronEnabled:
-    process.env.CHALLENGE_LIFECYCLE_CRON_ENABLED === "true" ||
-    (process.env.CHALLENGE_LIFECYCLE_CRON_ENABLED !== "false" &&
-      (process.env.NODE_ENV || "development") === "production"),
+  challengeLifecycleCronTimezone: str("CHALLENGE_LIFECYCLE_CRON_TIMEZONE", "Asia/Kolkata"),
+  challengeLifecycleCronSchedule: str("CHALLENGE_LIFECYCLE_CRON_SCHEDULE", "15 * * * *"),
+  challengeLifecycleCronEnabled: cronEnabled("CHALLENGE_LIFECYCLE_CRON_ENABLED"),
 
-  /** Staff Account consolidation — docs/domain/account-migration-design-freeze.md */
   accountDualRead: process.env.ACCOUNT_DUAL_READ !== "false",
-  accountDualWrite: process.env.ACCOUNT_DUAL_WRITE === "true",
-  accountAuthEnabled: process.env.ACCOUNT_AUTH_ENABLED === "true",
+  accountDualWrite: bool("ACCOUNT_DUAL_WRITE"),
+  accountAuthEnabled: bool("ACCOUNT_AUTH_ENABLED"),
   accountLegacyShims: process.env.ACCOUNT_LEGACY_SHIMS !== "false",
 };
