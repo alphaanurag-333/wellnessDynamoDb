@@ -153,7 +153,7 @@ export default function YogaPranayamSection() {
   if (!initialLoading && !refreshing && !hasItems && !category) return null;
 
   return (
-    <section className="wp-section wp-yoga" aria-label="Yoga and Pranayam">
+    <section className="wp-section wp-yoga backgroundapply" aria-label="Yoga and Pranayam">
       <div className="site-container">
         <div className="wp-section__header">
           <h2>Yoga &amp; Pranayam</h2>

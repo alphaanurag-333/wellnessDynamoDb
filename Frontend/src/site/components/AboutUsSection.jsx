@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   fetchCofounderMessage,
   fetchFaqs,
@@ -53,6 +53,60 @@ function highlightWellnessTitle(title) {
 
 function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
+}
+
+function PillarDescription({ html, text }) {
+  const [expanded, setExpanded] = useState(false);
+  const [canToggle, setCanToggle] = useState(false);
+  const clampRef = useRef(null);
+  const source = html && looksLikeHtml(html) ? html : "";
+
+  const measure = useCallback(() => {
+    const el = clampRef.current;
+    if (!el || expanded) return;
+    setCanToggle(el.scrollHeight > el.clientHeight + 1);
+  }, [expanded, source, text]);
+
+  useLayoutEffect(() => {
+    measure();
+  }, [measure]);
+
+  useEffect(() => {
+    const el = clampRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  return (
+    <>
+      {source ? (
+        <div
+          ref={clampRef}
+          className={`pillar-card__description mb-0 static-page-content${expanded ? "" : " is-clamped"}`}
+          dangerouslySetInnerHTML={{ __html: source }}
+        />
+      ) : (
+        <p
+          ref={clampRef}
+          className={`pillar-card__description mb-0${expanded ? "" : " is-clamped"}`}
+        >
+          {text}
+        </p>
+      )}
+      {canToggle ? (
+        <button
+          type="button"
+          className="pillar-card__more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((open) => !open)}
+        >
+          {expanded ? "Read less" : "Read more"}
+        </button>
+      ) : null}
+    </>
+  );
 }
 
 const FALLBACK_DESCRIPTION_TITLE = "Meet Your Wellness Partner";
@@ -356,14 +410,7 @@ const AboutUsSection = () => {
                   {item.headTitle ? (
                     <h5 className="pillar-card__head-title">{item.headTitle}</h5>
                   ) : null}
-                  {item.html && looksLikeHtml(item.html) ? (
-                    <div
-                      className="pillar-card__description mb-0 static-page-content"
-                      dangerouslySetInnerHTML={{ __html: item.html }}
-                    />
-                  ) : (
-                    <p className="pillar-card__description mb-0">{item.description}</p>
-                  )}
+                  <PillarDescription html={item.html} text={item.description} />
                 </div>
               </article>
             ))}

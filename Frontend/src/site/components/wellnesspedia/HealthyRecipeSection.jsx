@@ -171,7 +171,7 @@ export default function HealthyRecipeSection() {
   if (!initialLoading && !refreshing && !hasItems && !category) return null;
 
   return (
-    <section className="wp-section wp-recipes" aria-label="Healthy recipes">
+    <section className="wp-section wp-recipes backgroundapply" aria-label="Healthy recipes">
       <div className="site-container">
         <div className="wp-section__header">
           <h2>Healthy Recipe</h2>
