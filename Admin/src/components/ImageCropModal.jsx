@@ -12,9 +12,12 @@ function cropAspectCss(ratio, originalAspectCss) {
 
 function cropViewportStyle(ratio, cropWidth, cropHeight, originalAspectCss) {
   if (cropWidth && cropHeight) {
+    const maxW = 620;
+    const maxH = 260;
+    const scale = Math.min(maxW / cropWidth, maxH / cropHeight, 1);
     return {
-      width: cropWidth,
-      height: cropHeight,
+      width: Math.max(1, Math.round(cropWidth * scale)),
+      height: Math.max(1, Math.round(cropHeight * scale)),
       maxWidth: "100%",
       aspectRatio: `${cropWidth} / ${cropHeight}`,
     };
@@ -154,6 +157,8 @@ export function ImageCropModal({
         pan,
         fileName: file.name,
         mimeType: file.type,
+        outputWidth: cropWidth,
+        outputHeight: cropHeight,
       });
       await onConfirm(cropped);
     } catch (error) {

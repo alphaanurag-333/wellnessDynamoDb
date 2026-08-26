@@ -34,6 +34,10 @@ const EMPTY_DRAFT = {
   imagePreview: "",
 };
 
+const RP_CROP_WIDTH = 400;
+const RP_CROP_HEIGHT = 400;
+const RP_CROP_RATIO = "1:1";
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -57,6 +61,7 @@ function PhotoDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
       <p className="ua-cfg-tf-drop__label">Client photo</p>
+      <span className="ua-cfg-rp-drop__size">{RP_CROP_WIDTH}px × {RP_CROP_HEIGHT}px</span>
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -346,6 +351,10 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose image",
+    cropImages: false,
+    cropWidth: RP_CROP_WIDTH,
+    cropHeight: RP_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, context) => openCrop(file, context),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -847,9 +856,12 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="3 / 4"
-        originalAspectNumber={3 / 4}
+        defaultRatio={RP_CROP_RATIO}
+        originalAspectCss={`${RP_CROP_WIDTH} / ${RP_CROP_HEIGHT}`}
+        originalAspectNumber={RP_CROP_WIDTH / RP_CROP_HEIGHT}
+        cropWidth={RP_CROP_WIDTH}
+        cropHeight={RP_CROP_HEIGHT}
+        backdropClassName="ua-cfg-rp-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />

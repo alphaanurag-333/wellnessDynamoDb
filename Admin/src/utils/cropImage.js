@@ -35,7 +35,7 @@ export function coverLayout(imageWidth, imageHeight, viewportWidth, viewportHeig
   };
 }
 
-export async function cropImageToFile(imageSrc, { viewportWidth, viewportHeight, zoom, pan, fileName, mimeType }) {
+export async function cropImageToFile(imageSrc, { viewportWidth, viewportHeight, zoom, pan, fileName, mimeType, outputWidth, outputHeight }) {
   const image = await loadImage(imageSrc);
   const layout = coverLayout(
     image.naturalWidth,
@@ -52,10 +52,17 @@ export async function cropImageToFile(imageSrc, { viewportWidth, viewportHeight,
   const sw = clamp(viewportWidth / layout.scale, 1, image.naturalWidth - sx);
   const sh = clamp(viewportHeight / layout.scale, 1, image.naturalHeight - sy);
 
-  const maxSide = 1200;
-  const outScale = Math.min(1, maxSide / Math.max(sw, sh));
-  const outW = Math.max(1, Math.round(sw * outScale));
-  const outH = Math.max(1, Math.round(sh * outScale));
+  let outW;
+  let outH;
+  if (outputWidth && outputHeight) {
+    outW = Math.max(1, Math.round(outputWidth));
+    outH = Math.max(1, Math.round(outputHeight));
+  } else {
+    const maxSide = 1200;
+    const outScale = Math.min(1, maxSide / Math.max(sw, sh));
+    outW = Math.max(1, Math.round(sw * outScale));
+    outH = Math.max(1, Math.round(sh * outScale));
+  }
 
   const canvas = document.createElement("canvas");
   canvas.width = outW;

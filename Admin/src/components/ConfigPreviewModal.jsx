@@ -8,15 +8,30 @@ import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
 import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
 import { liveVersionText } from "../data/privacyConfigData.js";
-import { asCopyString, bannerPlacementById, cssAspectRatio } from "../data/bannerConfigData.js";
+import {
+  asCopyString,
+  bannerPlacementById,
+  BANNER_DESKTOP_SIZE,
+  BANNER_MOBILE_SIZE,
+} from "../data/bannerConfigData.js";
 import { formatPack } from "../data/nutritionBankData.js";
 import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
 function previewSurfaces(item) {
   const surfaces = [];
-  if (item.id === "common-transformation" || item.id === "common-real-people") {
-    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "3:4" });
-    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "3:4" });
+  if (item.id === "common-transformation") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "4:5" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "4:5" });
+    return surfaces;
+  }
+  if (item.id === "common-real-people") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
+  if (item.id === "common-banner") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: BANNER_MOBILE_SIZE.label });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: BANNER_DESKTOP_SIZE.label });
     return surfaces;
   }
   if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders") {
@@ -31,8 +46,14 @@ function previewSurfaces(item) {
 }
 
 function surfaceSubtitle(surfaces, activeId, item) {
-  if (item?.id === "common-transformation" || item?.id === "common-real-people") {
-    return "Common asset · renders on both surfaces · 3:4";
+  if (item?.id === "common-transformation") {
+    return "Common asset · renders on both surfaces · 200 × 250";
+  }
+  if (item?.id === "common-real-people") {
+    return "Common asset · renders on both surfaces · 400 × 400";
+  }
+  if (item?.id === "common-banner") {
+    return `Desktop ${BANNER_DESKTOP_SIZE.label} · Mobile ${BANNER_MOBILE_SIZE.label}`;
   }
   if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-health-disorders") {
     return "Common asset · renders on both surfaces · 16:9";
@@ -1581,7 +1602,9 @@ function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" })
 function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
   const sectionWebOn = surfaceEditor.webOn !== false;
   const sectionAppOn = surfaceEditor.appOn !== false;
-  const surfaceOn = surface === "app" ? sectionAppOn : sectionWebOn;
+  const surfaceOn = surface === "app"
+    ? sectionAppOn && editor.appOn !== false
+    : sectionWebOn && editor.webOn !== false;
   const placement = bannerPlacementById(editor.placement);
   const image = surface === "app"
     ? (editor.mobilePreview || editor.mobileImage || editor.imagePreview || editor.image)
@@ -1598,7 +1621,11 @@ function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
       </div>
       <div
         className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}
-        style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
+        style={{
+          aspectRatio: surface === "app"
+            ? `${BANNER_MOBILE_SIZE.width} / ${BANNER_MOBILE_SIZE.height}`
+            : `${BANNER_DESKTOP_SIZE.width} / ${BANNER_DESKTOP_SIZE.height}`,
+        }}
       >
         {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
       </div>
