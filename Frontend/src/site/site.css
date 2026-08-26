@@ -904,7 +904,7 @@ min-height: 100%;
   gap: 0.75rem;
   height: 100%;
   min-height: 100%;
-  background-color: #fff;
+  background-color: #fef4ed;
   border-radius: 15px;
   box-sizing: border-box;
 }
@@ -2345,10 +2345,12 @@ display: flex;
   gap: 10px;
 font-size: 16px;
   font-weight: var(--fw-semibold);
+  text-decoration: none;
 }
 
 .wellness-btn--primary:hover {
   background: var(--primary-hover);
+  color: var(--text-white);
 }
 
 .wellness-btn--secondary {
@@ -2454,7 +2456,7 @@ color: var(--text-body);
 .methodology {
   width: 100%;
   padding: var(--space-8) 0;
-  background: var(--bg-body);
+  background: #fef4ed;
 }
 
 .methodology__header {
@@ -2604,6 +2606,9 @@ h5.pillar-card__head-title {
 
 .methodology-card__cta {
   position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   height: 44px;
   margin-top: 14px;
@@ -2615,6 +2620,7 @@ h5.pillar-card__head-title {
   font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.02em;
+  text-decoration: none;
   cursor: pointer;
   box-shadow: 0 8px 18px rgba(231, 134, 58, 0.28);
   transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
@@ -2766,7 +2772,7 @@ transition: transform 0.8s ease;
 .success-stories {
   width: 100%;
   padding: var(--space-8) 0;
-  background: var(--bg-body);
+  background: #fef4ed;
 }
 
 .success-stories__header {
@@ -3250,7 +3256,7 @@ transition: var(--transition);
 .site-footer {
   position: relative;
   font-family: var(--font-primary);
-  background: linear-gradient(180deg, #fff8f3 0%, var(--footer-bg) 42%, #fdeee3 100%);
+  background: #fef4ed;
   padding: 0 0 16px;
   /* border-top: 1px solid rgba(231, 134, 58, 0.12); */
 }
@@ -4177,7 +4183,7 @@ border: 2px solid rgba(255, 255, 255, 0.18);
 
 .about-wellness {
   width: 100%;
-  background: var(--primary-light);
+  background: #fef4ed;
   padding: var(--space-8) 0 0;
   overflow: hidden;
 }
@@ -4341,7 +4347,7 @@ color: var(--primary);
 .leadership {
   width: 100%;
   padding: var(--space-8) 0;
-  background: var(--primary-light);
+  background: #fef4ed;
 }
 
 .leadership--alt {
@@ -4796,7 +4802,7 @@ color: var(--primary);
 .pillars {
   width: 100%;
   padding: var(--section-padding-y) 0;
-  background: var(--admin-bg);
+  background: #fef4ed;
 }
 
 .pillars__heading {
@@ -4915,7 +4921,7 @@ font-weight: var(--fw-regular);
 .aboutFaq {
   width: 100%;
   padding: var(--section-padding-y) 0;
-  background: var(--primary-light);
+  background: #fef4ed;
 }
 
 .aboutFaq__wrapper {
@@ -6525,7 +6531,7 @@ box-shadow: var(--shadow-sm);
 .transformation-section {
   width: 100%;
   padding: var(--space-8) 0;
-  background: var(--bg-section);
+  background: #fef4ed;
 }
 
 .transformation-section .container {
@@ -7243,6 +7249,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   width: 100%;
   padding: var(--space-8) 0;
   overflow: visible;
+  background: #fef4ed;
 }
 
 .real-healing-section .site-container {
@@ -9452,7 +9459,7 @@ flex-shrink: 0;
 }
 
 .about-page > .leadership.leadership-slider + .leadership.leadership-slider {
-  background: var(--primary-light);
+  background: #fef4ed;
 }
 
 .about-page .medicalBoard__top {
@@ -12460,7 +12467,7 @@ bottom: -18px;
   }
 .about-page .pillars__wrapper {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-4);
   }
 .about-page .pillar-card {
@@ -12484,7 +12491,7 @@ bottom: -18px;
     gap: var(--space-4);
   }
 .about-page .methodology-card {
-    width: min(100%, 320px);
+    width: min(100%, 279px);
     margin: 0 auto;
   }
 .about-page .medicalBoard__top {

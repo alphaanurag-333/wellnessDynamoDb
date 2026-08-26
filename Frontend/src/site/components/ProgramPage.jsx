@@ -1,11 +1,5 @@
-import { Link } from "react-router-dom";
 import FinalCTA from "./FinalCTA";
 import { CONSULTATION_WHATSAPP } from "../data/programPages";
-
-function openConsultation(e) {
-  e.preventDefault();
-  window.open(CONSULTATION_WHATSAPP, "_blank", "noopener,noreferrer");
-}
 
 export default function ProgramPage({
   title,
@@ -34,13 +28,14 @@ export default function ProgramPage({
             {description ? (
               <p className="program-hero__description">{description}</p>
             ) : null}
-            <Link
-              to="#"
+            <a
+              href={CONSULTATION_WHATSAPP}
               className="program-hero__cta"
-              onClick={openConsultation}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Book a consultation
-            </Link>
+            </a>
           </div>
         </div>
       </section>

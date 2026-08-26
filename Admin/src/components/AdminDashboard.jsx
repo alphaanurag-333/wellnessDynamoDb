@@ -1881,7 +1881,7 @@ export function AdminDashboard({
             <button
               type="button"
               className="prog-cat prog-cat--appuser"
-              style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
+              style={{ background: "rgb(255, 255, 255)", borderColor: "rgb(94 106 210 / 20%)" }}
               onClick={() => openProgramCategory(appUserProgramCard)}
             >
               <span className="prog-cat__icon" style={{ background: "#fff" }}>
@@ -2493,8 +2493,12 @@ export function AdminDashboard({
               </div>
 
               <div className="chart-card">
-                <div className="chart-card__title">Users by tier</div>
-                <div className="chart-card__sub">Seek, Heal, PWC &amp; maintenance</div>
+                <div className="chart-card__head">
+                  <div>
+                    <div className="chart-card__title">Users by tier</div>
+                    <div className="chart-card__sub">Seek, Heal, PWC &amp; maintenance</div>
+                  </div>
+                </div>
                 <div className="tier-chart">
                   <div className="tier-chart__donut">
                     <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>

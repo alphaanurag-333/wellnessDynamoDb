@@ -7,6 +7,7 @@ import {
   selectLoginBrandLogoUrl,
 } from "../../store/appConfigSelectors.js";
 import { ChevronDown } from "lucide-react";
+import { CONSULTATION_WHATSAPP } from "../data/programPages";
 
 export function SiteHeader() {
   const location = useLocation();
@@ -176,20 +177,14 @@ export function SiteHeader() {
             </nav>
 
             {/* CTA */}
-            <Link
-              to="#"
+            <a
+              href={CONSULTATION_WHATSAPP}
               className="site-header__cta"
-              onClick={(e) => {
-                e.preventDefault();
-                window.open(
-                  "https://wa.me/919372109740",
-                  "_blank",
-                  "noopener,noreferrer",
-                );
-              }}
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Book a consultation
-            </Link>
+            </a>
 
             {/* Mobile Button */}
             <button
@@ -329,21 +324,15 @@ export function SiteHeader() {
           </NavLink>
         </nav>
 
-        <Link
-          to="#"
+        <a
+          href={CONSULTATION_WHATSAPP}
           className="mobile-cta"
-          onClick={(e) => {
-            e.preventDefault();
-            setMobileMenuOpen(false);
-            window.open(
-              "https://wa.me/919372109740",
-              "_blank",
-              "noopener,noreferrer",
-            );
-          }}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMobileMenuOpen(false)}
         >
           Book a consultation
-        </Link>
+        </a>
       </div>
     </>
   );

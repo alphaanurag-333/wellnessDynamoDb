@@ -131,19 +131,19 @@ export function DashboardChallengesCard({ onToast }) {
       </div>
 
       <div className="ops-challenge__stats">
-        <div className="ops-challenge__stat">
+        <div className="ops-challenge__stat cssmanaged">
           <strong>{loading ? "—" : running.length}</strong>
           <span>Live now</span>
         </div>
-        <div className="ops-challenge__stat">
+        <div className="ops-challenge__stat cssmanaged">
           <strong>{loading ? "—" : upcoming.length}</strong>
           <span>Upcoming</span>
         </div>
-        <div className="ops-challenge__stat">
+        <div className="ops-challenge__stat cssmanaged">
           <strong>{loading ? "—" : enrolledTotal}</strong>
           <span>Enrolled</span>
         </div>
-        <div className="ops-challenge__stat">
+        <div className="ops-challenge__stat cssmanaged">
           <strong>{loading ? "—" : drafts.length}</strong>
           <span>Drafts</span>
         </div>
