@@ -10,19 +10,22 @@ import {
 import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
   BANNER_COPY,
+  BANNER_DESKTOP_SIZE,
+  BANNER_MOBILE_SIZE,
+  BANNER_PAGE_SIZE,
   BANNER_PLACEMENTS,
   BANNER_TYPES,
   asCopyString,
   bannerPlacementById,
-  cssAspectRatio,
   emptyBannerEditor,
   mapDropdownOptions,
+  optionLabel,
   preserveOption,
 } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
-import { CfgSelect } from "./shared.jsx";
+import { CfgSelect, ListPagination } from "./shared.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
@@ -40,16 +43,21 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
   );
 }
 
-function DropZone({ label, hint, previewUrl, onUpload }) {
+function bannerCropForKind(kind) {
+  return kind === "mobile" ? BANNER_MOBILE_SIZE : BANNER_DESKTOP_SIZE;
+}
+
+function DropZone({ label, hint, size, previewUrl, onUpload, className = "" }) {
   const uploaded = Boolean(previewUrl);
   return (
-    <div className={`ua-cfg-bn-drop${uploaded ? " is-filled" : ""}`}>
+    <div className={`ua-cfg-bn-drop${uploaded ? " is-filled" : ""}${className ? ` ${className}` : ""}`}>
       {uploaded ? (
         <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" />
       ) : (
         <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
       )}
       <p>{uploaded ? "Banner attached" : hint}</p>
+      {size ? <span className="ua-cfg-bn-drop__size">{size}</span> : null}
       <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onUpload}>
         {uploaded ? "Replace" : label}
       </button>
@@ -60,6 +68,24 @@ function DropZone({ label, hint, previewUrl, onUpload }) {
 function BannerImage({ src, className }) {
   if (!src) return null;
   return <img className={className} src={src} alt="" />;
+}
+
+function LiveToggle({ label, on, disabled, ariaLabel, onToggle }) {
+  return (
+    <div className="ua-cfg-bn-live__surface">
+      <span className={`ua-cfg-faq__shown${on ? " is-on" : ""}`}>{label}</span>
+      <button
+        type="button"
+        className={`ua-toggle ua-toggle--sm${on ? " ua-toggle--on" : ""}`}
+        aria-pressed={on}
+        aria-label={ariaLabel}
+        disabled={disabled}
+        onClick={onToggle}
+      >
+        <span className="ua-toggle__knob" />
+      </button>
+    </div>
+  );
 }
 
 export function BannerSection({ editor, setEditor, items, setItems, onToast, surfaceEditor, setSurfaceEditor }) {
@@ -78,16 +104,23 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const [cropPending, setCropPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [galleryQuery, setGalleryQuery] = useState("");
+  const [page, setPage] = useState(1);
   const cropKindRef = useRef("banner");
   const creatingRef = useRef(false);
+  const liveListRef = useRef(null);
   creatingRef.current = creating;
 
   const bodyText = asCopyString(editor.body);
   const typeOptions = preserveOption(editor.type, bannerTypes, BANNER_TYPES);
   const placementOptions = preserveOption(editor.placement, placements, BANNER_PLACEMENTS);
   const placement = bannerPlacementById(editor.placement, placementOptions);
+  const selectedTypeLabel = optionLabel(editor.type, typeOptions, BANNER_TYPES);
   const webPreview = editor.imagePreview || editor.image;
-  const mobilePreview = editor.mobilePreview || editor.mobileImage || webPreview;
+  const mobileSlotPreview = editor.mobilePreview || editor.mobileImage;
+  const mobilePreview = mobileSlotPreview || webPreview;
+  const cropSpec = bannerCropForKind(cropPending?.kind);
+  const webSurfaceOn = surfaceEditor?.webOn !== false && editor.webOn !== false;
+  const appSurfaceOn = surfaceEditor?.appOn !== false && editor.appOn !== false;
   const headlineOptions = useMemo(() => {
     const current = String(editor.headline || "").trim();
     if (!current || headlines.some((row) => row.label === current || row.value === current)) return headlines;
@@ -138,9 +171,11 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         if (!selected) return { ...emptyBannerEditor(), type: prev.type, placement: prev.placement };
         return editorFromBanner(selected, emptyBannerEditor());
       });
+      return next;
     } catch (error) {
       setItems([]);
       onToast(error?.message || "Could not load banners");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -157,6 +192,27 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
   }, [cropPending?.previewUrl]);
+
+  const pageCount = Math.max(1, Math.ceil((items.length || 0) / BANNER_PAGE_SIZE));
+  const safePage = Math.min(Math.max(1, page), pageCount);
+  const pageStart = (safePage - 1) * BANNER_PAGE_SIZE;
+  const pagedItems = items.slice(pageStart, pageStart + BANNER_PAGE_SIZE);
+
+  useEffect(() => {
+    setPage((current) => Math.min(Math.max(1, current), pageCount));
+  }, [pageCount]);
+
+  function goToPage(nextPage, totalItems = items.length) {
+    const pages = Math.max(1, Math.ceil((totalItems || 0) / BANNER_PAGE_SIZE));
+    setPage(Math.min(Math.max(1, nextPage), pages));
+    liveListRef.current?.scrollTo({ top: 0 });
+  }
+
+  function goToItemPage(id, list = items) {
+    const index = list.findIndex((row) => row.id === id);
+    if (index < 0) return;
+    goToPage(Math.floor(index / BANNER_PAGE_SIZE) + 1, list.length);
+  }
 
   function patch(next) {
     setEditor((prev) => ({ ...prev, ...next }));
@@ -211,6 +267,8 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const { openPicker: openMediaPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose banner image",
+    cropImages: false,
+    showFrameworks: false,
     onFiles: (file, kind) => beginCropFromFile(file, kind || cropKindRef.current),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -275,9 +333,9 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       placement: editor.placement,
       cta: editor.cta,
       ctaLink: editor.ctaLink,
-      split: editor.split,
-      appOn: editor.appOn,
-      webOn: editor.webOn,
+      split: true,
+      appOn: editor.appOn !== false,
+      webOn: editor.webOn !== false,
     };
   }
 
@@ -292,10 +350,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       return;
     }
     if (!editor.id && !(editor.imageFile instanceof File) && !editor.image) {
-      onToast("Add a banner image");
+      onToast("Add a desktop banner image");
       return;
     }
-    if (!editor.id && editor.split && !(editor.mobileFile instanceof File) && !editor.mobileImage) {
+    if (!editor.id && !(editor.mobileFile instanceof File) && !editor.mobileImage) {
       onToast("Add a mobile banner image");
       return;
     }
@@ -304,12 +362,15 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       if (!editor.id) {
         const created = await adminCreateBanner(null, payload, {
           imageFile: editor.imageFile,
-          mobileFile: editor.split ? editor.mobileFile : editor.imageFile,
+          mobileFile: editor.mobileFile || editor.imageFile,
         });
         setCreating(false);
         onToast("Banner added");
-        await loadItems();
-        if (created?.id) selectItem(created);
+        const next = await loadItems();
+        if (created?.id) {
+          selectItem(created);
+          goToItemPage(created.id, next);
+        }
       } else {
         const saved = await adminUpdateBanner(null, editor.id, payload);
         setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
@@ -355,6 +416,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     const [row] = ordered.splice(index, 1);
     ordered.splice(nextIndex, 0, row);
     setItems(ordered);
+    goToPage(Math.floor(nextIndex / BANNER_PAGE_SIZE) + 1);
     try {
       const saved = await adminReorderBanners(null, ordered.map((entry) => entry.id));
       if (saved?.length) setItems(saved);
@@ -417,7 +479,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         >
           <div className="ua-cfg-bn-editor">
             <label className="ua-cfg-bn-field">
-              <span>Banner type</span>
+              <span>
+                Banner type
+                {selectedTypeLabel ? (
+                  <em className="ua-cfg-bn-ratio">{selectedTypeLabel}</em>
+                ) : null}
+              </span>
               <CfgSelect
                 className="ua-cfg-bn-select"
                 ariaLabel="Banner type"
@@ -432,41 +499,36 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
             ) : null}
 
-            <div className="ua-cfg-bn-split">
-              <span className="ua-cfg-bn-split__icon" aria-hidden="true">🖥</span>
+            <div className="ua-cfg-bn-split-drops">
               <div>
-                <strong>Split web &amp; mobile</strong>
-                <p>{editor.split ? "Separate web and mobile artwork." : "One artwork for both surfaces"}</p>
+                <div className="ua-cfg-bn-split-drops__label">
+                  <strong className="is-web">DESKTOP</strong>
+                  <span>Desktop banner image · {BANNER_DESKTOP_SIZE.label}</span>
+                </div>
+                <DropZone
+                  className="ua-cfg-bn-drop--desktop"
+                  label="Upload desktop"
+                  hint="Desktop banner image"
+                  size={BANNER_DESKTOP_SIZE.label}
+                  previewUrl={webPreview}
+                  onUpload={() => openFilePicker("web")}
+                />
               </div>
-              <button
-                type="button"
-                className={`ua-toggle ua-toggle--sm${editor.split ? " ua-toggle--on" : ""}`}
-                aria-pressed={editor.split}
-                disabled={busy}
-                onClick={() => patch({ split: !editor.split })}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
+              <div>
+                <div className="ua-cfg-bn-split-drops__label">
+                  <strong className="is-app">MOBILE</strong>
+                  <span>Mobile banner image · {BANNER_MOBILE_SIZE.label}</span>
+                </div>
+                <DropZone
+                  className="ua-cfg-bn-drop--mobile"
+                  label="Upload mobile"
+                  hint="Mobile banner image"
+                  size={BANNER_MOBILE_SIZE.label}
+                  previewUrl={mobileSlotPreview}
+                  onUpload={() => openFilePicker("mobile")}
+                />
+              </div>
             </div>
-
-            {editor.split ? (
-              <div className="ua-cfg-bn-split-drops">
-                <div>
-                  <div className="ua-cfg-bn-split-drops__label">
-                    <strong className="is-web">WEB</strong>
-                    <span>Desktop · wide crop</span>
-                  </div>
-                  <DropZone label="Upload Web" hint="Web artwork" previewUrl={webPreview} onUpload={() => openFilePicker("web")} />
-                </div>
-                <div>
-                  <div className="ua-cfg-bn-split-drops__label">
-                    <strong className="is-app">MOBILE</strong>
-                    <span>Portrait · app crop</span>
-                  </div>
-                  <DropZone label="Upload Mobile" hint="Mobile artwork" previewUrl={mobilePreview} onUpload={() => openFilePicker("mobile")} />
-                </div>
-              </div>
-            ) : null}
 
             <label className="ua-cfg-bn-field">
               <span>
@@ -484,14 +546,32 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               />
             </label>
 
-            {!editor.split ? (
-              <DropZone
-                label="Upload banner"
-                hint={`Drop banner · ${placement.ratio}`}
-                previewUrl={webPreview}
-                onUpload={() => openFilePicker("banner")}
-              />
-            ) : null}
+            <div className="ua-cfg-bn-surfaces ua-cfg-bn-editor__surfaces">
+              <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn !== false ? " is-on" : ""}`}>
+                <span>Web {editor.webOn !== false ? "Enabled" : "Disabled"}</span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${editor.webOn !== false ? " ua-toggle--on" : ""}`}
+                  aria-pressed={editor.webOn !== false}
+                  disabled={busy}
+                  onClick={() => patch({ webOn: editor.webOn === false })}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
+              <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn !== false ? " is-on" : ""}`}>
+                <span>App {editor.appOn !== false ? "Enabled" : "Disabled"}</span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${editor.appOn !== false ? " ua-toggle--on" : ""}`}
+                  aria-pressed={editor.appOn !== false}
+                  disabled={busy}
+                  onClick={() => patch({ appOn: editor.appOn === false })}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+              </div>
+            </div>
 
             <div className="ua-cfg-bn-copy">
               <span>Banner copy</span>
@@ -544,9 +624,6 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 placeholder="CTA link · https://…"
               />
               <div className="ua-cfg-bn-copy__actions">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={() => openFilePicker(editor.split ? "web" : "banner")}>
-                  Upload image
-                </button>
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--primary"
@@ -561,16 +638,20 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         </Panel>
 
         <Panel
+          className="ua-cfg-bn-live-panel"
           title="Live in this placement"
-          subtitle={loading ? "Loading banners…" : `${items.length} banners`}
+          subtitle={loading ? "Loading banners…" : `${items.length} banner${items.length === 1 ? "" : "s"}`}
           actions={(
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-bn-add" disabled={busy} onClick={startCreate}>
               + Add banner
             </button>
           )}
         >
-          <div className="ua-cfg-bn-live">
-            {items.map((entry, index) => (
+          <div ref={liveListRef} className={`ua-cfg-bn-live${loading ? " is-loading" : ""}`}>
+            {pagedItems.map((entry, pageIndex) => {
+              const index = pageStart + pageIndex;
+              const typeLabel = optionLabel(entry.type, typeOptions, BANNER_TYPES);
+              return (
               <article key={entry.id} className={`ua-cfg-bn-live__row${entry.id === editor.id && !creating ? " is-selected" : ""}`}>
                 <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span>
                 <button type="button" className="ua-cfg-bn-live__thumb" onClick={() => selectItem(entry)}>
@@ -578,69 +659,98 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                     <img src={entry.image || entry.mobileImage} alt="" />
                   ) : null}
                 </button>
-                <strong className="ua-cfg-bn-live__title">{asCopyString(entry.title)}</strong>
+                <div className="ua-cfg-bn-live__copy">
+                  <strong className="ua-cfg-bn-live__title">{asCopyString(entry.title)}</strong>
+                  {typeLabel ? <span className="ua-cfg-bn-live__type">{typeLabel}</span> : null}
+                </div>
                 <div className="ua-cfg-bn-live__actions">
-                  <span className={`ua-cfg-faq__shown${entry.shown ? " is-on" : ""}`}>
-                    {entry.shown ? "LIVE" : "HIDDEN"}
-                  </span>
-                  <button
-                    type="button"
-                    className={`ua-toggle ua-toggle--sm${entry.shown ? " ua-toggle--on" : ""}`}
-                    aria-pressed={entry.shown}
+                  <LiveToggle
+                    label="WEB"
+                    on={entry.webOn !== false}
                     disabled={busy}
-                    onClick={() => persistPatch(entry, { shown: !entry.shown })}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
+                    ariaLabel={entry.webOn !== false ? "Hide on web" : "Show on web"}
+                    onToggle={() => persistPatch(entry, { webOn: entry.webOn === false })}
+                  />
+                  <LiveToggle
+                    label="APP"
+                    on={entry.appOn !== false}
+                    disabled={busy}
+                    ariaLabel={entry.appOn !== false ? "Hide on app" : "Show on app"}
+                    onToggle={() => persistPatch(entry, { appOn: entry.appOn === false })}
+                  />
+                  <LiveToggle
+                    label={entry.shown ? "LIVE" : "HIDDEN"}
+                    on={Boolean(entry.shown)}
+                    disabled={busy}
+                    ariaLabel={entry.shown ? "Hide banner" : "Show banner"}
+                    onToggle={() => persistPatch(entry, { shown: !entry.shown })}
+                  />
                   <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
                   <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
                   <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
                   <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.title)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
                 </div>
               </article>
-            ))}
+              );
+            })}
             {!loading && !items.length ? <p className="ua-cfg-panel__sub">No banners yet.</p> : null}
           </div>
+          <ListPagination
+            page={safePage}
+            pages={pageCount}
+            total={items.length}
+            pageSize={BANNER_PAGE_SIZE}
+            onPageChange={goToPage}
+            label="Banner pagination"
+          />
         </Panel>
       </div>
 
       <Panel
         title="Live preview"
-        subtitle={`Common asset · renders on both surfaces · ${placement.ratio}`}
+        subtitle={`Desktop ${BANNER_DESKTOP_SIZE.label} · Mobile ${BANNER_MOBILE_SIZE.label}`}
         actions={<span className="ua-cfg-bn-ratio">{placement.label}</span>}
       >
         <div className="ua-cfg-bn-preview">
           <div className="ua-cfg-bn-preview__web">
             <span className="ua-cfg-bn-preview__label is-web">Website</span>
-            <div className="ua-cfg-bn-preview__browser">
-              <div className="ua-cfg-bn-preview__chrome">
-                <span className="ua-cfg-pt-live-preview__brand">IR</span>
-                <strong>India Redefining Wellness</strong>
-                <em>irwellness.in</em>
+            {webSurfaceOn ? (
+              <div className="ua-cfg-bn-preview__browser">
+                <div className="ua-cfg-bn-preview__chrome">
+                  <span className="ua-cfg-pt-live-preview__brand">IR</span>
+                  <strong>India Redefining Wellness</strong>
+                  <em>irwellness.in</em>
+                </div>
+                <div
+                  className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}
+                  style={{ aspectRatio: `${BANNER_DESKTOP_SIZE.width} / ${BANNER_DESKTOP_SIZE.height}` }}
+                >
+                  {webPreview ? <BannerImage src={webPreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
+                </div>
               </div>
-              <div
-                className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}
-                style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
-              >
-                {webPreview ? <BannerImage src={webPreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
-              </div>
-            </div>
+            ) : (
+              <p className="ua-cfg-panel__sub">Disabled on web.</p>
+            )}
           </div>
           <div className="ua-cfg-bn-preview__app">
             <span className="ua-cfg-bn-preview__label is-app">App</span>
-            <div className="ua-cfg-bn-preview__phone">
-              <div className="ua-cfg-bn-preview__phone-bar">
-                <span>9:41</span>
-                <strong>Good morning</strong>
-                <span aria-hidden="true">🔔</span>
+            {appSurfaceOn ? (
+              <div className="ua-cfg-bn-preview__phone">
+                <div className="ua-cfg-bn-preview__phone-bar">
+                  <span>9:41</span>
+                  <strong>Good morning</strong>
+                  <span aria-hidden="true">🔔</span>
+                </div>
+                <div
+                  className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}
+                  style={{ aspectRatio: `${BANNER_MOBILE_SIZE.width} / ${BANNER_MOBILE_SIZE.height}` }}
+                >
+                  {mobilePreview ? <BannerImage src={mobilePreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
+                </div>
               </div>
-              <div
-                className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}
-                style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
-              >
-                {mobilePreview ? <BannerImage src={mobilePreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
-              </div>
-            </div>
+            ) : (
+              <p className="ua-cfg-panel__sub">Disabled on app.</p>
+            )}
           </div>
         </div>
       </Panel>
@@ -666,7 +776,9 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             <article key={entry.id} className="ua-cfg-mv-gallery-card">
               <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
                 {entry.url ? <img src={entry.url} alt="" /> : <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>}
-                <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">Banner</span>
+                <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">
+                  {optionLabel(entry.type, typeOptions, BANNER_TYPES) || "Banner"}
+                </span>
               </div>
               <div className="ua-cfg-mv-gallery-card__body">
                 <strong>{asCopyString(entry.title)}</strong>
@@ -712,13 +824,16 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
 
       <ImageCropModal
         open={Boolean(cropPending)}
-        label="banner"
+        label={cropPending?.kind === "mobile" ? "Mobile banner" : "Desktop banner"}
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="16 / 9"
-        originalAspectNumber={16 / 9}
+        defaultRatio={`${cropSpec.width}:${cropSpec.height}`}
+        originalAspectCss={`${cropSpec.width} / ${cropSpec.height}`}
+        originalAspectNumber={cropSpec.width / cropSpec.height}
+        cropWidth={cropSpec.width}
+        cropHeight={cropSpec.height}
+        backdropClassName="ua-cfg-bn-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />

@@ -47817,7 +47817,7 @@ scrollbar-width: thin;
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .updated-admin .ua-cfg-bn-editor-panel.is-new {
@@ -47975,8 +47975,8 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-bn-split-drops {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr;
+  gap: 14px;
 }
 
 .updated-admin .ua-cfg-bn-split-drops__label {
@@ -48061,6 +48061,66 @@ scrollbar-width: thin;
   border: 1px solid rgb(203, 213, 230);
 }
 
+.updated-admin .ua-cfg-bn-drop__size {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled .ua-cfg-bn-drop__size {
+  position: relative;
+  z-index: 1;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.updated-admin .ua-cfg-bn-drop--desktop {
+  aspect-ratio: 1905 / 640;
+  min-height: 0;
+  width: 100%;
+  padding: 10px;
+}
+
+.updated-admin .ua-cfg-bn-drop--mobile {
+  aspect-ratio: 1080 / 480;
+  min-height: 0;
+  width: 100%;
+  padding: 10px;
+}
+
+.updated-admin .ua-cfg-bn-drop--desktop.is-filled p,
+.updated-admin .ua-cfg-bn-drop--mobile.is-filled p {
+  display: none;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled .ua-cfg-bn-drop__img {
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 24px));
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop {
+  min-height: 200px;
+  max-height: none;
+  padding: 12px;
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  flex-shrink: 0;
+}
+
 .updated-admin .ua-cfg-bn-copy {
   display: flex;
   flex-direction: column;
@@ -48087,6 +48147,31 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+}
+
+.updated-admin .ua-cfg-bn-live-panel.ua-cfg-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: min(72vh, 680px);
+}
+
+.updated-admin .ua-cfg-bn-live-panel .ua-cfg-panel__head {
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-bn-live-panel .ua-users-pagination {
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #edf1f7;
 }
 
 .updated-admin .ua-cfg-bn-live__row {
@@ -48137,13 +48222,30 @@ scrollbar-width: thin;
   display: block;
 }
 
-.updated-admin .ua-cfg-bn-live__title {
+.updated-admin .ua-cfg-bn-live__copy {
   grid-column: 3;
   grid-row: 1;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn-live__title {
+  display: block;
   min-width: 0;
   font-size: 13px;
   font-weight: 700;
   color: #16233f;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.updated-admin .ua-cfg-bn-live__type {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5e6ad2;
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -48161,8 +48263,18 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-bn-live__actions .ua-cfg-faq__shown {
-  min-width: 48px;
+  min-width: 36px;
   text-align: left;
+}
+
+.updated-admin .ua-cfg-bn-live__surface {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-bn-editor__surfaces {
+  margin: 2px 0 4px;
 }
 
 .updated-admin .ua-cfg-bn-live__actions .ua-toggle {
@@ -48240,7 +48352,7 @@ scrollbar-width: thin;
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1905 / 640;
   min-height: 0;
   background: #f1f5f9;
   color: #64748b;
@@ -48259,7 +48371,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
   display: block;
 }
@@ -48270,7 +48382,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner--app {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1080 / 480;
   min-height: 0;
   margin: 8px;
   border-radius: 8px;
@@ -51008,16 +51120,57 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-rp-new__top {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 400px) minmax(0, 1fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .updated-admin .ua-cfg-rp .ua-cfg-rp-drop {
+  width: 400px;
+  height: 400px;
+  max-width: 100%;
+  max-height: 400px;
   min-height: 0;
-  max-height: 200px;
-  height: auto;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-rp .ua-cfg-rp-drop__size {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cfg-rp .ua-cfg-rp-drop.is-on .ua-cfg-rp-drop__size {
+  display: none;
+}
+
+.updated-admin .ua-cfg-rp .ua-cfg-rp-drop .ua-cfg-tf-drop__img {
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal {
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(860px, calc(100vh - 24px));
+}
+
+.updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop {
+  min-height: 400px;
+  max-height: none;
+  padding: 12px;
+}
+
+.updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
+.updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
+.updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
+  width: 400px;
+  height: 400px;
+  max-width: min(400px, 100%);
+  max-height: min(400px, calc(100vh - 280px));
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cfg-rp-new__meta {
@@ -51187,7 +51340,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-rp .ua-cfg-rp-item,
 .updated-admin .ua-cfg-rp .ua-cfg-rp-item.ua-cfg-rc-item {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
+  grid-template-columns: 80px minmax(0, 1fr);
   align-items: start;
   gap: 12px 14px;
   min-width: 0;
@@ -51208,12 +51361,12 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-rp .ua-cfg-rp-item .ua-cfg-rc-cover-wrap,
 .updated-admin .ua-cfg-rp .ua-cfg-rp-item .ua-cfg-rc-cover {
-  width: 76px;
-  height: 64px;
-  min-width: 76px;
-  min-height: 64px;
-  max-width: 76px;
-  aspect-ratio: auto;
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  min-height: 80px;
+  max-width: 80px;
+  aspect-ratio: 1 / 1;
   border-radius: 10px;
 }
 
@@ -51467,11 +51620,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-rp-view .ua-cfg-rc-view__media,
 .updated-admin .ua-cfg-rp-view .ua-cfg-rc-view__media--photo {
   position: relative;
-  width: min(220px, 100%);
-  max-width: 220px;
+  width: min(400px, 100%);
+  max-width: 400px;
   min-height: 0;
   max-height: none;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   margin: 0 auto 14px;
   border-radius: 14px;
   background: #eef1f6;
@@ -58298,7 +58451,8 @@ scrollbar-width: thin;
     grid-row: 1;
   }
 
-  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__title {
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__title,
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__type {
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
@@ -58768,7 +58922,11 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-rp .ua-cfg-rp-drop {
-    min-height: 168px;
+    width: min(400px, 100%);
+    height: auto;
+    max-height: 400px;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
   }
 
   .updated-admin .ua-cfg-rp-new__story {
@@ -63446,11 +63604,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-rp-view .ua-cfg-rc-view__media,
 .updated-admin .ua-cfg-rp-view .ua-cfg-rc-view__media--photo {
   position: relative;
-  width: min(220px, 100%);
-  max-width: 220px;
+  width: min(400px, 100%);
+  max-width: 400px;
   min-height: 0;
   max-height: none;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   margin: 0 auto 14px;
   border-radius: 14px;
   background: #eef1f6;
@@ -64060,9 +64218,11 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-rp .ua-cfg-rp-drop {
-    max-height: none;
-    min-height: 168px;
-    aspect-ratio: auto;
+    width: min(400px, 100%);
+    height: auto;
+    max-height: 400px;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
   }
 
   .updated-admin .ua-cfg-rp .ua-cfg-rp-item,
@@ -64200,9 +64360,11 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-rp .ua-cfg-rp-drop {
-    max-height: none;
-    min-height: 168px;
-    aspect-ratio: auto;
+    width: min(400px, 100%);
+    height: auto;
+    max-height: 400px;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
   }
 
   .updated-admin .ua-cfg-rp .ua-cfg-rp-item,

@@ -9,6 +9,10 @@ export const BANNER_PLACEMENTS = [
   { id: "programs-web", label: "Programs · web · 16:9", ratio: "16:9" },
 ];
 
+export const BANNER_DESKTOP_SIZE = { width: 1905, height: 640, label: "1905px × 640px" };
+export const BANNER_MOBILE_SIZE = { width: 1080, height: 480, label: "1080px × 480px" };
+export const BANNER_PAGE_SIZE = 5;
+
 export const BANNER_COPY = [
   {
     headline: "Reverse it, don't manage it",
@@ -36,7 +40,7 @@ export function emptyBannerEditor() {
   return {
     id: "",
     type: "main",
-    split: false,
+    split: true,
     placement: "",
     headline: "",
     body: "",

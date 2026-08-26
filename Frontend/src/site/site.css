@@ -1999,7 +1999,7 @@ font-size: var(--fs-sm);
 .heroSwiper--loading {
   width: 100%;
   /* Matches admin banner crop 1920ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ640 (3:1) */
-  height: clamp(200px, 33.333vw, 640px);
+  /* height: clamp(200px, 33.333vw, 640px); */
   min-height: 0;
   max-height: none;
   aspect-ratio: auto;
@@ -11585,7 +11585,8 @@ font-size: 0.62rem;
   }
 .swiper.heroSwiper,
   .heroSwiper--loading {
-     /* height: clamp(190px, 44.444vw, 220px); */
+    
+    /* height: clamp(190px, 44.444vw, 220px); */
   }
 .champion-section,
   .real-healing-section {
