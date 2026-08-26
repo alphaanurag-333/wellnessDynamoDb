@@ -456,6 +456,7 @@ export function mapApiUserToRow(user, index = 0) {
     phone,
     whatsapp: whatsapp || "",
     dob: formatDob(user?.dob),
+    dobIso: String(user?.dob || "").trim(),
     gender,
     country,
     city,

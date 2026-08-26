@@ -22,8 +22,6 @@ import {
 import {
   PERSON_NAME_MAX_LEN,
   blockPersonNameDigitKeyDown,
-  maxAllowedDobIso,
-  minAllowedDobIso,
   parseDateOfBirthIso,
   sanitizePersonName,
   validateDateOfBirth,
@@ -333,8 +331,6 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           type="date"
           className="ua-cp-field__input ua-cp-field__input--date"
           value={dobToInputValue(form.dob)}
-          min={minAllowedDobIso()}
-          max={maxAllowedDobIso()}
           disabled={saveBusy}
           onChange={(e) => setForm((prev) => ({ ...prev, dob: inputValueToDob(e.target.value) }))}
         />

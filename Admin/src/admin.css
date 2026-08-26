@@ -9516,6 +9516,69 @@
   min-width: 0;
 }
 
+.updated-admin .ua-teams-create__name-search {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-teams-create__name-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid rgb(203, 213, 230);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(22, 35, 63, 0.12);
+}
+
+.updated-admin .ua-teams-create__name-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: #16233f;
+}
+
+.updated-admin .ua-teams-create__name-option:hover,
+.updated-admin .ua-teams-create__name-option:focus-visible {
+  outline: none;
+  background: #f4f6fb;
+}
+
+.updated-admin .ua-teams-create__name-option-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.updated-admin .ua-teams-create__name-option-meta {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: #8a97ab;
+}
+
+.updated-admin .ua-teams-create__name-empty {
+  padding: 10px;
+  font-size: 12.5px;
+  color: #8a97ab;
+}
+
 .updated-admin .ua-teams-create .ua-cfg-select {
   min-width: 0;
   width: 100%;
