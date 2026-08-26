@@ -587,7 +587,7 @@ export function MediaPickerModal({
         busy={cropBusy}
         showFrameworks={showFrameworks && !cropWidth}
         backdropClassName={cropWidth ? "ua-cfg-tf-crop-modal ua-media-picker-crop-backdrop" : "ua-media-picker-crop-backdrop"}
-        defaultRatio={cropWidth && cropHeight ? "1:1" : "Original"}
+        defaultRatio={cropWidth && cropHeight ? (cropWidth === cropHeight ? "1:1" : "4:5") : "Original"}
         originalAspectCss={cropWidth && cropHeight ? `${cropWidth} / ${cropHeight}` : "4 / 3"}
         originalAspectNumber={cropWidth && cropHeight ? cropWidth / cropHeight : 4 / 3}
         cropWidth={cropWidth}

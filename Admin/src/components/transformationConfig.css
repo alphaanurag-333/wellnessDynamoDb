@@ -183,13 +183,13 @@
 }
 
 .updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
-  flex: 0 0 250px;
-  width: 250px;
+  flex: 0 0 200px;
+  width: 200px;
   height: 250px;
-  max-width: 250px;
+  max-width: 200px;
   max-height: 250px;
   min-height: 250px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   padding: 12px;
   box-sizing: border-box;
 }
@@ -211,7 +211,7 @@
 }
 
 .updated-admin .ua-cfg-tf .ua-cfg-tf-pair .ua-cfg-rc-cover-wrap {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   max-height: none;
 }
 
@@ -220,7 +220,7 @@
 }
 
 .updated-admin .ua-cfg-tf-view__shot {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   max-height: none;
 }
 
@@ -229,7 +229,7 @@
 }
 
 .updated-admin .ua-cfg-tf-preview-image {
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
 }
 
 .updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal {
@@ -246,21 +246,21 @@
 .updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
 .updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
 .updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
-  width: 250px;
+  width: 200px;
   height: 250px;
-  max-width: 250px;
+  max-width: 200px;
   max-height: 250px;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   flex-shrink: 0;
 }
 
 @media (max-width: 720px) {
   .updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
-    flex: 0 0 250px;
-    width: 250px;
+    flex: 0 0 200px;
+    width: 200px;
     height: 250px;
     max-height: 250px;
     min-height: 250px;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 4 / 5;
   }
 }

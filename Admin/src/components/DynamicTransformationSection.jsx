@@ -32,9 +32,9 @@ const EMPTY_DRAFT = {
   newPreview: "",
 };
 
-const TF_CROP_WIDTH = 250;
+const TF_CROP_WIDTH = 200;
 const TF_CROP_HEIGHT = 250;
-const TF_CROP_RATIO = "1:1";
+const TF_CROP_RATIO = "4:5";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
