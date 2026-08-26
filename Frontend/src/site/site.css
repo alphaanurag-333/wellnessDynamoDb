@@ -6597,16 +6597,22 @@ box-shadow: var(--shadow-sm);
 }
 
 .transformation-category-card__desc {
-  margin: 4px 8px 0;
+  font-family: var(--font-family-base) !important;
+    font-size: var(--font-size-body) !important;
+    font-weight: var(--fw-regular) !important;
+    line-height: var(--line-height-body) !important;
+
+
+  margin: 0;
   color: var(--text-body);
   font-size: 12px;
   line-height: 1.5;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-align: left;
-  font-weight: 500;
+  /* font-weight: 500; */
 }
 
 .transformation-category-card__more {
@@ -7732,7 +7738,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 11;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-light);
   padding: 0;
@@ -7747,7 +7753,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 .video-card img {
   width: 100%;
   height: 100%;
-    object-fit: contain;
+    object-fit: fill;
   /* object-fit: cover; */
   object-position: center;
   transition: transform var(--transition);
@@ -13175,11 +13181,11 @@ bottom: -18px;
   font-size: 0.9rem;
 }
 .textelipsane {
-  display: block;
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block !important;
+  width: 100% !important;
+  white-space: nowrap !important;
+  overflow: hidden !important ;
+  text-overflow: ellipsis !important;
 }
 .wellnesspedia-page .wp-section__loading--more {
   margin-top: 0.5rem;
@@ -13410,7 +13416,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-recipe-card__placeholder {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: fill;
   display: block;
 }
 
@@ -13456,7 +13462,7 @@ bottom: -18px;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(var(--font-size-h4) * var(--line-height-heading) * 2);
+  /* min-height: calc(var(--font-size-h4) * var(--line-height-heading) * 2); */
 }
 
 .wellnesspedia-page .wp-recipe-card__title-row .wp-chip-badge {
