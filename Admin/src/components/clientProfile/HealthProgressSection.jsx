@@ -109,6 +109,80 @@ function EmptyLogs({ label }) {
   return <p className="ua-cp-hptrack-empty">No {label} logged yet.</p>;
 }
 
+const WEIGHT_LIMITS = {
+  kg: { max: 500, maxLen: 5 },
+  lbs: { max: 1102, maxLen: 6 },
+};
+const WEIGHT_NAV_KEYS = new Set([
+  "Backspace",
+  "Delete",
+  "Tab",
+  "Escape",
+  "Enter",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+]);
+
+function weightLimits(unit) {
+  return unit === "lbs" || unit === "lb" ? WEIGHT_LIMITS.lbs : WEIGHT_LIMITS.kg;
+}
+
+function sanitizeWeightInput(raw, unit) {
+  const { max, maxLen } = weightLimits(unit);
+  let next = String(raw ?? "").replace(/[^\d.]/g, "");
+  if (!next) return "";
+
+  const firstDot = next.indexOf(".");
+  if (firstDot !== -1) {
+    const whole = next.slice(0, firstDot);
+    const fraction = next.slice(firstDot + 1).replace(/\./g, "").slice(0, 1);
+    next = `${whole}.${fraction}`;
+  }
+  if (next.startsWith(".")) next = `0${next}`;
+  next = next.slice(0, maxLen);
+  if (next && !next.endsWith(".")) {
+    const n = Number(next);
+    if (Number.isFinite(n) && n > max) return String(max);
+  }
+  return next;
+}
+
+function weightFieldError(value, unit) {
+  if (value === "" || value == null) return "";
+  const text = String(value);
+  if (text === "." || text.endsWith(".")) return "";
+  const { max } = weightLimits(unit);
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) {
+    return "Weight must be greater than 0";
+  }
+  if (n > max) {
+    return `Weight must be at most ${max} ${unit === "lbs" ? "lbs" : "kg"}`;
+  }
+  return "";
+}
+
+function blockInvalidWeightKeyDown(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  if (WEIGHT_NAV_KEYS.has(event.key)) return;
+  if (event.key.length === 1 && !/[\d.]/.test(event.key)) event.preventDefault();
+}
+
+function blockNonDecimalWeightBeforeInput(event) {
+  if (event.data == null) return;
+  if (!/^[\d.]+$/.test(event.data)) {
+    event.preventDefault();
+    return;
+  }
+  if (event.data.includes(".") && String(event.target?.value || "").includes(".")) {
+    event.preventDefault();
+  }
+}
+
 function FatLossJourneyChart({ dates, values, color = "#e98c64" }) {
   if (!values.length) return null;
   const max = Math.max(...values);
@@ -544,11 +618,36 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
     if (photoInputRef.current) photoInputRef.current.value = "";
   }
 
+  const limits = weightLimits(weightUnit);
+  const weightError = weightFieldError(weightValue, weightUnit);
+  const canSubmitWeight = Boolean(weightValue)
+    && !weightError
+    && !String(weightValue).endsWith(".")
+    && Boolean(recordedDate)
+    && recordedDate <= todayIsoDate();
+
+  function onWeightChange(event) {
+    setWeightValue(sanitizeWeightInput(event.target.value, weightUnit));
+  }
+
+  function onWeightUnitChange(nextUnit) {
+    setWeightUnit(nextUnit);
+    setWeightValue((prev) => {
+      const next = sanitizeWeightInput(prev, nextUnit);
+      return next.endsWith(".") ? next.slice(0, -1) : next;
+    });
+  }
+
   async function submitWeight(event) {
     event.preventDefault();
+    const error = weightFieldError(weightValue, weightUnit);
     const weight = Number(weightValue);
-    if (!Number.isFinite(weight) || weight <= 0) {
-      onToast?.("Enter a valid weight");
+    if (error || !Number.isFinite(weight) || weight <= 0 || String(weightValue).endsWith(".")) {
+      onToast?.(error || `Enter a weight greater than 0 and at most ${limits.max} ${weightUnit}`);
+      return;
+    }
+    if (!recordedDate || recordedDate > todayIsoDate()) {
+      onToast?.("Date is required and cannot be in the future");
       return;
     }
     if (isMock) {
@@ -619,7 +718,12 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
                   type="date"
                   className="ua-cp-hptrack-date-field__input"
                   value={recordedDate}
-                  onChange={(e) => setRecordedDate(e.target.value || todayIsoDate())}
+                  max={todayIsoDate()}
+                  onChange={(e) => {
+                    const next = e.target.value || todayIsoDate();
+                    const today = todayIsoDate();
+                    setRecordedDate(next > today ? today : next);
+                  }}
                   required
                 />
               </div>
@@ -663,25 +767,31 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
             ) : null}
           </label>
 
-          <label className="ua-cp-hptrack-field">
+          <label className="ua-cp-hptrack-field" htmlFor="health-progress-weight">
             <span>Weight</span>
             <div className="ua-cp-hptrack-weight-input">
               <input
-                type="number"
+                id="health-progress-weight"
+                type="text"
                 inputMode="decimal"
-                step="0.1"
-                min="0"
+                autoComplete="off"
                 placeholder="--"
+                maxLength={limits.maxLen}
                 value={weightValue}
-                onChange={(e) => setWeightValue(e.target.value)}
+                onChange={onWeightChange}
+                onKeyDown={blockInvalidWeightKeyDown}
+                onBeforeInput={blockNonDecimalWeightBeforeInput}
+                aria-invalid={Boolean(weightError)}
+                aria-describedby={weightError ? "health-progress-weight-error" : "health-progress-weight-hint"}
                 required
+                className={weightError ? "is-invalid" : undefined}
               />
               <div className="ua-cp-hptrack-unit-toggle" role="group" aria-label="Weight unit">
                 <button
                   type="button"
                   className={weightUnit === "kg" ? "ua-cp-hptrack-unit-toggle__btn--active" : ""}
                   aria-pressed={weightUnit === "kg"}
-                  onClick={() => setWeightUnit("kg")}
+                  onClick={() => onWeightUnitChange("kg")}
                 >
                   kg
                 </button>
@@ -689,15 +799,23 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
                   type="button"
                   className={weightUnit === "lbs" ? "ua-cp-hptrack-unit-toggle__btn--active" : ""}
                   aria-pressed={weightUnit === "lbs"}
-                  onClick={() => setWeightUnit("lbs")}
+                  onClick={() => onWeightUnitChange("lbs")}
                 >
                   lbs
                 </button>
               </div>
             </div>
+            <span id="health-progress-weight-hint" className="ua-cp-hptrack-field__hint">
+              Greater than 0, max {limits.max} {weightUnit}
+            </span>
+            {weightError ? (
+              <span id="health-progress-weight-error" className="ua-cp-hptrack-field__error" role="alert">
+                {weightError}
+              </span>
+            ) : null}
           </label>
 
-          <button type="submit" className="ua-cp-btn ua-cp-hptrack-submit" disabled={submitting || isMock}>
+          <button type="submit" className="ua-cp-btn ua-cp-hptrack-submit" disabled={submitting || isMock || !canSubmitWeight}>
             {submitting ? "Saving…" : "Submit"}
           </button>
         </div>

@@ -6,6 +6,7 @@ const { resolvePublicUrl } = require("../utils/s3");
 const {
   toNumberOrNull,
   normalizeGlucoseType,
+  GLUCOSE_VALUE_MAX,
 } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressGlucose";
@@ -28,6 +29,9 @@ async function createGlucoseLog(input) {
   const item = buildGlucoseItem(input, { now });
   if (!item.userId) throw new Error("userId is required");
   if (item.value == null) throw new Error("value is required");
+  if (item.value <= 0 || item.value > GLUCOSE_VALUE_MAX) {
+    throw new Error("value must be greater than 0 and at most 600");
+  }
   await docClient.send(
     new PutCommand({
       TableName: TABLE,

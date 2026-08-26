@@ -3,7 +3,7 @@ const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl } = require("../utils/s3");
-const { toNumberOrNull } = require("../utils/healthProgressHelpers");
+const { toNumberOrNull, BP_SYS_MAX, BP_DIA_MAX } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressBloodPressure";
 
@@ -26,6 +26,12 @@ async function createBloodPressureLog(input) {
   if (!item.userId) throw new Error("userId is required");
   if (item.sys == null) throw new Error("sys is required");
   if (item.dia == null) throw new Error("dia is required");
+  if (item.sys <= 0 || item.sys > BP_SYS_MAX) {
+    throw new Error("sys must be greater than 0 and at most 300");
+  }
+  if (item.dia <= 0 || item.dia > BP_DIA_MAX) {
+    throw new Error("dia must be greater than 0 and at most 200");
+  }
   await docClient.send(
     new PutCommand({
       TableName: TABLE,

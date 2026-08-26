@@ -29945,6 +29945,29 @@ scrollbar-width: thin;
   flex: 1;
 }
 
+.updated-admin .ua-cp-hptrack-weight-input input.is-invalid {
+  border-color: #e11d48;
+}
+
+.updated-admin .ua-cp-hptrack-field .ua-cp-hptrack-field__hint,
+.updated-admin .ua-cp-hptrack-field .ua-cp-hptrack-field__error {
+  display: block;
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.updated-admin .ua-cp-hptrack-field .ua-cp-hptrack-field__hint {
+  color: #8a97ab;
+}
+
+.updated-admin .ua-cp-hptrack-field .ua-cp-hptrack-field__error {
+  color: #e11d48;
+}
+
 .updated-admin .ua-cp-hptrack-unit-toggle {
   display: inline-flex;
   border: 1px solid var(--border);

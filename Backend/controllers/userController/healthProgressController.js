@@ -7,10 +7,14 @@ const {
   handleValidationError,
   parseRecordedAt,
   resolveHealthProgressSettings,
-  toNumberOrNull,
+  parseHealthWeightKg,
+  parseGlucoseValue,
+  parseBloodPressureSys,
+  parseBloodPressureDia,
+  parseMenstrualDates,
+  parseConditionBodyPart,
   normalizeGlucoseType,
-  normalizeBodyPart,
-  toIsoDateOnly,
+  isFemaleUser,
 } = require("../helpers/healthProgressControllerHelpers");
 const {
   createWeightLog,
@@ -55,7 +59,17 @@ exports.getHealthProgressSettingsController = asyncHandler(async (req, res) => {
 exports.createWeightLogController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const body = req.body || {};
-  const weightKg = toNumberOrNull(body.weightKg ?? body.weight_kg);
+  let weightKg;
+  let recordedAt;
+  try {
+    recordedAt = parseRecordedAt(body);
+    weightKg = parseHealthWeightKg(
+      body.weightKg ?? body.weight_kg ?? body.weight,
+      body.unit || body.weightUnit || "kg"
+    );
+  } catch (err) {
+    handleValidationError(err);
+  }
   if (weightKg == null) throw new AppError("weightKg is required", 400);
 
   const weightPicKey = await uploadFileFromRequest(
@@ -69,7 +83,7 @@ exports.createWeightLogController = asyncHandler(async (req, res) => {
       userId,
       weightKg,
       weightPicKey: weightPicKey || null,
-      recordedAt: parseRecordedAt(body),
+      recordedAt,
     });
   } catch (err) {
     handleValidationError(err);
@@ -100,15 +114,17 @@ exports.listWeightLogsController = asyncHandler(async (req, res) => {
 exports.createGlucoseLogController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const body = req.body || {};
-  const value = toNumberOrNull(body.value);
-  if (value == null) throw new AppError("value is required", 400);
-
   let type;
+  let value;
+  let recordedAt;
   try {
+    recordedAt = parseRecordedAt(body);
     type = normalizeGlucoseType(body.type);
+    value = parseGlucoseValue(body.value);
   } catch (err) {
     handleValidationError(err);
   }
+  if (value == null) throw new AppError("value is required", 400);
 
   const glucosePicKey = await uploadFileFromRequest(
     req,
@@ -122,7 +138,7 @@ exports.createGlucoseLogController = asyncHandler(async (req, res) => {
       type,
       value,
       glucosePicKey: glucosePicKey || null,
-      recordedAt: parseRecordedAt(body),
+      recordedAt,
     });
   } catch (err) {
     handleValidationError(err);
@@ -153,8 +169,16 @@ exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
 exports.createBloodPressureLogController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const body = req.body || {};
-  const sys = toNumberOrNull(body.sys);
-  const dia = toNumberOrNull(body.dia);
+  let sys;
+  let dia;
+  let recordedAt;
+  try {
+    recordedAt = parseRecordedAt(body);
+    sys = parseBloodPressureSys(body.sys);
+    dia = parseBloodPressureDia(body.dia);
+  } catch (err) {
+    handleValidationError(err);
+  }
   if (sys == null || dia == null) {
     throw new AppError("sys and dia are required", 400);
   }
@@ -171,7 +195,7 @@ exports.createBloodPressureLogController = asyncHandler(async (req, res) => {
       sys,
       dia,
       bpPicKey: bpPicKey || null,
-      recordedAt: parseRecordedAt(body),
+      recordedAt,
     });
   } catch (err) {
     handleValidationError(err);
@@ -201,19 +225,23 @@ exports.listBloodPressureLogsController = asyncHandler(async (req, res) => {
 
 exports.createMenstrualCycleLogController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
+  if (!isFemaleUser(req.currentUser)) {
+    throw new AppError("Menstrual cycle is only available for female clients", 403);
+  }
   const body = req.body || {};
-  const startDate = toIsoDateOnly(body.startDate ?? body.start_date);
-  const endDate = toIsoDateOnly(body.endDate ?? body.end_date);
-  if (!startDate || !endDate) {
-    throw new AppError("startDate and endDate are required", 400);
+  let dates;
+  try {
+    dates = parseMenstrualDates(body);
+  } catch (err) {
+    handleValidationError(err);
   }
 
   let log;
   try {
     log = await createMenstrualCycleLog({
       userId,
-      startDate,
-      endDate,
+      startDate: dates.startDate,
+      endDate: dates.endDate,
     });
   } catch (err) {
     handleValidationError(err);
@@ -246,8 +274,11 @@ exports.createConditionLogController = asyncHandler(async (req, res) => {
   const body = req.body || {};
 
   let bodyPart;
+  let bodyPartOther;
+  let recordedAt;
   try {
-    bodyPart = normalizeBodyPart(body.bodyPart ?? body.body_part);
+    recordedAt = parseRecordedAt(body);
+    ({ bodyPart, bodyPartOther } = parseConditionBodyPart(body));
   } catch (err) {
     handleValidationError(err);
   }
@@ -263,10 +294,10 @@ exports.createConditionLogController = asyncHandler(async (req, res) => {
     log = await createConditionLog({
       userId,
       bodyPart,
-      bodyPartOther: body.bodyPartOther ?? body.body_part_other,
+      bodyPartOther,
       picKey,
       date: body.date,
-      recordedAt: parseRecordedAt(body),
+      recordedAt,
     });
   } catch (err) {
     handleValidationError(err);

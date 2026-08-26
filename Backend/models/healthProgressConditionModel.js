@@ -4,7 +4,7 @@ const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl } = require("../utils/s3");
 const {
-  normalizeBodyPart,
+  parseConditionBodyPart,
   toRecordedAtFromDateOnly,
   toIsoDateOnly,
 } = require("../utils/healthProgressHelpers");
@@ -12,11 +12,7 @@ const {
 const TABLE = "HealthProgressCondition";
 
 function buildConditionItem(input, { id, now }) {
-  const bodyPart = normalizeBodyPart(input.bodyPart);
-  const bodyPartOther =
-    bodyPart === "other" && input.bodyPartOther
-      ? String(input.bodyPartOther).trim() || null
-      : null;
+  const { bodyPart, bodyPartOther } = parseConditionBodyPart(input);
 
   const dateOnly = toIsoDateOnly(input.recordedAt || input.date);
   const recordedAt = input.recordedAt

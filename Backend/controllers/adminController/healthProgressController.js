@@ -15,7 +15,7 @@ const {
   updateUser,
   toPublicUser,
   isFemaleUser,
-  toNumberOrNull,
+  parseHealthWeightKg,
 } = require("../helpers/healthProgressControllerHelpers");
 const {
   createWeightLog,
@@ -92,16 +92,18 @@ exports.listCoachWeightLogsController = asyncHandler(async (req, res) => {
 exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
   const body = req.body || {};
-  const rawWeight = toNumberOrNull(body.weightKg ?? body.weight_kg ?? body.weight);
-  if (rawWeight == null) throw new AppError("weight is required", 400);
-
-  const unit = String(body.unit || body.weightUnit || "kg").toLowerCase();
-  const weightKg = unit === "lbs" || unit === "lb"
-    ? Number((rawWeight * 0.453592).toFixed(2))
-    : rawWeight;
-  if (!Number.isFinite(weightKg) || weightKg <= 0) {
-    throw new AppError("weight must be a positive number", 400);
+  let weightKg;
+  let recordedAt;
+  try {
+    recordedAt = parseRecordedAt(body);
+    weightKg = parseHealthWeightKg(
+      body.weightKg ?? body.weight_kg ?? body.weight,
+      body.unit || body.weightUnit
+    );
+  } catch (err) {
+    handleValidationError(err);
   }
+  if (weightKg == null) throw new AppError("weight is required", 400);
 
   const weightPicKey = await uploadFileFromRequest(
     req,
@@ -114,7 +116,7 @@ exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
       userId,
       weightKg,
       weightPicKey: weightPicKey || null,
-      recordedAt: parseRecordedAt(body),
+      recordedAt,
     });
   } catch (err) {
     handleValidationError(err);

@@ -2,19 +2,12 @@ const { v4: uuidv4 } = require("uuid");
 const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
-const { toIsoDateOnly, toRecordedAtFromDateOnly } = require("../utils/healthProgressHelpers");
+const { parseMenstrualDates, toRecordedAtFromDateOnly } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressMenstrualCycle";
 
 function buildMenstrualCycleItem(input, { id, now }) {
-  const startDate = toIsoDateOnly(input.startDate);
-  const endDate = toIsoDateOnly(input.endDate);
-  if (!startDate || !endDate) {
-    throw new Error("startDate and endDate are required");
-  }
-  if (endDate < startDate) {
-    throw new Error("endDate must be on or after startDate");
-  }
+  const { startDate, endDate } = parseMenstrualDates(input);
 
   return {
     id: id || uuidv4(),

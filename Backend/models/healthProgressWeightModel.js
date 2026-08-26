@@ -3,7 +3,7 @@ const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl } = require("../utils/s3");
-const { toNumberOrNull } = require("../utils/healthProgressHelpers");
+const { toNumberOrNull, WEIGHT_KG_MAX } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressWeight";
 
@@ -24,6 +24,9 @@ async function createWeightLog(input) {
   const item = buildWeightItem(input, { now });
   if (!item.userId) throw new Error("userId is required");
   if (item.weightKg == null) throw new Error("weightKg is required");
+  if (item.weightKg <= 0 || item.weightKg > WEIGHT_KG_MAX) {
+    throw new Error("weightKg must be greater than 0 and at most 500");
+  }
   await docClient.send(
     new PutCommand({
       TableName: TABLE,

@@ -6,6 +6,17 @@ const {
   toIsoDateOnly,
   toRecordedAtFromDateOnly,
   toNumberOrNull,
+  parseHealthWeightKg,
+  parseGlucoseValue,
+  parseBloodPressureSys,
+  parseBloodPressureDia,
+  parseRequiredDateOnly,
+  parseMenstrualDates,
+  parseConditionBodyPart,
+  WEIGHT_KG_MAX,
+  GLUCOSE_VALUE_MAX,
+  BP_SYS_MAX,
+  BP_DIA_MAX,
   normalizeGlucoseType,
   normalizeBodyPart,
   isFemaleUser,
@@ -69,7 +80,7 @@ function requireHealthProgressFeature(featureKey) {
 }
 
 function parseRecordedAt(body) {
-  const dateOnly = toIsoDateOnly(body?.date || body?.recordedAt);
+  const dateOnly = parseRequiredDateOnly(body?.date || body?.recordedAt, "date");
   return toRecordedAtFromDateOnly(dateOnly);
 }
 
@@ -105,6 +116,17 @@ module.exports = {
   parseCoachSettingsUpdate,
   resolveHealthProgressSettings,
   toNumberOrNull,
+  parseHealthWeightKg,
+  parseGlucoseValue,
+  parseBloodPressureSys,
+  parseBloodPressureDia,
+  parseRequiredDateOnly,
+  parseMenstrualDates,
+  parseConditionBodyPart,
+  WEIGHT_KG_MAX,
+  GLUCOSE_VALUE_MAX,
+  BP_SYS_MAX,
+  BP_DIA_MAX,
   normalizeGlucoseType,
   normalizeBodyPart,
   toIsoDateOnly,
