@@ -279,6 +279,30 @@ export function splitHtmlAroundFirstHeading(html) {
   };
 }
 
+/** Split CMS HTML into the lead copy and each following h2 section. */
+export function splitHtmlSections(html) {
+  const source = String(html || "").trim();
+  if (!source) return { introHtml: "", sections: [] };
+  const headingRe = /<h2\b[^>]*>[\s\S]*?<\/h2>/gi;
+  const matches = [...source.matchAll(headingRe)];
+  if (!matches.length) {
+    return { introHtml: source, sections: [] };
+  }
+  const introHtml = source.slice(0, matches[0].index).trim();
+  const sections = matches
+    .map((match, index) => {
+      const title = stripHtml(match[0].replace(/<\/?h2[^>]*>/gi, " "));
+      const start = match.index + match[0].length;
+      const end = index + 1 < matches.length ? matches[index + 1].index : source.length;
+      return {
+        title,
+        html: source.slice(start, end).trim(),
+      };
+    })
+    .filter((section) => section.title || section.html);
+  return { introHtml, sections };
+}
+
 export function staticPageCopy(page, fallback = {}) {
   return pillarCopyFromStaticPage(page, fallback);
 }

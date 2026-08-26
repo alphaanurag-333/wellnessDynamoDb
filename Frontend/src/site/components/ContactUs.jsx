@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Country } from "country-state-city";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import FinalCTA from "./FinalCTA";
-import { fetchStaticPageBySlug, submitContactInquiry } from "../api/publicMisc.js";
+import { fetchStaticPageBySlug, splitHtmlSections, submitContactInquiry } from "../api/publicMisc.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import ContactCountryDialSelect from "./ContactCountryDialSelect.jsx";
 import {
@@ -241,6 +241,7 @@ export default function ContactUsSection() {
   const locations = (contact.locations || []).filter((row) => String(row.address || "").trim());
   const details = (contact.details || []).filter((row) => String(row.value || "").trim());
   const hasContactDetails = Boolean(locations.length || details.length);
+  const { introHtml, sections: replySections } = splitHtmlSections(page?.content);
 
   return (
     <section className="wellness-toolkit wellnesspedia-page contact-section">
@@ -273,18 +274,41 @@ export default function ContactUsSection() {
               </>
             )}
           </h2>
-          {page?.content ? (
+          {introHtml ? (
             <div
               className="wellness-toolkit__description static-page-content"
-              dangerouslySetInnerHTML={{ __html: page.content }}
+              dangerouslySetInnerHTML={{ __html: introHtml }}
             />
-          ) : (
+          ) : page?.content ? null : (
             <p className="wellness-toolkit__description">
               Expert guidance for your wellness journey. Reach out to our
               specialists for personalized clinical support.
             </p>
           )}
         </div>
+
+        {replySections.length ? (
+          <div className="contact-reply-list">
+            {replySections.map((section, index) => (
+              <aside key={`${section.title || "reply"}-${index}`} className="contact-reply">
+                <span className="contact-reply__icon" aria-hidden="true">
+                  <Clock size={18} strokeWidth={2} />
+                </span>
+                <div className="contact-reply__copy">
+                  {section.title ? (
+                    <h3 className="contact-reply__title">{section.title}</h3>
+                  ) : null}
+                  {section.html ? (
+                    <div
+                      className="contact-reply__body static-page-content"
+                      dangerouslySetInnerHTML={{ __html: section.html }}
+                    />
+                  ) : null}
+                </div>
+              </aside>
+            ))}
+          </div>
+        ) : null}
 
         <div className={`contact-layout${hasContactDetails ? "" : " contact-layout--form-only"}`}>
           {hasContactDetails ? (

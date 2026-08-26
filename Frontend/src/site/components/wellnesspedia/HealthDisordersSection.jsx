@@ -7,6 +7,8 @@ import { usePagedSwiper } from "../../hooks/usePagedSwiper.js";
 
 const ACCENTS = ["#3B82F6", "#F97316", "#22C55E", "#EAB308", "#A855F7", "#EC4899"];
 
+const PREVIEW_SYMPTOMS = 3;
+
 function mapDisorder(row, index) {
   if (!row) return null;
   const id = row.id || row._id;
@@ -21,22 +23,43 @@ function mapDisorder(row, index) {
   return {
     id,
     title,
-    symptoms: symptoms.slice(0, 6),
+    symptoms,
     accent: ACCENTS[index % ACCENTS.length],
   };
 }
 
 function DisorderCard({ item }) {
+  const [expanded, setExpanded] = useState(false);
+  const extra = item.symptoms.length > PREVIEW_SYMPTOMS;
+  const visible = extra && !expanded
+    ? item.symptoms.slice(0, PREVIEW_SYMPTOMS)
+    : item.symptoms;
+
   return (
     <article className="wp-disorder-card" style={{ borderTopColor: item.accent }}>
       <h3>{item.title}</h3>
       <p className="wp-disorder-card__label">Clinical Symptoms</p>
       {item.symptoms.length > 0 ? (
-        <ul>
-          {item.symptoms.map((symptom) => (
-            <li key={`${item.id}-${symptom}`}>{symptom}</li>
-          ))}
-        </ul>
+        <>
+          <ul>
+            {visible.map((symptom, index) => (
+              <li key={`${item.id}-${index}`}>{symptom}</li>
+            ))}
+          </ul>
+          {extra ? (
+            <button
+              type="button"
+              className="wp-disorder-card__more"
+              aria-expanded={expanded}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded((open) => !open);
+              }}
+            >
+              {expanded ? "Read less" : "Read more"}
+            </button>
+          ) : null}
+        </>
       ) : (
         <p className="wp-disorder-card__empty">Details coming soon.</p>
       )}

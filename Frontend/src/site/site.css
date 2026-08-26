@@ -3620,8 +3620,125 @@ line-height: 1.55;
 }
 
 .contact-section .contact-intro {
-  max-width: 720px;
-  margin-bottom: 8px;
+  max-width: 40rem;
+  margin-bottom: 0;
+}
+
+.contact-section .contact-intro .wellness-toolkit__description {
+  max-width: none;
+  margin-top: 10px;
+  margin-bottom: 0;
+}
+
+.contact-section .contact-intro .static-page-content,
+.contact-section .contact-reply .static-page-content {
+  padding: 0;
+}
+
+.contact-section .contact-intro .static-page-content p:last-child {
+  margin-bottom: 0;
+}
+
+.contact-reply-list {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  margin: 18px 0 0;
+}
+
+.contact-reply {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+  height: auto;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: var(--primary-light);
+}
+
+.contact-reply__icon,
+.contact-office__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  padding: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--primary);
+  line-height: 0;
+}
+
+.contact-reply__icon svg,
+.contact-office__icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.contact-reply__copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.contact-reply__title {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  font-family: var(--font-family-base) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.3 !important;
+  color: var(--text-heading);
+}
+
+.contact-reply__body {
+  min-width: 0;
+  color: var(--text-body);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.contact-reply__body p,
+.contact-reply__body.static-page-content p {
+  margin: 0 !important;
+  font-size: 14.5px !important;
+  line-height: 1.45 !important;
+  font-weight: var(--fw-regular) !important;
+}
+
+@media (min-width: 768px) {
+  .contact-reply {
+    padding: 14px 20px;
+  }
+
+  .contact-reply__copy {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 10px;
+  }
+
+  .contact-reply__title {
+    flex: 0 0 auto;
+  }
+
+  .contact-reply__body {
+    flex: 1 1 12rem;
+  }
 }
 
 .contact-layout {
@@ -3630,7 +3747,7 @@ line-height: 1.55;
   gap: 24px;
   align-items: stretch;
   width: 100%;
-  margin: 12px 0 40px;
+  margin: 18px 0 40px;
 }
 
 .contact-layout--form-only {
@@ -3641,14 +3758,14 @@ line-height: 1.55;
   width: 100%;
   max-width: none;
   margin: 0;
-  height: 100%;
+  height: auto;
   box-sizing: border-box;
 }
 
 .contact-card--details {
   display: flex;
   flex-direction: column;
-  padding: 24px 26px;
+  padding: 20px 18px;
 }
 
 .contact-office__heading {
@@ -3666,9 +3783,9 @@ line-height: 1.55;
 
 .contact-office__row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 14px;
   background: var(--primary-light);
   color: inherit;
@@ -3693,15 +3810,7 @@ line-height: 1.55;
 }
 
 .contact-office__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #fff;
-  color: var(--primary);
+  margin-top: 0;
 }
 
 .contact-office__row span:last-child {
@@ -3726,11 +3835,37 @@ line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
+@media (min-width: 901px) {
+  .contact-layout .contact-card {
+    height: 100%;
+  }
+
+  .contact-card--details {
+    padding: 24px 26px;
+  }
+}
+
 @media (max-width: 900px) {
   .contact-layout {
     grid-template-columns: 1fr;
     gap: 16px;
-    margin-bottom: 28px;
+    margin: 16px 0 28px;
+  }
+
+  .contact-reply-list {
+    margin-top: 16px;
+  }
+
+  .contact-reply {
+    padding: 14px 16px;
+  }
+
+  .contact-card--details {
+    padding: 18px 16px;
+  }
+
+  .contact-office__row {
+    align-items: center;
   }
 }
 
@@ -4914,6 +5049,35 @@ font-size: var(--font-size-body);
 line-height: var(--line-height-body);
 font-weight: var(--fw-regular);
   text-align: justify;
+}
+
+.pillar-card__description.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pillar-card__description.is-clamped p {
+  display: contents;
+}
+
+.pillar-card__more {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--primary, #e7863a);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.pillar-card__more:hover {
+  text-decoration: underline;
 }
 
 /* ABOUT FAQ SECTION */
@@ -6347,7 +6511,7 @@ box-shadow: var(--shadow-sm);
 .transformation {
   width: 100%;
   padding: var(--space-6) 0;
-  background: var(--primary-light);
+  background: #fef4ed;
 }
 
 .transformation .container {
@@ -6509,7 +6673,7 @@ box-shadow: var(--shadow-sm);
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: fill;
   transition: var(--transition-slow);
 }
 
@@ -6801,7 +6965,7 @@ box-shadow: var(--shadow-sm);
 .transformation-story-card__photo img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   display: block;
   transition: transform 0.45s ease;
 }
@@ -8546,7 +8710,7 @@ flex-shrink: 0;
 
 .static-page-section {
   width: 100%;
-  background: var(--bg-body);
+  background: #fef4ed;
 }
 
 .static-page-hero {
@@ -9229,7 +9393,7 @@ flex-shrink: 0;
 }
 
 .program-about--gut {
-  background: var(--bg-body);
+  background: #fef4ed;
 }
 
 .program-about__wrapper {
@@ -9323,7 +9487,7 @@ flex-shrink: 0;
 
 .program-highlight {
   padding: var(--space-8) 0;
-  background: var(--bg-section);
+  background: #fef4ed;
 }
 
 .program-highlight__card {
@@ -9573,7 +9737,7 @@ flex-shrink: 0;
 
 /* Success stories page */
 .success-stories-page .video-testimonial {
-  background: #fffaf6;
+  background: #fef4ed;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -10188,7 +10352,7 @@ flex-shrink: 0;
     font-size: var(--font-size-display);
   }
   .success-story .container {
-    padding: var(--section-padding-y) 0;
+    /* padding: var(--section-padding-y) 0; */
   }
 .success-content {
     width: 45%;
@@ -10792,7 +10956,7 @@ gap: 45px;
     height: 190px;
   }
 .transformation-section {
-    padding: var(--section-padding-y) 0;
+    /* padding: var(--section-padding-y) 0; */
   }
 .transformation-header {
     flex-direction: column;
@@ -12957,7 +13121,10 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-section {
-  padding: 1.5rem 0 0.85rem;
+  padding: 1.3rem 0 0.85rem;
+}
+.backgroundapply {
+  background: #fef4ed;
 }
 
 .wellnesspedia-page .wp-section:first-of-type,
@@ -12989,7 +13156,13 @@ bottom: -18px;
   color: #64748b;
   font-size: 0.9rem;
 }
-
+.textelipsane {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .wellnesspedia-page .wp-section__loading--more {
   margin-top: 0.5rem;
   text-align: center;
@@ -13247,23 +13420,32 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-recipe-card__title-row {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.4rem;
-  margin-bottom: 0.25rem;
+  gap: 0.35rem;
+  margin-bottom: 0.4rem;
 }
 
 .wellnesspedia-page .wp-recipe-card__title-row h3 {
   margin: 0;
+  width: 100%;
   font-size: 0.95rem;
   font-weight: 700;
   color: #1e293b;
   line-height: 1.25;
+  white-space: normal;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: calc(1.25em * 2);
+  min-height: calc(var(--font-size-h4) * var(--line-height-heading) * 2);
+}
+
+.wellnesspedia-page .wp-recipe-card__title-row .wp-chip-badge {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wellnesspedia-page .wp-recipe-card__body p {
@@ -13413,6 +13595,23 @@ bottom: -18px;
   color: #475569;
   font-size: 0.88rem;
   line-height: 1.55;
+}
+
+.wellnesspedia-page .wp-disorder-card__more {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary, #e7863a);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.wellnesspedia-page .wp-disorder-card__more:hover {
+  text-decoration: underline;
 }
 
 .wellnesspedia-page .wp-disorder-card__empty {
@@ -14611,8 +14810,8 @@ bottom: -18px;
 }
 
 .wp-media-modal__title {
-  margin: 0 0 0.85rem;
-  padding-right: 2rem;
+  margin: 0 0 0.3rem;
+  padding-right: 1rem;
   font-size: clamp(1.05rem, 2.4vw, 1.25rem);
   font-weight: 750;
   line-height: 1.35;
@@ -14716,7 +14915,7 @@ bottom: -18px;
   }
 
   .wp-media-modal__content {
-    padding: 1.35rem 1.5rem 1.65rem;
+    padding: 0.6rem 1.5rem 0.6rem;
   }
 }
 
@@ -14988,13 +15187,13 @@ bottom: -18px;
 
 @media (max-width: 991px) {
   .app-hero__grid {
-    grid-template-columns: 1fr;
+    /* grid-template-columns: 1fr; */
     text-align: center;
     gap: 1rem;
   }
 
   .app-hero__visual {
-    order: -1;
+    order: 1;
   }
 
   .app-hero__copy {
