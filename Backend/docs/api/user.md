@@ -156,6 +156,7 @@ See [program-payment.md](../domain/program-payment.md).
 | `GET` | `/user/birthday-posts/:id` |
 | `GET` | `/user/birthday-posts/:postId/comments` |
 | `POST` | `/user/birthday-posts/:postId/comments` |
+| `PATCH` | `/user/birthday-posts/:postId/comments/:id` |
 | `DELETE` | `/user/birthday-posts/:postId/comments/:id` |
 
 ---
@@ -170,6 +171,7 @@ See [program-payment.md](../domain/program-payment.md).
 | `GET` | `/user/monthly-champions/:id` |
 | `GET` | `/user/monthly-champions/:postId/comments` |
 | `POST` | `/user/monthly-champions/:postId/comments` |
+| `PATCH` | `/user/monthly-champions/:postId/comments/:id` |
 | `DELETE` | `/user/monthly-champions/:postId/comments/:id` |
 
 ---

@@ -8,6 +8,7 @@ const {
 const {
   listBirthdayPostCommentsController,
   createBirthdayPostCommentController,
+  updateBirthdayPostCommentController,
   deleteBirthdayPostCommentController,
 } = require("../../controllers/userController/birthdayPostCommentController");
 
@@ -18,6 +19,7 @@ router.use(protectUser);
 router.get("/", listBirthdayPostsController);
 router.get("/:postId/comments", listBirthdayPostCommentsController);
 router.post("/:postId/comments", createBirthdayPostCommentController);
+router.patch("/:postId/comments/:id", updateBirthdayPostCommentController);
 router.delete("/:postId/comments/:id", deleteBirthdayPostCommentController);
 router.get("/:id", getBirthdayPostByIdController);
 

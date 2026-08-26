@@ -304,6 +304,43 @@ The champion user receives an FCM notification (`monthly_champion_comment`) when
 
 ---
 
+### `PATCH /user/monthly-champions/:postId/comments/:id`
+
+Edit **own** comment only (`403` if not owner).
+
+**Body (JSON)**
+
+| Field | Type | Required | Rules |
+|-------|------|----------|-------|
+| `comment` | string | Yes | 1–2000 characters |
+
+```bash
+curl -s -X PATCH "http://localhost:5000/api/user/monthly-champions/POST_UUID/comments/COMMENT_UUID" \
+  -H "Authorization: Bearer USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"comment":"Congrats! Truly inspiring consistency this month."}'
+```
+
+**Response `200`**
+
+```json
+{
+  "status": true,
+  "message": "Comment updated successfully",
+  "comment": {
+    "id": "comment-uuid",
+    "monthlyChampionPostId": "POST_UUID",
+    "commenterUserId": "USER_UUID",
+    "comment": "Congrats! Truly inspiring consistency this month.",
+    "commenter": { "id": "...", "name": "Bob Smith" },
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+---
+
 ### `DELETE /user/monthly-champions/:postId/comments/:id`
 
 Delete **own** comment only.

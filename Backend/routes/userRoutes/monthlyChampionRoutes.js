@@ -10,6 +10,7 @@ const {
 const {
   listMonthlyChampionCommentsController,
   createMonthlyChampionCommentController,
+  updateMonthlyChampionCommentController,
   deleteMonthlyChampionCommentController,
 } = require("../../controllers/userController/monthlyChampionCommentController");
 
@@ -22,6 +23,7 @@ router.get("/mine", getMyMonthlyChampionHistoryController);
 router.get("/standing", getMyMonthlyChampionStandingController);
 router.get("/:postId/comments", listMonthlyChampionCommentsController);
 router.post("/:postId/comments", createMonthlyChampionCommentController);
+router.patch("/:postId/comments/:id", updateMonthlyChampionCommentController);
 router.delete("/:postId/comments/:id", deleteMonthlyChampionCommentController);
 router.get("/:id", getUserMonthlyChampionByIdController);
 
