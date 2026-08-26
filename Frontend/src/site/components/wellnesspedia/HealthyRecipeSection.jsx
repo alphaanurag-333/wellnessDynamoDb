@@ -67,7 +67,7 @@ function RecipeCard({ item, onOpen }) {
       </div>
       <div className="wp-recipe-card__body">
         <div className="wp-recipe-card__title-row">
-          <h3>{item.title}</h3>
+          <h3 className="textelipsane">{item.title}</h3>
           {item.badge ? <span className="wp-chip-badge">{item.badge}</span> : null}
         </div>
         <p>{item.description || "\u00A0"}</p>

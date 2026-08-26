@@ -1078,7 +1078,7 @@ export function UsersPage() {
                   className={`ua-table ua-table--users${showRowActions ? "" : " ua-table--users-readonly"} ua-table__row`}
                   onClick={() => openUser(u)}
                 >
-                  <div className="ua-table__muted">{u.n}</div>
+                  <div className="ua-table__muted ua-users-index">{u.n}</div>
                   <div className="ua-user-cell">
                     <UserListAvatar
                       name={u.name}
@@ -1091,31 +1091,35 @@ export function UsersPage() {
                       </div>
                       <div className="ua-user-cell__sub">
                         <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
-                        {u.goal ? (
+                        {/* {u.goal ? (
                           <span className="ua-user-cell__concern" title={u.goal}>{u.goal}</span>
-                        ) : null}
+                        ) : null} */}
                       </div>
                     </div>
                   </div>
-                  <div className="ua-users-tier" onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-users-tier" data-label="Tier" onClick={(e) => e.stopPropagation()}>
                     <span
                       className="ua-tier"
                       style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
                     >
                       {tierLabel(u.tier)}
                     </span>
-                    {tierMoves.map((move) => (
-                      <button
-                        key={`${rowKey}-${move.direction}-${move.target}`}
-                        type="button"
-                        className={`ua-tier-action ua-tier-action--${move.direction}`}
-                        title={move.title}
-                        disabled={actionBusy}
-                        onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
-                      >
-                        {move.label}
-                      </button>
-                    ))}
+                    {tierMoves.length ? (
+                      <div className="ua-users-tier__moves">
+                        {tierMoves.map((move) => (
+                          <button
+                            key={`${rowKey}-${move.direction}-${move.target}`}
+                            type="button"
+                            className={`ua-tier-action ua-tier-action--${move.direction}`}
+                            title={move.title}
+                            disabled={actionBusy}
+                            onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
+                          >
+                            {move.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                     {showTierUndo ? (
                       <button
                         type="button"
@@ -1128,7 +1132,7 @@ export function UsersPage() {
                       </button>
                     ) : null}
                   </div>
-                  <div className="ua-users-coach" onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-users-coach" data-label="Wellness coach" onClick={(e) => e.stopPropagation()}>
                     {!canReassignWc ? (
                       <span className="ua-users-coach__text">{u.coach || UNASSIGNED_COACH}</span>
                     ) : (
@@ -1145,7 +1149,7 @@ export function UsersPage() {
                       </select>
                     )}
                   </div>
-                  <div className="ua-users-coach" onClick={(e) => e.stopPropagation()}>
+                  <div className="ua-users-coach" data-label="Assistant WC" onClick={(e) => e.stopPropagation()}>
                     {!canReassignAwc ? (
                       <span className="ua-users-coach__text">{u.awc || "—"}</span>
                     ) : (
@@ -1162,15 +1166,15 @@ export function UsersPage() {
                       </select>
                     )}
                   </div>
-                  <div className="ua-table__muted ua-users-last-active">{u.lastActive || "—"}</div>
-                  <div className="ua-users-status">
+                  <div className="ua-table__muted ua-users-last-active" data-label="Last active">{u.lastActive || "—"}</div>
+                  <div className="ua-users-status" data-label="Status">
                     <span className={`ua-status-badge ua-status-badge--${tone}`}>
                       <span className="ua-status-badge__dot" />
                       {u.status}
                     </span>
                   </div>
                   {showRowActions ? (
-                    <div className="ua-users-row-actions" onClick={(e) => e.stopPropagation()}>
+                    <div className="ua-users-row-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
                       {canEdit ? (
                         <button
                           type="button"

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import { fetchHealthDisorders, isSectionLiveOnWeb } from "../../api/publicMisc.js";
 import { usePagedSwiper } from "../../hooks/usePagedSwiper.js";
 
@@ -56,7 +56,8 @@ function DisorderCard({ item }) {
                 setExpanded((open) => !open);
               }}
             >
-              {expanded ? "Read less" : "Read more"}
+              {expanded ? "Read Less" : "Read More"}
+              {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
             </button>
           ) : null}
         </>

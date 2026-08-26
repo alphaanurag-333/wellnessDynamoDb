@@ -30,8 +30,9 @@ import {
   Eye,
   Sparkles,
   HelpCircle,
+  ArrowRight,
+  ArrowUpRight,
 } from "lucide-react";
-import { FiArrowRight } from "react-icons/fi";
 import Methodology from "./Methodology.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
 import FinalCTA from "./FinalCTA.jsx";
@@ -102,7 +103,8 @@ function PillarDescription({ html, text }) {
           aria-expanded={expanded}
           onClick={() => setExpanded((open) => !open)}
         >
-          {expanded ? "Read less" : "Read more"}
+          {expanded ? "Read Less" : "Read More"}
+          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
         </button>
       ) : null}
     </>
