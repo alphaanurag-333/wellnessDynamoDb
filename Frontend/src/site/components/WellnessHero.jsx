@@ -1,5 +1,6 @@
 import React from "react";
 import { FiArrowRight, FiAward } from "react-icons/fi";
+import { CONSULTATION_WHATSAPP } from "../data/programPages";
 
 // import heroImage from "../assets/wellness-room.jpg";
 import heroImage from "../images/Exercise.jpg";
@@ -53,16 +54,16 @@ export default function WellnessHero() {
 
 
           <div className="wellness-hero__actions">
-            <button
-              type="button"
+            <a
+              href={CONSULTATION_WHATSAPP}
               className="wellness-btn wellness-btn--primary"
-              onClick={() =>
-                window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
-              }
+              target="_blank"
+              rel="noopener noreferrer"
             >
               Book a consultation
               <FiArrowRight />
-            </button>          </div>
+            </a>
+          </div>
         </div>
 
         <div className="wellness-hero__visual improvingimgs">

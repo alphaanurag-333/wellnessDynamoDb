@@ -160,7 +160,7 @@ export default function ChampionSlider() {
     <section className="champion-section monthly-champions paddingmanage pt-3 pb-3" aria-label="Monthly champions">
       <div className="site-container">
         <div className="monthly-champions__header">
-          <span className="monthly-champions__badge">Community Pride</span>
+          {/* <span className="monthly-champions__badge">Community Pride</span> */}
           <h2 className="monthly-champions__title displaychampion">
             Champion of the <span>Month</span>
           </h2>

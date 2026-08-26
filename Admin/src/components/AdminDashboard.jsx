@@ -2493,8 +2493,12 @@ export function AdminDashboard({
               </div>
 
               <div className="chart-card">
-                <div className="chart-card__title">Users by tier</div>
-                <div className="chart-card__sub">Seek, Heal, PWC &amp; maintenance</div>
+                <div className="chart-card__head">
+                  <div>
+                    <div className="chart-card__title">Users by tier</div>
+                    <div className="chart-card__sub">Seek, Heal, PWC &amp; maintenance</div>
+                  </div>
+                </div>
                 <div className="tier-chart">
                   <div className="tier-chart__donut">
                     <div className="donut" style={{ background: `conic-gradient(${tierGradient})` }}>

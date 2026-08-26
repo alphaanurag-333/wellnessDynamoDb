@@ -505,10 +505,10 @@ export function ReflectionSection({ user, onToast }) {
             {expanded.has("tracking") ? (
               <div className="ua-cp-reflect-section__body">
                 {TRACKING_ROWS.map((row, index) => (
-                  <div style={{flexWrap:"nowrap"}} key={row.key} className="ua-cp-reflect-question">
+                  <div key={row.key} className="ua-cp-reflect-question ua-cp-reflect-question--tracking">
                     <span className="ua-cp-reflect-question__num">{index + 1}.</span>
                     <span className="ua-cp-reflect-question__text ua-cp-reflect-question__text--readonly">{row.name}</span>
-                    <div className="ua-cp-reflect-question__score manageflesd">
+                    <div className="ua-cp-reflect-question__score">
                       <span className="ua-cp-reflect-tracking">{trackingLabel(tracking?.[row.key], row.unit)}</span>
                     </div>
                   </div>

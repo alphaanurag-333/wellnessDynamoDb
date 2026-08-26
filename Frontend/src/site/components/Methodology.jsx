@@ -1,5 +1,10 @@
+import { useState } from "react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
+import { CONSULTATION_WHATSAPP } from "../data/programPages";
 import discoveryImg from "../images/discovery.png";
-import analysisImg from "../images/analysis.png";import programImg from "../images/program.png";
+import analysisImg from "../images/analysis.png";
+import programImg from "../images/program.png";
 
 const methodologyData = [
   {
@@ -8,8 +13,7 @@ const methodologyData = [
     title: "1:1 Discovery Call",
     headTitle: "All About You",
     description:
-      "This call is designed to deep dive into your health history, current lifestyle and aspired health goals like Fat loss or any lifestyle disorder management/ reversal where your dedicated wellness coach will listen attentively to your needs and concerns to understand your specific health issues & goals.", 
-      
+      "This call is designed to deep dive into your health history, current lifestyle and aspired health goals like Fat loss or any lifestyle disorder management/ reversal where your dedicated wellness coach will listen attentively to your needs and concerns to understand your specific health issues & goals.",
   },
   {
     id: 2,
@@ -29,6 +33,51 @@ const methodologyData = [
   },
 ];
 
+function MethodologyCard({ item }) {
+  const [expanded, setExpanded] = useState(false);
+  const { ref: descRef, overflows } = useClampedOverflow(item.description, expanded);
+  const showToggle = expanded || overflows;
+
+  return (
+    <div className={`methodology-card${expanded ? " methodology-card--expanded" : ""}`}>
+      <div className="methodology-card__image">
+        <img src={item.image} alt={item.title} />
+      </div>
+
+      <div className="methodology-card__content">
+        <h3>{item.title}</h3>
+        <h5>{item.headTitle}</h5>
+        <p
+          ref={descRef}
+          className={`methodology-card__desc${expanded ? " methodology-card__desc--expanded" : ""}`}
+        >
+          {item.description}
+        </p>
+        {showToggle ? (
+          <button
+            type="button"
+            className="methodology-card__more"
+            onClick={() => setExpanded((open) => !open)}
+            aria-expanded={expanded}
+          >
+            {expanded ? "Read Less" : "Read More"}
+            {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+          </button>
+        ) : null}
+
+        <a
+          href={CONSULTATION_WHATSAPP}
+          className="methodology-card__cta"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Book a consultation
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function Methodology() {
   return (
     <section className="methodology">
@@ -40,32 +89,11 @@ export default function Methodology() {
             lifestyle and overall health. Through personalized consultations and
             root cause analysis.
           </p>
-          
         </div>
 
         <div className="methodology__cards">
           {methodologyData.map((item) => (
-            <div className="methodology-card" key={item.id}>
-              <div className="methodology-card__image">
-                <img src={item.image} alt={item.title} />
-              </div>
-
-              <div className="methodology-card__content">
-                <h3>{item.title}</h3>
-
-                <h5>{item.headTitle}</h5>
-                <p>{item.description}</p>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    window.open("https://wa.me/919372109740", "_blank", "noopener,noreferrer")
-                  }
-                >
-                  Book a consultation
-                </button>        
-                      </div>
-            </div>
+            <MethodologyCard key={item.id} item={item} />
           ))}
         </div>
       </div>
