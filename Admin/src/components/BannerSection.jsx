@@ -14,6 +14,7 @@ import {
   BANNER_TYPES,
   asCopyString,
   bannerPlacementById,
+  cssAspectRatio,
   emptyBannerEditor,
   mapDropdownOptions,
   preserveOption,
@@ -617,7 +618,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 <strong>India Redefining Wellness</strong>
                 <em>irwellness.in</em>
               </div>
-              <div className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}>
+              <div
+                className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}
+                style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
+              >
                 {webPreview ? <BannerImage src={webPreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
               </div>
             </div>
@@ -630,7 +634,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 <strong>Good morning</strong>
                 <span aria-hidden="true">🔔</span>
               </div>
-              <div className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}>
+              <div
+                className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}
+                style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
+              >
                 {mobilePreview ? <BannerImage src={mobilePreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
               </div>
             </div>

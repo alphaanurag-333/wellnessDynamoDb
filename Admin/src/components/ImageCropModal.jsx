@@ -10,6 +10,19 @@ function cropAspectCss(ratio, originalAspectCss) {
   return ratio.replace(":", " / ");
 }
 
+function cropViewportStyle(ratio, cropWidth, cropHeight, originalAspectCss) {
+  if (cropWidth && cropHeight) {
+    return {
+      width: cropWidth,
+      height: cropHeight,
+      maxWidth: "100%",
+      aspectRatio: `${cropWidth} / ${cropHeight}`,
+    };
+  }
+  const css = cropAspectCss(ratio, originalAspectCss);
+  return css ? { aspectRatio: css } : undefined;
+}
+
 export function ImageCropModal({
   open,
   label = "image",
@@ -19,6 +32,8 @@ export function ImageCropModal({
   defaultRatio = "Original",
   originalAspectCss = "16 / 9",
   originalAspectNumber = 16 / 9,
+  cropWidth,
+  cropHeight,
   showFrameworks = false,
   backdropClassName = "",
   onClose,
@@ -58,7 +73,8 @@ export function ImageCropModal({
   const zoomFactor = zoom / 100;
   const naturalAspectCss =
     imageSize.width && imageSize.height ? `${imageSize.width} / ${imageSize.height}` : originalAspectCss;
-  const viewportAspectCss = cropAspectCss(ratio, naturalAspectCss);
+  const lockedSize = Boolean(cropWidth && cropHeight);
+  const viewportStyle = cropViewportStyle(ratio, cropWidth, cropHeight, naturalAspectCss);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -75,7 +91,7 @@ export function ImageCropModal({
     const observer = new ResizeObserver(updateSize);
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [open, viewportAspectCss, imageSize.width, imageSize.height]);
+  }, [open, viewportStyle?.width, viewportStyle?.height, viewportStyle?.aspectRatio, imageSize.width, imageSize.height]);
 
   const layout =
     imageSize.width && viewportSize.width
@@ -167,7 +183,9 @@ export function ImageCropModal({
               <span aria-hidden="true">✂</span> Confirm upload
             </h3>
             <p className="ua-cfg-mv-upload-modal__sub">
-              {label} · set the crop, ratio and zoom before it is attached
+              {cropWidth && cropHeight
+                ? `${label} · ${cropWidth}px × ${cropHeight}px`
+                : `${label} · set the crop, ratio and zoom before it is attached`}
             </p>
           </div>
           <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>
@@ -175,27 +193,29 @@ export function ImageCropModal({
           </button>
         </div>
 
-        <div className="ua-cfg-mv-upload-modal__ratios">
-          {CROP_RATIOS.map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              className={`ua-cfg-mv-upload-modal__ratio${ratio === entry ? " is-active" : ""}`}
-              onClick={() => {
-                setRatio(entry);
-                setPan({ x: 0, y: 0 });
-              }}
-            >
-              {entry}
-            </button>
-          ))}
-        </div>
+        {lockedSize ? null : (
+          <div className="ua-cfg-mv-upload-modal__ratios">
+            {CROP_RATIOS.map((entry) => (
+              <button
+                key={entry}
+                type="button"
+                className={`ua-cfg-mv-upload-modal__ratio${ratio === entry ? " is-active" : ""}`}
+                onClick={() => {
+                  setRatio(entry);
+                  setPan({ x: 0, y: 0 });
+                }}
+              >
+                {entry}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="ua-cfg-mv-upload-modal__crop">
           <div
             ref={viewportRef}
-            className="ua-cfg-mv-upload-modal__crop-inner ua-cfg-lg-crop-viewport"
-            style={viewportAspectCss ? { aspectRatio: viewportAspectCss } : undefined}
+            className={`ua-cfg-mv-upload-modal__crop-inner ua-cfg-lg-crop-viewport${cropWidth && cropHeight ? " ua-cfg-crop-viewport--fixed" : ""}`}
+            style={viewportStyle}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}

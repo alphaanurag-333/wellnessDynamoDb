@@ -48184,9 +48184,14 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-bn-preview {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) 160px;
+  grid-template-columns: minmax(0, 1fr) 168px;
   gap: 16px;
   align-items: start;
+}
+
+.updated-admin .ua-cfg-bn-preview__web,
+.updated-admin .ua-cfg-bn-preview__app {
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-bn-preview__label {
@@ -48232,15 +48237,21 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-bn-preview__banner {
   position: relative;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 88px;
-  /* background: linear-gradient(135deg, #dbeafe 0%, #fed7aa 100%); */
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  background: #f1f5f9;
   color: #64748b;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
+}
+
+.updated-admin .ua-cfg-bn-preview__web .ua-cfg-bn-preview__banner {
+  margin: 10px 12px 12px;
+  border-radius: 10px;
 }
 
 .updated-admin .ua-cfg-bn-preview__img {
@@ -48249,14 +48260,18 @@ scrollbar-width: thin;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center;
+  display: block;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner.is-on {
   color: #16233f;
+  background: #0f172a;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner--app {
-  min-height: 56px;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
   margin: 8px;
   border-radius: 8px;
 }

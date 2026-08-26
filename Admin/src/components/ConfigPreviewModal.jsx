@@ -8,7 +8,7 @@ import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
 import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
 import { liveVersionText } from "../data/privacyConfigData.js";
-import { asCopyString, bannerPlacementById } from "../data/bannerConfigData.js";
+import { asCopyString, bannerPlacementById, cssAspectRatio } from "../data/bannerConfigData.js";
 import { formatPack } from "../data/nutritionBankData.js";
 import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
@@ -1596,7 +1596,10 @@ function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
         <strong>{headline}</strong>
         <span className="ua-cfg-pt-live-preview__url">{placement.label}</span>
       </div>
-      <div className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}>
+      <div
+        className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}
+        style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
+      >
         {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
       </div>
       {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}

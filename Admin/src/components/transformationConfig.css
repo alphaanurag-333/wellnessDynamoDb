@@ -174,3 +174,93 @@
   font-weight: 400;
   color: #9ca3af;
 }
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-photos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
+  flex: 0 0 250px;
+  width: 250px;
+  height: 250px;
+  max-width: 250px;
+  max-height: 250px;
+  min-height: 250px;
+  aspect-ratio: 1 / 1;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop__size {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop.is-on .ua-cfg-tf-drop__size {
+  display: none;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop__img {
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-pair .ua-cfg-rc-cover-wrap {
+  aspect-ratio: 1 / 1;
+  max-height: none;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair .ua-cfg-rc-cover__img {
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-tf-view__shot {
+  aspect-ratio: 1 / 1;
+  max-height: none;
+}
+
+.updated-admin .ua-cfg-tf-view__shot img {
+  object-fit: cover;
+}
+
+.updated-admin .ua-cfg-tf-preview-image {
+  aspect-ratio: 1 / 1;
+}
+
+.updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal {
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 24px));
+}
+
+.updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop {
+  min-height: 250px;
+  max-height: none;
+  padding: 12px;
+}
+
+.updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
+.updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
+.updated-admin .ua-cfg-tf-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
+  width: 250px;
+  height: 250px;
+  max-width: 250px;
+  max-height: 250px;
+  aspect-ratio: 1 / 1;
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
+    flex: 0 0 250px;
+    width: 250px;
+    height: 250px;
+    max-height: 250px;
+    min-height: 250px;
+    aspect-ratio: 1 / 1;
+  }
+}

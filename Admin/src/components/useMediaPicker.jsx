@@ -10,6 +10,10 @@ export function useMediaPicker({
   accept = "image",
   multiple = false,
   title = "Choose media",
+  cropImages = true,
+  cropWidth,
+  cropHeight,
+  showFrameworks = false,
   onFiles,
   onError,
 }) {
@@ -48,6 +52,10 @@ export function useMediaPicker({
       accept={accept}
       multiple={multiple}
       title={title}
+      cropImages={cropImages}
+      cropWidth={cropWidth}
+      cropHeight={cropHeight}
+      showFrameworks={showFrameworks}
     />
   );
 

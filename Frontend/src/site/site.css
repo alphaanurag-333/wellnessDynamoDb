@@ -11585,8 +11585,7 @@ font-size: 0.62rem;
   }
 .swiper.heroSwiper,
   .heroSwiper--loading {
-    /* ~1080ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ480 mobile crop on narrow phones */
-    height: clamp(190px, 44.444vw, 220px);
+     /* height: clamp(190px, 44.444vw, 220px); */
   }
 .champion-section,
   .real-healing-section {
