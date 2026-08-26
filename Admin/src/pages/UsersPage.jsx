@@ -1091,9 +1091,9 @@ export function UsersPage() {
                       </div>
                       <div className="ua-user-cell__sub">
                         <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
-                        {u.goal ? (
+                        {/* {u.goal ? (
                           <span className="ua-user-cell__concern" title={u.goal}>{u.goal}</span>
-                        ) : null}
+                        ) : null} */}
                       </div>
                     </div>
                   </div>
