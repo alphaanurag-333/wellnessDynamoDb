@@ -26,6 +26,10 @@ const EMPTY_DRAFT = {
   videoName: "",
 };
 
+const VH_CROP_WIDTH = 400;
+const VH_CROP_HEIGHT = 400;
+const VH_CROP_RATIO = "1:1";
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -45,10 +49,15 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
-    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-vh-dropbox${filled ? " is-on" : ""}`}>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-vh-dropbox ua-cfg-vh-cover${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
-      <p className="ua-cfg-tf-drop__label">Cover image</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
+          <p className="ua-cfg-tf-drop__label">Cover image</p>
+          <span className="ua-cfg-vh-cover__size">{VH_CROP_WIDTH}px × {VH_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -166,6 +175,10 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
   const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose cover image",
+    cropImages: false,
+    cropWidth: VH_CROP_WIDTH,
+    cropHeight: VH_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, target) => openCrop(file, target || "draft"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -682,9 +695,12 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="16 / 9"
-        originalAspectNumber={16 / 9}
+        defaultRatio={VH_CROP_RATIO}
+        originalAspectCss={`${VH_CROP_WIDTH} / ${VH_CROP_HEIGHT}`}
+        originalAspectNumber={VH_CROP_WIDTH / VH_CROP_HEIGHT}
+        cropWidth={VH_CROP_WIDTH}
+        cropHeight={VH_CROP_HEIGHT}
+        backdropClassName="ua-cfg-vh-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />

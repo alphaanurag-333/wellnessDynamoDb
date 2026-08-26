@@ -34,6 +34,9 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
+const RC_CROP_WIDTH = 640;
+const RC_CROP_HEIGHT = 360;
+const RC_CROP_RATIO = "16:9";
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -407,8 +410,13 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
-      <p className="ua-cfg-tf-drop__label">{label}</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
+          <p className="ua-cfg-tf-drop__label">{label}</p>
+          <span className="ua-cfg-lib-drop__size">{RC_CROP_WIDTH}px × {RC_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -590,6 +598,10 @@ export function RecipesSection({
   const { openPicker: openCoverPicker, mediaPickerModal: coverPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose cover photo",
+    cropImages: false,
+    cropWidth: RC_CROP_WIDTH,
+    cropHeight: RC_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, target) => openCoverCrop(file, target || "draft"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -1928,9 +1940,12 @@ export function RecipesSection({
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="16 / 9"
-        originalAspectNumber={16 / 9}
+        defaultRatio={RC_CROP_RATIO}
+        originalAspectCss={`${RC_CROP_WIDTH} / ${RC_CROP_HEIGHT}`}
+        originalAspectNumber={RC_CROP_WIDTH / RC_CROP_HEIGHT}
+        cropWidth={RC_CROP_WIDTH}
+        cropHeight={RC_CROP_HEIGHT}
+        backdropClassName="ua-cfg-lib-cover-crop-modal"
         onClose={closeCoverCrop}
         onConfirm={confirmCoverCrop}
       />

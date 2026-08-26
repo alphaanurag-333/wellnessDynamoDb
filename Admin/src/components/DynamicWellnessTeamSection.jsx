@@ -16,6 +16,9 @@ import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const PAGE_SIZE = 10;
 const DEFAULT_BADGE = "OUR WELLNESS TEAM";
+const WT_CROP_WIDTH = 400;
+const WT_CROP_HEIGHT = 400;
+const WT_CROP_RATIO = "1:1";
 const STATUS_FILTERS = [
   { value: "", label: "All profiles" },
   { value: "active", label: "Live" },
@@ -55,8 +58,13 @@ function PortraitDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-ld-drop${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">👤</span>
-      <p className="ua-cfg-tf-drop__label">Portrait</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">👤</span>
+          <p className="ua-cfg-tf-drop__label">Portrait</p>
+          <span className="ua-cfg-ld-drop__size">{WT_CROP_WIDTH}px × {WT_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -343,6 +351,10 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose image",
+    cropImages: false,
+    cropWidth: WT_CROP_WIDTH,
+    cropHeight: WT_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, context) => openPhotoCrop(file, context),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -889,9 +901,12 @@ export function DynamicWellnessTeamSection({ items, setItems, editor, setEditor,
           file={cropPending.file}
           previewUrl={cropPending.previewUrl || ""}
           busy={busy}
-          defaultRatio="Original"
-          originalAspectCss="3 / 4"
-          originalAspectNumber={3 / 4}
+          defaultRatio={WT_CROP_RATIO}
+          originalAspectCss={`${WT_CROP_WIDTH} / ${WT_CROP_HEIGHT}`}
+          originalAspectNumber={WT_CROP_WIDTH / WT_CROP_HEIGHT}
+          cropWidth={WT_CROP_WIDTH}
+          cropHeight={WT_CROP_HEIGHT}
+          backdropClassName="ua-cfg-ld-crop-modal"
           onClose={closeCoverCrop}
           onConfirm={confirmCoverCrop}
         />

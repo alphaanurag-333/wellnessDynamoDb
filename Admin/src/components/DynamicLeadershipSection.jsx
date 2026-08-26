@@ -18,6 +18,10 @@ import "./leadershipConfig.css";
 
 const PAGE_SIZE = 10;
 
+const LD_CROP_WIDTH = 400;
+const LD_CROP_HEIGHT = 400;
+const LD_CROP_RATIO = "1:1";
+
 const EMPTY_DRAFT = {
   name: "",
   designation: "",
@@ -50,8 +54,13 @@ function PortraitDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-ld-drop${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">👤</span>
-      <p className="ua-cfg-tf-drop__label">Portrait</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">👤</span>
+          <p className="ua-cfg-tf-drop__label">Portrait</p>
+          <span className="ua-cfg-ld-drop__size">{LD_CROP_WIDTH}px × {LD_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -323,6 +332,10 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose image",
+    cropImages: false,
+    cropWidth: LD_CROP_WIDTH,
+    cropHeight: LD_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, context) => openPhotoCrop(file, context),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -806,9 +819,12 @@ export function DynamicLeadershipSection({ items, setItems, editor, setEditor, o
           file={cropPending.file}
           previewUrl={cropPending.previewUrl || ""}
           busy={busy}
-          defaultRatio="Original"
-          originalAspectCss="3 / 4"
-          originalAspectNumber={3 / 4}
+          defaultRatio={LD_CROP_RATIO}
+          originalAspectCss={`${LD_CROP_WIDTH} / ${LD_CROP_HEIGHT}`}
+          originalAspectNumber={LD_CROP_WIDTH / LD_CROP_HEIGHT}
+          cropWidth={LD_CROP_WIDTH}
+          cropHeight={LD_CROP_HEIGHT}
+          backdropClassName="ua-cfg-ld-crop-modal"
           onClose={closeCoverCrop}
           onConfirm={confirmCoverCrop}
         />

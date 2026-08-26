@@ -35,6 +35,9 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
+const YG_CROP_WIDTH = 640;
+const YG_CROP_HEIGHT = 360;
+const YG_CROP_RATIO = "16:9";
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -406,8 +409,13 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
-      <p className="ua-cfg-tf-drop__label">{label}</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
+          <p className="ua-cfg-tf-drop__label">{label}</p>
+          <span className="ua-cfg-lib-drop__size">{YG_CROP_WIDTH}px × {YG_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -559,6 +567,10 @@ export function YogaSection({
   const { openPicker: openCoverPicker, mediaPickerModal: coverPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose cover photo",
+    cropImages: false,
+    cropWidth: YG_CROP_WIDTH,
+    cropHeight: YG_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, target) => openCoverCrop(file, target || "draft"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -1634,13 +1646,16 @@ export function YogaSection({
 
       <ImageCropModal
         open={Boolean(cropPending)}
-        label={copy?.cropLabel || "recipe cover"}
+        label={copy?.cropLabel || "yoga cover"}
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="16 / 9"
-        originalAspectNumber={16 / 9}
+        defaultRatio={YG_CROP_RATIO}
+        originalAspectCss={`${YG_CROP_WIDTH} / ${YG_CROP_HEIGHT}`}
+        originalAspectNumber={YG_CROP_WIDTH / YG_CROP_HEIGHT}
+        cropWidth={YG_CROP_WIDTH}
+        cropHeight={YG_CROP_HEIGHT}
+        backdropClassName="ua-cfg-lib-cover-crop-modal"
         onClose={closeCoverCrop}
         onConfirm={confirmCoverCrop}
       />

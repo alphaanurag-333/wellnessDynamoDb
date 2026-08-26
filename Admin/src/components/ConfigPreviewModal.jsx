@@ -29,17 +29,52 @@ function previewSurfaces(item) {
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
     return surfaces;
   }
+  if (item.id === "web-program-testimonials") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
   if (item.id === "common-banner") {
     if (item.app) surfaces.push({ id: "app", label: "App", ratio: BANNER_MOBILE_SIZE.label });
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: BANNER_DESKTOP_SIZE.label });
     return surfaces;
   }
-  if (item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders") {
+  if (item.id === "common-voice") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
+  if (item.id === "common-cofounder") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
+  if (item.id === "common-leadership") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
+  if (item.id === "common-wellness-team") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    return surfaces;
+  }
+  if (item.id === "common-recipes") {
     if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
     if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
     return surfaces;
   }
-  const webRatio = item.id === "web-program-testimonials" || item.id === "common-client-review" ? "3:4" : "16:9";
+  if (item.id === "common-yoga") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
+    return surfaces;
+  }
+  if (item.id === "common-google-review" || item.id === "common-health-disorders") {
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
+    return surfaces;
+  }
+  const webRatio = item.id === "common-client-review" ? "3:4" : "16:9";
   if (item.app) surfaces.push({ id: "app", label: "App", ratio: "9:16" });
   if (item.web) surfaces.push({ id: "web", label: "Web", ratio: webRatio });
   return surfaces;
@@ -52,10 +87,31 @@ function surfaceSubtitle(surfaces, activeId, item) {
   if (item?.id === "common-real-people") {
     return "Common asset · renders on both surfaces · 400 × 400";
   }
+  if (item?.id === "web-program-testimonials") {
+    return "Web · 400 × 400";
+  }
+  if (item?.id === "common-voice") {
+    return "Common asset · renders on both surfaces · 400 × 400";
+  }
+  if (item?.id === "common-cofounder") {
+    return "Common asset · renders on both surfaces · 400 × 400";
+  }
+  if (item?.id === "common-leadership") {
+    return "Common asset · renders on both surfaces · 400 × 400";
+  }
+  if (item?.id === "common-wellness-team") {
+    return "Common asset · renders on both surfaces · 400 × 400";
+  }
   if (item?.id === "common-banner") {
     return `Desktop ${BANNER_DESKTOP_SIZE.label} · Mobile ${BANNER_MOBILE_SIZE.label}`;
   }
-  if (item?.id === "common-voice" || item?.id === "common-cofounder" || item?.id === "common-leadership" || item?.id === "common-wellness-team" || item?.id === "common-google-review" || item?.id === "common-recipes" || item?.id === "common-yoga" || item?.id === "common-health-disorders") {
+  if (item?.id === "common-recipes") {
+    return "Common asset · renders on both surfaces · 640 × 360";
+  }
+  if (item?.id === "common-yoga") {
+    return "Common asset · renders on both surfaces · 640 × 360";
+  }
+  if (item?.id === "common-google-review" || item?.id === "common-health-disorders") {
     return "Common asset · renders on both surfaces · 16:9";
   }
   if (item?.id === "app-faq") {
@@ -1726,6 +1782,9 @@ function LogoSlotsPreview({ slots = [], surface, item }) {
 function ProgramTestimonialsPreview({ stories = [], surface, item }) {
   const live = stories.filter((entry) => entry.live);
   const story = live[0] ?? stories[0] ?? null;
+  const photo = story?.imagePreview || story?.profileImage || "";
+  const headline = asCopyString(story?.headline) || asCopyString(story?.name) || "Headline";
+  const description = asCopyString(story?.description);
 
   const body = (
     <div className="ua-cfg-pt-live-preview">
@@ -1735,16 +1794,24 @@ function ProgramTestimonialsPreview({ stories = [], surface, item }) {
         <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
       </div>
       {story ? (
-        <div className="ua-cfg-pt-live-preview__layout">
-          <div className={`ua-cfg-pt-live-preview__image${story.hasPhoto ? " has-image" : ""}`}>
-            IMAGE
-          </div>
-          <div className="ua-cfg-pt-live-preview__copy">
-            <span>{programTestimonialLabel(story.program)}</span>
-            <strong>{asCopyString(story.headline) || asCopyString(story.name)}</strong>
-            <p>{asCopyString(story.description) || "Program-specific story…"}</p>
-            <em>{asCopyString(story.name)}</em>
-          </div>
+        <div className="ua-cfg-pt-preview__frame">
+          <article className="ua-cfg-pt-preview__card">
+            <div className="ua-cfg-pt-preview__card-head">
+              <div className={`ua-cfg-pt-preview__avatar${photo ? " has-image" : ""}`}>
+                {photo ? <img src={photo} alt="" /> : <span>400 × 400</span>}
+              </div>
+              <div className="ua-cfg-pt-preview__card-meta">
+                <span className="ua-cfg-pt-preview__program">{programTestimonialLabel(story.program)}</span>
+                <strong className="ua-cfg-pt-preview__headline">{headline}</strong>
+              </div>
+            </div>
+            <div className={`ua-cfg-pt-preview__photo${photo ? " has-image" : ""}`}>
+              {photo ? <img src={photo} alt="" /> : <span>Client photo · 400 × 400</span>}
+            </div>
+            <p className="ua-cfg-pt-preview__quote">
+              {description ? `“${description}”` : "Program-specific story…"}
+            </p>
+          </article>
         </div>
       ) : (
         <div className="ua-cfg-pt-preview__empty">No live stories yet.</div>

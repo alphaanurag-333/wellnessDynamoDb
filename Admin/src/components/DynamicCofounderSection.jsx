@@ -18,6 +18,10 @@ const EMPTY_DRAFT = {
   ytLink: "",
 };
 
+const CF_CROP_WIDTH = 400;
+const CF_CROP_HEIGHT = 400;
+const CF_CROP_RATIO = "1:1";
+
 const VIDEO_TYPE_OPTIONS = [
   { value: "none", label: "No video" },
   { value: "link", label: "YouTube link" },
@@ -40,21 +44,30 @@ function Panel({ title, subtitle, actions, children }) {
 }
 
 function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
+  const filled = Boolean(previewUrl);
+
   return (
     <div className="ua-cfg-cf-portrait-wrap">
       <div className="ua-cfg-rc-cover-drop-wrap">
         <div className="ua-cfg-rc-cover-drop-frame">
           <button
             type="button"
-            className={`ua-cfg-rc-cover-drop ua-cfg-cf-portrait-drop${previewUrl ? " is-on" : ""}`}
+            className={`ua-cfg-rc-cover-drop ua-cfg-cf-portrait-drop${filled ? " is-on" : ""}`}
             disabled={disabled}
-            aria-label={previewUrl ? "Replace portrait photo" : "Add portrait photo"}
+            aria-label={filled ? "Replace portrait photo" : "Add portrait photo"}
             onClick={() => onPick?.()}
           >
-            {previewUrl ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">👤</span>}
-            <em>{previewUrl ? "Replace" : "Add photo"}</em>
+            {filled ? <img className="ua-cfg-rc-drop-preview" src={previewUrl} alt="" /> : <span aria-hidden="true">👤</span>}
+            {!filled ? (
+              <>
+                <em>Add photo</em>
+                <span className="ua-cfg-cf-portrait-drop__size">{CF_CROP_WIDTH}px × {CF_CROP_HEIGHT}px</span>
+              </>
+            ) : (
+              <em>Replace</em>
+            )}
           </button>
-          {previewUrl && onRemove ? (
+          {filled && onRemove ? (
             <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove portrait photo" disabled={disabled} onClick={onRemove}>×</button>
           ) : null}
         </div>
@@ -77,6 +90,10 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
   const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose portrait photo",
+    cropImages: false,
+    cropWidth: CF_CROP_WIDTH,
+    cropHeight: CF_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file) => openCrop(file),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -407,9 +424,12 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="auto"
-        originalAspectNumber={0}
+        defaultRatio={CF_CROP_RATIO}
+        originalAspectCss={`${CF_CROP_WIDTH} / ${CF_CROP_HEIGHT}`}
+        originalAspectNumber={CF_CROP_WIDTH / CF_CROP_HEIGHT}
+        cropWidth={CF_CROP_WIDTH}
+        cropHeight={CF_CROP_HEIGHT}
+        backdropClassName="ua-cfg-cf-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />

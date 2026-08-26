@@ -27,11 +27,18 @@ import {
 } from "../data/wellnessLibraryData.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { ImageCropModal } from "./ImageCropModal.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
+
+/** Locked cover crop for yoga, physical exercise, and mental wellbeing libraries (16:9). */
+const LIB_COVER_CROP_WIDTH = 640;
+const LIB_COVER_CROP_HEIGHT = 360;
+const LIB_COVER_CROP_RATIO = "16:9";
+const LIB_COVER_CROP_KINDS = new Set(["yoga", "exercise", "mental"]);
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -175,14 +182,19 @@ function Panel({ title, subtitle, actions, children }) {
   );
 }
 
-function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemove }) {
+function CoverDrop({ previewUrl, disabled, label = "Cover photo", sizeLabel = "", onPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--before ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
-      <p className="ua-cfg-tf-drop__label">{label}</p>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
+          <p className="ua-cfg-tf-drop__label">{label}</p>
+          {sizeLabel ? <span className="ua-cfg-lib-drop__size">{sizeLabel}</span> : null}
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -253,6 +265,7 @@ function TimeInput({ value, disabled, detecting, onChange, onBlur, ariaLabel }) 
 
 export function WellnessLibrarySection({ kind, onToast }) {
   const meta = WELLNESS_LIBRARY_KINDS[kind] || WELLNESS_LIBRARY_KINDS.mental;
+  const lockedCoverCrop = LIB_COVER_CROP_KINDS.has(kind);
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState(emptyWellnessDraft);
   const [draftThumb, setDraftThumb] = useState(null);
@@ -276,15 +289,62 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const [busy, setBusy] = useState(false);
   const [detecting, setDetecting] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [cropPending, setCropPending] = useState(null);
   const savedRef = useRef({});
   const itemsRef = useRef(items);
   const editFilesRef = useRef({});
 
+  function openCoverCrop(file, target) {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      onToast("Choose an image file");
+      return;
+    }
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      target,
+    });
+  }
+
+  function closeCoverCrop() {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending(null);
+  }
+
+  async function confirmCoverCrop(croppedFile, cropError) {
+    if (cropError) {
+      onToast(cropError.message || "Failed to crop image");
+      return;
+    }
+    if (!croppedFile || !cropPending) return;
+    const target = cropPending.target;
+    closeCoverCrop();
+    if (target === "draft") {
+      pickDraftImage(croppedFile);
+      onToast("Cover photo attached");
+      return;
+    }
+    const item = target?.item;
+    if (item?.id) {
+      await changeImage(item, croppedFile);
+    }
+  }
+
   const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose cover photo",
+    cropImages: !lockedCoverCrop,
+    cropWidth: lockedCoverCrop ? LIB_COVER_CROP_WIDTH : undefined,
+    cropHeight: lockedCoverCrop ? LIB_COVER_CROP_HEIGHT : undefined,
+    showFrameworks: false,
     onFiles: (file, context) => {
       if (!file) return;
+      if (lockedCoverCrop) {
+        openCoverCrop(file, context);
+        return;
+      }
       if (context === "draft") pickDraftImage(file);
       else if (context?.item) changeImage(context.item, file);
     },
@@ -367,8 +427,16 @@ export function WellnessLibrarySection({ kind, onToast }) {
       revokeBlobUrl(prev);
       return "";
     });
+    setCropPending((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
     editFilesRef.current = {};
   }, [kind]);
+
+  useEffect(() => () => {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+  }, [cropPending?.previewUrl]);
 
   useEffect(() => {
     loadItems();
@@ -729,7 +797,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const hasFilters = Boolean(search || typeFilter);
 
   return (
-    <div className="ua-cfg-rc ua-cfg-lib">
+    <div className={`ua-cfg-rc ua-cfg-lib${lockedCoverCrop ? " ua-cfg-lib--cover-16x9" : ""}`}>
       <Panel
         title={meta.title}
         subtitle={
@@ -773,6 +841,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                 <CoverDrop
                   previewUrl={draftPreview}
                   disabled={locked}
+                  sizeLabel={lockedCoverCrop ? `${LIB_COVER_CROP_WIDTH}px × ${LIB_COVER_CROP_HEIGHT}px` : ""}
                   onPick={() => openImagePicker("draft")}
                   onRemove={() => pickDraftImage(null)}
                 />
@@ -1115,6 +1184,24 @@ export function WellnessLibrarySection({ kind, onToast }) {
         onCancel={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
       />
+
+      {lockedCoverCrop && cropPending ? (
+        <ImageCropModal
+          open={Boolean(cropPending)}
+          label="cover"
+          file={cropPending.file}
+          previewUrl={cropPending.previewUrl || ""}
+          busy={busy}
+          defaultRatio={LIB_COVER_CROP_RATIO}
+          originalAspectCss={`${LIB_COVER_CROP_WIDTH} / ${LIB_COVER_CROP_HEIGHT}`}
+          originalAspectNumber={LIB_COVER_CROP_WIDTH / LIB_COVER_CROP_HEIGHT}
+          cropWidth={LIB_COVER_CROP_WIDTH}
+          cropHeight={LIB_COVER_CROP_HEIGHT}
+          backdropClassName="ua-cfg-lib-cover-crop-modal"
+          onClose={closeCoverCrop}
+          onConfirm={confirmCoverCrop}
+        />
+      ) : null}
 
       {imagePickerModal}
       {videoPickerModal}

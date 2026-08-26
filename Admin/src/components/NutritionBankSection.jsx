@@ -16,8 +16,13 @@ import {
 } from "../data/nutritionBankData.js";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { ImageCropModal } from "./ImageCropModal.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./nutritionBankConfig.css";
+
+const NB_CROP_WIDTH = 400;
+const NB_CROP_HEIGHT = 400;
+const NB_CROP_RATIO = "1:1";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "", label: "All statuses" },
@@ -68,6 +73,7 @@ function ImagePicker({ previewUrl, disabled, onPick, label = "Upload image" }) {
         <span className="ua-cfg-nb-uploader__empty">
           <span aria-hidden="true">+</span>
           {label}
+          <em className="ua-cfg-nb-uploader__size">{NB_CROP_WIDTH}px × {NB_CROP_HEIGHT}px</em>
         </span>
       )}
     </button>
@@ -304,15 +310,36 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [cropPending, setCropPending] = useState(null);
   const itemsRef = useRef(items);
+
+  function closeCrop() {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending(null);
+  }
+
+  function openCrop(file, target) {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      onToast("Choose an image file");
+      return;
+    }
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+    setCropPending({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      target: target || "draft",
+    });
+  }
 
   const { openPicker: openImagePicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose nutrition image",
-    onFiles: (file, context) => {
-      if (context === "edit") pickEditImage(file);
-      else pickDraftImage(file);
-    },
+    cropImages: false,
+    cropWidth: NB_CROP_WIDTH,
+    cropHeight: NB_CROP_HEIGHT,
+    showFrameworks: false,
+    onFiles: (file, context) => openCrop(file, context),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
 
@@ -372,6 +399,23 @@ export function NutritionBankSection({ items, setItems, onToast }) {
   useEffect(() => () => {
     if (editPreview.startsWith("blob:")) URL.revokeObjectURL(editPreview);
   }, [editPreview]);
+
+  useEffect(() => () => {
+    if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
+  }, [cropPending?.previewUrl]);
+
+  function confirmCrop(croppedFile, cropError) {
+    if (cropError) {
+      onToast(cropError.message || "Failed to crop image");
+      return;
+    }
+    if (!croppedFile || !cropPending) return;
+    const target = cropPending.target;
+    closeCrop();
+    if (target === "edit") pickEditImage(croppedFile);
+    else pickDraftImage(croppedFile);
+    onToast("Nutrition image attached");
+  }
 
   function pickDraftImage(file) {
     setDraftPreview((current) => {
@@ -646,6 +690,22 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       </Panel>
 
       {mediaPickerModal}
+
+      <ImageCropModal
+        open={Boolean(cropPending)}
+        label="nutrition image"
+        file={cropPending?.file}
+        previewUrl={cropPending?.previewUrl || ""}
+        busy={busy}
+        defaultRatio={NB_CROP_RATIO}
+        originalAspectCss={`${NB_CROP_WIDTH} / ${NB_CROP_HEIGHT}`}
+        originalAspectNumber={NB_CROP_WIDTH / NB_CROP_HEIGHT}
+        cropWidth={NB_CROP_WIDTH}
+        cropHeight={NB_CROP_HEIGHT}
+        backdropClassName="ua-cfg-nb-crop-modal"
+        onClose={closeCrop}
+        onConfirm={confirmCrop}
+      />
 
       <ConfirmDialog
         open={!!pendingDelete}

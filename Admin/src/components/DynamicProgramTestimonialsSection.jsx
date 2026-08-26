@@ -18,6 +18,9 @@ import { CfgSelect } from "./shared.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const PAGE_SIZE = 100;
+const PT_CROP_WIDTH = 400;
+const PT_CROP_HEIGHT = 400;
+const PT_CROP_RATIO = "1:1";
 
 const SORT_OPTIONS = [
   { value: "manual", label: "Manual order" },
@@ -78,16 +81,23 @@ function CoverDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   return (
     <div className={`ua-cfg-pt-photo${filled ? " is-on" : ""}`}>
       {filled ? <img className="ua-cfg-pt-photo__img" src={previewUrl} alt="" /> : null}
-      <span className="ua-cfg-pt-photo__icon" aria-hidden="true">📷</span>
-      <strong>Client photo</strong>
-      <button
-        type="button"
-        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-        disabled={disabled}
-        onClick={() => onRequestPick?.()}
-      >
-        {filled ? "Replace photo" : "Upload photo"}
-      </button>
+      {!filled ? (
+        <>
+          <span className="ua-cfg-pt-photo__icon" aria-hidden="true">📷</span>
+          <strong>Client photo</strong>
+          <span className="ua-cfg-pt-photo__size">{PT_CROP_WIDTH}px × {PT_CROP_HEIGHT}px</span>
+        </>
+      ) : null}
+      <div className="ua-cfg-pt-photo__actions">
+        <button
+          type="button"
+          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+          disabled={disabled}
+          onClick={() => onRequestPick?.()}
+        >
+          {filled ? "Replace photo" : "Upload photo"}
+        </button>
+      </div>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove client photo" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
@@ -95,30 +105,8 @@ function CoverDrop({ previewUrl, disabled, onRequestPick, onRemove }) {
   );
 }
 
-function StoryPreviewCard({ story }) {
-  if (!story) {
-    return <div className="ua-cfg-pt-preview__empty">Fill the form above to preview the new story.</div>;
-  }
-
-  const photo = story.imagePreview || story.profileImage;
-
-  return (
-    <div className="ua-cfg-pt-preview__browser">
-      <div className="ua-cfg-pt-preview__chrome" aria-hidden="true">
-        <span /><span /><span />
-      </div>
-      <div className="ua-cfg-pt-preview__frame">
-        <div
-          className={`ua-cfg-pt-preview__hero${photo ? " has-image" : ""}`}
-          style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
-          aria-label={String(story.name || "Story preview")}
-        />
-      </div>
-    </div>
-  );
-}
-
-function StoryEditModal({
+function StoryFormModal({
+  mode = "edit",
   story,
   index,
   liveCount,
@@ -128,16 +116,18 @@ function StoryEditModal({
   onSave,
   onRequestPickPhoto,
 }) {
-  const [draft, setDraft] = useState({
+  const isCreate = mode === "create";
+  const [draft, setDraft] = useState(() => ({
     name: String(story.name || ""),
     program: story.program,
     description: String(story.description || ""),
     imagePreview: story.imagePreview || "",
     profileImage: story.profileImage || "",
     imageFile: null,
-  });
+  }));
 
   useEffect(() => {
+    if (isCreate) return;
     setDraft({
       name: String(story.name || ""),
       program: story.program,
@@ -146,7 +136,7 @@ function StoryEditModal({
       profileImage: story.profileImage || "",
       imageFile: null,
     });
-  }, [story]);
+  }, [isCreate, story]);
 
   useEffect(() => () => {
     if (draft.imagePreview?.startsWith("blob:") && draft.imagePreview !== story.imagePreview) {
@@ -154,23 +144,60 @@ function StoryEditModal({
     }
   }, [draft.imagePreview, story.imagePreview]);
 
+  function applyPhoto(croppedFile) {
+    setDraft((prev) => {
+      if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
+      return {
+        ...prev,
+        imageFile: croppedFile,
+        imagePreview: URL.createObjectURL(croppedFile),
+      };
+    });
+  }
+
+  function clearPhoto() {
+    setDraft((prev) => {
+      if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
+      return { ...prev, imageFile: null, imagePreview: "", profileImage: "" };
+    });
+  }
+
+  function resetDraft() {
+    setDraft((prev) => {
+      if (prev.imagePreview?.startsWith("blob:") && prev.imagePreview !== story.imagePreview) {
+        URL.revokeObjectURL(prev.imagePreview);
+      }
+      return {
+        name: "",
+        program: options[0]?.value || story.program || "",
+        description: "",
+        imagePreview: "",
+        profileImage: "",
+        imageFile: null,
+      };
+    });
+  }
+
   const photo = draft.imagePreview || draft.profileImage || story.profileImage;
 
   return (
-    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer ua-cfg-pt-story-modal" onClick={onClose} role="presentation">
       <div
         className="ua-cfg-pt-edit-modal ua-cfg-pt-edit-modal--full"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
-        aria-labelledby="pt-edit-title"
+        aria-labelledby="pt-story-title"
       >
         <div className="ua-cfg-pt-edit-modal__head">
           <div>
-            <h3 id="pt-edit-title" className="ua-cfg-pt-edit-modal__title">
-              <span aria-hidden="true">✎</span> Edit testimonial
+            <h3 id="pt-story-title" className="ua-cfg-pt-edit-modal__title">
+              <span aria-hidden="true">{isCreate ? "+" : "✎"}</span>
+              {isCreate ? "Add new testimonial" : "Edit testimonial"}
             </h3>
             <p className="ua-cfg-pt-edit-modal__sub">
-              #{index + 1} · {liveCount} live on the website
+              {isCreate
+                ? "Upload a photo, write the headline, then save to publish it live."
+                : `#${index + 1} · ${liveCount} live on the website`}
             </p>
           </div>
           <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>×</button>
@@ -183,16 +210,8 @@ function StoryEditModal({
               <CoverDrop
                 previewUrl={photo}
                 disabled={busy}
-                onRequestPick={() => onRequestPickPhoto?.((croppedFile) => {
-                  setDraft((prev) => {
-                    if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
-                    return {
-                      ...prev,
-                      imageFile: croppedFile,
-                      imagePreview: URL.createObjectURL(croppedFile),
-                    };
-                  });
-                })}
+                onRequestPick={() => onRequestPickPhoto?.(applyPhoto)}
+                onRemove={isCreate || draft.imageFile ? clearPhoto : undefined}
               />
             </div>
 
@@ -233,7 +252,15 @@ function StoryEditModal({
         </div>
 
         <div className="ua-cfg-mv-upload-modal__foot ua-cfg-pt-edit-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onClose}>Cancel</button>
+          {isCreate ? (
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetDraft}>
+              Clear
+            </button>
+          ) : (
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={onClose}>
+              Cancel
+            </button>
+          )}
           <button
             type="button"
             className="ua-cfg-btn ua-cfg-btn--primary"
@@ -246,7 +273,7 @@ function StoryEditModal({
               imageFile: draft.imageFile,
             })}
           >
-            {busy ? "Saving…" : "Save changes"}
+            {busy ? "Saving…" : isCreate ? "Add testimonial" : "Save changes"}
           </button>
         </div>
       </div>
@@ -277,7 +304,7 @@ function sortStories(list, mode, options) {
 export function DynamicProgramTestimonialsSection({ stories, setStories, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [createDraft, setCreateDraft] = useState(() => emptyCreateDraft());
+  const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [sortMode, setSortMode] = useState("manual");
   const [dragId, setDragId] = useState(null);
@@ -286,7 +313,6 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   const [cropPending, setCropPending] = useState(null);
   const [concernOptions, setConcernOptions] = useState([]);
   const storiesRef = useRef(stories);
-  const createFormRef = useRef(null);
 
   useEffect(() => {
     storiesRef.current = stories;
@@ -309,9 +335,6 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
 
   const liveCount = useMemo(() => stories.filter((row) => row.live).length, [stories]);
   const canReorder = sortMode === "manual";
-  const previewStory = createDraft.name || createDraft.description || createDraft.imagePreview
-    ? createDraft
-    : null;
 
   const loadConcerns = useCallback(async () => {
     try {
@@ -322,10 +345,6 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
       });
       const options = mapHealthConcernOptions(healthConcerns);
       setConcernOptions(options);
-      setCreateDraft((prev) => ({
-        ...prev,
-        program: prev.program || options[0]?.value || "",
-      }));
     } catch (error) {
       setConcernOptions([]);
       onToast(error?.message || "Could not load health concerns");
@@ -357,10 +376,6 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   }, [loadItems]);
 
   useEffect(() => () => {
-    if (createDraft.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(createDraft.imagePreview);
-  }, [createDraft.imagePreview]);
-
-  useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
   }, [cropPending?.previewUrl]);
 
@@ -390,6 +405,10 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose image",
+    cropImages: false,
+    cropWidth: PT_CROP_WIDTH,
+    cropHeight: PT_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, onCropped) => openCoverCrop(file, onCropped),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -406,27 +425,19 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
     onToast("Client photo attached");
   }
 
-  function clearCreatePhoto() {
-    setCreateDraft((prev) => {
-      if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
-      return { ...prev, imageFile: null, imagePreview: "" };
-    });
+  function openCreateForm() {
+    setEditingId(null);
+    setCreating(true);
   }
 
-  function resetCreateForm() {
-    if (createDraft.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(createDraft.imagePreview);
-    setCreateDraft(emptyCreateDraft(concernOptions[0]?.value || ""));
+  function closeCreateForm() {
+    setCreating(false);
   }
 
-  function focusCreateForm() {
-    resetCreateForm();
-    createFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  async function saveNewStory() {
-    const name = String(createDraft.name || "").trim();
-    const description = String(createDraft.description || "").trim();
-    const program = String(createDraft.program || "").trim();
+  async function saveNewStory(next) {
+    const name = String(next.name || "").trim();
+    const description = String(next.description || "").trim();
+    const program = String(next.program || "").trim();
     if (!name || !description) {
       onToast("Add the headline and description");
       return;
@@ -435,7 +446,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
       onToast("Pick a program / health concern");
       return;
     }
-    if (!(createDraft.imageFile instanceof File)) {
+    if (!(next.imageFile instanceof File)) {
       onToast("Add a client photo");
       return;
     }
@@ -446,8 +457,8 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         description,
         type: program,
         status: "active",
-      }, createDraft.imageFile);
-      resetCreateForm();
+      }, next.imageFile);
+      setCreating(false);
       onToast("Testimonial added");
       await loadItems();
     } catch (error) {
@@ -479,6 +490,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
       }, file);
       patchItem(next.id, { ...saved, imagePreview: "" });
       setEditingId(null);
+      setCreating(false);
       onToast("Testimonial saved");
     } catch (error) {
       onToast(error?.message || "Could not save testimonial");
@@ -568,6 +580,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
     try {
       await adminDeleteProgramTestimonial(null, item.id);
       if (editingId === item.id) setEditingId(null);
+      if (creating) setCreating(false);
       onToast("Story removed");
       await loadItems();
     } catch (error) {
@@ -579,91 +592,6 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
 
   return (
     <div className="ua-cfg-pt">
-      <Panel
-        title="Add new testimonial"
-        subtitle="Upload a photo, write the headline, then save to publish it live."
-      >
-        <div className="ua-cfg-pt-editor" ref={createFormRef}>
-          <div className="ua-cfg-pt-photo-wrap">
-            <span className="ua-cfg-pt-field__label">Photo</span>
-            <CoverDrop
-              previewUrl={createDraft.imagePreview}
-              disabled={busy}
-              onRequestPick={() => openPicker((croppedFile) => {
-                setCreateDraft((prev) => {
-                  if (prev.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(prev.imagePreview);
-                  return {
-                    ...prev,
-                    imageFile: croppedFile,
-                    imagePreview: URL.createObjectURL(croppedFile),
-                  };
-                });
-              })}
-              onRemove={clearCreatePhoto}
-            />
-          </div>
-          <div className="ua-cfg-pt-fields">
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Headline</span>
-              <input
-                type="text"
-                className="ua-cfg-pt-field__input"
-                value={createDraft.name}
-                placeholder="Down 18 kg on Fat Loss"
-                disabled={busy}
-                onChange={(event) => setCreateDraft((prev) => ({ ...prev, name: event.target.value }))}
-              />
-            </label>
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Program</span>
-              <ProgramSelect
-                options={concernOptions}
-                value={createDraft.program}
-                disabled={busy}
-                onChange={(value) => setCreateDraft((prev) => ({ ...prev, program: value }))}
-              />
-            </label>
-            <label className="ua-cfg-pt-field">
-              <span className="ua-cfg-pt-field__label">Description</span>
-              <textarea
-                className="ua-cfg-pt-field__textarea"
-                rows={5}
-                value={createDraft.description}
-                placeholder="Program-specific story..."
-                disabled={busy}
-                onChange={(event) => setCreateDraft((prev) => ({ ...prev, description: event.target.value }))}
-              />
-            </label>
-            <div className="ua-cfg-pt-editor__foot">
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                disabled={busy}
-                onClick={resetCreateForm}
-              >
-                Clear
-              </button>
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                disabled={busy}
-                onClick={saveNewStory}
-              >
-                {busy ? "Saving…" : "Add testimonial"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Panel>
-
-      <Panel
-        title="Preview"
-        subtitle="How this new story appears on the website."
-        actions={<span className="ua-cfg-pt-web-chip">Web</span>}
-      >
-        <StoryPreviewCard story={previewStory} />
-      </Panel>
-
       <Panel
         title="Live on the website"
         subtitle={
@@ -681,7 +609,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
               ariaLabel="Sort stories"
               placeholder="Sort"
             />
-            <button type="button" className="ua-cfg-rc-add" disabled={busy} onClick={focusCreateForm}>
+            <button type="button" className="ua-cfg-rc-add" disabled={busy} onClick={openCreateForm}>
               + Add story
             </button>
           </div>
@@ -729,7 +657,10 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                   <button
                     type="button"
                     className="ua-cfg-pt-row__main"
-                    onClick={() => setEditingId(entry.id)}
+                    onClick={() => {
+                      setCreating(false);
+                      setEditingId(entry.id);
+                    }}
                   >
                     <span className="ua-cfg-faq__num">#{index + 1}</span>
                     <strong>{String(entry.name || "").trim() || "Untitled"}</strong>
@@ -785,7 +716,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
           </div>
         ) : (
           <p className="ua-cfg-panel__sub">
-            {loading ? "Fetching stories…" : "No stories yet. Use Add new testimonial above."}
+            {loading ? "Fetching stories…" : "No stories yet. Click + Add story to create one."}
           </p>
         )}
         {sortMode !== "manual" ? (
@@ -793,8 +724,25 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         ) : null}
       </Panel>
 
+      {creating ? (
+        <StoryFormModal
+          key="pt-create"
+          mode="create"
+          story={emptyCreateDraft(concernOptions[0]?.value || "")}
+          index={0}
+          liveCount={liveCount}
+          options={concernOptions}
+          busy={busy}
+          onClose={closeCreateForm}
+          onSave={saveNewStory}
+          onRequestPickPhoto={openPicker}
+        />
+      ) : null}
+
       {editing ? (
-        <StoryEditModal
+        <StoryFormModal
+          key={editing.id}
+          mode="edit"
           story={editing}
           index={Math.max(0, editingIndex)}
           liveCount={liveCount}
@@ -812,9 +760,12 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="3 / 4"
-        originalAspectNumber={3 / 4}
+        defaultRatio={PT_CROP_RATIO}
+        originalAspectCss={`${PT_CROP_WIDTH} / ${PT_CROP_HEIGHT}`}
+        originalAspectNumber={PT_CROP_WIDTH / PT_CROP_HEIGHT}
+        cropWidth={PT_CROP_WIDTH}
+        cropHeight={PT_CROP_HEIGHT}
+        backdropClassName="ua-cfg-pt-crop-modal"
         onClose={closeCoverCrop}
         onConfirm={confirmCoverCrop}
       />
