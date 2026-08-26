@@ -852,39 +852,56 @@ min-height: 100dvh;
 }
 
 .site-stats__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   padding: 1.25rem 1rem;
+  gap: 0.15rem;
 }
 
 .site-stats__rating {
   margin: 0;
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-family: var(--font-family-base);
+  font-size: 1.35rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.15;
   color: var(--site-navy);
 }
 
 .site-stats__stars {
   display: flex;
   justify-content: center;
+  align-items: center;
   gap: 0.15rem;
-  margin: 0.35rem 0;
-  color: var(--site-orange);
+  margin: 0.2rem 0 0.35rem;
+  color: var(--site-navy);
+}
+
+.site-stats__stars svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
 }
 
 .site-stats__platform {
   margin: 0.5rem 0 0.25rem;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-bold);
   color: var(--site-navy);
 }
 
 .site-stats__label {
+  display: block;
   margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-family: var(--font-family-base);
+  font-size: 0.625rem;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--site-muted);
+  line-height: 1.3;
+  color: var(--site-navy);
 }
 
 .site-services__grid {
@@ -1626,7 +1643,7 @@ min-height: 100dvh;
   --transition: 200ms ease;
   --transition-slow: 250ms ease;
 /* Header */
---header-bg: rgba(255, 255, 255, 0.95);
+--header-bg: #fef4ed;
   --header-link: #4a4542;
   --header-link-hover: var(--primary);
 /* Hero */
@@ -5050,6 +5067,7 @@ transition: var(--transition);
 
 .pillar-card__content {
   margin: 0 20px 20px;
+  min-width: 0;
 }
 
 .pillar-card__title {
@@ -7597,7 +7615,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -9747,6 +9765,7 @@ flex-shrink: 0;
 
 .about-page .pillar-card__content {
   margin: 0 var(--space-5) var(--space-5);
+  min-width: 0;
 }
 
 .about-page .pillar-card__head-title {
@@ -9756,6 +9775,22 @@ flex-shrink: 0;
   font-weight: 600;
   line-height: 1.4;
   text-align: center;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pillar-card__head-title.is-clamped,
+h5.pillar-card__head-title.is-clamped {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pillar-card__head-title.is-expanded,
+h5.pillar-card__head-title.is-expanded {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: unset;
 }
 
 .about-page .pillar-card__description,
@@ -9788,6 +9823,7 @@ flex-shrink: 0;
 .home-page {
   overflow-x: clip;
   width: 100%;
+  background: #fef4ed;
 }
 
 .home-page > .monthly-champions,
@@ -9961,6 +9997,43 @@ flex-shrink: 0;
     --font-size-lg: 1.0625rem;
     --section-padding-y: var(--section-padding-y-mobile);
     --section-header-mb: var(--space-5);
+  }
+
+  .site-stats {
+    gap: 0.7rem;
+  }
+
+  .site-stats__card {
+    padding: 0.85rem 0.45rem 0.9rem;
+    min-width: 0;
+  }
+
+  .site-shell .site-stats__rating,
+  .site-stats__rating {
+    font-size: 1.15rem !important;
+  }
+
+  .site-shell .site-stats__label,
+  .site-stats__label {
+    font-size: 0.6rem !important;
+    letter-spacing: 0.03em;
+  }
+
+  .site-stats__stars {
+    margin: 0.1rem 0 0.25rem;
+  }
+
+  .site-stats__stars svg {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+
+  .site-shell .wellness-hero__description,
+  .wellness-hero__description,
+  .methodology__header p {
+    font-size: 0.95rem !important;
+    line-height: 1.65 !important;
+    text-align: left;
   }
 }
 
@@ -11830,8 +11903,8 @@ font-size: 0.62rem;
   }
   .wellness-hero__description,
   .methodology__header p{
-    font-size: var(--font-size-body);
-    text-align: justify;
+    font-size: 0.95rem;
+    text-align: left;
   }
   .wellness-btn--primary{
     height: 42px;
@@ -13068,9 +13141,10 @@ bottom: -18px;
         margin-top: 20px;
     }
     .wellness-hero__stat-card p {
-          font-size: 9px;
+          font-size: 0.72rem;
+          line-height: 1.35;
     }
-    .site-cards {
+    .site-cards:not(.site-stats__card) {
       padding: 0.0rem !important;
     }
     .transformation-header {
@@ -13153,7 +13227,7 @@ bottom: -18px;
    ============================================================ */
 
 .wellnesspedia-page {
-  background: #fff;
+  background: #fef4ed;
   padding-bottom: 0;
 }
 
@@ -13163,8 +13237,13 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-section {
   padding: 1.3rem 0 0.85rem;
+  background: #fef4ed;
 }
 .backgroundapply {
+  background: #fef4ed;
+}
+
+#services.backgroundapply {
   background: #fef4ed;
 }
 
@@ -13607,6 +13686,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-disorder-card {
   height: 100%;
   min-height: 220px;
+  min-width: 0;
   border: 1px solid #e5e7eb;
   border-top-width: 4px;
   border-radius: 14px;
@@ -13619,6 +13699,19 @@ bottom: -18px;
   font-size: 1.05rem;
   font-weight: 700;
   color: #1e293b;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.wellnesspedia-page .wp-disorder-card h3.is-clamped {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wellnesspedia-page .wp-disorder-card h3.is-expanded {
+  overflow: visible;
+  white-space: normal;
 }
 
 .wellnesspedia-page .wp-disorder-card__label {
@@ -15089,7 +15182,7 @@ bottom: -18px;
   background:
     radial-gradient(900px 320px at 0% 0%, rgba(232, 136, 79, 0.18), transparent 55%),
     radial-gradient(820px 360px at 100% 100%, rgba(122, 201, 154, 0.22), transparent 52%),
-    linear-gradient(180deg, #fbf8f4 0%, #f3f7f2 100%);
+    #fef4ed;
 }
 
 .app-hero__glow {
@@ -15616,5 +15709,51 @@ h5.pillar-card__head-title,
   }
   100% {
     opacity: 0.12;
+  }
+}
+
+.site-section--stats {
+  background: #fef4ed;
+}
+
+.site-shell .site-stats__rating,
+.site-stats__rating {
+  font-family: var(--font-family-base) !important;
+  font-size: 1.35rem !important;
+  font-weight: var(--fw-bold) !important;
+  line-height: 1.15 !important;
+}
+
+.site-shell .site-stats__label,
+.site-stats__label {
+  font-family: var(--font-family-base) !important;
+  font-size: 0.625rem !important;
+  font-weight: var(--fw-semibold) !important;
+  line-height: 1.3 !important;
+}
+
+@media (max-width: 640px) {
+  .site-stats {
+    gap: 12px;
+  }
+
+  .site-card.site-cards.site-stats__card {
+    padding: 0.95rem 0.45rem 1rem !important;
+  }
+
+  .site-shell .site-stats__rating,
+  .site-stats__rating {
+    font-size: 1.15rem !important;
+  }
+
+  .site-shell .site-stats__label,
+  .site-stats__label {
+    font-size: 0.6rem !important;
+    letter-spacing: 0.03em;
+  }
+
+  .site-stats__stars svg {
+    width: 0.7rem;
+    height: 0.7rem;
   }
 }

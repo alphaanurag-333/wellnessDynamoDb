@@ -56,32 +56,44 @@ function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
 }
 
-function PillarDescription({ html, text }) {
+function PillarDescription({ headTitle, html, text }) {
   const [expanded, setExpanded] = useState(false);
   const [canToggle, setCanToggle] = useState(false);
+  const headingRef = useRef(null);
   const clampRef = useRef(null);
   const source = html && looksLikeHtml(html) ? html : "";
 
   const measure = useCallback(() => {
-    const el = clampRef.current;
-    if (!el || expanded) return;
-    setCanToggle(el.scrollHeight > el.clientHeight + 1);
-  }, [expanded, source, text]);
+    if (expanded) return;
+    const heading = headingRef.current;
+    const body = clampRef.current;
+    const headingOverflows = heading ? heading.scrollWidth > heading.clientWidth + 1 : false;
+    const bodyOverflows = body ? body.scrollHeight > body.clientHeight + 1 : false;
+    setCanToggle(headingOverflows || bodyOverflows);
+  }, [expanded, source, text, headTitle]);
 
   useLayoutEffect(() => {
     measure();
   }, [measure]);
 
   useEffect(() => {
-    const el = clampRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const nodes = [headingRef.current, clampRef.current].filter(Boolean);
+    if (!nodes.length || typeof ResizeObserver === "undefined") return undefined;
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    nodes.forEach((node) => observer.observe(node));
     return () => observer.disconnect();
   }, [measure]);
 
   return (
     <>
+      {headTitle ? (
+        <h5
+          ref={headingRef}
+          className={`pillar-card__head-title${expanded ? " is-expanded" : " is-clamped"}`}
+        >
+          {headTitle}
+        </h5>
+      ) : null}
       {source ? (
         <div
           ref={clampRef}
@@ -409,10 +421,11 @@ const AboutUsSection = () => {
                 </div>
                 <div className="pillar-card__content">
                   <h3 className="pillar-card__title">{item.title}</h3>
-                  {item.headTitle ? (
-                    <h5 className="pillar-card__head-title">{item.headTitle}</h5>
-                  ) : null}
-                  <PillarDescription html={item.html} text={item.description} />
+                  <PillarDescription
+                    headTitle={item.headTitle}
+                    html={item.html}
+                    text={item.description}
+                  />
                 </div>
               </article>
             ))}

@@ -35,9 +35,9 @@ export function StatsSection() {
         <div className={`site-stats site-stats--${Math.min(stats.length, 4)}`}>
           {stats.map((card) => (
             <SiteCard key={card.key} className="site-stats__card site-stats__card--glow">
-              <p className="site-stats__rating">{card.value}</p>
+              <strong className="site-stats__rating">{card.value}</strong>
               {card.showStars ? <StatsStars rating={card.rating} /> : null}
-              <p className="site-stats__label">{card.label}</p>
+              <span className="site-stats__label">{card.label}</span>
             </SiteCard>
           ))}
         </div>

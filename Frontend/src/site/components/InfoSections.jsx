@@ -31,7 +31,7 @@ export function ServicesSection() {
   const { services } = useSiteConfig();
 
   return (
-    <section id={services.id} className="site-section site-section--muted pt-0" aria-labelledby="services-heading">
+    <section id={services.id} className="site-section backgroundapply" aria-labelledby="services-heading">
       <div className="site-container">
         <div className="site-section__header site-section__header--centered">
           <p className="site-eyebrow">{services.eyebrow}</p>

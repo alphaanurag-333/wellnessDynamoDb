@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpRight } from "lucide-react";
@@ -31,40 +31,65 @@ function mapDisorder(row, index) {
 
 function DisorderCard({ item }) {
   const [expanded, setExpanded] = useState(false);
-  const extra = item.symptoms.length > PREVIEW_SYMPTOMS;
-  const visible = extra && !expanded
+  const [titleOverflows, setTitleOverflows] = useState(false);
+  const titleRef = useRef(null);
+  const extraSymptoms = item.symptoms.length > PREVIEW_SYMPTOMS;
+  const canToggle = extraSymptoms || titleOverflows;
+  const visible = extraSymptoms && !expanded
     ? item.symptoms.slice(0, PREVIEW_SYMPTOMS)
     : item.symptoms;
 
+  const measureTitle = useCallback(() => {
+    if (expanded) return;
+    const el = titleRef.current;
+    if (!el) return;
+    setTitleOverflows(el.scrollWidth > el.clientWidth + 1);
+  }, [expanded, item.title]);
+
+  useLayoutEffect(() => {
+    measureTitle();
+  }, [measureTitle]);
+
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(measureTitle);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [measureTitle]);
+
   return (
     <article className="wp-disorder-card" style={{ borderTopColor: item.accent }}>
-      <h3>{item.title}</h3>
+      <h3
+        ref={titleRef}
+        className={expanded ? "is-expanded" : "is-clamped"}
+      >
+        {item.title}
+      </h3>
       <p className="wp-disorder-card__label">Clinical Symptoms</p>
       {item.symptoms.length > 0 ? (
-        <>
-          <ul>
-            {visible.map((symptom, index) => (
-              <li key={`${item.id}-${index}`}>{symptom}</li>
-            ))}
-          </ul>
-          {extra ? (
-            <button
-              type="button"
-              className="wp-disorder-card__more"
-              aria-expanded={expanded}
-              onClick={(event) => {
-                event.stopPropagation();
-                setExpanded((open) => !open);
-              }}
-            >
-              {expanded ? "Read Less" : "Read More"}
-              {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
-            </button>
-          ) : null}
-        </>
+        <ul>
+          {visible.map((symptom, index) => (
+            <li key={`${item.id}-${index}`}>{symptom}</li>
+          ))}
+        </ul>
       ) : (
         <p className="wp-disorder-card__empty">Details coming soon.</p>
       )}
+      {canToggle ? (
+        <button
+          type="button"
+          className="wp-disorder-card__more"
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((open) => !open);
+          }}
+        >
+          {expanded ? "Read Less" : "Read More"}
+          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+        </button>
+      ) : null}
     </article>
   );
 }
