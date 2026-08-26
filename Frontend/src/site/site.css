@@ -1998,8 +1998,8 @@ font-size: var(--fs-sm);
 .swiper.heroSwiper,
 .heroSwiper--loading {
   width: 100%;
-  /* Matches admin banner crop 1920ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ640 (3:1) */
-  /* height: clamp(200px, 33.333vw, 640px); */
+  /* Matches admin banner crop 1905x640 (~3:1) */
+  height: clamp(200px, 33.333vw, 640px);
   min-height: 0;
   max-height: none;
   aspect-ratio: auto;
