@@ -7,6 +7,7 @@ import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchRealPeopleTestimonials } from "../api/publicMisc.js";
 import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 function HealingStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -190,9 +191,9 @@ export default function RealHealingSlider() {
           <div className="transformation-header">
             <div className="header-left">
               <h2>Real People : Real Healing</h2>
-              <p className="real-healing-section__loading">Loading stories…</p>
             </div>
           </div>
+          <SiteLoader variant="inline" label="Loading stories" />
         </div>
       </section>
     );

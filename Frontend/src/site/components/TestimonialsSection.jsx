@@ -8,6 +8,7 @@ import "swiper/css/pagination";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchClientTestimonials } from "../api/publicMisc.js";
 import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 function TestimonialStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -150,7 +151,7 @@ export default function TestimonialsSection({ items: itemsProp }) {
           <div className="success-stories__header">
             <h2>Client Reviews</h2>
           </div>
-          <p className="site-testimonials__loading">Loading reviews…</p>
+          <SiteLoader variant="inline" label="Loading reviews" />
         </div>
       </section>
     );

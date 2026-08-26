@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import FinalCTA from "../components/FinalCTA.jsx";
+import { SiteLoader } from "../components/SiteLoader.jsx";
 import { fetchStaticPageBySlug, htmlFromStaticPage } from "../api/publicMisc.js";
 
 export function StaticPageView({ slug, fallbackTitle = "Page" }) {
@@ -33,31 +34,33 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
   const title = page?.title || fallbackTitle;
   const html = htmlFromStaticPage(page);
 
+  if (loading) {
+    return <SiteLoader variant="page" label="Loading content" />;
+  }
+
   return (
     <section className="static-page-section">
       <div className="static-page-hero">
         <div className="site-container static-page-hero__inner paddingmanages">
           {/* <span className="static-page-tag">INFORMATION</span> */}
-          <h1 className="static-page-title">{loading ? "Loading…" : title}</h1>
+          <h1 className="static-page-title">{title}</h1>
         </div>
       </div>
 
       <div className="site-container static-page-body">
-        {loading && <p className="static-page-message">Loading content…</p>}
-
-        {error && !loading && (
+        {error && (
           <p className="static-page-message static-page-message--error" role="alert">
             {error}
           </p>
         )}
 
-        {html && !loading && !error && (
+        {html && !error && (
           <div
             className="static-page-content"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}
-        {!html && !loading && !error && (
+        {!html && !error && (
           <p className="static-page-message">This page has no published content yet.</p>
         )}
       </div>

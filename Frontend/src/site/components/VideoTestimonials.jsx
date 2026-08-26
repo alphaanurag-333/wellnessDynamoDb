@@ -7,6 +7,7 @@ import "swiper/css";
 
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchVideoTestimonials } from "../api/publicMisc.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 function youtubeEmbedUrl(url) {
   const raw = String(url || "").trim();
@@ -163,9 +164,9 @@ export default function VideoTestimonials() {
         <div className="transformation-header">
           <div className="header-left">
             <h2>Voice of Healing : Unfiltered</h2>
-           <p className="site-testimonials__loading">Loading video testimonials…</p>
           </div>
-           </div>
+        </div>
+        <SiteLoader variant="inline" label="Loading video testimonials" />
         {/* <div className="container">
           <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
           <p className="site-testimonials__loading">Loading video testimonials…</p>

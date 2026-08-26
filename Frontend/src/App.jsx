@@ -5,6 +5,7 @@ import { publicRouteTree } from "./site/routes/publicRoutes.jsx";
 import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { fetchPublicAppConfig } from "./store/appConfigSlice.js";
 import { mediaUrl } from "./media.js";
+import { SiteLoader } from "./site/components/SiteLoader.jsx";
 
 const SiteNotFoundPage = lazy(() =>
   import("./site/pages/SiteNotFoundPage.jsx").then((mod) => ({ default: mod.SiteNotFoundPage })),
@@ -43,7 +44,7 @@ export default function App() {
   return (
     <>
       <AppConfigSync />
-      <Suspense fallback={null}>
+      <Suspense fallback={<SiteLoader variant="overlay" />}>
         <Routes>
           {publicRouteTree}
           <Route path="/admin" element={<Navigate to="/" replace />} />

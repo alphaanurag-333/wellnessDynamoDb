@@ -4,6 +4,7 @@ import "swiper/css";
 import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpRight } from "lucide-react";
 import { fetchHealthDisorders, isSectionLiveOnWeb } from "../../api/publicMisc.js";
 import { usePagedSwiper } from "../../hooks/usePagedSwiper.js";
+import { SiteLoader } from "../SiteLoader.jsx";
 
 const ACCENTS = ["#3B82F6", "#F97316", "#22C55E", "#EAB308", "#A855F7", "#EC4899"];
 
@@ -149,7 +150,7 @@ export default function HealthDisordersSection() {
         </div>
 
         {initialLoading ? (
-          <p className="wp-section__loading">Loading health disorders…</p>
+          <SiteLoader variant="inline" label="Loading health disorders" />
         ) : (
           <>
             <Swiper

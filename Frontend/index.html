@@ -4,6 +4,61 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>IR Wellness</title>
+    <style>
+      html, body, #root { min-height: 100%; margin: 0; }
+      #root { min-height: 100dvh; }
+      .site-boot-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 10050;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f7fc;
+      }
+      .site-spinner {
+        position: relative;
+        width: 2.75rem;
+        height: 2.75rem;
+      }
+      .site-spinner span {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 0.22rem;
+        height: 0.78rem;
+        margin-left: -0.11rem;
+        margin-top: -0.39rem;
+        border-radius: 999px;
+        background: #3a3a3c;
+        transform: rotate(calc(var(--i) * 30deg)) translateY(-1.05rem);
+        animation: site-spinner-fade 1s linear infinite;
+        animation-delay: calc(var(--i) * -0.08333s);
+      }
+      .site-spinner span:nth-child(1) { --i: 0; }
+      .site-spinner span:nth-child(2) { --i: 1; }
+      .site-spinner span:nth-child(3) { --i: 2; }
+      .site-spinner span:nth-child(4) { --i: 3; }
+      .site-spinner span:nth-child(5) { --i: 4; }
+      .site-spinner span:nth-child(6) { --i: 5; }
+      .site-spinner span:nth-child(7) { --i: 6; }
+      .site-spinner span:nth-child(8) { --i: 7; }
+      .site-spinner span:nth-child(9) { --i: 8; }
+      .site-spinner span:nth-child(10) { --i: 9; }
+      .site-spinner span:nth-child(11) { --i: 10; }
+      .site-spinner span:nth-child(12) { --i: 11; }
+      @keyframes site-spinner-fade {
+        0% { opacity: 1; }
+        100% { opacity: 0.12; }
+      }
+      .site-loader__label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -22,7 +77,16 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="site-boot-loader site-loader site-loader--overlay" role="status" aria-live="polite" aria-busy="true">
+        <div class="site-spinner" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <span class="site-loader__label">Loading</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script

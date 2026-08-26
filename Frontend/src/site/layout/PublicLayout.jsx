@@ -3,6 +3,7 @@ import { Suspense, useEffect } from "react";
 import { PATH_TO_SECTION_ID } from "../data/siteSections.js";
 import { SiteFooter } from "../components/SiteFooter.jsx";
 import { SiteHeader } from "../components/SiteHeader.jsx";
+import { SiteLoader } from "../components/SiteLoader.jsx";
 import "../site.css";
 import ScrollToTopButton from "../components/ScrollToTopButton.jsx";
 
@@ -27,13 +28,13 @@ export function PublicLayout() {
   }, [pathname]);
 
   return (
-    <div className="">
+    <div className="site-shell">
       <a href="#main-content" className="visually-hidden-focusable">
         Skip to main content
       </a>
       <SiteHeader />
       <main id="main-content" className="site-main">
-        <Suspense fallback={<div className="site-container" style={{ padding: "48px 16px", minHeight: 240 }} aria-busy="true">Loading…</div>}>
+        <Suspense fallback={<SiteLoader variant="page" />}>
           <Outlet />
         </Suspense>
       </main>

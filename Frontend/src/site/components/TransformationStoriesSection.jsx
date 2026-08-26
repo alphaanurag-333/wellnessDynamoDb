@@ -4,6 +4,7 @@ import "swiper/css";
 import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchTransformations } from "../api/publicMisc.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 const PAGE_SIZE = 10;
 
@@ -216,7 +217,7 @@ export default function TransformationStoriesSection() {
         </div>
 
         {initialLoading ? (
-          <p className="transformation-section__loading">Loading transformations…</p>
+          <SiteLoader variant="inline" label="Loading transformations" />
         ) : hasTransformations ? (
           <>
             <Swiper

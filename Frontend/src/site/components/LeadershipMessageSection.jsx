@@ -5,6 +5,7 @@ import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-reac
 import { mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -231,7 +232,7 @@ export function LeadershipNotesSlider({
     return (
       <section className="leadership leadership-slider" aria-label={label}>
         <div className="site-container">
-          <p className="leadership-slider__loading">{loadingLabel}</p>
+          <SiteLoader variant="inline" label={loadingLabel} />
         </div>
       </section>
     );

@@ -25,10 +25,10 @@ export default function AppHeroSection() {
 
       <div className="site-container app-hero__grid">
         <div className="app-hero__copy">
-          <div className="app-hero__brand">
+          {/* <div className="app-hero__brand">
             <img src={logoSrc} alt={appName} />
             <p>Your Wellness Partner</p>
-          </div>
+          </div> */}
 
           <h2 id="app-hero-title" className="app-hero__title">
             <span>

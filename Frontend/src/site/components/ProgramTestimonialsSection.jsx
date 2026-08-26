@@ -5,6 +5,7 @@ import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-reac
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchProgramTestimonials } from "../api/publicMisc.js";
 import { getProgramTestimonialMeta, programTestimonialTypeMatches } from "../constants/programTestimonials.js";
+import { SiteLoader } from "./SiteLoader.jsx";
 
 const READ_MORE_MIN_CHARS = 140;
 
@@ -160,7 +161,7 @@ export default function ProgramTestimonialsSection({ type, title, subtitle }) {
         ) : null}
  </div>
         {loading ? (
-          <p className="transformation-section__loading">Loading testimonials…</p>
+          <SiteLoader variant="inline" label="Loading testimonials" />
         ) : (
           <Swiper
           loop={true}
