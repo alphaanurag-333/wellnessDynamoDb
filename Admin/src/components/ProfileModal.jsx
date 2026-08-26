@@ -21,8 +21,6 @@ import { useAppSelector } from "../store/hooks.js";
 import { selectAdminProfile } from "../store/slices/adminProfileSlice.js";
 import { CfgSelect } from "./shared.jsx";
 import {
-  maxAllowedDobIso,
-  minAllowedDobIso,
   validateDateOfBirth,
 } from "../utils/personFieldValidation.js";
 
@@ -775,16 +773,9 @@ export function ProfileModal({ open, onClose, onToast }) {
                   type="date"
                   className="ua-profile-modal__input ua-profile-modal__input--edit"
                   value={dob}
-                  min={minAllowedDobIso()}
-                  max={maxAllowedDobIso()}
                   disabled={savingDetails}
                   onChange={(event) => {
-                    let next = event.target.value;
-                    const dobMax = maxAllowedDobIso();
-                    const dobMin = minAllowedDobIso();
-                    if (next && next > dobMax) next = dobMax;
-                    if (next && next < dobMin) next = dobMin;
-                    setDob(next);
+                    setDob(event.target.value);
                   }}
                 />
               </label>

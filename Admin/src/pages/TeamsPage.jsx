@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
@@ -26,6 +26,7 @@ import {
   updateTeamMember,
 } from "../api/teamsApi.js";
 import { fetchAccessRoles } from "../api/accessApi.js";
+import { fetchUsers } from "../api/usersApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   EMAIL_MAX_LEN,
@@ -34,7 +35,6 @@ import {
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
   maxAllowedDobIso,
-  minAllowedDobIso,
   parseDateOfBirthIso,
   sanitizeEmailInput,
   sanitizePersonName,
@@ -279,6 +279,12 @@ function CreateMemberModal({
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [totpBusy, setTotpBusy] = useState(false);
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [nameSearchBusy, setNameSearchBusy] = useState(false);
+  const [nameMenuOpen, setNameMenuOpen] = useState(false);
+  const nameSearchRef = useRef(null);
+  const nameSearchSeq = useRef(0);
+  const skipNameSearchRef = useRef(false);
 
   function clearError(key) {
     setErrors((prev) => {
@@ -292,6 +298,38 @@ function CreateMemberModal({
   const isEdit = Boolean(member?.id);
   const memberId = member?.id || "";
   const memberParentId = member?.parentAccountId || "";
+
+  function resetNameSearch() {
+    nameSearchSeq.current += 1;
+    setNameSuggestions([]);
+    setNameSearchBusy(false);
+    setNameMenuOpen(false);
+  }
+
+  function applyUserToForm(user) {
+    if (!user) return;
+    skipNameSearchRef.current = true;
+    setName(sanitizePersonName(user.name || ""));
+    setDob(parseDateOfBirthIso(user.dobIso) || "");
+    setPhone(nationalPhoneDigits(user.phone));
+    setEmail(sanitizeEmailInput(user.email || ""));
+    setCountry(String(user.country || "").trim());
+    setState(String(user.stateRaw || "").trim());
+    setCity(String(user.city || "").trim());
+    setBio("");
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.name;
+      delete next.dob;
+      delete next.phone;
+      delete next.email;
+      delete next.country;
+      delete next.state;
+      delete next.city;
+      return next;
+    });
+    resetNameSearch();
+  }
 
   // Edit: reset only when opening / switching members (not on roles reload or totp updates).
   useEffect(() => {
@@ -308,6 +346,7 @@ function CreateMemberModal({
     setConsoleRoleId(member.consoleRoleId || "");
     setParentAccountId(member.parentAccountId || "");
     setTotpRequired(Boolean(member.totpRequired));
+    resetNameSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, memberId]);
 
@@ -327,7 +366,62 @@ function CreateMemberModal({
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
     setTotpRequired(false);
+    skipNameSearchRef.current = false;
+    resetNameSearch();
   }, [open, memberId, creatableRoles]);
+
+  // Create: debounced client-user search for Full name autofill.
+  useEffect(() => {
+    if (!open || isEdit) return undefined;
+    if (skipNameSearchRef.current) {
+      skipNameSearchRef.current = false;
+      setNameSuggestions([]);
+      setNameSearchBusy(false);
+      setNameMenuOpen(false);
+      return undefined;
+    }
+    const query = name.trim();
+    if (query.length < 2) {
+      setNameSuggestions([]);
+      setNameSearchBusy(false);
+      setNameMenuOpen(false);
+      return undefined;
+    }
+    const seq = ++nameSearchSeq.current;
+    setNameSearchBusy(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await fetchUsers({ search: query, limit: 10, page: 1 });
+        if (nameSearchSeq.current !== seq) return;
+        setNameSuggestions(Array.isArray(result?.users) ? result.users : []);
+        setNameMenuOpen(true);
+      } catch {
+        if (nameSearchSeq.current !== seq) return;
+        setNameSuggestions([]);
+        setNameMenuOpen(true);
+      } finally {
+        if (nameSearchSeq.current === seq) setNameSearchBusy(false);
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [open, isEdit, name]);
+
+  useEffect(() => {
+    if (!nameMenuOpen) return undefined;
+    function onPointerDown(event) {
+      if (nameSearchRef.current?.contains(event.target)) return;
+      setNameMenuOpen(false);
+    }
+    function onKey(event) {
+      if (event.key === "Escape") setNameMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [nameMenuOpen]);
 
   useEffect(() => {
     if (!open || !memberId) return;
@@ -536,19 +630,75 @@ function CreateMemberModal({
                   </span>
                   <span className="ua-teams-create__count">{name.trim().length}/{PERSON_NAME_MAX_LEN}</span>
                 </span>
-                <input
-                  className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
-                  placeholder="e.g. Anita Rao"
-                  value={name}
-                  maxLength={PERSON_NAME_MAX_LEN}
-                  autoComplete="name"
-                  onKeyDown={blockPersonNameDigitKeyDown}
-                  onChange={(event) => {
-                    setName(sanitizePersonName(event.target.value));
-                    clearError("name");
-                  }}
-                  autoFocus
-                />
+                {isEdit ? (
+                  <input
+                    className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
+                    placeholder="e.g. Anita Rao"
+                    value={name}
+                    maxLength={PERSON_NAME_MAX_LEN}
+                    autoComplete="name"
+                    onKeyDown={blockPersonNameDigitKeyDown}
+                    onChange={(event) => {
+                      setName(sanitizePersonName(event.target.value));
+                      clearError("name");
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <div className="ua-teams-create__name-search" ref={nameSearchRef}>
+                    <input
+                      className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
+                      placeholder="Search client by name…"
+                      value={name}
+                      maxLength={PERSON_NAME_MAX_LEN}
+                      autoComplete="off"
+                      role="combobox"
+                      aria-expanded={nameMenuOpen}
+                      aria-controls="ua-teams-name-suggestions"
+                      aria-autocomplete="list"
+                      onKeyDown={blockPersonNameDigitKeyDown}
+                      onFocus={() => {
+                        if (name.trim().length >= 2) setNameMenuOpen(true);
+                      }}
+                      onChange={(event) => {
+                        setName(sanitizePersonName(event.target.value));
+                        clearError("name");
+                      }}
+                      autoFocus
+                    />
+                    {nameMenuOpen && name.trim().length >= 2 ? (
+                      <ul
+                        id="ua-teams-name-suggestions"
+                        className="ua-teams-create__name-menu"
+                        role="listbox"
+                      >
+                        {nameSearchBusy ? (
+                          <li className="ua-teams-create__name-empty">Searching…</li>
+                        ) : nameSuggestions.length ? (
+                          nameSuggestions.map((user) => (
+                            <li key={user.id} role="option">
+                              <button
+                                type="button"
+                                className="ua-teams-create__name-option"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => applyUserToForm(user)}
+                              >
+                                <span className="ua-teams-create__name-option-title">{user.name}</span>
+                                <span className="ua-teams-create__name-option-meta">
+                                  {[user.email, nationalPhoneDigits(user.phone) || null]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </span>
+                              </button>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="ua-teams-create__name-empty">No matching clients</li>
+                        )}
+                      </ul>
+                    ) : null}
+                  </div>
+                )}
                 {errors.name ? <span className="ua-teams-create__error">{errors.name}</span> : null}
               </label>
               <label className="ua-teams-create__field">
@@ -559,15 +709,8 @@ function CreateMemberModal({
                   className={`ua-teams-create__input${errors.dob ? " is-invalid" : ""}`}
                   type="date"
                   value={dob}
-                  min={minAllowedDobIso()}
-                  max={maxAllowedDobIso()}
                   onChange={(event) => {
-                    let next = event.target.value;
-                    const dobMax = maxAllowedDobIso();
-                    const dobMin = minAllowedDobIso();
-                    if (next && next > dobMax) next = dobMax;
-                    if (next && next < dobMin) next = dobMin;
-                    setDob(next);
+                    setDob(event.target.value);
                     clearError("dob");
                   }}
                 />

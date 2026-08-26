@@ -14,8 +14,6 @@ import {
   blockIndianMobileFirstDigitKeyDown,
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
-  maxAllowedDobIso,
-  minAllowedDobIso,
   sanitizeEmailInput,
   sanitizePersonName,
   sanitizePhoneDigits,
@@ -230,7 +228,7 @@ function emptyForm() {
   return {
     name: "",
     email: "",
-    dob: maxAllowedDobIso(),
+    dob: "",
     gender: "male",
     whatsappSameAsMobile: true,
     phoneCountryCode: "+91",
@@ -578,18 +576,8 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 className="ua-create-user__input"
                 type="date"
                 value={form.dob}
-                min={minAllowedDobIso()}
-                max={maxAllowedDobIso()}
                 disabled={busy}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  const dobMax = maxAllowedDobIso();
-                  const dobMin = minAllowedDobIso();
-                  let safe = next;
-                  if (safe && safe > dobMax) safe = dobMax;
-                  if (safe && safe < dobMin) safe = dobMin;
-                  patch({ dob: safe });
-                }}
+                onChange={(e) => patch({ dob: e.target.value })}
               />
             </Field>
             <Field label="Gender" required error={errors.gender}>
