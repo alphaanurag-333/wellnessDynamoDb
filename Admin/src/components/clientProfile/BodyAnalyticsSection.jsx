@@ -328,8 +328,13 @@ export function BodyAnalyticsSection({ user, onToast }) {
   );
 
   const metabolicRows = useMemo(
-    () => buildMetabolicRows(bodyAnalytics?.metabolicMetrics, historyMode, historyWindow),
-    [bodyAnalytics?.metabolicMetrics, historyMode, historyWindow],
+    () => buildMetabolicRows(
+      bodyAnalytics?.metabolicMetrics,
+      historyMode,
+      historyWindow,
+      bodyAnalytics?.measurements,
+    ),
+    [bodyAnalytics?.measurements, bodyAnalytics?.metabolicMetrics, historyMode, historyWindow],
   );
 
   function onHistoryChange(mode) {

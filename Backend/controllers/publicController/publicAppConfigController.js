@@ -79,6 +79,12 @@ function toPublicClientAppConfig(doc) {
     payment_gateways,
     /** When false, clients hide Hindi and force English */
     multilang: config.multilang === true || String(config.multilang || "").toLowerCase() === "true",
+    /** In-app WhatsApp Help & Support drawer button */
+    support_whatsapp_enabled:
+      config.support_whatsapp_enabled === true
+      || String(config.support_whatsapp_enabled || "").toLowerCase() === "true",
+    support_whatsapp_number: String(config.support_whatsapp_number ?? "").trim(),
+    support_whatsapp_message: String(config.support_whatsapp_message ?? "").trim(),
     updatedAt: config.updatedAt,
   };
 }

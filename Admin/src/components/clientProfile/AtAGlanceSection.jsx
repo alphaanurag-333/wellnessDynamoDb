@@ -116,6 +116,37 @@ function resolveRequestedSlots(meeting) {
   return [];
 }
 
+function resolveConfirmedSlot(meeting) {
+  if (!meeting || meeting.status !== "confirmed") return null;
+  const slots = Array.isArray(meeting.slots) ? meeting.slots : [];
+  if (meeting.selectedSlotId) {
+    const selected = slots.find((s) => String(s.id) === String(meeting.selectedSlotId));
+    if (selected?.startAt) return selected;
+  }
+  if (meeting.confirmedStartAt && meeting.confirmedEndAt) {
+    return {
+      id: meeting.selectedSlotId || "confirmed",
+      startAt: meeting.confirmedStartAt,
+      endAt: meeting.confirmedEndAt,
+    };
+  }
+  return slots[0] || null;
+}
+
+/** Prefer the live meeting for a step: confirmed → time_requested → slots_offered (newest first). */
+function meetingForStep(meetings, stepKey) {
+  const rows = (meetings || []).filter(
+    (row) => row.stepKey === stepKey && ["confirmed", "time_requested", "slots_offered"].includes(row.status),
+  );
+  if (!rows.length) return null;
+  const rank = { confirmed: 0, time_requested: 1, slots_offered: 2 };
+  return [...rows].sort((a, b) => {
+    const byStatus = (rank[a.status] ?? 9) - (rank[b.status] ?? 9);
+    if (byStatus !== 0) return byStatus;
+    return String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || ""));
+  })[0];
+}
+
 function waterHydrationTip(metric) {
   const current = parseInt(String(metric.value).replace(/[^\d]/g, ""), 10);
   const goal = parseInt(String(metric.goal).replace(/[^\d]/g, ""), 10);
@@ -779,6 +810,7 @@ function OnboardingStatusCard({
   const [busy, setBusy] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
   const [remindBusy, setRemindBusy] = useState(false);
+  const [remindBusyWhatsApp, setRemindBusyWhatsApp] = useState(false);
   const [meetings, setMeetings] = useState([]);
 
   const loadMeetings = () => {
@@ -935,7 +967,7 @@ function OnboardingStatusCard({
               <button
                 type="button"
                 className="backgrounrd ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-onboard-card__remind"
-                disabled={!canRemind || remindBusy}
+                disabled={!canRemind || remindBusy || remindBusyWhatsApp}
                 title={canRemind ? "Remind client" : "You do not have permission to send reminders"}
                 onClick={() => {
                   if (!canRemind) {
@@ -989,14 +1021,12 @@ function OnboardingStatusCard({
             const action = resolveStepAction(step);
             const isCurrent = !step.done && step.n === currentStep.n;
             const note = stepNotes[step.n];
-            const meeting = meetings.find((row) => row.stepKey === step.key && ["slots_offered", "time_requested", "confirmed"].includes(row.status));
+            const meeting = meetingForStep(meetings, step.key);
             const requestedSlots = meeting?.status === "time_requested" ? resolveRequestedSlots(meeting) : [];
             const requestedTimeLabels = requestedSlots
               .map((slot) => formatMeetingSlotLabel(slot.startAt, slot.endAt))
               .filter(Boolean);
-            const confirmedSlot = meeting?.status === "confirmed"
-              ? (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0]
-              : null;
+            const confirmedSlot = resolveConfirmedSlot(meeting);
             const confirmedTimeLabel = confirmedSlot
               ? formatMeetingSlotLabel(confirmedSlot.startAt, confirmedSlot.endAt)
               : "";
@@ -1013,6 +1043,10 @@ function OnboardingStatusCard({
                     ? `Meeting confirmed · ${confirmedTimeLabel}`
                     : "Meeting confirmed"
                   : null;
+            const showScheduleAction = Boolean(
+              action
+              && !(meeting && ["slots_offered", "time_requested", "confirmed"].includes(meeting.status)),
+            );
             return (
               <div
                 key={step.n}
@@ -1070,7 +1104,16 @@ function OnboardingStatusCard({
                       Reject
                     </button>
                   </div>
-                ) : action ? (
+                ) : canCalEdit && meeting?.status === "slots_offered" ? (
+                  <button
+                    type="button"
+                    className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
+                    disabled={busy}
+                    onClick={() => handleStepAction(step)}
+                  >
+                    Offer more slots
+                  </button>
+                ) : showScheduleAction ? (
                   <button
                     type="button"
                     className={`ua-cp-onboard-step__btn ua-cp-onboard-step__btn--${action.tone}`}
@@ -1148,9 +1191,17 @@ function OnboardingStatusCard({
           onAccept={async (slot) => {
             try {
               setBusy(true);
-              await acceptOnboardingMeetingRequest(user.id, reviewRequestModal.meeting.id, {
+              const updated = await acceptOnboardingMeetingRequest(user.id, reviewRequestModal.meeting.id, {
                 requestedSlotId: slot.id,
+                startAt: slot.startAt,
+                endAt: slot.endAt,
               });
+              if (updated?.id) {
+                setMeetings((prev) => {
+                  const others = (prev || []).filter((row) => row.id !== updated.id);
+                  return [updated, ...others];
+                });
+              }
               onToast("Requested time accepted");
               setReviewRequestModal(null);
               loadMeetings();
@@ -1230,12 +1281,13 @@ function OnboardingStatusCard({
           nextStepLabel={nextStep.label}
           defaultMessage={remindMessage}
           whatsapp={user.whatsapp}
-          busy={remindBusy}
+          busyPush={remindBusy}
+          busyWhatsApp={remindBusyWhatsApp}
           onClose={() => {
-            if (!remindBusy) setRemindOpen(false);
+            if (!remindBusy && !remindBusyWhatsApp) setRemindOpen(false);
           }}
           onPush={async (message) => {
-            if (!user?.id || remindBusy) return;
+            if (!user?.id || remindBusy || remindBusyWhatsApp) return;
             setRemindBusy(true);
             try {
               const data = await pushOnboardingReminder(user.id, {
@@ -1250,9 +1302,27 @@ function OnboardingStatusCard({
               setRemindBusy(false);
             }
           }}
-          onWhatsApp={() => {
-            onToast(`WhatsApp sent to ${user.whatsapp}`);
-            setRemindOpen(false);
+          onWhatsApp={async (message) => {
+            if (!user?.id || remindBusy || remindBusyWhatsApp) return;
+            const body = String(message || "").trim();
+            if (!body) {
+              onToast("Write a reminder message first");
+              return;
+            }
+            setRemindBusyWhatsApp(true);
+            try {
+              const data = await pushOnboardingReminder(user.id, {
+                message: body,
+                stepLabel: nextStep.label,
+                channel: "whatsapp",
+              });
+              onToast(data?.message || `WhatsApp sent to ${user.whatsapp || user.name}`);
+              setRemindOpen(false);
+            } catch (err) {
+              onToast(err?.message || "Failed to send WhatsApp");
+            } finally {
+              setRemindBusyWhatsApp(false);
+            }
           }}
         />
       ) : null}

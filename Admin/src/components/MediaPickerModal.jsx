@@ -93,6 +93,9 @@ export function MediaPickerModal({
   title = "Choose media",
   token = null,
   cropImages = true,
+  cropWidth,
+  cropHeight,
+  showFrameworks = true,
 }) {
   const fileInputRef = useRef(null);
   const cropPendingRef = useRef(null);
@@ -377,9 +380,10 @@ export function MediaPickerModal({
 
   return (
     <>
+      {cropPending ? null : (
       <div
         className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer"
-        onClick={cropPending ? undefined : onClose}
+        onClick={onClose}
         role="presentation"
       >
         <div
@@ -573,6 +577,7 @@ export function MediaPickerModal({
           </div>
         </div>
       </div>
+      )}
 
       <ImageCropModal
         open={Boolean(cropPending)}
@@ -580,11 +585,13 @@ export function MediaPickerModal({
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={cropBusy}
-        showFrameworks
-        backdropClassName="ua-media-picker-crop-backdrop"
-        defaultRatio="Original"
-        originalAspectCss="4 / 3"
-        originalAspectNumber={4 / 3}
+        showFrameworks={showFrameworks && !cropWidth}
+        backdropClassName={cropWidth ? "ua-cfg-tf-crop-modal ua-media-picker-crop-backdrop" : "ua-media-picker-crop-backdrop"}
+        defaultRatio={cropWidth && cropHeight ? "1:1" : "Original"}
+        originalAspectCss={cropWidth && cropHeight ? `${cropWidth} / ${cropHeight}` : "4 / 3"}
+        originalAspectNumber={cropWidth && cropHeight ? cropWidth / cropHeight : 4 / 3}
+        cropWidth={cropWidth}
+        cropHeight={cropHeight}
         onClose={discardCurrentCrop}
         onConfirm={confirmCroppedUpload}
       />

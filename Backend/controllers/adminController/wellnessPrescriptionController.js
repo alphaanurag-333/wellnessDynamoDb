@@ -3,6 +3,7 @@ const { resolveStaffActor } = require("../staffAccess");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   createCoachAssignedWellnessPrescription,
+  updateCoachAssignedWellnessPrescription,
   listCoachAssignedWellnessPrescriptionsByUserId,
   deleteCoachAssignedWellnessPrescription,
 } = require("../../models/coachAssignedWellnessPrescriptionModel");
@@ -17,7 +18,6 @@ const {
   parseCustomPoints,
   parseProtocols,
   loadTargetUser,
-  assertCoachCanAccessUser,
   assertStaffCanAccessUser,
   assertHealTierUser,
   handleValidationError,
@@ -96,6 +96,61 @@ exports.createCoachUserWellnessPrescriptionController = asyncHandler(async (req,
   return res.status(201).json({
     status: true,
     message: "Wellness prescription assigned successfully",
+    assignment,
+  });
+});
+
+exports.updateCoachUserWellnessPrescriptionController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const assignmentId = readAssignmentIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  await loadAssignmentForUser(assignmentId, userId);
+
+  const date = parseAssignmentDate(req.body) || undefined;
+  const prescriptionIds = parsePrescriptionIds(req.body);
+  const customPoints = parseCustomPoints(req.body);
+  const protocols = parseProtocols(req.body);
+  const { items, sourcePrescriptionIds } = await buildAssignmentItems({
+    prescriptionIds,
+    customPoints,
+    protocols,
+  });
+
+  let assignment;
+  try {
+    assignment = await updateCoachAssignedWellnessPrescription(assignmentId, {
+      date,
+      items,
+      sourcePrescriptionIds,
+    });
+  } catch (err) {
+    if (err?.name === "EditWindowExpiredError") {
+      throw new AppError(err.message, 403);
+    }
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Wellness prescription assignment not found", 404);
+    }
+    handleValidationError(err);
+  }
+
+  const coachName = resolveStaffActor(req).displayName || "Your coach";
+  dispatchWellnessPrescriptionAssignedNotification({
+    userId,
+    assignmentId: assignment?.id,
+    coachName,
+    updated: true,
+  }).catch((err) => {
+    console.error("Wellness prescription re-publish notification failed:", err?.message || err);
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Wellness prescription re-published successfully",
     assignment,
   });
 });

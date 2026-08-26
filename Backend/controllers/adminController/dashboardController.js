@@ -14,7 +14,10 @@ const { getCoachDashboardStats } = require("../../services/coachDashboardStatsSe
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
 const { getDashboardCommunity, emptyCommunity } = require("../../services/dashboardCommunityService");
-const { sendTeamReminders } = require("../../services/teamReminderService");
+const {
+  sendTeamReminders,
+  sendTeamWhatsAppReminders,
+} = require("../../services/teamReminderService");
 const {
   getStoredObjectBuffer,
   parseKeyFromS3PublicUrl,
@@ -166,6 +169,30 @@ exports.sendTeamRemindersController = asyncHandler(async (req, res) => {
       : `Notification sent to ${count} recipients`,
     sentCount: count,
     recipients: sent,
+  });
+});
+
+exports.sendTeamWhatsAppRemindersController = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  const message = String(req.body?.message || "").trim();
+  const accountIds = Array.isArray(req.body?.accountIds) ? req.body.accountIds : [];
+  const { sent, failed } = await sendTeamWhatsAppReminders({ actor, accountIds, message });
+  const count = sent.length;
+  const failCount = failed.length;
+  let responseMessage =
+    count === 1
+      ? `WhatsApp sent to ${sent[0].name}`
+      : `WhatsApp sent to ${count} recipients`;
+  if (failCount) {
+    responseMessage += ` (${failCount} failed)`;
+  }
+  return res.status(200).json({
+    status: true,
+    message: responseMessage,
+    sentCount: count,
+    failedCount: failCount,
+    recipients: sent,
+    failed,
   });
 });
 

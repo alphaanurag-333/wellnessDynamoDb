@@ -85,6 +85,67 @@ function triggerFileDownload(href, filename) {
   a.remove();
 }
 
+function openPdf(url, onToast) {
+  if (!url) {
+    onToast?.("No PDF file is attached");
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function LabReportPdfModal({ open, url, dateLabel, clientName, onClose, onToast }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const titleDate = dateLabel ? formatDisplayDate(dateLabel) : "";
+  const name = clientName || "Client";
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div
+        className="ua-cp-present-modal ua-cp-present-modal--letter"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="lab-report-pdf-title"
+      >
+        <div className="ua-cp-present-letter__head">
+          <div className="ua-cp-present-letter__head-copy">
+            <h3 id="lab-report-pdf-title" className="ua-cp-present-letter__title">Blood report PDF</h3>
+            <p className="ua-cp-present-letter__meta">
+              {url
+                ? `Uploaded by ${name}${titleDate ? ` · ${titleDate}` : ""}`
+                : "No PDF file is attached to this report"}
+            </p>
+          </div>
+          <div className="ua-cp-present-letter__head-actions">
+            {url ? (
+              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => openPdf(url, onToast)}>
+                Open PDF
+              </button>
+            ) : null}
+            <button type="button" className="ua-cp-present-letter__close" onClick={onClose} aria-label="Close">×</button>
+          </div>
+        </div>
+        {url ? (
+          <iframe className="ua-cp-present-letter__frame" title="Blood report PDF" src={url} />
+        ) : (
+          <div className="ua-cp-present-letter__empty">
+            <strong>No PDF available</strong>
+            <p>This lab report does not have an attached PDF file.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   triggerFileDownload(url, filename);
@@ -396,6 +457,7 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [viewing, setViewing] = useState(null);
   const filtered = reports.filter((report) => reportInRange(report.reportDate, range, fromDate, toDate));
 
   function openReport(report) {
@@ -403,7 +465,7 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
       onToast("No file attached to this report");
       return;
     }
-    window.open(report.fileUrl, "_blank", "noopener,noreferrer");
+    setViewing(report);
   }
 
   return (
@@ -479,7 +541,16 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
                   {badgeText}
                 </span>
                 {report.fileUrl ? (
-                  <a className="ua-cp-ip-history__dl" href={report.fileUrl} target="_blank" rel="noreferrer" aria-label={`Open report ${report.reportDate}`}>
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                    onClick={() => openReport(report)}
+                  >
+                    View PDF
+                  </button>
+                ) : null}
+                {report.fileUrl ? (
+                  <a className="ua-cp-ip-history__dl" href={report.fileUrl} target="_blank" rel="noreferrer" aria-label={`Download report ${report.reportDate}`}>
                     ↓
                   </a>
                 ) : (
@@ -507,6 +578,13 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
           </div>
         );
       }) : <p>No lab reports in this range.</p>}
+      <LabReportPdfModal
+        open={Boolean(viewing)}
+        url={viewing?.fileUrl || ""}
+        dateLabel={viewing?.reportDate}
+        onClose={() => setViewing(null)}
+        onToast={onToast}
+      />
     </div>
   );
 }
@@ -1137,11 +1215,11 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
       {catalog.length ? (
         published ? (
           <div className="ua-cp-ip-banner ua-cp-ip-banner--sent">
-            ✓ Sent to {firstName(user)} in the app · {formatDisplayDate(recommended.reportDate)} · {selectedIds.length} tests
+            ✓ Sent to {firstName(user)} on WhatsApp and in the app · {formatDisplayDate(recommended.reportDate)} · {selectedIds.length} tests
           </div>
         ) : (
           <div className="ua-cp-ip-banner">
-            Unpublished changes — publishing sends the updated list to {firstName(user)} in the app.
+            Unpublished changes — publishing sends the updated list to {firstName(user)} on WhatsApp and in the app.
           </div>
         )
       ) : null}
@@ -1534,6 +1612,7 @@ function LiveReportAnalysisTab({
   onMarkStepComplete,
 }) {
   const [selectedId, setSelectedId] = useState(reports[0]?.id || null);
+  const [viewing, setViewing] = useState(null);
 
   useEffect(() => {
     if (!reports.length) {
@@ -1643,6 +1722,15 @@ function LiveReportAnalysisTab({
                 <span>Added by client · {formatDisplayDate(report.reportDate)} · {reportAiStatusText(report)}</span>
               </div>
               <div className="ua-cp-ip-upload__actions" onClick={(event) => event.stopPropagation()}>
+                {report.fileUrl ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                    onClick={() => setViewing(report)}
+                  >
+                    View PDF
+                  </button>
+                ) : null}
                 {canExport && report.fileUrl ? (
                   <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={report.fileUrl} target="_blank" rel="noreferrer">↓ Download</a>
                 ) : null}
@@ -1922,6 +2010,14 @@ function LiveReportAnalysisTab({
           ) : null}
         </div>
       ) : null}
+      <LabReportPdfModal
+        open={Boolean(viewing)}
+        url={viewing?.fileUrl || ""}
+        dateLabel={viewing?.reportDate}
+        clientName={clientName}
+        onClose={() => setViewing(null)}
+        onToast={onToast}
+      />
     </div>
   );
 }
@@ -2054,8 +2150,15 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   async function handlePublish(payload) {
     try {
       setBusy(true);
-      await createUserTestRecommendation(userId, payload);
-      onToast?.(`Test list sent to ${firstName(user)} in the app`);
+      const result = await createUserTestRecommendation(userId, payload);
+      const wa = result?.whatsapp;
+      if (wa?.sent) {
+        onToast?.(`Test list sent to ${firstName(user)} on WhatsApp and in the app`);
+      } else if (wa && !wa.sent) {
+        onToast?.(`Test list sent in the app · WhatsApp skipped (${wa.reason || "not sent"})`);
+      } else {
+        onToast?.(`Test list sent to ${firstName(user)} in the app`);
+      }
       await reload();
       return true;
     } catch (err) {

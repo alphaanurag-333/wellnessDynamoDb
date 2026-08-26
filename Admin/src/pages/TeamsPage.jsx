@@ -20,6 +20,7 @@ import {
   listTeamParentOptions,
   regenerateTeamMemberTotp,
   sendTeamReminder,
+  sendTeamWhatsAppReminder,
   setAccessMemberRole,
   setTeamMemberTotp,
   updateTeamMember,
@@ -852,6 +853,7 @@ export function TeamsPage() {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [remindModal, setRemindModal] = useState(null);
   const [remindBusy, setRemindBusy] = useState(false);
+  const [remindBusyWhatsApp, setRemindBusyWhatsApp] = useState(false);
   const [parentOptions, setParentOptions] = useState([]);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [credentialsModal, setCredentialsModal] = useState(null);
@@ -1272,11 +1274,12 @@ export function TeamsPage() {
         recipients={remindModal?.recipients ?? []}
         message={remindModal?.message ?? ""}
         defaultMessage={remindModal?.defaultMessage ?? ""}
-        busy={remindBusy}
+        busyPush={remindBusy}
+        busyWhatsApp={remindBusyWhatsApp}
         onMessageChange={(message) => setRemindModal((prev) => (prev ? { ...prev, message } : prev))}
         onReset={() => setRemindModal((prev) => (prev ? { ...prev, message: prev.defaultMessage } : prev))}
         onPush={async () => {
-          if (!remindModal || remindBusy) return;
+          if (!remindModal || remindBusy || remindBusyWhatsApp) return;
           const message = String(remindModal.message || "").trim();
           const accountIds = Array.isArray(remindModal.accountIds) ? remindModal.accountIds : [];
           if (!message) {
@@ -1298,13 +1301,31 @@ export function TeamsPage() {
             setRemindBusy(false);
           }
         }}
-        onWhatsApp={() => {
-          if (remindBusy) return;
-          onToast(`WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
-          setRemindModal(null);
+        onWhatsApp={async () => {
+          if (!remindModal || remindBusy || remindBusyWhatsApp) return;
+          const message = String(remindModal.message || "").trim();
+          const accountIds = Array.isArray(remindModal.accountIds) ? remindModal.accountIds : [];
+          if (!message) {
+            onToast("Write a reminder message first");
+            return;
+          }
+          if (!accountIds.length) {
+            onToast("No team member to notify");
+            return;
+          }
+          setRemindBusyWhatsApp(true);
+          try {
+            const data = await sendTeamWhatsAppReminder({ accountIds, message });
+            onToast(data?.message || `WhatsApp sent to ${remindModal?.recipients.length ?? 0} recipient(s)`);
+            setRemindModal(null);
+          } catch (err) {
+            onToast(err?.message || "Failed to send WhatsApp");
+          } finally {
+            setRemindBusyWhatsApp(false);
+          }
         }}
         onClose={() => {
-          if (!remindBusy) setRemindModal(null);
+          if (!remindBusy && !remindBusyWhatsApp) setRemindModal(null);
         }}
       />
     </main>

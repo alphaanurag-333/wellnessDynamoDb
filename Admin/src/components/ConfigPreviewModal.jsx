@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { previewHintForItem } from "../data/configPreviewHint.js";
 import {
   COMMITMENT_LETTER_DEFAULT,
   normalizeCommitmentLetterText,
@@ -9,7 +8,7 @@ import { formatRupee } from "../data/exchangeData.js";
 import { paymentMethodsForGateway } from "../data/configDetailData.js";
 import { programTestimonialLabel } from "../data/programTestimonialsConfigData.js";
 import { liveVersionText } from "../data/privacyConfigData.js";
-import { asCopyString, bannerPlacementById } from "../data/bannerConfigData.js";
+import { asCopyString, bannerPlacementById, cssAspectRatio } from "../data/bannerConfigData.js";
 import { formatPack } from "../data/nutritionBankData.js";
 import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
@@ -338,6 +337,82 @@ function LanguagePreview({ hindiOn, surface, item }) {
             </div>
             {!hindiOn ? (
               <p className="ua-cfg-preview-lang__note">Clients see English only until Hindi is turned back on.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function WhatsappSupportPreview({ settings, surface, item }) {
+  const enabled = Boolean(settings?.enabled);
+  const number = String(settings?.number || "").trim() || "—";
+  const message = String(settings?.message || "").trim() || "—";
+
+  const body =
+    surface === "web" ? (
+      <div className="ua-cfg-preview-lang ua-cfg-preview-lang--web">
+        <div className="ua-cfg-preview-lang__web-bar">
+          <span>WhatsApp support</span>
+        </div>
+        <div className="ua-cfg-preview-lang__web-body">
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>App drawer button</strong>
+              <span>Help & Support</span>
+            </div>
+            <span className={`ua-cfg-preview-lang__badge${enabled ? " is-on" : ""}`}>
+              {enabled ? "On" : "Off"}
+            </span>
+          </div>
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>Number</strong>
+              <span>{number}</span>
+            </div>
+          </div>
+          <div className="ua-cfg-preview-lang__option">
+            <div>
+              <strong>Message</strong>
+              <span>{message}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="ua-cfg-preview-phone">
+        <div className="ua-cfg-preview-phone__shell">
+          <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+          <div className="ua-cfg-preview-lang ua-cfg-preview-lang--app">
+            <div className="ua-cfg-preview-lang__app-head">
+              <span className="ua-cfg-preview-lang__back" aria-hidden="true">‹</span>
+              <strong>Menu</strong>
+            </div>
+            <div className="ua-cfg-preview-lang__app-list">
+              {enabled ? (
+                <div className="ua-cfg-preview-lang__row is-active">
+                  <div>
+                    <strong>Help & Support</strong>
+                    <span>Opens WhatsApp · {number}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="ua-cfg-preview-lang__row is-disabled">
+                  <div>
+                    <strong>Help & Support</strong>
+                    <span>Hidden when disabled</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            {enabled ? (
+              <p className="ua-cfg-preview-lang__note">{message}</p>
             ) : null}
           </div>
         </div>
@@ -846,6 +921,64 @@ function LaunchPreview({ domains, surface, item }) {
             </div>
           ) : (
             <div className="ua-cfg-preview-launch__empty">No live domains yet.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <PreviewStage surface={surface} item={item}>
+      {body}
+    </PreviewStage>
+  );
+}
+
+function PrakritiPreview({ questions, surface, item }) {
+  const shown = (questions ?? []).filter((entry) => entry.shown);
+  const groups = ["Vata", "Pitta", "Kapha"].map((category) => ({
+    category,
+    rows: shown
+      .filter((entry) => String(entry.category || "").toLowerCase() === category.toLowerCase())
+      .slice(0, 3),
+  }));
+
+  const body = (
+    <div className="ua-cfg-preview-phone">
+      <div className="ua-cfg-preview-phone__shell">
+        <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+        <div className="ua-cfg-preview-launch ua-cfg-preview-launch--app">
+          <div className="ua-cfg-preview-launch__head">
+            <span className="ua-cfg-preview-launch__back" aria-hidden="true">‹</span>
+            <strong>Prakriti assessment</strong>
+          </div>
+          <p className="ua-cfg-preview-launch__intro">
+            Tick the statements that describe the client. Dominant dosha becomes their Prakṛti.
+          </p>
+          {shown.length ? (
+            <div className="ua-cfg-preview-launch__domains">
+              {groups.map((group) => (
+                <div key={group.category} className="ua-cfg-preview-launch__domain">
+                  <div className="ua-cfg-preview-launch__domain-head">
+                    <strong>{group.category}</strong>
+                    <span>
+                      {shown.filter(
+                        (entry) =>
+                          String(entry.category || "").toLowerCase() === group.category.toLowerCase(),
+                      ).length}
+                      /10
+                    </span>
+                  </div>
+                  <ul>
+                    {group.rows.map((row) => (
+                      <li key={row.id}>{row.question}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="ua-cfg-preview-launch__empty">No live Prakriti statements yet.</div>
           )}
         </div>
       </div>
@@ -1463,7 +1596,10 @@ function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
         <strong>{headline}</strong>
         <span className="ua-cfg-pt-live-preview__url">{placement.label}</span>
       </div>
-      <div className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}>
+      <div
+        className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}
+        style={{ aspectRatio: cssAspectRatio(placement.ratio) }}
+      >
         {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
       </div>
       {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}
@@ -1896,6 +2032,14 @@ function renderPreviewBody(item, surface, previewState) {
   switch (item.id) {
     case "app-language-disable":
       return <LanguagePreview hindiOn={previewState.hindiOn} surface={surface} item={item} />;
+    case "app-whatsapp-support":
+      return (
+        <WhatsappSupportPreview
+          settings={previewState.whatsappSupportSettings ?? {}}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-faq": {
       const faqEditor = previewState.faqEditor ?? {};
       const sectionEnabled = surface === "app"
@@ -2047,6 +2191,14 @@ function renderPreviewBody(item, surface, previewState) {
       return (
         <LaunchPreview
           domains={previewState.launchDomains ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-prakriti":
+      return (
+        <PrakritiPreview
+          questions={previewState.prakritiQuestions ?? []}
           surface={surface}
           item={item}
         />
@@ -2406,5 +2558,4 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
   );
 }
 
-export { previewHintForItem };
-
+export { previewHintForItem } from "../data/configPreviewHint.js";

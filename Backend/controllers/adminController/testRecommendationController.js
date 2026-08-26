@@ -93,18 +93,20 @@ exports.createCoachUserTestRecommendationController = asyncHandler(async (req, r
   }
 
   const coachName = coach?.name || "Your coach";
-  dispatchInternalParametersRecommendationNotification({
+  const notifyResult = await dispatchInternalParametersRecommendationNotification({
     userId,
     recommendationId: recommendation?.id,
     coachName,
   }).catch((err) => {
     console.error("Internal parameters recommendation notification failed:", err?.message || err);
+    return null;
   });
 
   return res.status(201).json({
     status: true,
     message: "Test recommendation created successfully",
     recommendation,
+    whatsapp: notifyResult?.whatsapp || null,
   });
 });
 

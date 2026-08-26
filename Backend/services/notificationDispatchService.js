@@ -10,6 +10,8 @@ const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
 const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
+const { sendWhatsAppText } = require("../utils/whatsapp");
+const { resolveWhatsappNumber } = require("./meetingAssigneeService");
 const {
   emitMealLogged,
   emitLabReportUploaded,
@@ -53,6 +55,7 @@ const FCM_TYPE_BY_KIND = {
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
+  presentable_pic_reviewed: "presentable_pic_reviewed_notification",
 };
 
 function buildPushData(notification) {
@@ -244,7 +247,29 @@ async function dispatchInternalParametersRecommendationNotification({
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
+
+  let whatsapp = null;
+  try {
+    const user = await getUserById(userId);
+    const wa = resolveWhatsappNumber(user);
+    if (wa) {
+      whatsapp = await sendWhatsAppText({
+        toPhoneCountryCode: wa.phoneCountryCode,
+        toPhone: wa.phone,
+        message,
+      });
+    } else {
+      whatsapp = { sent: false, reason: "missing_phone" };
+    }
+  } catch (err) {
+    console.error(
+      "Internal parameters WhatsApp notification failed:",
+      err?.message || err
+    );
+    whatsapp = { sent: false, reason: err?.message || "send_failed" };
+  }
+
+  return { notification, whatsapp };
 }
 
 async function dispatchDietPlanAssignmentNotification({
@@ -272,9 +297,12 @@ async function dispatchWellnessPrescriptionAssignedNotification({
   userId,
   assignmentId,
   coachName,
+  updated = false,
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
-  const message = `${name} has shared new wellness prescriptions for you.`;
+  const message = updated
+    ? `${name} has updated your wellness prescriptions.`
+    : `${name} has shared new wellness prescriptions for you.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -282,7 +310,7 @@ async function dispatchWellnessPrescriptionAssignedNotification({
     message,
     referenceId: assignmentId,
     referenceType: "coach_assigned_wellness_prescription",
-    title: "New wellness prescriptions",
+    title: updated ? "Wellness prescriptions updated" : "New wellness prescriptions",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -795,6 +823,31 @@ async function dispatchPresentablePicRequestNotification({
   return notification;
 }
 
+async function dispatchPresentablePicReviewedNotification({
+  userId,
+  status,
+  coachName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const nextStatus = String(status || "").trim().toLowerCase();
+  const approved = nextStatus === "approved";
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "presentable_pic_reviewed",
+    message: approved
+      ? `${name} approved your presentable pic.`
+      : `${name} rejected your presentable pic. Please upload a new one.`,
+    referenceType: "presentable_pic",
+    actorUserId,
+    title: approved ? "Presentable pic approved" : "Presentable pic rejected",
+    comment: nextStatus,
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchOnboardingMeetingConfirmedNotification({ userId, stepKey }) {
   const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
   const notification = await createTargetedNotification({
@@ -974,6 +1027,7 @@ module.exports = {
   dispatchProgramAssignedNotification,
   dispatchProgramAssignedNotificationAsync,
   dispatchPresentablePicRequestNotification,
+  dispatchPresentablePicReviewedNotification,
   dispatchOnboardingMeetingConfirmedNotification,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotification,

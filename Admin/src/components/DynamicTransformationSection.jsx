@@ -32,6 +32,10 @@ const EMPTY_DRAFT = {
   newPreview: "",
 };
 
+const TF_CROP_WIDTH = 250;
+const TF_CROP_HEIGHT = 250;
+const TF_CROP_RATIO = "1:1";
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -55,6 +59,7 @@ function PhotoDrop({ previewUrl, disabled, label, tone, onRequestPick, onRemove 
       {filled ? <img className="ua-cfg-tf-drop__img" src={previewUrl} alt="" /> : null}
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
       <p className="ua-cfg-tf-drop__label">{label}</p>
+      <span className="ua-cfg-tf-drop__size">{TF_CROP_WIDTH}px × {TF_CROP_HEIGHT}px</span>
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -318,6 +323,10 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose image",
+    cropImages: false,
+    cropWidth: TF_CROP_WIDTH,
+    cropHeight: TF_CROP_HEIGHT,
+    showFrameworks: false,
     onFiles: (file, context) => openCrop(file, context),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });
@@ -771,9 +780,12 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio="Original"
-        originalAspectCss="3 / 4"
-        originalAspectNumber={3 / 4}
+        defaultRatio={TF_CROP_RATIO}
+        originalAspectCss={`${TF_CROP_WIDTH} / ${TF_CROP_HEIGHT}`}
+        originalAspectNumber={TF_CROP_WIDTH / TF_CROP_HEIGHT}
+        cropWidth={TF_CROP_WIDTH}
+        cropHeight={TF_CROP_HEIGHT}
+        backdropClassName="ua-cfg-tf-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />

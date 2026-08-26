@@ -258,6 +258,18 @@ export async function listCommitmentLetterCoaches(letterVersion = 1) {
   }
 }
 
+export async function sendCommitmentLetterWhatsAppReminder({ accountId, message } = {}) {
+  try {
+    const { data } = await api.post("/admin/app-config/commitment-letter/remind-whatsapp", {
+      accountId,
+      message,
+    });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export function validateIntroVideoFile(file) {
   if (!file) return "Choose a video file";
   const type = String(file.type || "").toLowerCase();

@@ -8,6 +8,45 @@ const WEEKDAY_FROM_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const CAL_DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const DEMO_TODAY = new Date();
 
+function startOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isSameCalendarDay(a, b) {
+  return a && b
+    && a.getDate() === b.getDate()
+    && a.getMonth() === b.getMonth()
+    && a.getFullYear() === b.getFullYear();
+}
+
+function isBeforeCalendarDay(date, minDate) {
+  if (!date || !minDate) return false;
+  return startOfDay(date).getTime() < startOfDay(minDate).getTime();
+}
+
+function combineDateAndTime(date, time24) {
+  if (!date || !time24) return null;
+  const [h, m] = String(time24).split(":").map(Number);
+  if (![h, m].every(Number.isFinite)) return null;
+  const next = new Date(date);
+  next.setHours(h, m, 0, 0);
+  return next;
+}
+
+/** Next 5-minute mark at least `minAheadMin` minutes from now (clock uses 5-min steps). */
+function nextFutureClockTime(date, minAheadMin = 5) {
+  const base = new Date();
+  base.setMinutes(base.getMinutes() + minAheadMin, 0, 0);
+  const rounded = Math.ceil(base.getMinutes() / 5) * 5;
+  base.setMinutes(rounded, 0, 0);
+  if (!isSameCalendarDay(date, base)) {
+    return "09:00";
+  }
+  return `${padTimePart(base.getHours())}:${padTimePart(base.getMinutes())}`;
+}
+
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
     || document.querySelector(".updated-admin");
@@ -268,9 +307,13 @@ function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
   );
 }
 
-export function MiniCalendar({ value, onChange, onClear, onToday, className = "", style, calendarRef }) {
+export function MiniCalendar({ value, onChange, onClear, onToday, minDate = null, className = "", style, calendarRef }) {
   const [viewMonth, setViewMonth] = useState(value.getMonth());
   const [viewYear, setViewYear] = useState(value.getFullYear());
+  const minDay = minDate ? startOfDay(minDate) : null;
+  const minMonthStart = minDay ? new Date(minDay.getFullYear(), minDay.getMonth(), 1) : null;
+  const viewMonthStart = new Date(viewYear, viewMonth, 1);
+  const canGoPrev = !minMonthStart || viewMonthStart.getTime() > minMonthStart.getTime();
 
   const cells = useMemo(() => {
     const first = new Date(viewYear, viewMonth, 1);
@@ -294,14 +337,15 @@ export function MiniCalendar({ value, onChange, onClear, onToday, className = ""
 
   function shiftMonth(delta) {
     const next = new Date(viewYear, viewMonth + delta, 1);
+    if (delta < 0 && minMonthStart && next.getTime() < minMonthStart.getTime()) return;
     setViewMonth(next.getMonth());
     setViewYear(next.getFullYear());
   }
 
-  const sameDay = (a, b) => a && b
-    && a.getDate() === b.getDate()
-    && a.getMonth() === b.getMonth()
-    && a.getFullYear() === b.getFullYear();
+  function pickDate(date) {
+    if (isBeforeCalendarDay(date, minDay)) return;
+    onChange(date);
+  }
 
   return (
     <div
@@ -312,7 +356,15 @@ export function MiniCalendar({ value, onChange, onClear, onToday, className = ""
       aria-label="Pick a date"
     >
       <div className="ua-cp-launch-modal__calendar-head">
-        <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(-1)} aria-label="Previous month">‹</button>
+        <button
+          type="button"
+          className="ua-cp-launch-modal__calendar-nav"
+          onClick={() => shiftMonth(-1)}
+          disabled={!canGoPrev}
+          aria-label="Previous month"
+        >
+          ‹
+        </button>
         <span>{MONTH_FULL[viewMonth]}, {viewYear}</span>
         <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(1)} aria-label="Next month">›</button>
       </div>
@@ -322,14 +374,16 @@ export function MiniCalendar({ value, onChange, onClear, onToday, className = ""
         ))}
         {cells.map((cell, index) => {
           const { date, outside } = cell;
-          const selected = sameDay(date, value);
-          const today = sameDay(date, DEMO_TODAY);
+          const selected = isSameCalendarDay(date, value);
+          const today = isSameCalendarDay(date, DEMO_TODAY);
+          const disabled = isBeforeCalendarDay(date, minDay);
           return (
             <button
               key={`${date.toISOString()}-${index}`}
               type="button"
-              className={`ua-cp-launch-modal__calendar-day${selected ? " ua-cp-launch-modal__calendar-day--selected" : ""}${today ? " ua-cp-launch-modal__calendar-day--today" : ""}${outside ? " ua-cp-launch-modal__calendar-day--outside" : ""}`}
-              onClick={() => onChange(date)}
+              disabled={disabled}
+              className={`ua-cp-launch-modal__calendar-day${selected ? " ua-cp-launch-modal__calendar-day--selected" : ""}${today ? " ua-cp-launch-modal__calendar-day--today" : ""}${outside ? " ua-cp-launch-modal__calendar-day--outside" : ""}${disabled ? " ua-cp-launch-modal__calendar-day--disabled" : ""}`}
+              onClick={() => pickDate(date)}
             >
               {date.getDate()}
             </button>
@@ -388,9 +442,11 @@ export function ScheduleMeetingModal({
   const [toTime, setToTime] = useState("");
   const [slots, setSlots] = useState([]);
   const [clockFor, setClockFor] = useState(null);
+  const [slotError, setSlotError] = useState("");
   const dateCount = uniqueDateCount(slots);
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots]);
   const firstName = String(user?.name || "client").split(" ")[0];
+  const todayStart = useMemo(() => startOfDay(new Date()), []);
 
   useEffect(() => {
     if (existingMeeting?.coachNote) setNote(existingMeeting.coachNote);
@@ -408,6 +464,12 @@ export function ScheduleMeetingModal({
 
   const dateLabel = formatDateLabel(activeDate);
   const slotsDayLabel = formatShortDate(activeDate);
+  const draftStartAt = fromTime ? combineDateAndTime(activeDate, fromTime) : null;
+  const canAddSlot = Boolean(
+    draftStartAt
+    && draftStartAt.getTime() > Date.now()
+    && !isBeforeCalendarDay(activeDate, todayStart),
+  );
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -453,12 +515,18 @@ export function ScheduleMeetingModal({
     setDateMode("preset");
     setSelectedPreset(id);
     setLaterOpen(false);
+    setSlotError("");
   }
 
   function selectLaterDate(date) {
+    if (isBeforeCalendarDay(date, todayStart)) {
+      setSlotError("Choose today or a future date");
+      return;
+    }
     setDateMode("later");
-    setLaterDate(date);
+    setLaterDate(startOfDay(date));
     setLaterOpen(false);
+    setSlotError("");
   }
 
   function buildSlotFromForm() {
@@ -467,11 +535,13 @@ export function ScheduleMeetingModal({
     const [startH, startM] = fromTime.split(":").map(Number);
     const [endH, endM] = end.split(":").map(Number);
     if (![startH, startM, endH, endM].every(Number.isFinite)) return null;
+    if (isBeforeCalendarDay(activeDate, todayStart)) return null;
     const startAt = new Date(activeDate);
     startAt.setHours(startH, startM, 0, 0);
     const endAt = new Date(activeDate);
     endAt.setHours(endH, endM, 0, 0);
     if (endAt.getTime() <= startAt.getTime()) return null;
+    if (startAt.getTime() <= Date.now()) return null;
     const slotKey = `${startAt.toISOString()}-${endAt.toISOString()}`;
     return {
       key: slotKey,
@@ -484,14 +554,27 @@ export function ScheduleMeetingModal({
   }
 
   function addSlot() {
+    if (isBeforeCalendarDay(activeDate, todayStart)) {
+      setSlotError("Choose today or a future date");
+      return;
+    }
+    const startAt = combineDateAndTime(activeDate, fromTime);
+    if (startAt && startAt.getTime() <= Date.now()) {
+      setSlotError("Choose a start time in the future");
+      return;
+    }
     const slot = buildSlotFromForm();
-    if (!slot) return;
+    if (!slot) {
+      setSlotError(fromTime ? "End time must be after start time" : "Set a start time first");
+      return;
+    }
     setSlots((prev) => {
       if (prev.some((s) => s.key === slot.key)) return prev;
       return [...prev, slot];
     });
     setFromTime("");
     setToTime("");
+    setSlotError("");
   }
 
   function removeSlot(key) {
@@ -500,19 +583,47 @@ export function ScheduleMeetingModal({
 
   function handleClockSet(time24, target) {
     if (target === "start") {
+      const startAt = combineDateAndTime(activeDate, time24);
+      if (startAt && startAt.getTime() <= Date.now()) {
+        setFromTime("");
+        setToTime("");
+        setSlotError("Choose a start time in the future");
+        setClockFor(null);
+        return;
+      }
       setFromTime(time24);
       setToTime(formatSlotEnd(time24, duration));
+      setSlotError("");
     } else {
+      const endAt = combineDateAndTime(activeDate, time24);
+      const startAt = combineDateAndTime(activeDate, fromTime);
+      if (startAt && endAt && endAt.getTime() <= startAt.getTime()) {
+        setSlotError("End time must be after start time");
+        setClockFor(null);
+        return;
+      }
       setToTime(time24);
+      setSlotError("");
     }
     setClockFor(null);
   }
 
   function handleSend() {
     if (!slots.length) return;
+    const now = Date.now();
+    const futureSlots = slots.filter((s) => new Date(s.startAt).getTime() > now);
+    if (!futureSlots.length) {
+      setSlotError("All offered slots must be in the future");
+      return;
+    }
+    if (futureSlots.length !== slots.length) {
+      setSlots(futureSlots);
+      setSlotError("Past slots were removed — offer a future time");
+      return;
+    }
     const prior = slotsFromMeeting(existingMeeting);
     const merged = [...prior];
-    for (const slot of slots) {
+    for (const slot of futureSlots) {
       if (!merged.some((s) => s.key === slot.key || (s.startAt === slot.startAt && s.endAt === slot.endAt))) {
         merged.push(slot);
       }
@@ -588,7 +699,10 @@ export function ScheduleMeetingModal({
               <button
                 type="button"
                 className={`ua-cp-launch-modal__time-btn${clockFor === "start" ? " ua-cp-launch-modal__time-btn--active" : ""}${fromTime ? "" : " ua-cp-launch-modal__time-btn--empty"}`}
-                onClick={() => setClockFor("start")}
+                onClick={() => {
+                  setSlotError("");
+                  setClockFor("start");
+                }}
               >
                 <span>{formatClockLabel(fromTime)}</span>
                 {CLOCK_ICON}
@@ -597,15 +711,18 @@ export function ScheduleMeetingModal({
               <button
                 type="button"
                 className={`ua-cp-launch-modal__time-btn${clockFor === "end" ? " ua-cp-launch-modal__time-btn--active" : ""}${toTime ? "" : " ua-cp-launch-modal__time-btn--empty"}`}
-                onClick={() => setClockFor("end")}
+                onClick={() => {
+                  setSlotError("");
+                  setClockFor("end");
+                }}
               >
                 <span>{formatClockLabel(toTime)}</span>
                 {CLOCK_ICON}
               </button>
               <button
                 type="button"
-                className={`ua-cp-launch-modal__add-slot-btn${fromTime ? " ua-cp-launch-modal__add-slot-btn--on" : ""}`}
-                disabled={!fromTime}
+                className={`ua-cp-launch-modal__add-slot-btn${canAddSlot ? " ua-cp-launch-modal__add-slot-btn--on" : ""}`}
+                disabled={!canAddSlot}
                 onClick={addSlot}
               >
                 + Add slot
@@ -623,6 +740,9 @@ export function ScheduleMeetingModal({
                 {DURATION_OPTIONS.map((m) => <option key={m} value={m}>{m} min</option>)}
               </select>
             </div>
+            {slotError ? (
+              <p className="ua-cp-launch-modal__slot-error" role="alert">{slotError}</p>
+            ) : null}
             {slots.length ? (
               <div className="ua-cp-launch-modal__offering">
                 <strong>Offering {slots.length} slot(s) across {dateCount} date(s)</strong>
@@ -699,7 +819,11 @@ export function ScheduleMeetingModal({
       {clockFor ? (
         <AnalogClockPicker
           target={clockFor}
-          initialTime={clockFor === "start" ? (fromTime || "09:00") : (toTime || fromTime || "09:00")}
+          initialTime={
+            clockFor === "start"
+              ? (fromTime || nextFutureClockTime(activeDate))
+              : (toTime || fromTime || nextFutureClockTime(activeDate))
+          }
           onCancel={() => setClockFor(null)}
           onSet={handleClockSet}
         />
@@ -716,6 +840,7 @@ export function ScheduleMeetingModal({
         className="ua-cp-launch-modal__calendar--popover"
         style={{ top: calendarPos.top, left: calendarPos.left, width: calendarPos.width }}
         value={laterDate}
+        minDate={todayStart}
         onChange={selectLaterDate}
         onClear={() => {
           setLaterOpen(false);

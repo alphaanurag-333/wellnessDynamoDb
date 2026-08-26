@@ -1,18 +1,12 @@
-import {  ServicesSection } from "../components/InfoSections.jsx";
+import { ServicesSection } from "../components/InfoSections.jsx";
 import { SiteHero } from "../components/SiteHero.jsx";
-import {
-  CommunitySection,
-  StatsSection,
-} from "../components/PromoSections.jsx";
+import { StatsSection } from "../components/PromoSections.jsx";
 import TestimonialsSection from "../components/TestimonialsSection.jsx";
-// import BmiCalculator from "../components/BmiCalculator.jsx";
 import WellnessHero from "../components/WellnessHero.jsx";
 import AppHeroSection from "../components/AppHeroSection.jsx";
 import Methodology from "../components/Methodology.jsx";
-import About from "../components/About.jsx";
 import FinalCTA from "../components/FinalCTA.jsx";
 import ChampionSlider from "../components/ChampionSlider.jsx";
-import BirthdaySlider from "../components/BirthDaySlider.jsx";
 import RealHealingSlider from "../components/RealHealing.jsx";
 import TransformationStoriesSection from "../components/TransformationStoriesSection.jsx";
 
@@ -23,16 +17,12 @@ export function HomePage() {
       <ChampionSlider />
       <WellnessHero />
       <StatsSection />
-      {/* <BirthdaySlider /> */}
       <Methodology />
       <TransformationStoriesSection />
-      {/* <About /> */}
       <RealHealingSlider />
       <ServicesSection />
       <TestimonialsSection />
       <AppHeroSection />
-      {/* <CommunitySection /> */}
-      {/* <BmiCalculator /> */}
       <FinalCTA />
     </div>
   );

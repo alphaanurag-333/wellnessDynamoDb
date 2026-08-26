@@ -41,6 +41,7 @@ import {
   HealthDisordersSection,
   HealthProgressTrackersPanel,
   LanguageDisableSection,
+  WhatsappSupportSection,
   LaunchSection,
   LegalBlocksSection,
   LegalSectionsEditor,
@@ -51,6 +52,7 @@ import {
   NutritionBankSection,
   OnboardingVideoSection,
   PaymentGatewaySection,
+  PrakritiAssessmentSection,
   PrivacyPolicySection,
   ProgramSetupModal,
   RecipesSection,
@@ -1263,60 +1265,12 @@ function GenericPanel({ item }) {
   );
 }
 
-const PREVIEW_CONFIGS = new Set([
-  "app-language-disable",
-  "app-faq",
-  "app-program",
-  "app-subscriptions",
-  "app-consultancy-amount",
-  "app-gst",
-  "app-payment-gateway",
-  "app-tos",
-  "app-dpa",
-  "app-measurement-video",
-  "app-onboarding-video",
-  "app-medical-questionnaire",
-  "app-health-progress",
-  "app-drf-bank",
-  "app-commitment-letter",
-  "app-diet-plans",
-  "app-test-catalog",
-  "app-nutrition-bank",
-  "app-rx-bank",
-  "app-gallery",
-  "app-launch",
-  "app-ai-enable",
-  "feature-flags",
-  "web-program-testimonials",
-  "web-footer",
-  "web-fs-social",
-  "web-fs-privacy",
-  "web-fs-tos",
-  "web-fs-guidelines",
-  "web-fs-contact",
-  "web-fs-text",
-  "web-logo",
-  "web-location",
-  "common-banner",
-  "common-champion",
-  "common-birthday",
-  "common-transformation",
-  "common-client-review",
-  "common-real-people",
-  "common-voice",
-  "common-leadership",
-  "common-wellness-team",
-  "common-about",
-  "common-google-review",
-  "common-dropdowns",
-  "common-health-disorders",
-  "common-recipes",
-  "common-yoga",
-]);
+const PREVIEW_CONFIGS = new Set(Object.keys(CONFIG_LEGAL_PUBLISH_SLUGS));
 
 /** Header Publish only where confirm actually persists (handler or checkout options). */
 const PUBLISH_CONFIGS = new Set([
   "app-language-disable",
+  "app-whatsapp-support",
   "app-program",
   "app-subscriptions",
   "app-consultancy-amount",
@@ -1359,6 +1313,11 @@ export function ConfigDetailPage() {
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
   const [hindiOn, setHindiOn] = useState(false);
+  const [whatsappSupportSettings, setWhatsappSupportSettings] = useState({
+    enabled: false,
+    number: "",
+    message: "Hi, I need help with the IR Wellness app.",
+  });
   const [faqItems, setFaqItems] = useState([]);
   const [faqEditor, setFaqEditor] = useState({ appOn: true, webOn: true });
   const [hdItems, setHdItems] = useState([]);
@@ -1405,6 +1364,9 @@ export function ConfigDetailPage() {
   const [galleryMedia, setGalleryMedia] = useState([]);
   const [launchRatings, setLaunchRatings] = useState([]);
   const [launchDomains, setLaunchDomains] = useState([]);
+  const [prakritiQuestions, setPrakritiQuestions] = useState([]);
+  const [prakritiThingsToAvoid, setPrakritiThingsToAvoid] = useState([]);
+  const [prakritiRecommendations, setPrakritiRecommendations] = useState([]);
   const [aiCoaches, setAiCoaches] = useState([]);
   const [aiAssistants, setAiAssistants] = useState([]);
   const [programStories, setProgramStories] = useState([]);
@@ -1551,7 +1513,8 @@ export function ConfigDetailPage() {
       Boolean(legalSlugs)
       || current.id === "web-fs-social"
       || current.id === "app-consultancy-amount"
-      || current.id === "app-language-disable";
+      || current.id === "app-language-disable"
+      || current.id === "app-whatsapp-support";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1562,6 +1525,8 @@ export function ConfigDetailPage() {
         const saved = await publish();
         if (current.id === "app-language-disable") {
           setHindiOn(Boolean(saved));
+        } else if (current.id === "app-whatsapp-support" && saved) {
+          setWhatsappSupportSettings(saved);
         } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
@@ -1652,6 +1617,8 @@ export function ConfigDetailPage() {
   const summaryOn =
     item.id === "app-language-disable"
       ? hindiOn
+      : item.id === "app-whatsapp-support"
+        ? Boolean(whatsappSupportSettings?.enabled)
       : item.id === "app-gst"
         ? gstOn
         : item.id === "app-consultancy-amount"
@@ -1690,6 +1657,10 @@ export function ConfigDetailPage() {
                     (domain) =>
                       domain.live && domain.questions.some((entry) => entry.enabled),
                   )
+              : item.id === "app-prakriti"
+                ? prakritiQuestions.some((entry) => entry.shown)
+                  || prakritiRecommendations.some((entry) => entry.shown)
+                  || prakritiThingsToAvoid.some((entry) => entry.shown)
               : item.id === "app-ai-enable"
                 ? aiCoaches.some((entry) => entry.enabled)
                   || aiAssistants.some((entry) => entry.enabled)
@@ -1770,6 +1741,16 @@ export function ConfigDetailPage() {
           <LanguageDisableSection
             hindiOn={hindiOn}
             setHindiOn={setHindiOn}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-whatsapp-support":
+        return (
+          <WhatsappSupportSection
+            settings={whatsappSupportSettings}
+            setSettings={setWhatsappSupportSettings}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
@@ -2037,6 +2018,18 @@ export function ConfigDetailPage() {
             onToast={onToast}
           />
         );
+      case "app-prakriti":
+        return (
+          <PrakritiAssessmentSection
+            questions={prakritiQuestions}
+            setQuestions={setPrakritiQuestions}
+            thingsToAvoid={prakritiThingsToAvoid}
+            setThingsToAvoid={setPrakritiThingsToAvoid}
+            recommendations={prakritiRecommendations}
+            setRecommendations={setPrakritiRecommendations}
+            onToast={onToast}
+          />
+        );
       case "app-ai-enable":
         return (
           <AiEnableSection
@@ -2260,7 +2253,6 @@ export function ConfigDetailPage() {
             editor={ldEditor}
             setEditor={setLdEditor}
             onToast={onToast}
-            onOpenPreview={() => setPreviewOpen(true)}
           />
         );
       case "common-wellness-team":
@@ -2343,7 +2335,7 @@ export function ConfigDetailPage() {
   }
 
   return (
-    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}`}>
+    <main className={`content ua-page-enter ua-cfg-detail${item.id === "app-faq" || item.id === "app-measurement-video" || item.id === "app-nutrition-bank" || item.id === "app-challenges" || item.id === "app-coupons" || item.id === "app-launch" || item.id === "app-prakriti" || item.id === "app-ai-enable" || item.id === "common-banner" || item.id === "common-champion" || item.id === "common-birthday" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-about" || item.id === "common-google-review" || item.id === "common-dropdowns" || item.id === "common-health-disorders" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-mental-wellbeing" || item.id === "common-wellness-yoga" || item.id === "common-physical-exercise" || item.id === "web-program-testimonials" || item.id === "web-footer" || item.id === "web-fs-social" || item.id === "web-fs-links" || item.id === "web-location" || item.id === "feature-flags" ? " ua-cfg-detail--wide" : ""}${item.id === "app-faq" ? " ua-cfg-detail--faq" : ""}${item.id === "app-nutrition-bank" ? " ua-cfg-detail--nb" : ""}${item.id === "app-challenges" ? " ua-cfg-detail--ch" : ""}${item.id === "common-transformation" ? " ua-cfg-detail--tf" : ""}${item.id === "common-leadership" ? " ua-cfg-detail--ld" : ""}${item.id === "common-voice" ? " ua-cfg-detail--vh" : ""}${item.id === "app-prakriti" ? " ua-cfg-detail--prakriti" : ""}`}>
       <Link to={UPDATED_ADMIN_PATHS.configs} className="ua-cfg-detail__back">
         ← Configs
       </Link>
@@ -2380,6 +2372,7 @@ export function ConfigDetailPage() {
           item={item}
           previewState={{
           hindiOn,
+          whatsappSupportSettings,
           faqItems,
           faqEditor,
           programRows,
@@ -2406,6 +2399,9 @@ export function ConfigDetailPage() {
           galleryMedia,
           launchRatings,
           launchDomains,
+          prakritiQuestions,
+          prakritiThingsToAvoid,
+          prakritiRecommendations,
           aiCoaches,
           aiAssistants,
           programStories,

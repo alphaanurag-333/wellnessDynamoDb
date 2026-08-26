@@ -11,9 +11,9 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 90_000;
 
 function assertAiConfigured() {
-  if (config.geminiApiKey || config.openaiApiKey) return;
+  if (config.openaiApiKey) return;
   throw new AppError(
-    "AI analysis is not configured. Set GEMINI_API_KEY or OPENAI_API_KEY on the server.",
+    "AI analysis is not configured. Set OPENAI_API_KEY on the server.",
     503
   );
 }
@@ -37,12 +37,6 @@ async function readJson(response) {
   }
 }
 
-function extractGeminiText(payload) {
-  const parts = payload?.candidates?.[0]?.content?.parts;
-  if (!Array.isArray(parts)) return "";
-  return parts.map((part) => part?.text || "").join("\n").trim();
-}
-
 function extractOpenAiText(payload) {
   if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
     return payload.output_text.trim();
@@ -57,47 +51,34 @@ function extractOpenAiText(payload) {
   return chunks.join("\n").trim();
 }
 
-async function callGemini({ buffer, mimeType, prompt }) {
-  const model = encodeURIComponent(config.geminiModel || "gemini-3.6-flash");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(config.geminiApiKey)}`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType, data: buffer.toString("base64") } },
-            { text: prompt },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json",
-      },
-    }),
-  });
-
-  const payload = await readJson(response);
-  if (!response.ok) {
-    const detail = payload?.error?.message || payload?.message || `Gemini request failed (${response.status})`;
-    throw new AppError(detail, response.status >= 400 && response.status < 500 ? response.status : 502);
+function openAiInputContent({ buffer, mimeType, fileName }) {
+  const dataUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+  if (String(mimeType).startsWith("image/")) {
+    return { type: "input_image", image_url: dataUrl };
   }
-
-  const blocked = payload?.promptFeedback?.blockReason || payload?.candidates?.[0]?.finishReason;
-  if (blocked && String(blocked).toUpperCase() === "SAFETY") {
-    throw new AppError("AI refused to read this report. Try a clearer PDF scan.", 422);
-  }
-
-  const text = extractGeminiText(payload);
-  if (!text) throw new AppError("AI returned no analysis for this report", 502);
-  return text;
+  return {
+    type: "input_file",
+    filename: fileName || "blood-report.pdf",
+    file_data: dataUrl,
+  };
 }
 
-async function callOpenAi({ buffer, mimeType, prompt, fileName }) {
+async function callOpenAi({ buffer, mimeType, prompt, fileName }, { jsonFormat = true } = {}) {
+  const body = {
+    model: config.openaiModel || "gpt-4.1-mini",
+    temperature: 0.2,
+    input: [
+      {
+        role: "user",
+        content: [
+          openAiInputContent({ buffer, mimeType, fileName }),
+          { type: "input_text", text: prompt },
+        ],
+      },
+    ],
+  };
+  if (jsonFormat) body.text = { format: { type: "json_object" } };
+
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -105,27 +86,14 @@ async function callOpenAi({ buffer, mimeType, prompt, fileName }) {
       Authorization: `Bearer ${config.openaiApiKey}`,
     },
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    body: JSON.stringify({
-      model: config.openaiModel || "gpt-4.1-mini",
-      temperature: 0.2,
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_file",
-              filename: fileName || "blood-report.pdf",
-              file_data: `data:${mimeType};base64,${buffer.toString("base64")}`,
-            },
-            { type: "input_text", text: prompt },
-          ],
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   const payload = await readJson(response);
   if (!response.ok) {
+    if (jsonFormat && response.status === 400) {
+      return callOpenAi({ buffer, mimeType, prompt, fileName }, { jsonFormat: false });
+    }
     const detail = payload?.error?.message || payload?.message || `OpenAI request failed (${response.status})`;
     throw new AppError(detail, response.status >= 400 && response.status < 500 ? response.status : 502);
   }
@@ -152,11 +120,7 @@ async function analyzeLabReportFile({ fileKey, reportDate }) {
 
   let rawText;
   try {
-    if (config.geminiApiKey) {
-      rawText = await callGemini({ buffer, mimeType, prompt });
-    } else {
-      rawText = await callOpenAi({ buffer, mimeType, prompt, fileName });
-    }
+    rawText = await callOpenAi({ buffer, mimeType, prompt, fileName });
   } catch (err) {
     if (err.name === "TimeoutError" || err.name === "AbortError") {
       throw new AppError("AI analysis timed out. Try again with a smaller or clearer PDF.", 504);

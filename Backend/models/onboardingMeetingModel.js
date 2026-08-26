@@ -114,6 +114,27 @@ function resolveRequestedSlots(meeting) {
   return [];
 }
 
+/**
+ * Confirmed meeting time: preferred selected slot, else explicit confirmed range,
+ * else first slot (legacy coach-offer fallback).
+ */
+function resolveConfirmedSlot(meeting) {
+  if (!meeting || meeting.status !== "confirmed") return null;
+  const slots = Array.isArray(meeting.slots) ? meeting.slots : [];
+  if (meeting.selectedSlotId) {
+    const selected = slots.find((s) => String(s.id) === String(meeting.selectedSlotId));
+    if (selected?.startAt) return selected;
+  }
+  if (meeting.confirmedStartAt && meeting.confirmedEndAt) {
+    return {
+      id: meeting.selectedSlotId || "confirmed",
+      startAt: meeting.confirmedStartAt,
+      endAt: meeting.confirmedEndAt,
+    };
+  }
+  return slots[0] || null;
+}
+
 function mirrorRequestedSlots(requestedSlots) {
   const slots = Array.isArray(requestedSlots) ? requestedSlots : [];
   const first = slots[0] || null;
@@ -150,6 +171,8 @@ function toPublicOnboardingMeeting(item) {
     zoomJoinUrl: item.zoomJoinUrl || null,
     zoomStartUrl: item.zoomStartUrl || null,
     confirmedAt: item.confirmedAt || null,
+    confirmedStartAt: item.confirmedStartAt || null,
+    confirmedEndAt: item.confirmedEndAt || null,
     coachId: item.coachId || null,
     createdById: item.createdById || null,
     createdByRole: item.createdByRole || null,
@@ -207,6 +230,8 @@ function buildItem(input, { id, now }) {
     zoomJoinUrl: input.zoomJoinUrl || null,
     zoomStartUrl: input.zoomStartUrl || null,
     confirmedAt: input.confirmedAt || null,
+    confirmedStartAt: input.confirmedStartAt || null,
+    confirmedEndAt: input.confirmedEndAt || null,
     coachId: input.coachId ? String(input.coachId) : null,
     createdById: input.createdById ? String(input.createdById) : null,
     createdByRole: input.createdByRole ? String(input.createdByRole) : null,
@@ -228,10 +253,14 @@ async function createOnboardingMeeting(input) {
   return item;
 }
 
-async function getOnboardingMeetingById(id) {
+async function getOnboardingMeetingById(id, { consistentRead = false } = {}) {
   if (!id) return null;
   const { Item } = await docClient.send(
-    new GetCommand({ TableName: TABLE, Key: { id: String(id) } })
+    new GetCommand({
+      TableName: TABLE,
+      Key: { id: String(id) },
+      ConsistentRead: Boolean(consistentRead),
+    })
   );
   return Item || null;
 }
@@ -261,6 +290,8 @@ async function updateOnboardingMeeting(id, updates) {
     "zoomJoinUrl",
     "zoomStartUrl",
     "confirmedAt",
+    "confirmedStartAt",
+    "confirmedEndAt",
     "coachId",
   ];
 
@@ -291,7 +322,7 @@ async function updateOnboardingMeeting(id, updates) {
     })
   );
 
-  return getOnboardingMeetingById(id);
+  return getOnboardingMeetingById(id, { consistentRead: true });
 }
 
 async function listOnboardingMeetingsByUserId(userId, { page = 1, limit = 50, stepKey, status } = {}) {
@@ -415,6 +446,7 @@ module.exports = {
   normalizeSlots,
   normalizeRequestedSlots,
   resolveRequestedSlots,
+  resolveConfirmedSlot,
   mirrorRequestedSlots,
   parseIsoDate,
   toPublicOnboardingMeeting,

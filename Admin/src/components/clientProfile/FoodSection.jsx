@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   buildWaterChartFromHistory,
   formatFoodDateInput,
@@ -21,7 +22,9 @@ import {
   fetchUserWaterTracking,
   reviewUserMealLog,
   updateUserMealLog,
+  deleteUserMealLog,
   updateUserMealTrackingMode,
+  updateUserWaterGoal,
   analyzeUserMealLog,
 } from "../../api/mealTrackingApi.js";
 import { updateUserDietPlanEnabled } from "../../api/dietPlanCatalogApi.js";
@@ -231,8 +234,10 @@ function MealCard({
   analyzing,
   autoEdit,
   canEdit,
+  canDelete,
   onSubmitAi,
   onSaveEdit,
+  onDelete,
   onOpenPhoto,
   onToast,
 }) {
@@ -244,7 +249,12 @@ function MealCard({
   const needsAi = meal.aiStatus === "none";
   const declined = meal.aiStatus === "declined";
   const canManualInsert = needsAi || declined;
-  const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !needsAi && !declined);
+  const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !declined);
+  const canRunAi =
+    Boolean(meal.photoUrl)
+    && (meal.photoAiStatus === "none" || meal.photoAiStatus === "failed")
+    && meal.aiStatus !== "rejected"
+    && meal.aiStatus !== "declined";
 
   useEffect(() => {
     setDraft(emptyMealDraft(meal));
@@ -324,32 +334,51 @@ function MealCard({
           ) : null}
         </div>
         <div className="ua-cp-food-meal__actions">
-          {canEdit ? (
-            editing ? (
-              <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => { setDraft(emptyMealDraft(meal)); setEditing(false); }}>Cancel</button>
-                <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
-              </>
-            ) : meal.aiStatus === "review" || meal.aiStatus === "approved" ? (
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
-            ) : meal.aiStatus === "rejected" ? (
-              <span className="ua-cp-food-meal__status">Rejected</span>
-            ) : (
-              <>
+          {canEdit && editing ? (
+            <>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={() => { setDraft(emptyMealDraft(meal)); setEditing(false); }}>Cancel</button>
+              <button type="button" className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm" disabled={busy} onClick={saveEdit}>Save</button>
+            </>
+          ) : (
+            <>
+              {canEdit && (meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
+                <>
+                  <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" disabled={busy} onClick={startEdit}>Edit</button>
+                  {canRunAi ? (
+                    <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                      <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+                    </button>
+                  ) : null}
+                </>
+              ) : canEdit && meal.aiStatus === "rejected" ? (
+                <span className="ua-cp-food-meal__status">Rejected</span>
+              ) : canEdit ? (
+                <>
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                    disabled={busy || analyzing}
+                    onClick={startEdit}
+                  >
+                    Manual insert
+                  </button>
+                  <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
+                    <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
+                  </button>
+                </>
+              ) : null}
+              {canDelete ? (
                 <button
                   type="button"
-                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger"
                   disabled={busy || analyzing}
-                  onClick={startEdit}
+                  onClick={() => onDelete(meal)}
                 >
-                  Manual insert
+                  Delete
                 </button>
-                <button type="button" className="ua-cp-btn ua-cp-btn--ai" disabled={busy || analyzing} onClick={() => onSubmitAi(meal.id)}>
-                  <SparkIcon /> {analyzing ? "Analyzing…" : "Submit to AI"}
-                </button>
-              </>
-            )
-          ) : null}
+              ) : null}
+            </>
+          )}
         </div>
       </div>
       {showAnalysis ? (
@@ -374,7 +403,7 @@ function MealCard({
   );
 }
 
-function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, onSubmitAi, onSaveEdit, onOpenPhoto, onToast }) {
+function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, dayTotal, listLabel, dateLabel, loading, canEdit, canDelete, onSubmitAi, onSaveEdit, onDelete, onOpenPhoto, onToast }) {
   return (
     <div className="ua-cp-food-meals">
       <div style={{color:"rgb(22, 35, 63)"}} className="ua-cp-food-meals__head">
@@ -393,8 +422,10 @@ function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, day
             analyzing={analyzingId === meal.id}
             autoEdit={editAfterAiId === meal.id}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={onSubmitAi}
             onSaveEdit={onSaveEdit}
+            onDelete={onDelete}
             onOpenPhoto={onOpenPhoto}
             onToast={onToast}
           />
@@ -449,7 +480,7 @@ function WaterChartCard({ chart, goal, todayDay }) {
   );
 }
 
-function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit }) {
+function WaterGoalBar({ goal, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit, saving }) {
   return (
     <div className="ua-cp-food-water-goal">
       {editing ? (
@@ -460,12 +491,15 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
             className="ua-cp-food-water-goal__input"
             value={draftGoal}
             min={1}
-            max={20}
+            max={99}
+            disabled={saving}
             onChange={(e) => onDraftChange(Number(e.target.value) || 1)}
           />
           <span className="ua-cp-food-water-goal__unit">glasses / day</span>
-          <button type="button" className="ua-cp-food-water-goal__cancel" onClick={onCancel}>Cancel</button>
-          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={onSave}>Save</button>
+          <button type="button" className="ua-cp-food-water-goal__cancel" disabled={saving} onClick={onCancel}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" disabled={saving} onClick={onSave}>
+            {saving ? "Saving…" : "Save"}
+          </button>
         </>
       ) : (
         <>
@@ -473,20 +507,14 @@ function WaterGoalBar({ goal, dietPlanOn, editing, draftGoal, onStartEdit, onCan
           {canEdit ? (
             <button type="button" className="ua-cp-food-water-goal__set" onClick={onStartEdit}>Set target</button>
           ) : null}
-          {dietPlanOn ? (
-            <span className="ua-cp-food-water-goal__badge ua-cp-food-water-goal__badge--ok">Client can set in app</span>
-          ) : null}
         </>
       )}
-      {dietPlanOn && editing ? (
-        <span className="ua-cp-food-water-goal__badge ua-cp-food-water-goal__badge--locked">App editing locked</span>
-      ) : null}
     </div>
   );
 }
 
 export function FoodSection({ user, onToast, onUserUpdated }) {
-  const { canEdit } = useClientSectionPermissions("food");
+  const { canEdit, canDelete } = useClientSectionPermissions("food");
   const [searchParams, setSearchParams] = useSearchParams();
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
@@ -500,6 +528,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [waterGoal, setWaterGoal] = useState(8);
   const [waterGoalEditing, setWaterGoalEditing] = useState(false);
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
+  const [waterGoalSaving, setWaterGoalSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [waterRange, setWaterRange] = useState(() => defaultWaterRange(today));
   const [macroTargets, setMacroTargets] = useState(() => macroTargetsFromTdee(0, 0));
@@ -509,6 +538,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [modeBusy, setModeBusy] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [editAfterAiId, setEditAfterAiId] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const jumpedToLatestRef = useRef(false);
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
@@ -539,11 +569,31 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setMeals([]);
     jumpedToLatestRef.current = false;
     setEditAfterAiId("");
+    setPendingDelete(null);
   }, [live, today, userId]);
 
   useEffect(() => {
     setDietPlanOn(user?.dietPlanEnabled !== false);
   }, [user?.dietPlanEnabled]);
+
+  useEffect(() => {
+    if (!live) return;
+    const storedMode = user?.mealTrackingMode === "detailed_macro" ? "detailed" : "macro";
+    if (storedMode === mode) return;
+    // Prefer the user's saved meal mode when the URL didn't pin one.
+    if (searchParams.get("mode")) return;
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (storedMode === "detailed") {
+        p.set("mode", "detailed");
+        if (!p.get("tab") || p.get("tab") === "macro") p.set("tab", "detailed-macro");
+      } else {
+        p.delete("mode");
+        if (p.get("tab") === "detailed-macro") p.delete("tab");
+      }
+      return p;
+    }, { replace: true });
+  }, [live, mode, searchParams, setSearchParams, user?.mealTrackingMode]);
 
   useEffect(() => {
     if (!live) return undefined;
@@ -798,10 +848,52 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }
   }
 
-  function saveWaterGoal() {
-    setWaterGoal(waterGoalDraft);
-    setWaterGoalEditing(false);
-    onToast(live ? "Water goal is set by the client in the app" : "Water goal updated");
+  async function deleteMeal(id) {
+    if (!id) return;
+    if (!live) {
+      setMeals((list) => list.filter((m) => m.id !== id));
+      setPhotoMeal((current) => (current?.id === id ? null : current));
+      setEditAfterAiId((current) => (current === id ? "" : current));
+      onToast("Meal log deleted");
+      return;
+    }
+    setBusyId(id);
+    try {
+      await deleteUserMealLog(userId, id);
+      setMeals((list) => list.filter((m) => m.id !== id));
+      setPhotoMeal((current) => (current?.id === id ? null : current));
+      setEditAfterAiId((current) => (current === id ? "" : current));
+      onToast("Meal log deleted");
+    } catch (err) {
+      onToast(err?.message || "Failed to delete meal log");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function saveWaterGoal() {
+    const nextGoal = Math.min(99, Math.max(1, Number(waterGoalDraft) || 1));
+    if (!live) {
+      setWaterGoal(nextGoal);
+      setWaterGoalDraft(nextGoal);
+      setWaterGoalEditing(false);
+      onToast?.("Water goal updated");
+      return;
+    }
+    if (waterGoalSaving) return;
+    setWaterGoalSaving(true);
+    try {
+      const result = await updateUserWaterGoal(userId, nextGoal);
+      const saved = Number(result?.settings?.goalGlasses ?? result?.day?.goalGlasses ?? nextGoal);
+      setWaterGoal(saved);
+      setWaterGoalDraft(saved);
+      setWaterGoalEditing(false);
+      onToast?.("Water intake goal updated");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to update water goal");
+    } finally {
+      setWaterGoalSaving(false);
+    }
   }
 
   const macroTabs = [
@@ -880,8 +972,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             dateLabel={dateLabel}
             loading={mealsLoading}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={submitAi}
             onSaveEdit={saveMealEdit}
+            onDelete={setPendingDelete}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
           />
@@ -909,8 +1003,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             dateLabel={dateLabel}
             loading={mealsLoading}
             canEdit={canEdit}
+            canDelete={canDelete}
             onSubmitAi={submitAi}
             onSaveEdit={saveMealEdit}
+            onDelete={setPendingDelete}
             onOpenPhoto={setPhotoMeal}
             onToast={onToast}
           />
@@ -930,12 +1026,12 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             />
             <WaterGoalBar
               goal={waterGoal}
-              dietPlanOn={dietPlanOn}
               editing={waterGoalEditing}
               draftGoal={waterGoalDraft}
-              canEdit={canEdit && !live}
+              canEdit={canEdit}
+              saving={waterGoalSaving}
               onStartEdit={() => { setWaterGoalDraft(waterGoal); setWaterGoalEditing(true); }}
-              onCancel={() => setWaterGoalEditing(false)}
+              onCancel={() => { setWaterGoalEditing(false); setWaterGoalDraft(waterGoal); }}
               onSave={saveWaterGoal}
               onDraftChange={setWaterGoalDraft}
             />
@@ -951,6 +1047,22 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} appVisible={dietPlanOn} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        tag="Delete meal"
+        title={pendingDelete ? `Delete “${pendingDelete.name}”?` : ""}
+        body="This removes the meal log from this client's food tracking. You can't undo this."
+        cancelLabel="Keep meal"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const meal = pendingDelete;
+          setPendingDelete(null);
+          if (meal?.id) deleteMeal(meal.id);
+        }}
+      />
     </div>
   );
 }

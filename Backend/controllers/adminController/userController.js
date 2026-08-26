@@ -26,6 +26,7 @@ const { resolveRegistrationReferralFields } = require("../../services/registrati
 const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
 const {
   dispatchPresentablePicRequestNotification,
+  dispatchPresentablePicReviewedNotification,
 } = require("../../services/notificationDispatchService");
 const { getSubscriptionExpiryStats } = require("../../services/subscriptionExpiryStats");
 
@@ -330,9 +331,69 @@ exports.reviewPresentablePicController = asyncHandler(async (req, res) => {
     presentablePicReviewedById: actor.id,
   });
 
+  dispatchPresentablePicReviewedNotification({
+    userId,
+    status: action,
+    coachName: actor.displayName || "Your coach",
+    actorUserId: actor.id,
+  }).catch((err) => {
+    console.error("Presentable pic review notification failed:", err?.message || err);
+  });
+
   return res.status(200).json({
     status: true,
     message: `Presentable pic ${action}`,
+    user: await enrichUser(updated),
+  });
+});
+
+/** Admin-only: permanently remove a presentable pic (current or history entry). */
+exports.deletePresentablePicController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const role = String(req.auth?.role || "").toLowerCase();
+  if (!req.auth?.isSuperAdmin && role !== "admin") {
+    throw new AppError("Only admins can delete presentable pics", 403);
+  }
+
+  const userId = readUserIdParam(req);
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const historyIndexRaw = req.query.historyIndex ?? req.body?.historyIndex;
+  const history = Array.isArray(user.presentablePicHistory) ? [...user.presentablePicHistory] : [];
+
+  if (historyIndexRaw !== undefined && String(historyIndexRaw).trim() !== "") {
+    const index = Number(historyIndexRaw);
+    if (!Number.isInteger(index) || index < 0 || index >= history.length) {
+      throw new AppError("Presentable pic not found", 404);
+    }
+    const removed = history.splice(index, 1)[0];
+    if (removed?.url) await deleteStoredMedia(removed.url);
+    const updated = await updateUser(userId, { presentablePicHistory: history });
+    return res.status(200).json({
+      status: true,
+      message: "Presentable pic deleted",
+      user: await enrichUser(updated),
+    });
+  }
+
+  if (!user.presentablePic) {
+    throw new AppError("No presentable pic uploaded", 404);
+  }
+
+  await deleteStoredMedia(user.presentablePic);
+  const updated = await updateUser(userId, {
+    presentablePic: null,
+    presentablePicStatus: null,
+    presentablePicUploadedAt: null,
+    presentablePicReviewedAt: null,
+    presentablePicReviewedById: null,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Presentable pic deleted",
     user: await enrichUser(updated),
   });
 });

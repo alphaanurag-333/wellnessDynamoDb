@@ -366,6 +366,11 @@ async function createAppConfig() {
 
     multilang: false,
 
+    // In-app WhatsApp Help & Support (drawer button)
+    support_whatsapp_enabled: false,
+    support_whatsapp_number: "",
+    support_whatsapp_message: "",
+
     // Nested array with credentials object
     payment_gateways: [],   // default empty 
 

@@ -116,7 +116,15 @@ function mapCalendarMeetings(meetings) {
     if (!meeting || meeting.status === "cancelled" || meeting.status === "expired") return;
     const name = meeting.userName || meeting.userId || "Client";
     const kind = STEP_LABELS[meeting.stepKey] || meeting.stepKey;
-    const slot = (meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0];
+    const slot = meeting.status === "confirmed"
+      ? (
+        (meeting.slots || []).find((s) => String(s.id) === String(meeting.selectedSlotId))
+        || (meeting.confirmedStartAt && meeting.confirmedEndAt
+          ? { startAt: meeting.confirmedStartAt, endAt: meeting.confirmedEndAt }
+          : null)
+        || meeting.slots?.[0]
+      )
+      : ((meeting.slots || []).find((s) => s.id === meeting.selectedSlotId) || meeting.slots?.[0]);
     const requestedSlots = Array.isArray(meeting.requestedSlots) && meeting.requestedSlots.length
       ? meeting.requestedSlots
       : (meeting.requestedStartAt && meeting.requestedEndAt
@@ -728,6 +736,8 @@ export function CalendarPage() {
               setReviewBusy(true);
               await acceptOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId, {
                 requestedSlotId: slot.id,
+                startAt: slot.startAt,
+                endAt: slot.endAt,
               });
               onToast(`Accepted ${reviewRequest.userName}'s requested time`);
               setReviewRequest(null);

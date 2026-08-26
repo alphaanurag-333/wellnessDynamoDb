@@ -4,6 +4,7 @@ const {
   computeBmi,
   computeBmr,
   computeBodyFat,
+  computeWaistHipRatio,
   computeVisceralFat,
   computeFattyLiverIndex,
   getFliRiskCategory,
@@ -43,8 +44,40 @@ test("computeVisceralFat returns risk assessment", () => {
     waistCm: 93,
   });
   assert.ok(result.waistHeightRatio > 0);
+  assert.equal(result.waistHipRatio, undefined);
   assert.ok(result.estimatedVisceralFat >= 1);
   assert.ok(result.riskAssessment);
+});
+
+test("computeWaistHipRatio uses waist / hip", () => {
+  assert.equal(computeWaistHipRatio(80, 100), 0.8);
+  assert.equal(computeWaistHipRatio(90, 90), 1);
+  assert.equal(computeWaistHipRatio(80, 0), null);
+});
+
+test("computeVisceralFat includes waistHipRatio when hip provided", () => {
+  const result = computeVisceralFat({
+    gender: "male",
+    age: 28,
+    heightCm: 175,
+    waistCm: 90,
+    hipCm: 100,
+  });
+  assert.equal(result.waistHeightRatio, 0.51);
+  assert.equal(result.waistHipRatio, 0.9);
+});
+
+test("body_fat snapshot stores waistHipRatio", () => {
+  const snapshot = buildMetricSnapshot("body_fat", {
+    gender: "male",
+    age: 28,
+    heightCm: 175,
+    neckCm: 38,
+    waistCm: 85,
+    hipCm: 100,
+  });
+  assert.equal(snapshot.waistHipRatio, 0.85);
+  assert.ok(snapshot.bodyFatPercent > 0);
 });
 
 test("computeFattyLiverIndex returns expected value", () => {

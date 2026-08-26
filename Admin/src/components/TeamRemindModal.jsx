@@ -6,7 +6,8 @@ export function TeamRemindModal({
   recipientsLoading = false,
   message,
   defaultMessage,
-  busy = false,
+  busyPush = false,
+  busyWhatsApp = false,
   actionLabel = "Send Notification",
   actionIcon = "🔔",
   onMessageChange,
@@ -17,11 +18,13 @@ export function TeamRemindModal({
 }) {
   if (!open) return null;
 
+  const busy = busyPush || busyWhatsApp;
   const canReset = message !== defaultMessage;
   const recipientNames = (recipients || []).map((row) =>
     typeof row === "string" ? row : row?.name
   ).filter(Boolean);
-  const pushDisabled = busy || recipientsLoading || !String(message || "").trim() || recipientNames.length === 0;
+  const noRecipients = recipientsLoading || recipientNames.length === 0;
+  const noMessage = !String(message || "").trim();
 
   return (
     <div
@@ -93,11 +96,22 @@ export function TeamRemindModal({
         </div>
 
         <div className="ua-team-remind__actions">
-          <button type="button" className="ua-team-remind__push" disabled={pushDisabled} onClick={onPush}>
-            <span aria-hidden="true">{actionIcon}</span> {busy ? "Sending…" : actionLabel}
+          <button
+            type="button"
+            className="ua-team-remind__push"
+            disabled={busy || noRecipients || noMessage}
+            onClick={onPush}
+          >
+            <span aria-hidden="true">{actionIcon}</span> {busyPush ? "Sending…" : actionLabel}
           </button>
-          <button type="button" style={{color:"white",background:"linear-gradient(rgb(63, 194, 106), rgb(46, 171, 87))"}} className="ua-team-remind__whatsapp" disabled={busy} onClick={onWhatsApp}>
-            <span aria-hidden="true">💬</span> Send on WhatsApp
+          <button
+            type="button"
+            style={{ color: "white", background: "linear-gradient(rgb(63, 194, 106), rgb(46, 171, 87))" }}
+            className="ua-team-remind__whatsapp"
+            disabled={busy || noRecipients || noMessage}
+            onClick={onWhatsApp}
+          >
+            <span aria-hidden="true">💬</span> {busyWhatsApp ? "Sending…" : "Send on WhatsApp"}
           </button>
         </div>
       </div>

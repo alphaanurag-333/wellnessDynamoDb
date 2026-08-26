@@ -597,6 +597,19 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     updates.multilang = normalizeBooleanFlag(req.body.multilang, false);
   }
 
+  if (req.body.support_whatsapp_enabled !== undefined) {
+    updates.support_whatsapp_enabled = normalizeBooleanFlag(
+      req.body.support_whatsapp_enabled,
+      false
+    );
+  }
+  if (req.body.support_whatsapp_number !== undefined) {
+    updates.support_whatsapp_number = String(req.body.support_whatsapp_number ?? "").trim();
+  }
+  if (req.body.support_whatsapp_message !== undefined) {
+    updates.support_whatsapp_message = String(req.body.support_whatsapp_message ?? "").trim();
+  }
+
   for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {
     if (req.body[field] !== undefined) {
       updates[field] = normalizeBodyMeasurementInfoShown(req.body[field], true);
@@ -808,5 +821,21 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     status: true,
     message: "App configuration updated",
     data: toPublicAppConfig(updated),
+  });
+});
+
+exports.remindCommitmentLetterWhatsAppController = asyncHandler(async (req, res) => {
+  const accountId = String(req.body?.accountId || req.body?.coachId || "").trim();
+  const message = String(req.body?.message || "").trim();
+  if (!accountId) throw new AppError("accountId is required", 400);
+  if (!message) throw new AppError("message is required", 400);
+
+  const { sendAccountWhatsAppReminder } = require("../../services/teamReminderService");
+  const sent = await sendAccountWhatsAppReminder({ accountId, message });
+
+  return res.status(200).json({
+    status: true,
+    message: `WhatsApp sent to ${sent.name}`,
+    recipient: sent,
   });
 });

@@ -55,6 +55,10 @@ export const LanguageDisableSection = named(
   () => import("../components/LanguageDisableSection.jsx"),
   "LanguageDisableSection",
 );
+export const WhatsappSupportSection = named(
+  () => import("../components/WhatsappSupportSection.jsx"),
+  "WhatsappSupportSection",
+);
 export const GstSection = named(() => import("../components/GstSection.jsx"), "GstSection");
 export const ConsultancyAmountSection = named(
   () => import("../components/ConsultancyAmountSection.jsx"),
@@ -185,3 +189,7 @@ export const WellnessLibrarySection = named(
 );
 export const RxBankSection = named(() => import("../components/RxBankSection.jsx"), "RxBankSection");
 export const FaqConfigPanel = named(() => import("../components/FaqConfigPanel.jsx"), "FaqConfigPanel");
+export const PrakritiAssessmentSection = named(
+  () => import("../components/PrakritiAssessmentSection.jsx"),
+  "PrakritiAssessmentSection",
+);

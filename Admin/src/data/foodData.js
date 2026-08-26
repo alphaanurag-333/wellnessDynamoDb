@@ -230,8 +230,10 @@ export function sumMealMacros(meals) {
     (acc, meal) => {
       if (!meal.macros) return acc;
       if (meal.reviewStatus === "rejected" || meal.aiStatus === "rejected") return acc;
-      if (meal.photoAiStatus === "declined" || meal.photoAiStatus === "none" || meal.photoAiStatus === "failed") return acc;
+      if (meal.photoAiStatus === "declined" || meal.photoAiStatus === "failed") return acc;
       if (meal.aiStatus === "none" || meal.aiStatus === "declined") return acc;
+      // Pending detailed entries without AI analysis shouldn't inflate day totals with zeros.
+      if (meal.reviewStatus === "pending" && meal.photoAiStatus !== "analysed") return acc;
       return {
         protein: acc.protein + meal.macros.protein,
         carbs: acc.carbs + meal.macros.carbs,
@@ -320,11 +322,13 @@ function mealPhotoAiStatus(log) {
   return "analysed";
 }
 
-function mealUiStatus(reviewStatus, photoAiStatus) {
+function mealUiStatus(reviewStatus, photoAiStatus, { hasClientDetails = false } = {}) {
   if (reviewStatus === "rejected") return "rejected";
   // Coach-approved macros (incl. manual insert) win over pending AI photo state.
   if (reviewStatus === "approved") return "approved";
   if (photoAiStatus === "declined") return "declined";
+  // Detailed-macro (or any) client submission with items/description awaits coach review.
+  if (reviewStatus === "pending" && hasClientDetails) return "review";
   if (photoAiStatus === "none" || photoAiStatus === "failed") return "none";
   if (reviewStatus === "pending") return "review";
   return "approved";
@@ -361,8 +365,12 @@ export function mapMealLogToUi(log) {
   const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
   const reviewStatus = mealReviewStatus(log?.status);
   const photoAiStatus = mealPhotoAiStatus(log);
-  const uiStatus = mealUiStatus(reviewStatus, photoAiStatus);
-  const hasCountableMacros = photoAiStatus === "analysed" || reviewStatus === "approved";
+  const hasClientDetails = items.length > 0 || Boolean(description);
+  const uiStatus = mealUiStatus(reviewStatus, photoAiStatus, { hasClientDetails });
+  const hasCountableMacros =
+    photoAiStatus === "analysed"
+    || reviewStatus === "approved"
+    || (reviewStatus === "pending" && items.length > 0);
 
   return {
     id: String(log?.id || log?._id || ""),

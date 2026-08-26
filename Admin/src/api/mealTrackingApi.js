@@ -42,6 +42,18 @@ export async function updateUserMealLog(userId, logId, payload) {
   }
 }
 
+export async function deleteUserMealLog(userId, logId) {
+  try {
+    const { data } = await api.delete(
+      healUserPath(userId, `/meal-tracking/${encodeURIComponent(logId)}`),
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function analyzeUserMealLog(userId, logId) {
   try {
     const { data } = await api.post(
@@ -95,6 +107,19 @@ export async function fetchUserWaterTracking(userId, { from, to, days } = {}) {
       headers: authHeader(),
     });
     return data.data || { settings: null, history: [], range: null };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserWaterGoal(userId, goalGlasses, { date } = {}) {
+  const body = { goalGlasses: Number(goalGlasses) };
+  if (date) body.date = date;
+  try {
+    const { data } = await api.patch(healUserPath(userId, "/water-tracking/goal"), body, {
+      headers: authHeader(),
+    });
+    return data.data || null;
   } catch (error) {
     normalizeApiError(error);
   }

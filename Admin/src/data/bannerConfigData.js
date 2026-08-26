@@ -142,6 +142,12 @@ export function bannerPlacementById(id, options = BANNER_PLACEMENTS) {
   };
 }
 
+export function cssAspectRatio(ratio) {
+  const parts = String(ratio || "16:9").split(/[:/x×]/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 2 && parts.every((part) => Number(part) > 0)) return `${parts[0]} / ${parts[1]}`;
+  return "16 / 9";
+}
+
 export function asCopyString(value) {
   if (typeof value === "string") return value;
   if (value == null) return "";

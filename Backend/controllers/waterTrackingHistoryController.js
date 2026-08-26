@@ -1,7 +1,8 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
-const { getUserWaterHistory } = require("../models/waterTrackingModel");
+const { getUserWaterHistory, setDayGoal } = require("../models/waterTrackingModel");
+const { isValidDateOnly, todayDateOnly } = require("../utils/dateOnly");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
@@ -86,6 +87,38 @@ exports.getStaffHealUserWaterTrackingController = asyncHandler(async (req, res) 
     message: "Water tracking history fetched",
     user: toHistoryUser(enriched),
     data,
+  });
+});
+
+exports.updateStaffHealUserWaterGoalController = asyncHandler(async (req, res) => {
+  const userId = req.params.id || req.params.userId;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const goalGlasses = req.body?.goalGlasses ?? req.body?.goal_glasses;
+  if (goalGlasses == null || goalGlasses === "") {
+    throw new AppError("goalGlasses is required", 400);
+  }
+
+  const dateCandidate = req.body?.date ?? req.query?.date ?? todayDateOnly();
+  const date = String(dateCandidate).trim();
+  if (!isValidDateOnly(date)) {
+    throw new AppError("date must be YYYY-MM-DD", 400);
+  }
+
+  let result;
+  try {
+    result = await setDayGoal(userId, date, goalGlasses);
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily water goal updated",
+    data: result,
   });
 });
 
