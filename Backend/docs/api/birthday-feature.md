@@ -217,6 +217,43 @@ curl -s -X POST "http://localhost:5000/api/user/birthday-posts/POST_UUID/comment
 
 ---
 
+### `PATCH /user/birthday-posts/:postId/comments/:id`
+
+Edit **own** comment only (`403` if not owner).
+
+**Body (JSON)**
+
+| Field | Type | Required | Rules |
+|-------|------|----------|-------|
+| `comment` | string | Yes | 1–2000 characters |
+
+```bash
+curl -s -X PATCH "http://localhost:5000/api/user/birthday-posts/POST_UUID/comments/COMMENT_UUID" \
+  -H "Authorization: Bearer USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"comment":"Happy birthday! Wishing you health and happiness."}'
+```
+
+**Response `200`**
+
+```json
+{
+  "status": true,
+  "message": "Comment updated successfully",
+  "comment": {
+    "id": "uuid",
+    "birthdayPostId": "POST_UUID",
+    "commenterUserId": "USER_UUID",
+    "comment": "Happy birthday! Wishing you health and happiness.",
+    "commenter": { "id": "...", "name": "Bob" },
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+}
+```
+
+---
+
 ### `DELETE /user/birthday-posts/:postId/comments/:id`
 
 Delete own comment only (`403` if not owner).

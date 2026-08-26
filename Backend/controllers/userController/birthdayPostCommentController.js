@@ -7,6 +7,7 @@ const {
 const {
   listBirthdayPostComments,
   createBirthdayPostComment,
+  updateBirthdayPostComment,
   deleteBirthdayPostComment,
   getBirthdayPostCommentRecordById,
 } = require("../../models/birthdayPostCommentModel");
@@ -85,6 +86,42 @@ exports.createBirthdayPostCommentController = asyncHandler(async (req, res) => {
     status: true,
     message: "Comment added successfully",
     comment: created,
+  });
+});
+
+exports.updateBirthdayPostCommentController = asyncHandler(async (req, res) => {
+  await assertActivePost(req.params.postId);
+
+  const comment = String(req.body.comment || "").trim();
+  if (!comment) {
+    throw new AppError("comment is required", 400);
+  }
+  if (comment.length > 2000) {
+    throw new AppError("comment cannot exceed 2000 characters", 400);
+  }
+
+  const row = await getBirthdayPostCommentRecordById(req.params.id);
+  if (!row || row.birthdayPostId !== req.params.postId) {
+    throw new AppError("Comment not found", 404);
+  }
+  if (row.commenterUserId !== req.user.id) {
+    throw new AppError("You can only edit your own comments", 403);
+  }
+
+  let updated;
+  try {
+    updated = await updateBirthdayPostComment(req.params.id, { comment });
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Comment not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Comment updated successfully",
+    comment: updated,
   });
 });
 

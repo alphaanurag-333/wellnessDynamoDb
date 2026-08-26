@@ -3,6 +3,7 @@ const {
   GetCommand,
   DeleteCommand,
   QueryCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 
@@ -105,6 +106,29 @@ async function getBirthdayPostCommentById(id) {
   return item ? toPublicComment(item) : null;
 }
 
+async function updateBirthdayPostComment(id, { comment } = {}) {
+  const text = String(comment || "").trim();
+  if (!text) throw new Error("comment is required");
+  if (text.length > 2000) throw new Error("comment cannot exceed 2000 characters");
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: "SET #comment = :comment, updatedAt = :updatedAt",
+      ExpressionAttributeNames: { "#comment": "comment" },
+      ExpressionAttributeValues: {
+        ":comment": text,
+        ":updatedAt": new Date().toISOString(),
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toPublicComment(Attributes || null);
+}
+
 async function deleteBirthdayPostComment(id) {
   await docClient.send(
     new DeleteCommand({
@@ -171,6 +195,7 @@ module.exports = {
   findBirthdayPostCommentByUser,
   getBirthdayPostCommentById,
   getBirthdayPostCommentRecordById,
+  updateBirthdayPostComment,
   deleteBirthdayPostComment,
   listBirthdayPostComments,
   countCommentsForPost,

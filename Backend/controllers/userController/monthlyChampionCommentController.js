@@ -7,6 +7,7 @@ const {
 const {
   listMonthlyChampionPostComments,
   createMonthlyChampionPostComment,
+  updateMonthlyChampionPostComment,
   deleteMonthlyChampionPostComment,
   getMonthlyChampionPostCommentRecordById,
 } = require("../../models/monthlyChampionPostCommentModel");
@@ -87,6 +88,42 @@ exports.createMonthlyChampionCommentController = asyncHandler(async (req, res) =
     status: true,
     message: "Comment added successfully",
     comment: created,
+  });
+});
+
+exports.updateMonthlyChampionCommentController = asyncHandler(async (req, res) => {
+  await assertActivePost(req.params.postId);
+
+  const comment = String(req.body.comment || "").trim();
+  if (!comment) {
+    throw new AppError("comment is required", 400);
+  }
+  if (comment.length > 2000) {
+    throw new AppError("comment cannot exceed 2000 characters", 400);
+  }
+
+  const row = await getMonthlyChampionPostCommentRecordById(req.params.id);
+  if (!row || row.monthlyChampionPostId !== req.params.postId) {
+    throw new AppError("Comment not found", 404);
+  }
+  if (row.commenterUserId !== req.user.id) {
+    throw new AppError("You can only edit your own comments", 403);
+  }
+
+  let updated;
+  try {
+    updated = await updateMonthlyChampionPostComment(req.params.id, { comment });
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Comment not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Comment updated successfully",
+    comment: updated,
   });
 });
 
