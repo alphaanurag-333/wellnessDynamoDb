@@ -87,8 +87,13 @@ export function ClientRemindModal({
             {whatsapp ? (
               <p className="ua-client-remind__whatsapp">
                 WhatsApp goes to <strong>{whatsapp}</strong>
+                {" "}with the approved onboarding template (name + next step).
               </p>
-            ) : null}
+            ) : (
+              <p className="ua-client-remind__whatsapp">
+                No WhatsApp number on this client.
+              </p>
+            )}
           </div>
         </div>
 
@@ -104,7 +109,7 @@ export function ClientRemindModal({
           <button
             type="button"
             className="ua-team-remind__whatsapp"
-            disabled={busy || !message.trim()}
+            disabled={busy || !whatsapp}
             onClick={() => onWhatsApp?.(message)}
           >
             <span aria-hidden="true">💬</span> {busyWhatsApp ? "Sending…" : "Send on WhatsApp"}

@@ -193,6 +193,6 @@ export function onboardingRemindCopy(row) {
     title: `Remind ${row.name}`,
     subtitle: `Onboarding · ${row.step} · coach ${row.coach}`,
     recipients: [row.name],
-    defaultMessage: `Hi ${first}, you're one step away — ${row.step}. Finish it whenever you're ready and your coach will take it from there.`,
+    defaultMessage: `Hi ${first}, Your next onboarding step is ${stepLabel || row.step}. Please complete it in the app when you get a moment. Thank you!`,
   };
 }

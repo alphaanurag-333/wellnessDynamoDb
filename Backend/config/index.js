@@ -45,7 +45,7 @@ module.exports = {
 
   exposeOtpInResponse: bool("EXPOSE_OTP_IN_RESPONSE"),
   otpLength: num("OTP_LENGTH", 6),
-  otpExpiresMinutes: num("OTP_EXPIRES_MINUTES", 10),
+  otpExpiresMinutes: num("OTP_EXPIRES_MINUTES", 1),
   totpIssuer: str("TOTP_ISSUER", "Wellness Admin"),
   totpMaxFailedAttempts: num("TOTP_MAX_FAILED_ATTEMPTS", 5),
 
@@ -79,6 +79,7 @@ module.exports = {
   bhashsmsDocumentUrl: str("BHASHSMS_DOCUMENT_URL"),
   bhashsmsDocumentFname: str("BHASHSMS_DOCUMENT_FNAME", "PDF File"),
   bhashsmsReminderTemplate: str("BHASHSMS_REMINDER_TEMPLATE"),
+  bhashsmsOnboardingReminderTemplate: str("BHASHSMS_ONBOARDING_REMINDER_TEMPLATE", "gen_rem01"),
   bhashsmsUseMessageAsParams: bool("BHASHSMS_USE_MESSAGE_AS_PARAMS"),
   bhashsmsAllowSessionText: bool("BHASHSMS_ALLOW_SESSION_TEXT"),
 

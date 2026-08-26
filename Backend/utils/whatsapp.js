@@ -4,6 +4,7 @@ const { resolveWhatsappNumber } = require("../services/meetingAssigneeService");
 const DEFAULT_SENDER = "BUZWAP";
 const DEFAULT_INVOICE_TEMPLATE = "invoice_1";
 const DEFAULT_OTP_TEMPLATE = "ir_otp01";
+const DEFAULT_ONBOARDING_REMINDER_TEMPLATE = "gen_rem01";
 const DEFAULT_DOCUMENT_URL = "https://bhashsms.com/pushwa/iframe/files/trai.pdf";
 const DEFAULT_DOCUMENT_NAME = "PDF File";
 
@@ -27,6 +28,15 @@ function toBhashPhone(phoneCountryCode, phone) {
 function trim(value, fallback = "") {
   const text = String(value ?? "").trim();
   return text || fallback;
+}
+
+function firstName(value) {
+  return String(value || "there").trim().split(/\s+/).filter(Boolean)[0] || "there";
+}
+
+/** Bhash `Params` are comma-separated template variables ({{1}}, {{2}}, ...). */
+function bhashParams(...values) {
+  return values.map((value) => String(value || "").replace(/,/g, " ").trim() || "-").join(",");
 }
 
 function bhashCredentials() {
@@ -243,6 +253,30 @@ async function sendWhatsAppText({
   return toSendResult(phone, result);
 }
 
+async function sendOnboardingReminderWhatsApp({ user, stepLabel }) {
+  const wa = resolveWhatsappNumber(user);
+  if (!wa?.phone) return { sent: false, reason: "missing_phone" };
+
+  const name = firstName(user?.name);
+  const step = trim(stepLabel, "your next step");
+  const template = trim(
+    config.bhashsmsOnboardingReminderTemplate,
+    DEFAULT_ONBOARDING_REMINDER_TEMPLATE
+  );
+  const preview =
+    `Hi ${name}, Your next onboarding step is ${step}. ` +
+    `Please complete it in the app when you get a moment. Thank you!`;
+
+  return sendWhatsAppText({
+    toPhoneCountryCode: wa.phoneCountryCode,
+    toPhone: wa.phone,
+    message: preview,
+    templateName: template,
+    params: bhashParams(name, step),
+    purpose: "reminder",
+  });
+}
+
 async function sendWhatsAppDocument({
   toPhoneCountryCode,
   toPhone,
@@ -385,6 +419,7 @@ module.exports = {
   toBhashPhone,
   sendWhatsAppOtp,
   sendWhatsAppText,
+  sendOnboardingReminderWhatsApp,
   sendWhatsAppDocument,
   sendConsultancyWhatsAppNotifications,
   sendCoachAssignmentNotifications,

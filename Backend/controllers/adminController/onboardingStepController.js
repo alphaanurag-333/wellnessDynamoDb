@@ -9,12 +9,12 @@ const {
   getNextIncompleteStep,
   countCompletedSteps,
   computePaidOnboardingCompleted,
+  onboardingStepLabel,
 } = require("../../utils/paidOnboardingHelpers");
 const {
   dispatchOnboardingReminderNotification,
 } = require("../../services/notificationDispatchService");
-const { sendWhatsAppText } = require("../../utils/whatsapp");
-const { resolveWhatsappNumber } = require("../../services/meetingAssigneeService");
+const { sendOnboardingReminderWhatsApp } = require("../../utils/whatsapp");
 
 function readUserId(req) {
   return String(req.params.userId || req.params.id || "").trim();
@@ -114,7 +114,6 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
   const user = await loadStaffUser(req);
 
   const message = String(req.body?.message || "").trim();
-  if (!message) throw new AppError("message is required", 400);
   if (message.length > 2000) throw new AppError("message is too long", 400);
 
   const nextIncompleteStep = getNextIncompleteStep(user.paidOnboardingStepStatus);
@@ -122,28 +121,19 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
   const channel = String(req.body?.channel || "push").trim().toLowerCase();
 
   if (channel === "whatsapp") {
-    const wa = resolveWhatsappNumber(user);
-    if (!wa) throw new AppError("No WhatsApp number on this client", 400);
-
-    const firstName =
-      String(user?.name || "there")
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)[0] || "there";
-    const paramMessage = stepLabel
-      ? `your next onboarding step is '${stepLabel}'. Please complete it in the app when you get a moment.`
-      : message;
-
-    const result = await sendWhatsAppText({
-      toPhoneCountryCode: wa.phoneCountryCode,
-      toPhone: wa.phone,
-      message,
-      // Matches utility template: Hi {{1}}, {{2}}
-      params: `${firstName.replace(/,/g, " ")},${paramMessage.replace(/,/g, " ")}`,
-      purpose: "reminder",
+    if (!nextIncompleteStep && !stepLabel) {
+      throw new AppError("Onboarding is already complete", 400);
+    }
+    const resolvedStep = onboardingStepLabel(stepLabel || nextIncompleteStep);
+    const result = await sendOnboardingReminderWhatsApp({
+      user,
+      stepLabel: resolvedStep,
     });
     if (!result.sent) {
       const reason = result.reason || "WhatsApp send failed";
+      if (reason === "missing_phone") {
+        throw new AppError("No WhatsApp number on this client", 400);
+      }
       const isConfig =
         reason.includes("BHASHSMS_") ||
         reason.includes("not_configured") ||
@@ -155,11 +145,14 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
       status: true,
       message: `WhatsApp sent to ${user.name || "client"}`,
       channel: "whatsapp",
+      template: result.template || "gen_rem01",
       to: result.to || null,
       messageId: result.messageId || null,
-      stepLabel: stepLabel || null,
+      stepLabel: resolvedStep || null,
     });
   }
+
+  if (!message) throw new AppError("message is required", 400);
 
   const { notification, push } = await dispatchOnboardingReminderNotification({
     userId: user.id,

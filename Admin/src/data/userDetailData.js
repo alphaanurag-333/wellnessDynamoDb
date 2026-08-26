@@ -330,8 +330,9 @@ export const ONBOARDING_STEP_NOTES = {
 };
 
 export function buildOnboardingRemindMessage(user, nextStepLabel) {
-  const first = user.name.split(" ")[0];
-  return `Hi ${first}, your next onboarding step is '${nextStepLabel}'. Please complete it in the app when you get a moment.`;
+  const first = String(user?.name || "there").trim().split(/\s+/).filter(Boolean)[0] || "there";
+  const step = String(nextStepLabel || "your next step").trim();
+  return `Hi ${first}, Your next onboarding step is ${step}. Please complete it in the app when you get a moment. Thank you!`;
 }
 
 export const ACTIVE_SUPPLEMENTS = [

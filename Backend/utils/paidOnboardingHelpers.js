@@ -28,6 +28,25 @@ const PAID_ONBOARDING_STATUS_KEYS = [
   "programInitiation",
 ];
 
+const PAID_ONBOARDING_STATUS_LABELS = {
+  personalDetails: "Personal Details",
+  bodyAnalytics: "Body Analytics",
+  internalParameter: "Internal Parameters",
+  launch: "LAUNCH",
+  rca: "RCA",
+  reportsBriefing: "Reports Briefing",
+  hap: "HAP",
+  protocolSettings: "Protocol Settings",
+  commitmentLetter: "Commitment letter",
+  programInitiation: "Program initiation",
+};
+
+function onboardingStepLabel(keyOrLabel) {
+  const raw = String(keyOrLabel || "").trim();
+  if (!raw) return "";
+  return PAID_ONBOARDING_STATUS_LABELS[raw] || raw;
+}
+
 const BODY_ANALYTICS_SUBKEYS = [
   "bodyMeasurement",
   "progressPhotos180",
@@ -289,6 +308,8 @@ function buildEaglePaidOnboardingCompleteUpdates() {
 module.exports = {
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
   PAID_ONBOARDING_STATUS_KEYS,
+  PAID_ONBOARDING_STATUS_LABELS,
+  onboardingStepLabel,
   BODY_ANALYTICS_SUBKEYS,
   STORED_ONBOARDING_STATUS_KEYS,
   SCHEDULE_STEP_KEYS,
