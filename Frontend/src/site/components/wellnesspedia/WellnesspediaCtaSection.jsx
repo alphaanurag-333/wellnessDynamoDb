@@ -18,7 +18,7 @@ export default function WellnesspediaCtaSection() {
   if (!socialProof?.length) return null;
 
   return (
-    <section className="wp-section wp-lower-cta backgroundapply" aria-label="Social proof">
+    <section className="wp-section wp-lower-cta backgroundapply backgroundmanage" aria-label="Social proof">
       <div className="site-container">
         <div className="wp-social-proof">
           {socialProof.map((card) => {

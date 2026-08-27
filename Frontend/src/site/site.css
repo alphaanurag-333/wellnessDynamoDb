@@ -9887,6 +9887,14 @@ h5.pillar-card__head-title.is-expanded {
 
 /* WELLNESSPEDIA PAGE */
 
+.backgroundmanage {
+
+background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55%), radial-gradient(820px 360px at 100% 100%, rgba(232, 136, 79, 0.18), transparent 52%), #fff3ea !important;
+  /* background: radial-gradient(900px 320px at 0% 0%, rgba(232, 136, 79, 0.18), transparent 55%), radial-gradient(820px 360px at 100% 100%, rgba(122, 201, 154, 0.22), transparent 52%), #fef4ed; */
+}
+
+
+
 .wellnesspedia-page .wellness-toolkit__badge {
   margin-bottom: var(--space-3);
 }
