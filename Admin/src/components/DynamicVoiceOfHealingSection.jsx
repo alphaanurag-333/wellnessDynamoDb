@@ -26,9 +26,9 @@ const EMPTY_DRAFT = {
   videoName: "",
 };
 
-const VH_CROP_WIDTH = 400;
-const VH_CROP_HEIGHT = 400;
-const VH_CROP_RATIO = "1:1";
+const VH_CROP_WIDTH = 640;
+const VH_CROP_HEIGHT = 360;
+const VH_CROP_RATIO = "16:9";
 
 function Panel({ title, subtitle, actions, children }) {
   return (

@@ -129,3 +129,15 @@ describe("bodyAnalytics derivation", () => {
     }
   });
 });
+
+describe("onboardingStepJustCompleted", () => {
+  const { onboardingStepJustCompleted } = require("../utils/paidOnboardingHelpers");
+
+  it("is true only on the pending-to-done transition", () => {
+    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    assert.equal(onboardingStepJustCompleted(pending, done, "bodyAnalytics"), true);
+    assert.equal(onboardingStepJustCompleted(done, done, "bodyAnalytics"), false);
+    assert.equal(onboardingStepJustCompleted(pending, done, "protocolSettings"), false);
+  });
+});

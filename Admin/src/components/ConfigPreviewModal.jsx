@@ -40,8 +40,8 @@ function previewSurfaces(item) {
     return surfaces;
   }
   if (item.id === "common-voice") {
-    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "1:1" });
-    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "1:1" });
+    if (item.app) surfaces.push({ id: "app", label: "App", ratio: "16:9" });
+    if (item.web) surfaces.push({ id: "web", label: "Web", ratio: "16:9" });
     return surfaces;
   }
   if (item.id === "common-cofounder") {
@@ -91,7 +91,7 @@ function surfaceSubtitle(surfaces, activeId, item) {
     return "Web · 400 × 400";
   }
   if (item?.id === "common-voice") {
-    return "Common asset · renders on both surfaces · 400 × 400";
+    return "Common asset · renders on both surfaces · 640 × 360";
   }
   if (item?.id === "common-cofounder") {
     return "Common asset · renders on both surfaces · 400 × 400";

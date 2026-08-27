@@ -12,6 +12,16 @@ exports.errorHandler = (err, req, res, _next) => {
     message: err.message || "Internal Server Error",
   };
 
+  if (err.retryAfterSeconds != null) {
+    payload.retryAfterSeconds = err.retryAfterSeconds;
+  }
+  if (err.cooldownUntil) {
+    payload.cooldownUntil = err.cooldownUntil;
+  }
+  if (err.code) {
+    payload.code = err.code;
+  }
+
   if (config.nodeEnv === "development" && err.stack) {
     payload.stack = err.stack;
   }

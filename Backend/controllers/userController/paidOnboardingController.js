@@ -26,6 +26,7 @@ const {
 const {
   listActiveMedicalConditionQuestions,
 } = require("../../models/medicalConditionQuestionModel");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 const {
   markStepDone,
   markStepSkipped,
@@ -318,6 +319,12 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
       alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus: currentStatus,
+    nextStatus,
+  });
+
   return res.status(201).json({
     status: true,
     message: alreadyCompleted
@@ -385,6 +392,12 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     paidOnboardingStep: nextWizardStep,
     paidOnboardingCompleted:
       alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
+  });
+
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus: currentStatus,
+    nextStatus,
   });
 
   return res.status(201).json({

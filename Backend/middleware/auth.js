@@ -319,8 +319,17 @@ const protectUser = asyncHandler(async (req, res, next) => {
   }
 
   assertActiveAccount(account);
+
+  const tokenSv = payload.sv == null ? 0 : Number(payload.sv);
+  const userSv = Number(account.sessionVersion || 0);
+  if (tokenSv !== userSv) {
+    const err = new AppError("Logged in on another device. Please login again.", 401);
+    err.code = "SESSION_REPLACED";
+    throw err;
+  }
+
   req.user = account;
-  req.auth = { role: "user", sub: subject };
+  req.auth = { role: "user", sub: subject, sv: userSv };
   next();
 });
 

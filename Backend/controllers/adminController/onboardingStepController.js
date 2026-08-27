@@ -15,6 +15,7 @@ const {
   dispatchOnboardingReminderNotification,
 } = require("../../services/notificationDispatchService");
 const { sendOnboardingReminderWhatsApp } = require("../../utils/whatsapp");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 
 function readUserId(req) {
   return String(req.params.userId || req.params.id || "").trim();
@@ -73,9 +74,16 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
     throw new AppError(err.message, 400);
   }
 
+  const previousStatus = user.paidOnboardingStepStatus;
   const updated = await updateUser(user.id, {
     paidOnboardingStepStatus: nextStatus,
     paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
+  });
+
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus,
+    nextStatus,
   });
 
   const savedValue = String(

@@ -17,7 +17,11 @@ const {
 const { ensureCashfreeCheckoutOrder } = require("./paymentOrderHelpers");
 const { createZoomMeeting } = require("../utils/zoom");
 const { sendConsultancyWhatsAppNotifications } = require("../utils/whatsapp");
-const { toPublicTransactionWithInvoice } = require("../utils/consultancyInvoiceResponse");
+const {
+  toPublicTransactionWithInvoice,
+  ensureTransactionInvoice,
+  attachInvoiceUrl,
+} = require("../utils/consultancyInvoiceResponse");
 const {
   emitPaymentReceived,
   emitPendingAssignment,
@@ -296,6 +300,12 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
     emitPendingAssignment(freshUser);
   }
 
+  const withInvoice = await ensureTransactionInvoice(paidRecord);
+  const invoiceUrl = attachInvoiceUrl(withInvoice)?.invoiceUrl || null;
+  const healthConcernTitle =
+    String(transaction.healthConcernSnapshot?.title || "").trim() ||
+    String(paidRecord.healthConcernSnapshot?.title || "").trim();
+
   let whatsappDelivery = null;
   try {
     whatsappDelivery = await sendConsultancyWhatsAppNotifications({
@@ -305,17 +315,21 @@ async function finalizePaidConsultancyTransaction(transaction, { paymentId, prov
       referenceNumber: transaction.referenceNumber,
       zoomJoinUrl: zoom?.join_url || null,
       totalAmount: transaction.totalAmount,
+      documentUrl: invoiceUrl,
+      fileName: `${transaction.referenceNumber || "Payment-Receipt"}.pdf`,
+      healthConcernTitle,
+      paidAt,
     });
   } catch (err) {
     console.error("[ConsultancyPayment] WhatsApp failed", err.message);
     whatsappDelivery = { error: err.message };
   }
 
-  const updated = await updateConsultancyTransaction(transaction.id, {
+  const updated = await updateConsultancyTransaction(withInvoice.id, {
     whatsappDelivery,
   });
 
-  return toPublicTransactionWithInvoice(updated);
+  return toPublicTransactionWithInvoice(updated || withInvoice);
 }
 
 async function verifyConsultancyPayment(userId, {

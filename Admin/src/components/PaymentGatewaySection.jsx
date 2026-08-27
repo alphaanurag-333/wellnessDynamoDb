@@ -42,10 +42,8 @@ function entryEquals(a, b) {
     left.mode === right.mode &&
     left.uat.appId === right.uat.appId &&
     left.uat.secretKey === right.uat.secretKey &&
-    left.uat.webhookSecret === right.uat.webhookSecret &&
     left.live.appId === right.live.appId &&
-    left.live.secretKey === right.live.secretKey &&
-    left.live.webhookSecret === right.live.webhookSecret
+    left.live.secretKey === right.live.secretKey
   );
 }
 
@@ -107,15 +105,6 @@ function ModeCredentialFields({ label, modeId, values, disabled, required, onCha
             onChange={(secretKey) => onChange(modeId, { secretKey })}
           />
         </label>
-        <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
-          <span className="ua-cfg-pgw-field__label">Webhook secret (optional)</span>
-          <SecretInput
-            value={values.webhookSecret}
-            disabled={disabled}
-            placeholder="whsec_…"
-            onChange={(webhookSecret) => onChange(modeId, { webhookSecret })}
-          />
-        </label>
       </div>
     </div>
   );
@@ -125,6 +114,7 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(() => cloneEntry(gateways?.cashfree));
+  const [viewTab, setViewTab] = useState(() => (gateways?.cashfree?.mode === "live" ? "live" : "uat"));
   const [pendingMode, setPendingMode] = useState(null);
   const savedRef = useRef(cloneEntry(gateways?.cashfree));
 
@@ -157,6 +147,10 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
 
   const dirty = !entryEquals(draft, savedRef.current);
   const mode = draft.mode === "live" ? "live" : "uat";
+
+  useEffect(() => {
+    setViewTab(mode);
+  }, [mode]);
 
   function updateModeCredentials(modeId, patch) {
     setDraft((prev) => {
@@ -203,9 +197,7 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
     }
 
     const live = next.live || emptyModeSafe();
-    const livePartial = Boolean(
-      live.appId.trim() || live.secretKey.trim() || live.webhookSecret.trim(),
-    );
+    const livePartial = Boolean(live.appId.trim() || live.secretKey.trim());
     if (next.mode === "live" || livePartial) {
       const liveError = validateModeCredentials(next, "live");
       if (liveError) {
@@ -255,7 +247,7 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
       subtitle={
         loading
           ? "Loading payment gateway…"
-          : "Cashfree is always on. Edit UAT / Live credentials, then save. Mode switch asks for confirmation."
+          : "Cashfree is always on. Edit UAT or Live credentials in the tabs, then save. Switching the active payment mode asks for confirmation."
       }
     >
       {loading ? (
@@ -272,42 +264,60 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
             </div>
 
             <div className="ua-cfg-pgw-mode">
-              <span className="ua-cfg-pgw-field__label">Mode</span>
-              <div className="ua-cfg-pgw-mode__toggle" role="group" aria-label="Cashfree mode">
+              <span className="ua-cfg-pgw-field__label">Environment</span>
+              <div className="ua-cfg-pgw-tabs" role="tablist" aria-label="Cashfree environment">
                 {PAYMENT_GATEWAY_MODES.map((option) => (
                   <button
                     key={option.id}
                     type="button"
-                    className={`ua-cfg-pgw-mode__btn${mode === option.id ? " is-active" : ""}`}
+                    role="tab"
+                    id={`pgw-tab-${option.id}`}
+                    className={`ua-cfg-pgw-tabs__tab${viewTab === option.id ? " is-active" : ""}`}
+                    aria-selected={viewTab === option.id}
+                    aria-controls={`pgw-panel-${option.id}`}
+                    tabIndex={viewTab === option.id ? 0 : -1}
                     disabled={busy}
-                    aria-pressed={mode === option.id}
-                    onClick={() => requestModeChange(option.id)}
+                    onClick={() => setViewTab(option.id)}
                   >
-                    {option.label}
+                    <span>{option.label}</span>
+                    {mode === option.id ? <em>Active</em> : null}
                   </button>
                 ))}
               </div>
               <p className="ua-cfg-pgw-mode__hint">
-                Switching mode uses that environment for all app payments. You will be asked to confirm.
+                {viewTab === mode
+                  ? `${modeLabel(mode)} is used for all app payments. Edit credentials below, then save.`
+                  : `Viewing ${modeLabel(viewTab)} credentials. Payments still use ${modeLabel(mode)} until you switch.`}
               </p>
             </div>
 
-            <ModeCredentialFields
-              label="UAT (sandbox)"
-              modeId="uat"
-              values={draft.uat || emptyModeSafe()}
-              disabled={busy}
-              required
-              onChange={updateModeCredentials}
-            />
-            <ModeCredentialFields
-              label="Live (production)"
-              modeId="live"
-              values={draft.live || emptyModeSafe()}
-              disabled={busy}
-              required={mode === "live"}
-              onChange={updateModeCredentials}
-            />
+            <div
+              role="tabpanel"
+              id={`pgw-panel-${viewTab}`}
+              aria-labelledby={`pgw-tab-${viewTab}`}
+            >
+              <ModeCredentialFields
+                label={viewTab === "live" ? "Live (production)" : "UAT (sandbox)"}
+                modeId={viewTab}
+                values={draft[viewTab] || emptyModeSafe()}
+                disabled={busy}
+                required={viewTab === "uat" || mode === "live"}
+                onChange={updateModeCredentials}
+              />
+            </div>
+
+            {viewTab !== mode ? (
+              <div className="ua-cfg-pgw-mode-switch">
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline"
+                  disabled={busy || dirty}
+                  onClick={() => requestModeChange(viewTab)}
+                >
+                  Use {modeLabel(viewTab)} for payments
+                </button>
+              </div>
+            ) : null}
 
             <div className="ua-cfg-pgw-actions">
               <button

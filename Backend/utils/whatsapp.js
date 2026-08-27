@@ -2,11 +2,32 @@ const config = require("../config");
 const { resolveWhatsappNumber } = require("../services/meetingAssigneeService");
 
 const DEFAULT_SENDER = "BUZWAP";
-const DEFAULT_INVOICE_TEMPLATE = "invoice_1";
-const DEFAULT_OTP_TEMPLATE = "ir_otp01";
+const DEFAULT_INVOICE_TEMPLATE = "invoice_irw01";
+const DEFAULT_OTP_TEMPLATE = "otp_auth_irw";
 const DEFAULT_ONBOARDING_REMINDER_TEMPLATE = "gen_rem01";
-const DEFAULT_DOCUMENT_URL = "https://bhashsms.com/pushwa/iframe/files/trai.pdf";
-const DEFAULT_DOCUMENT_NAME = "PDF File";
+const DEFAULT_DOCUMENT_NAME = "Payment-Receipt.pdf";
+
+const NAMED_TEMPLATES = {
+  invoice: { configKey: "bhashsmsInvoiceTemplate", defaultName: "invoice_irw01", kind: "document" },
+  pwcUser: { configKey: "bhashsmsPwcUserTemplate", defaultName: "pwc_user_intim_01", kind: "text" },
+  pwcCoach: { configKey: "bhashsmsPwcCoachTemplate", defaultName: "pwc_initimate_021", kind: "text" },
+  programConfirm: { configKey: "bhashsmsProgramConfirmTemplate", defaultName: "ir_prg_confirm_01", kind: "text" },
+  uobBa: { configKey: "bhashsmsUobBaTemplate", defaultName: "ir_uob_ba_01", kind: "text" },
+  uobBr: { configKey: "bhashsmsUobBrTemplate", defaultName: "ir_uob_br_01", kind: "text" },
+  uobCl: { configKey: "bhashsmsUobClTemplate", defaultName: "ir_uob_cl_01", kind: "text" },
+  uobHap: { configKey: "bhashsmsUobHapTemplate", defaultName: "ir_uob_hap_01", kind: "text" },
+  uobLaunch: { configKey: "bhashsmsUobLauTemplate", defaultName: "ir_uob_lau_01", kind: "text" },
+  uobPiCoach: { configKey: "bhashsmsUobPiCoachTemplate", defaultName: "ir_uob_pi_011", kind: "text" },
+  uobPiUser: { configKey: "bhashsmsUobPiUserTemplate", defaultName: "ir_uob_pi_012", kind: "text" },
+  uobReportsBriefing: { configKey: "bhashsmsUobRbTemplate", defaultName: "ir_uob_rb_01", kind: "text" },
+};
+
+const SLOT_TEMPLATE_BY_STEP = {
+  launch: "uobLaunch",
+  reportsBriefing: "uobReportsBriefing",
+  hap: "uobHap",
+  programInitiation: "uobPiUser",
+};
 
 function formatE164(phoneCountryCode, phone) {
   const cc = String(phoneCountryCode || "").replace(/\s/g, "");
@@ -83,7 +104,41 @@ function buildBhashUrl(params, baseUrl) {
 }
 
 function resolveTemplateName(explicit) {
-  return trim(explicit || config.bhashsmsTemplate, DEFAULT_INVOICE_TEMPLATE);
+  return trim(explicit || config.bhashsmsInvoiceTemplate || config.bhashsmsTemplate, DEFAULT_INVOICE_TEMPLATE);
+}
+
+function resolveNamedTemplate(templateKey) {
+  const spec = NAMED_TEMPLATES[templateKey];
+  if (!spec) return null;
+  return {
+    ...spec,
+    name: trim(config[spec.configKey], spec.defaultName),
+  };
+}
+
+function formatInrAmount(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value || "0").replace(/,/g, "").trim() || "0";
+  return String(Math.round(n));
+}
+
+function pwcBookedForLabel({ healthConcernTitle, paidAt } = {}) {
+  const concern = trim(healthConcernTitle);
+  if (concern) return concern;
+  if (paidAt) {
+    const formatted = new Date(paidAt).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
+    if (formatted && formatted !== "Invalid Date") return formatted;
+  }
+  return "today";
+}
+
+function slotTemplateKeyForStep(stepKey) {
+  return SLOT_TEMPLATE_BY_STEP[String(stepKey || "").trim()] || null;
 }
 
 function resolveTemplateParams({ params, message }) {
@@ -184,6 +239,53 @@ async function sendWhatsAppOtp({ phoneCountryCode, phone, otp }) {
   return toSendResult(bhashPhone, result);
 }
 
+async function sendNamedWhatsAppTemplate({
+  templateKey,
+  person,
+  params = [],
+  documentUrl,
+  fileName,
+}) {
+  const spec = resolveNamedTemplate(templateKey);
+  if (!spec) return { sent: false, reason: "unknown_template", templateKey };
+  const wa = resolveWhatsappNumber(person);
+  if (!wa?.phone) return { sent: false, reason: "missing_phone", templateKey };
+
+  const paramList = Array.isArray(params) ? params : [params];
+  const paramStr = bhashParams(...paramList);
+
+  if (spec.kind === "document") {
+    const url = trim(documentUrl);
+    if (!url) {
+      return { sent: false, reason: "missing_document_url", template: spec.name, templateKey };
+    }
+    const result = await sendWhatsAppDocument({
+      toPhoneCountryCode: wa.phoneCountryCode,
+      toPhone: wa.phone,
+      templateName: spec.name,
+      params: paramStr,
+      documentUrl: url,
+      fileName: trim(fileName, DEFAULT_DOCUMENT_NAME),
+    });
+    return { ...result, template: spec.name, templateKey };
+  }
+
+  const result = await sendWhatsAppText({
+    toPhoneCountryCode: wa.phoneCountryCode,
+    toPhone: wa.phone,
+    message: spec.name,
+    templateName: spec.name,
+    params: paramStr,
+    purpose: "named",
+  });
+  if (!result.sent) {
+    console.error(
+      `[WhatsApp/BhashSMS] named template failed key=${templateKey} name=${spec.name} reason=${result.reason || "send_failed"}`
+    );
+  }
+  return { ...result, template: spec.name, templateKey };
+}
+
 async function sendWhatsAppText({
   toPhoneCountryCode,
   toPhone,
@@ -204,12 +306,7 @@ async function sendWhatsAppText({
     return mockIfDev(phone, `[WhatsApp/BhashSMS] To ${phone}: ${body || "(empty)"}`);
   }
 
-  const explicitDocUrl = trim(documentUrl);
-  const configuredDocUrl = trim(config.bhashsmsDocumentUrl);
-  const docUrl =
-    explicitDocUrl ||
-    (attachDocument || purpose === "document" ? configuredDocUrl || DEFAULT_DOCUMENT_URL : "");
-
+  const docUrl = trim(documentUrl);
   if (docUrl) {
     return sendWhatsAppDocument({
       toPhoneCountryCode,
@@ -217,8 +314,12 @@ async function sendWhatsAppText({
       templateName: resolveTemplateName(templateName),
       params: resolveTemplateParams({ params, message }),
       documentUrl: docUrl,
-      fileName: trim(fileName || config.bhashsmsDocumentFname, DEFAULT_DOCUMENT_NAME),
+      fileName: trim(fileName, DEFAULT_DOCUMENT_NAME),
     });
+  }
+
+  if (attachDocument || purpose === "document") {
+    return { sent: false, reason: "missing_document_url", to: phone };
   }
 
   if (!body) return { sent: false, reason: "empty_message", to: phone };
@@ -327,27 +428,30 @@ async function sendConsultancyWhatsAppNotifications({
   referenceNumber,
   zoomJoinUrl,
   totalAmount,
+  documentUrl,
+  fileName,
+  healthConcernTitle,
+  paidAt,
 }) {
   const results = { user: null, assignee: null, parentCoach: null };
-  const clientName = user?.name || "User";
+  const clientName = firstName(user?.name || "User");
+  const bookedFor = pwcBookedForLabel({ healthConcernTitle, paidAt });
+  const receiptName = trim(fileName, `${trim(referenceNumber, "Payment-Receipt")}.pdf`);
 
-  results.user = await notifyPerson(
-    user,
-    `Thank you for your payment of Rs. ${totalAmount}. Reference: ${referenceNumber}. Your Zoom meeting link: ${zoomJoinUrl}. Please reply with your preferred time slot to book the appointment.`,
-    {
-      purpose: "document",
-      attachDocument: true,
-      templateName: config.bhashsmsTemplate || DEFAULT_INVOICE_TEMPLATE,
-      params: config.bhashsmsTemplateParams || "1",
-    }
-  );
+  results.user = await sendNamedWhatsAppTemplate({
+    templateKey: "invoice",
+    person: user,
+    params: [firstName(user?.name)],
+    documentUrl,
+    fileName: receiptName,
+  });
 
   if (assignee && assignee.type !== "admin") {
-    results.assignee = await notifyPerson(
-      assignee,
-      `New consultancy booking assigned to you. Client: ${clientName}. Reference: ${referenceNumber}. Zoom link: ${zoomJoinUrl}`,
-      { purpose: "reminder" }
-    );
+    results.assignee = await sendNamedWhatsAppTemplate({
+      templateKey: "pwcCoach",
+      person: assignee,
+      params: [firstName(assignee?.name), clientName, bookedFor],
+    });
   }
 
   if (
@@ -355,11 +459,11 @@ async function sendConsultancyWhatsAppNotifications({
     assignee?.type === "assistant_wellness_coach" &&
     parentCoach.id !== assignee.id
   ) {
-    results.parentCoach = await notifyPerson(
-      parentCoach,
-      `Consultancy booked with your assistant (${assignee.name || "AWC"}). Client: ${clientName}. Reference: ${referenceNumber}. Zoom: ${zoomJoinUrl}`,
-      { purpose: "reminder" }
-    );
+    results.parentCoach = await sendNamedWhatsAppTemplate({
+      templateKey: "pwcCoach",
+      person: parentCoach,
+      params: [firstName(parentCoach?.name), clientName, bookedFor],
+    });
   }
 
   return results;
@@ -417,6 +521,15 @@ async function sendChallengePaymentWhatsApp({
 module.exports = {
   formatE164,
   toBhashPhone,
+  firstName,
+  bhashParams,
+  formatInrAmount,
+  pwcBookedForLabel,
+  NAMED_TEMPLATES,
+  SLOT_TEMPLATE_BY_STEP,
+  slotTemplateKeyForStep,
+  resolveNamedTemplate,
+  sendNamedWhatsAppTemplate,
   sendWhatsAppOtp,
   sendWhatsAppText,
   sendOnboardingReminderWhatsApp,
