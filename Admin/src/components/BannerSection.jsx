@@ -27,6 +27,7 @@ import { ImageCropModal } from "./ImageCropModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
+import "./bannerConfig.css";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -500,7 +501,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             ) : null}
 
             <div className="ua-cfg-bn-split-drops">
-              <div>
+              <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-web">DESKTOP</strong>
                   <span>Desktop banner image · {BANNER_DESKTOP_SIZE.label}</span>
@@ -514,7 +515,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                   onUpload={() => openFilePicker("web")}
                 />
               </div>
-              <div>
+              <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-app">MOBILE</strong>
                   <span>Mobile banner image · {BANNER_MOBILE_SIZE.label}</span>
