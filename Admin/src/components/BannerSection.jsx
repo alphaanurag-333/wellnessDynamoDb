@@ -623,7 +623,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               />
               <textarea
                 className="ua-cfg-bn-textarea"
-                rows={3}
+                rows={6}
                 placeholder="Banner body copy"
                 value={bodyText}
                 disabled={busy}

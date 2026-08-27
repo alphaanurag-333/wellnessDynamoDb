@@ -34292,6 +34292,13 @@ scrollbar-width: thin;
   width: 100%;
 }
 
+.updated-admin .ua-cfg-detail--pgw .ua-cfg-detail__body,
+.updated-admin .ua-cfg-detail--pgw .ua-cfg-panel {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .updated-admin .ua-cfg-detail--prakriti .ua-cfg-detail__body {
   max-width: none;
   width: 100%;
@@ -36737,12 +36744,15 @@ scrollbar-width: thin;
 /* Payment gateway config */
 .updated-admin .ua-cfg-pgw-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 14px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cfg-pgw-grid--single {
-  grid-template-columns: minmax(320px, 720px);
+  grid-template-columns: minmax(0, 720px);
 }
 
 .updated-admin .ua-cfg-pgw-card {
@@ -36750,6 +36760,9 @@ scrollbar-width: thin;
   border: 1px solid #e3e9f2;
   border-radius: 12px;
   background: #fafbfd;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cfg-pgw-card--active {
@@ -36762,8 +36775,15 @@ scrollbar-width: thin;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px 12px;
   margin-bottom: 14px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-pgw-card__head > div {
+  min-width: 0;
+  flex: 1 1 12rem;
 }
 
 .updated-admin .ua-cfg-pgw-card__name {
@@ -36776,12 +36796,14 @@ scrollbar-width: thin;
   margin-top: 2px;
   font-size: 11.5px;
   color: #9aa6b8;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cfg-pgw-badge {
-  flex-shrink: 0;
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   padding: 4px 10px;
   border-radius: 999px;
   background: #eef2ff;
@@ -36789,21 +36811,78 @@ scrollbar-width: thin;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cfg-pgw-mode {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 14px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-pgw-mode__toggle {
+  display: none;
+}
+
+.updated-admin .ua-cfg-pgw-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #e3e9f2;
+  border-radius: 12px;
+  background: #f4f7fb;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-pgw-tabs__tab {
   display: inline-flex;
-  border: 1px solid #d8e0ec;
-  border-radius: 8px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #5b6b82;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-pgw-tabs__tab span {
   overflow: hidden;
-  width: fit-content;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cfg-pgw-tabs__tab.is-active {
+  background: #fff;
+  color: #16233f;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.updated-admin .ua-cfg-pgw-tabs__tab:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-cfg-pgw-tabs__tab em {
+  flex-shrink: 0;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
 }
 
 .updated-admin .ua-cfg-pgw-mode__btn {
@@ -36829,14 +36908,22 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pgw-mode__hint {
   margin: 0;
   font-size: 11.5px;
-  line-height: 1.4;
+  line-height: 1.45;
   color: #8a97ab;
 }
 
-.updated-admin .ua-cfg-pgw-mode-block {
+.updated-admin .ua-cfg-pgw-mode-switch {
   margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e8eef6;
+}
+
+.updated-admin .ua-cfg-pgw-mode-switch .ua-cfg-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.updated-admin .ua-cfg-pgw-mode-block {
+  margin-top: 4px;
+  padding-top: 4px;
 }
 
 .updated-admin .ua-cfg-pgw-mode-block__title {
@@ -36853,7 +36940,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-pgw-card__fields--stack {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -36879,6 +36966,8 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pgw-field__input {
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   min-height: 42px;
   height: 42px;
   padding: 10px 12px;
@@ -36904,19 +36993,26 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-pgw-secret {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-pgw-secret .ua-cfg-pgw-field__input {
+  padding-right: 64px;
 }
 
 .updated-admin .ua-cfg-pgw-secret__toggle {
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid #d8e0ec;
-  border-radius: 8px;
-  background: #f4f7fb;
-  color: #3d4f6a;
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #5e6ad2;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -36930,6 +37026,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-pgw-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 16px;
@@ -62352,7 +62449,26 @@ scrollbar-width: thin;
 
 
   .updated-admin .ua-cfg-pgw-card__fields {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-pgw-card {
+    padding: 14px 12px 16px;
+  }
+
+  .updated-admin .ua-cfg-pgw-tabs__tab {
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .updated-admin .ua-cfg-pgw-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cfg-pgw-actions .ua-cfg-btn {
+    width: 100%;
+    justify-content: center;
   }
 
 
