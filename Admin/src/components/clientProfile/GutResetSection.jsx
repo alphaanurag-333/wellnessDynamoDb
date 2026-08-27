@@ -233,7 +233,7 @@ export function GutResetSection({ user, onToast }) {
   return (
     <div className="ua-cp-section ua-cp-gut">
       <div className="ua-cp-gut__head">
-        <h2 className="ua-cp-gut__title">Gut reset</h2>
+        <h2 className="ua-cp-gut__title">Load Preset</h2>
         <p className="ua-cp-gut__sub">Plan the reset, set the three dates and save it to the client app.</p>
       </div>
 

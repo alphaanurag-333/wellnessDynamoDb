@@ -22,6 +22,7 @@ import {
   sendTeamReminder,
   sendTeamWhatsAppReminder,
   setAccessMemberRole,
+  setTeamMemberPassword,
   setTeamMemberTotp,
   updateTeamMember,
 } from "../api/teamsApi.js";
@@ -52,6 +53,169 @@ const PAGE_SIZE = 20;
 const ALL_TAB_ID = "all";
 const TEAM_BIO_MAX_LEN = 500;
 const ROLE_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MEMBER_STATUS_OPTIONS = [
+  { value: "Active", label: "Active" },
+  { value: "Pending", label: "Pending" },
+];
+
+function memberUiStatus(member) {
+  const display = String(member?.displayStatus || "").trim().toLowerCase();
+  if (display === "pending") return "Pending";
+  if (display === "inactive") return "Active";
+  const approval = String(member?.approvalStatus || "").trim().toLowerCase();
+  if (approval === "pending") return "Pending";
+  return "Active";
+}
+
+function approvalFromUiStatus(uiStatus) {
+  return String(uiStatus || "").trim().toLowerCase() === "pending" ? "pending" : "approved";
+}
+
+function TeamPasswordEyeIcon({ off = false }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {off ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.8 9.8 0 0 1 12 5c7 0 10 7 10 7a13.4 13.4 0 0 1-3.2 3.9" />
+          <path d="M6.1 6.1C3.7 7.8 2 12 2 12s3 7 10 7c1.7 0 3.2-.4 4.5-1" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function TeamPasswordField({ label, value, onChange, disabled, autoComplete }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="ua-profile-modal__field">
+      <span className="ua-profile-modal__label">{label}</span>
+      <div className="ua-profile-modal__password-wrap">
+        <input
+          type={visible ? "text" : "password"}
+          className="ua-profile-modal__input ua-profile-modal__input--edit"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          autoComplete={autoComplete}
+        />
+        <button
+          type="button"
+          className="ua-profile-modal__eye"
+          onClick={() => setVisible((v) => !v)}
+          disabled={disabled}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+        >
+          <TeamPasswordEyeIcon off={visible} />
+        </button>
+      </div>
+    </label>
+  );
+}
+
+/** Admin-only password reset for a team member — no current password. */
+function AdminTeamPasswordModal({ open, busy, memberName, onClose, onSubmit }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setPassword("");
+    setConfirmPassword("");
+    setError("");
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleSubmit() {
+    if (!password) {
+      setError("Enter a new password.");
+      return;
+    }
+    if (password.length < 8 || password.length > 15) {
+      setError("Password must be 8–15 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Password and confirmation do not match.");
+      return;
+    }
+    setError("");
+    onSubmit({ password });
+  }
+
+  return (
+    <div
+      className="ua-team-modal-backdrop ua-team-modal-backdrop--stack"
+      onClick={(event) => {
+        event.stopPropagation();
+        if (!busy) onClose();
+      }}
+      role="presentation"
+    >
+      <div
+        className="ua-profile-password-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ua-teams-password-title"
+      >
+        <div className="ua-cfg-mv-link-modal__head">
+          <div>
+            <h3 id="ua-teams-password-title" className="ua-cfg-mv-link-modal__title">
+              Change password
+            </h3>
+            <p className="ua-cfg-mv-link-modal__sub">
+              {memberName
+                ? `Set a new password for ${memberName}. Use 8–15 characters.`
+                : "Set a new password. Use 8–15 characters."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="ua-cfg-mv-link-modal__close"
+            aria-label="Close"
+            disabled={busy}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <TeamPasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
+        <TeamPasswordField
+          label="Confirm password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
+        {error ? <p className="ua-profile-modal__form-error">{error}</p> : null}
+        <div className="ua-cfg-mv-link-modal__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={handleSubmit}>
+            {busy ? "Updating…" : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TeamMemberAvatar({ name, profileImage, colorIndex }) {
   const [broken, setBroken] = useState(false);
@@ -275,10 +439,13 @@ function CreateMemberModal({
   const [bio, setBio] = useState("");
   const [consoleRoleId, setConsoleRoleId] = useState("");
   const [parentAccountId, setParentAccountId] = useState("");
+  const [memberStatus, setMemberStatus] = useState("Active");
   const [totpRequired, setTotpRequired] = useState(false);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const [totpBusy, setTotpBusy] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [nameSearchBusy, setNameSearchBusy] = useState(false);
   const [nameMenuOpen, setNameMenuOpen] = useState(false);
@@ -345,7 +512,10 @@ function CreateMemberModal({
     setBio(String(member.bio || "").slice(0, TEAM_BIO_MAX_LEN));
     setConsoleRoleId(member.consoleRoleId || "");
     setParentAccountId(member.parentAccountId || "");
+    setMemberStatus(memberUiStatus(member));
     setTotpRequired(Boolean(member.totpRequired));
+    setPasswordOpen(false);
+    setPasswordBusy(false);
     resetNameSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, memberId]);
@@ -365,7 +535,10 @@ function CreateMemberModal({
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
+    setMemberStatus("Active");
     setTotpRequired(false);
+    setPasswordOpen(false);
+    setPasswordBusy(false);
     skipNameSearchRef.current = false;
     resetNameSearch();
   }, [open, memberId, creatableRoles]);
@@ -505,6 +678,7 @@ function CreateMemberModal({
           state: state.trim(),
           city: city.trim(),
           bio: String(bio || "").trim() || null,
+          approvalStatus: approvalFromUiStatus(memberStatus),
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
@@ -590,8 +764,22 @@ function CreateMemberModal({
     }
   }
 
+  async function handleAdminPasswordUpdate({ password }) {
+    if (!member?.id || !password) return;
+    setPasswordBusy(true);
+    try {
+      await setTeamMemberPassword(member.id, { password });
+      onToast(`Password updated for ${member.name || "team member"}`);
+      setPasswordOpen(false);
+    } catch (err) {
+      onToast(err?.message || "Could not update password");
+    } finally {
+      setPasswordBusy(false);
+    }
+  }
+
   return (
-    <div className="ua-cp-modal-backdrop" onClick={busy || totpBusy ? undefined : onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop" onClick={busy || totpBusy || passwordBusy || passwordOpen ? undefined : onClose} role="presentation">
       <div
         className="ua-teams-create"
         onClick={(event) => event.stopPropagation()}
@@ -613,7 +801,7 @@ function CreateMemberModal({
             type="button"
             className="ua-cfg-icon-btn"
             aria-label="Close"
-            disabled={busy || totpBusy}
+            disabled={busy || totpBusy || passwordBusy}
             onClick={onClose}
           >
             ×
@@ -925,6 +1113,22 @@ function CreateMemberModal({
                 {errors.parent ? <span className="ua-teams-create__error">{errors.parent}</span> : null}
               </label>
             ) : null}
+            {isEdit ? (
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">
+                  Status <span aria-hidden="true">*</span>
+                </span>
+                <CfgSelect
+                  className="ua-teams-create__select"
+                  options={MEMBER_STATUS_OPTIONS}
+                  value={memberStatus}
+                  disabled={busy}
+                  onChange={setMemberStatus}
+                  ariaLabel="Status"
+                  placeholder="Select status"
+                />
+              </label>
+            ) : null}
             {isSuperAdmin ? (
               <div className="ua-teams-create__field">
                 <label className="ua-teams-create__check">
@@ -953,16 +1157,39 @@ function CreateMemberModal({
                 ) : null}
               </div>
             ) : null}
+            {isEdit ? (
+              <div className="ua-teams-create__field">
+                <button
+                  type="button"
+                  className="ua-profile-modal__password"
+                  disabled={busy || totpBusy || passwordBusy}
+                  onClick={() => setPasswordOpen(true)}
+                >
+                  Change password
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="ua-teams-create__foot">
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy || totpBusy}>
+            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy || totpBusy || passwordBusy}>
               Cancel
             </button>
-            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || totpBusy || !consoleRoleId}>
+            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || totpBusy || passwordBusy || !consoleRoleId}>
               {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create member"}
             </button>
           </div>
         </form>
+        {isEdit ? (
+          <AdminTeamPasswordModal
+            open={passwordOpen}
+            busy={passwordBusy}
+            memberName={member?.name || name}
+            onClose={() => {
+              if (!passwordBusy) setPasswordOpen(false);
+            }}
+            onSubmit={handleAdminPasswordUpdate}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -1367,6 +1594,13 @@ export function TeamsPage() {
                     name: account.name || prev.name,
                     phone: account.phone ?? prev.phone,
                     phoneCountryCode: account.phoneCountryCode || prev.phoneCountryCode,
+                    approvalStatus: account.approvalStatus ?? prev.approvalStatus,
+                    displayStatus:
+                      String(account.status || "").toLowerCase() === "inactive"
+                        ? "Inactive"
+                        : String(account.approvalStatus || "").toLowerCase() === "pending"
+                          ? "Pending"
+                          : "Active",
                   }
                 : prev,
             );

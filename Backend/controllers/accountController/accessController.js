@@ -1289,6 +1289,7 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       referralCode,
       joinedAt: pub.createdAt || null,
       status: pub.status,
+      approvalStatus: pub.approvalStatus || null,
       displayStatus:
         pub.status === "inactive"
           ? "Inactive"

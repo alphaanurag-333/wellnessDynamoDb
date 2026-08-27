@@ -16,6 +16,8 @@ import {
   fetchTeamMember,
   saveTeamMemberPermissions,
   setAccessMemberRole,
+  setTeamMemberPassword,
+  updateTeamMember,
   updateTeamMemberProfileImage,
 } from "../api/teamsApi.js";
 import { accountUpdateMe } from "../api/accountApi.js";
@@ -34,6 +36,168 @@ import { parseDateOfBirthIso } from "../utils/personFieldValidation.js";
 
 const PROFILE_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MEMBER_STATUS_OPTIONS = [
+  { value: "Active", label: "Active" },
+  { value: "Pending", label: "Pending" },
+];
+
+function memberUiStatus(member) {
+  const display = String(member?.displayStatus || "").trim().toLowerCase();
+  if (display === "pending") return "Pending";
+  if (display === "inactive") return "Active";
+  const approval = String(member?.approvalStatus || "").trim().toLowerCase();
+  if (approval === "pending") return "Pending";
+  return "Active";
+}
+
+function approvalFromUiStatus(uiStatus) {
+  return String(uiStatus || "").trim().toLowerCase() === "pending" ? "pending" : "approved";
+}
+
+function TeamMemberPasswordEyeIcon({ off = false }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {off ? (
+        <>
+          <path d="M3 3l18 18" />
+          <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+          <path d="M9.9 5.1A9.8 9.8 0 0 1 12 5c7 0 10 7 10 7a13.4 13.4 0 0 1-3.2 3.9" />
+          <path d="M6.1 6.1C3.7 7.8 2 12 2 12s3 7 10 7c1.7 0 3.2-.4 4.5-1" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function TeamMemberPasswordField({ label, value, onChange, disabled, autoComplete }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <label className="ua-profile-modal__field">
+      <span className="ua-profile-modal__label">{label}</span>
+      <div className="ua-profile-modal__password-wrap">
+        <input
+          type={visible ? "text" : "password"}
+          className="ua-profile-modal__input ua-profile-modal__input--edit"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          autoComplete={autoComplete}
+        />
+        <button
+          type="button"
+          className="ua-profile-modal__eye"
+          onClick={() => setVisible((v) => !v)}
+          disabled={disabled}
+          aria-label={visible ? "Hide password" : "Show password"}
+          aria-pressed={visible}
+        >
+          <TeamMemberPasswordEyeIcon off={visible} />
+        </button>
+      </div>
+    </label>
+  );
+}
+
+function AdminMemberPasswordModal({ open, busy, memberName, onClose, onSubmit }) {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setPassword("");
+    setConfirmPassword("");
+    setError("");
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleSubmit() {
+    if (!password) {
+      setError("Enter a new password.");
+      return;
+    }
+    if (password.length < 8 || password.length > 15) {
+      setError("Password must be 8–15 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Password and confirmation do not match.");
+      return;
+    }
+    setError("");
+    onSubmit({ password });
+  }
+
+  return (
+    <div
+      className="ua-team-modal-backdrop ua-team-modal-backdrop--stack"
+      onClick={(event) => {
+        event.stopPropagation();
+        if (!busy) onClose();
+      }}
+      role="presentation"
+    >
+      <div
+        className="ua-profile-password-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ua-tm-password-title"
+      >
+        <div className="ua-cfg-mv-link-modal__head">
+          <div>
+            <h3 id="ua-tm-password-title" className="ua-cfg-mv-link-modal__title">
+              Change password
+            </h3>
+            <p className="ua-cfg-mv-link-modal__sub">
+              {memberName
+                ? `Set a new password for ${memberName}. Use 8–15 characters.`
+                : "Set a new password. Use 8–15 characters."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="ua-cfg-mv-link-modal__close"
+            aria-label="Close"
+            disabled={busy}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <TeamMemberPasswordField
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
+        <TeamMemberPasswordField
+          label="Confirm password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          disabled={busy}
+          autoComplete="new-password"
+        />
+        {error ? <p className="ua-profile-modal__form-error">{error}</p> : null}
+        <div className="ua-cfg-mv-link-modal__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={handleSubmit}>
+            {busy ? "Updating…" : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TeamMemberAvatar({ name, profileImage, background, editable, uploading, onPickPhoto }) {
   const hasPhoto = Boolean(profileImage);
@@ -413,6 +577,10 @@ export function TeamMemberPage() {
   const [error, setError] = useState("");
   const [roleDraft, setRoleDraft] = useState("wc");
   const [savingRole, setSavingRole] = useState(false);
+  const [statusDraft, setStatusDraft] = useState("Active");
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [grants, setGrants] = useState({});
   const [dirtyPerms, setDirtyPerms] = useState(false);
   const [savingPerms, setSavingPerms] = useState(false);
@@ -444,6 +612,7 @@ export function TeamMemberPage() {
       setAccessRoles(Array.isArray(roles) ? roles : []);
       setMember(m);
       setRoleDraft(m.consoleRoleId || m.primaryRoleKey || "wc");
+      setStatusDraft(memberUiStatus(m));
       setGrants(editorGrants(m, requestsApproval, rows));
       setDirtyPerms(false);
     } catch (err) {
@@ -487,6 +656,10 @@ export function TeamMemberPage() {
     Boolean(member) &&
     !member.isSuperAdmin &&
     (isSuperAdmin || (requestsApproval && targetIsAwc));
+  const canChangeStatus =
+    Boolean(member) && !member.isSuperAdmin && (isAdminView || can("console.tm.edit"));
+  const canChangePassword =
+    Boolean(member) && !member.isSuperAdmin && (isAdminView || can("console.tm.edit"));
 
   const matrixGroups = useMemo(() => {
     const groups = [];
@@ -520,6 +693,56 @@ export function TeamMemberPage() {
       onToast(err?.message || "Role update failed");
     } finally {
       setSavingRole(false);
+    }
+  }
+
+  async function handleSaveStatus() {
+    if (!member || !canChangeStatus) return;
+    const current = memberUiStatus(member);
+    if (String(statusDraft) === current) return;
+    setSavingStatus(true);
+    try {
+      const result = await updateTeamMember(member.id, {
+        approvalStatus: approvalFromUiStatus(statusDraft),
+      });
+      const account = result?.account;
+      const nextApproval = account?.approvalStatus ?? approvalFromUiStatus(statusDraft);
+      const nextDisplay =
+        String(account?.status || member.status || "").toLowerCase() === "inactive"
+          ? "Inactive"
+          : String(nextApproval || "").toLowerCase() === "pending"
+            ? "Pending"
+            : "Active";
+      setMember((prev) =>
+        prev
+          ? {
+              ...prev,
+              approvalStatus: nextApproval,
+              displayStatus: nextDisplay,
+              status: account?.status || prev.status,
+            }
+          : prev,
+      );
+      setStatusDraft(nextDisplay === "Pending" ? "Pending" : "Active");
+      onToast(`Status set to ${nextDisplay === "Pending" ? "Pending" : "Active"}`);
+    } catch (err) {
+      onToast(err?.message || "Status update failed");
+    } finally {
+      setSavingStatus(false);
+    }
+  }
+
+  async function handleAdminPasswordUpdate({ password }) {
+    if (!member?.id || !canChangePassword || !password) return;
+    setPasswordBusy(true);
+    try {
+      await setTeamMemberPassword(member.id, { password });
+      onToast(`Password updated for ${member.name || "team member"}`);
+      setPasswordOpen(false);
+    } catch (err) {
+      onToast(err?.message || "Could not update password");
+    } finally {
+      setPasswordBusy(false);
     }
   }
 
@@ -865,6 +1088,59 @@ export function TeamMemberPage() {
           </div>
         </div>
 
+        {canChangeStatus ? (
+          <div className="ua-tm-role-change">
+            <div>
+              <div className="ua-tm-role-change__label">Status</div>
+              <p className="ua-tm-role-change__hint">
+                Admin — set Active or Pending. Pending wellness coaches cannot sign in until approved.
+              </p>
+            </div>
+            <div className="ua-tm-role-change__controls">
+              <CfgSelect
+                className="ua-tm-role-change__select"
+                options={MEMBER_STATUS_OPTIONS}
+                value={statusDraft}
+                disabled={savingStatus}
+                onChange={setStatusDraft}
+                ariaLabel="Member status"
+                placeholder="Select status"
+              />
+              <button
+                style={{ backgroundColor: "rgb(94, 106, 210)", border: "1px solid rgb(94, 106, 210)" }}
+                type="button"
+                className="ua-tm-role-change__save"
+                disabled={savingStatus || String(statusDraft) === memberUiStatus(member)}
+                onClick={handleSaveStatus}
+              >
+                {savingStatus ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {canChangePassword ? (
+          <div className="ua-tm-role-change">
+            <div>
+              <div className="ua-tm-role-change__label">Password</div>
+              <p className="ua-tm-role-change__hint">
+                Admin — set a new password without the current one. Saved separately from profile edits.
+              </p>
+            </div>
+            <div className="ua-tm-role-change__controls">
+              <button
+                type="button"
+                className="ua-profile-modal__password"
+                style={{ marginTop: 0 }}
+                disabled={passwordBusy}
+                onClick={() => setPasswordOpen(true)}
+              >
+                Change password
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {profileOpen ? (
           <div className="ua-tm-profile-details">
             <div className="ua-tm-profile-panel">
@@ -1189,6 +1465,18 @@ export function TeamMemberPage() {
           </div>
         ) : null}
       </section>
+
+      {canChangePassword ? (
+        <AdminMemberPasswordModal
+          open={passwordOpen}
+          busy={passwordBusy}
+          memberName={member?.name}
+          onClose={() => {
+            if (!passwordBusy) setPasswordOpen(false);
+          }}
+          onSubmit={handleAdminPasswordUpdate}
+        />
+      ) : null}
     </main>
   );
 }

@@ -17,7 +17,7 @@ export const CLIENT_MENU = [
   { id: "exchange", label: "Energy Exchange" },
   { id: "counselling", label: "Counselling sessions" },
   { id: "protocol", label: "Protocol Settings" },
-  { id: "gut", label: "Gut Reset" },
+  { id: "gut", label: "Load Preset" },
 ];
 
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
