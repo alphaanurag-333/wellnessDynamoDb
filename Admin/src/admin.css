@@ -52549,7 +52549,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover__img {
-  object-fit: contain;
+  object-fit: cover;
   object-position: center;
 }
 
@@ -55021,7 +55021,7 @@ scrollbar-width: thin;
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  /* object-fit: contain; */
   object-position: center;
 }
 
@@ -55103,7 +55103,7 @@ scrollbar-width: thin;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  min-height: 140px;
+  min-height: 148px;
   height: auto;
   aspect-ratio: 16 / 9;
   box-sizing: border-box;
@@ -55125,6 +55125,33 @@ scrollbar-width: thin;
   word-break: break-word;
 }
 
+.updated-admin .ua-cfg-lib-view.ua-cfg-rc-view,
+.updated-admin .ua-cfg-lib-view.ua-cfg-rc-view--sheet {
+  width: min(640px, 100%);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: start;
+  gap: 10px 12px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__head > div {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__head .ua-cfg-icon-btn {
+  grid-column: 2;
+  grid-row: 1;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
 .updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__head h3,
 .updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__meta dd,
 .updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__meta a {
@@ -55134,7 +55161,19 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__tag {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .updated-admin .ua-cfg-lib-view-backdrop.ua-cp-modal-backdrop {
+    padding: 12px;
+    align-items: start;
+  }
+
+  .updated-admin .ua-cfg-lib-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head {
+    padding: 14px 12px 12px;
+  }
 }
 
 .updated-admin .ua-cfg-lib.ua-cfg-rc .ua-cfg-panel__title {
@@ -56193,7 +56232,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-ld .ua-cfg-ld-drop {
   width: 400px;
-  height: 400px;
+  height: 200px;
   max-width: 100%;
   max-height: 400px;
   min-width: 0;
@@ -56362,7 +56401,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-ld-new__foot .ua-cfg-btn--primary {
-  height: 40px;
+  height: 36px;
 }
 
 .updated-admin .ua-cfg-ld-item__head {
@@ -60927,7 +60966,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-rc-view__embed iframe {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   border: 0;
 }
 
