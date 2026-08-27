@@ -13512,7 +13512,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-recipe-card__placeholder {
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  /* object-fit: fill; */
   display: block;
 }
 
@@ -13652,7 +13652,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-yoga-card__placeholder {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* object-fit: cover; */
   display: block;
 }
 
