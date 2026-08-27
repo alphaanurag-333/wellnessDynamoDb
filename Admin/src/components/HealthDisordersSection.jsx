@@ -9,6 +9,7 @@ import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
+import "./healthDisordersConfig.css";
 
 const PAGE_SIZE = 10;
 const TITLE_MAX_LEN = 100;
@@ -491,13 +492,6 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-bl-item__head">
                       <div className="ua-cfg-bl-item__identity">
-                        {!editing ? (
-                          <div className="ua-cfg-bl-item__meta">
-                            <span className={`ua-cfg-rc-pill ua-cfg-hd-flag ua-cfg-hd-flag--${entry.type}`}>
-                              {typeLabel(entry.type)}
-                            </span>
-                          </div>
-                        ) : null}
                         {editing ? (
                           <div className="ua-cfg-hd-edit">
                             <label className="ua-cfg-rc-field">
@@ -556,7 +550,12 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                           </div>
                         ) : (
                           <>
-                            <strong>{entry.title}</strong>
+                            <div className="ua-cfg-hd-item__title-row">
+                              <strong>{entry.title}</strong>
+                              <span className={`ua-cfg-rc-pill ua-cfg-hd-flag ua-cfg-hd-flag--${entry.type}`}>
+                                {typeLabel(entry.type)}
+                              </span>
+                            </div>
                             <p>{entry.description || "No description yet."}</p>
                             <div className="ua-cfg-hd-symptoms">
                               {(entry.symptoms || []).length

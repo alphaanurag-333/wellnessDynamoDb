@@ -69,7 +69,6 @@ function generateConsultancyInvoicePdf({
   user,
   pricing,
   assignee,
-  zoomJoinUrl,
   appName = "Wellness",
   appEmail,
   appMobile,
@@ -253,19 +252,6 @@ function generateConsultancyInvoicePdf({
       align: "right",
     });
     y += 28;
-
-    if (zoomJoinUrl) {
-      drawDivider(doc, y);
-      y += 14;
-      doc.fillColor(COLORS.text).font("Helvetica-Bold").fontSize(10).text("Zoom Meeting", PAGE.margin, y);
-      y += 14;
-      doc.fillColor(COLORS.primary).font("Helvetica").fontSize(9).text(String(zoomJoinUrl), PAGE.margin, y, {
-        width: contentWidth,
-        link: String(zoomJoinUrl),
-        underline: true,
-      });
-      y += 20;
-    }
 
     // Footer
     const footerY = 760;

@@ -92,7 +92,7 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
   const embed = type === "ytlink" ? youtubeEmbedUrl(entry.ytLink) : "";
   const mediaSrc = isVideo || isAudio ? entry.fileUrl : "";
   return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+    <div className="ua-cp-modal-backdrop ua-cfg-lib-view-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-lib-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
         <div className="ua-cfg-rc-view__head">
           <div>

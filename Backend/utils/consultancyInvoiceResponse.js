@@ -99,7 +99,6 @@ async function buildConsultancyInvoicePayload(transaction) {
       totalAmount: transaction.totalAmount,
     },
     assignee: transaction.assigneeSnapshot || null,
-    zoomJoinUrl: transaction.zoomMeetingLink || null,
     appName: appConfig?.app_name || "Wellness",
     appEmail: appConfig?.app_email || null,
     appMobile: appConfig?.app_mobile || null,
