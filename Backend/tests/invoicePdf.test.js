@@ -27,7 +27,6 @@ describe("consultancy invoice PDF", () => {
         totalAmount: 99,
       },
       assignee: { name: "test", type: "wellness_coach" },
-      zoomJoinUrl: "https://zoom.us/j/mock_zoom",
       appName: "Wellness",
       appEmail: "support@wellness.com",
       appMobile: "9876543210",
