@@ -555,7 +555,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-app">MOBILE</strong>
-                  <span>Portrait - app crop</span>
+                  {/* <span>Portrait - app crop</span> */}
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--mobile"
