@@ -400,8 +400,10 @@
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile {
-  aspect-ratio: 3 / 4;
-  min-height: 168px;
+  aspect-ratio: auto;
+  height: 148px;
+  min-height: 148px;
+  max-height: 148px;
   border: 1.5px dashed #a5b4fc;
   background: #eef2ff;
 }
