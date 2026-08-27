@@ -20,6 +20,7 @@ function initialsFromName(name) {
 }
 
 export const ONBOARDING_PAGE_SIZE = 20;
+export const INTRO_VIDEO_RESOLUTION = "1920x1080";
 
 function introStatus(intro = {}) {
   const hasMedia = Boolean(intro.videoUrl || intro.linkUrl);

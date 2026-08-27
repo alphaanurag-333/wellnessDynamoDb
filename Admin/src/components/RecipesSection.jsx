@@ -34,9 +34,11 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
-const RC_CROP_WIDTH = 640;
-const RC_CROP_HEIGHT = 360;
+const RC_CROP_WIDTH = 280;
+const RC_CROP_HEIGHT = 160;
 const RC_CROP_RATIO = "16:9";
+const RC_COVER_SIZE_LABEL = "280x160";
+const RC_VIDEO_SIZE_LABEL = "1920x1080";
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -414,7 +416,7 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
         <>
           <span className="ua-cfg-tf-drop__icon" aria-hidden="true">🖼</span>
           <p className="ua-cfg-tf-drop__label">{label}</p>
-          <span className="ua-cfg-lib-drop__size">{RC_CROP_WIDTH}px × {RC_CROP_HEIGHT}px</span>
+          <span className="ua-cfg-lib-drop__size">{RC_COVER_SIZE_LABEL}</span>
         </>
       ) : null}
       <button
@@ -495,6 +497,7 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove,
       ) : null}
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
       <p className="ua-cfg-tf-drop__label">{fileName || "Video file"}</p>
+      {!filled ? <span className="ua-cfg-lib-drop__size">{RC_VIDEO_SIZE_LABEL}</span> : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -602,6 +605,7 @@ export function RecipesSection({
     cropWidth: RC_CROP_WIDTH,
     cropHeight: RC_CROP_HEIGHT,
     showFrameworks: false,
+    sizeHint: RC_COVER_SIZE_LABEL,
     onFiles: (file, target) => openCoverCrop(file, target || "draft"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -609,6 +613,7 @@ export function RecipesSection({
   const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
     accept: "video",
     title: "Choose video",
+    sizeHint: RC_VIDEO_SIZE_LABEL,
     onFiles: (file, context) => {
       if (!file) return;
       if (context === "draft" || !context) pickDraftVideo(file);

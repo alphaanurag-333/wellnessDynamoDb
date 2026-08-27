@@ -26,9 +26,11 @@ const EMPTY_DRAFT = {
   videoName: "",
 };
 
-const VH_CROP_WIDTH = 640;
-const VH_CROP_HEIGHT = 360;
-const VH_CROP_RATIO = "16:9";
+const VH_CROP_WIDTH = 300;
+const VH_CROP_HEIGHT = 300;
+const VH_CROP_RATIO = "1:1";
+const VH_COVER_SIZE_LABEL = "Thumbnail: 300x300";
+const VH_VIDEO_SIZE_LABEL = "Video: 1920x1080";
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -55,7 +57,7 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
         <>
           <span className="ua-cfg-tf-drop__icon" aria-hidden="true">📷</span>
           <p className="ua-cfg-tf-drop__label">Cover image</p>
-          <span className="ua-cfg-vh-cover__size">{VH_CROP_WIDTH}px × {VH_CROP_HEIGHT}px</span>
+          <span className="ua-cfg-vh-cover__size">{VH_COVER_SIZE_LABEL}</span>
         </>
       ) : null}
       <button
@@ -80,6 +82,7 @@ function VideoDrop({ fileName, disabled, onPick, onRemove }) {
     <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-vh-dropbox${filled ? " is-on" : ""}`}>
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
       <p className="ua-cfg-tf-drop__label">{filled ? fileName : "Video file"}</p>
+      {!filled ? <span className="ua-cfg-vh-cover__size">{VH_VIDEO_SIZE_LABEL}</span> : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -481,32 +484,34 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
                   onRemove={clearDraftVideo}
                 />
               </div>
-              <div className="ua-cfg-vh-new__fields">
-                <label className="ua-cfg-vh-field">
-                  <span>Title</span>
-                  <input
-                    className="ua-cfg-vh-input"
-                    placeholder="Title · e.g. Madhupriya's reversal story"
-                    value={asCopyString(draft.name)}
-                    disabled={busy}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                </label>
-                <label className="ua-cfg-vh-field">
-                  <span>YouTube link</span>
-                  <input
-                    className="ua-cfg-vh-input"
-                    placeholder="https://youtube.com/…"
-                    value={asCopyString(draft.ytLink)}
-                    disabled={busy}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value, type: prev.videoFile ? "video" : "link" }))}
-                  />
-                </label>
-              </div>
-              <div className="ua-cfg-vh-new__foot">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
-                  {busy ? "Saving…" : "Add video"}
-                </button>
+              <div className="ua-cfg-vh-new__side">
+                <div className="ua-cfg-vh-new__fields">
+                  <label className="ua-cfg-vh-field">
+                    <span>Title</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="Title · e.g. Madhupriya's reversal story"
+                      value={asCopyString(draft.name)}
+                      disabled={busy}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
+                    />
+                  </label>
+                  <label className="ua-cfg-vh-field">
+                    <span>YouTube link</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="https://youtube.com/…"
+                      value={asCopyString(draft.ytLink)}
+                      disabled={busy}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value, type: prev.videoFile ? "video" : "link" }))}
+                    />
+                  </label>
+                </div>
+                <div className="ua-cfg-vh-new__foot">
+                  <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
+                    {busy ? "Saving…" : "Add video"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>

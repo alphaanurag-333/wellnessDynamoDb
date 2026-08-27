@@ -35,9 +35,11 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
-const YG_CROP_WIDTH = 640;
-const YG_CROP_HEIGHT = 360;
+const YG_CROP_WIDTH = 280;
+const YG_CROP_HEIGHT = 160;
 const YG_CROP_RATIO = "16:9";
+const YG_COVER_SIZE_LABEL = "Thumbnail: 280x160";
+const YG_VIDEO_SIZE_LABEL = "1920x1080";
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -413,7 +415,7 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", onPick, onRemo
         <>
           <span className="ua-cfg-tf-drop__icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></span>
           <p className="ua-cfg-tf-drop__label">{label}</p>
-          <span className="ua-cfg-lib-drop__size">{YG_CROP_WIDTH}px × {YG_CROP_HEIGHT}px</span>
+          <span className="ua-cfg-lib-drop__size">{YG_COVER_SIZE_LABEL}</span>
         </>
       ) : null}
       <button
@@ -467,6 +469,7 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
       ) : null}
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
       <p className="ua-cfg-tf-drop__label">{fileName || "Video file"}</p>
+      {!filled ? <span className="ua-cfg-lib-drop__size">{YG_VIDEO_SIZE_LABEL}</span> : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -571,6 +574,7 @@ export function YogaSection({
     cropWidth: YG_CROP_WIDTH,
     cropHeight: YG_CROP_HEIGHT,
     showFrameworks: false,
+    sizeHint: YG_COVER_SIZE_LABEL,
     onFiles: (file, target) => openCoverCrop(file, target || "draft"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
@@ -578,6 +582,7 @@ export function YogaSection({
   const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
     accept: "video",
     title: "Choose video",
+    sizeHint: YG_VIDEO_SIZE_LABEL,
     onFiles: (file, context) => {
       if (!file) return;
       if (context === "draft" || !context) pickDraftVideo(file);

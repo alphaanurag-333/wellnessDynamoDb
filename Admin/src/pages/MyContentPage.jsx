@@ -7,6 +7,7 @@ import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   formatIntroVideoMeta,
   getMyCoachContent,
+  INTRO_VIDEO_RESOLUTION,
   listMyContentCoaches,
   mapAccountToMyContentCoach,
   saveCoachIntroLive,
@@ -372,6 +373,9 @@ export function MyContentPage() {
                           {isAdmin ? item.title : item.kind === "video" ? "My intro video" : "My commitment letter"}
                         </div>
                         <div className="ua-my-content__item-meta">{item.meta}</div>
+                        {item.kind === "video" ? (
+                          <div className="ua-my-content__item-size">{INTRO_VIDEO_RESOLUTION}</div>
+                        ) : null}
                       </div>
                       <div className="ua-my-content__item-side">
                         <span

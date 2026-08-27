@@ -23,6 +23,7 @@ import {
 import { accountUpdateMe } from "../api/accountApi.js";
 import {
   formatIntroVideoMeta,
+  INTRO_VIDEO_RESOLUTION,
   saveCoachIntroLive,
   saveCoachIntroVideo,
   saveCoachLetterLive,
@@ -1275,6 +1276,9 @@ export function TeamMemberPage() {
                   <div className="ua-tm-content-row__body">
                     <div className="ua-tm-content-row__title">{item.title}</div>
                     <div className="ua-tm-content-row__meta">{item.meta || "Not uploaded"}</div>
+                    {item.kind === "video" ? (
+                      <div className="ua-tm-content-row__size">{INTRO_VIDEO_RESOLUTION}</div>
+                    ) : null}
                   </div>
                   <span className={`ua-tm-content-row__live${item.live ? "" : " ua-tm-content-row__live--off"}`}>
                     {item.live ? "Live in app" : "Hidden"}

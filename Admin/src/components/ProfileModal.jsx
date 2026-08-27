@@ -4,6 +4,7 @@ import { accountChangePassword, accountUpdateMe } from "../api/accountApi.js";
 import {
   buildCoachProfileContent,
   getMyCoachContent,
+  INTRO_VIDEO_RESOLUTION,
   saveMyIntroLink,
   saveMyIntroLive,
   saveMyIntroVideo,
@@ -422,6 +423,9 @@ function CoachContentCard({ video, letter, busy, onToggle, onView, onUpload, onU
             <div className="ua-profile-modal__content-copy">
               <div className="ua-profile-modal__content-title">{item.title}</div>
               <div className="ua-profile-modal__content-meta">{item.meta}</div>
+              {item.kind === "video" ? (
+                <div className="ua-profile-modal__content-size">{INTRO_VIDEO_RESOLUTION}</div>
+              ) : null}
             </div>
             <div className="ua-profile-modal__content-side">
               {item.live ? <span className="ua-profile-modal__content-live">LIVE IN APP</span> : null}

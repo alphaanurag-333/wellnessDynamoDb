@@ -270,6 +270,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     title: "Choose banner image",
     cropImages: false,
     showFrameworks: false,
+    resolveSizeHint: (kind) => bannerCropForKind(kind).label,
     onFiles: (file, kind) => beginCropFromFile(file, kind || cropKindRef.current),
     onError: (error) => onToast(error?.message || "Could not attach media"),
   });

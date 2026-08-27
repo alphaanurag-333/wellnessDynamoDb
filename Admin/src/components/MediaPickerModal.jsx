@@ -96,6 +96,7 @@ export function MediaPickerModal({
   cropWidth,
   cropHeight,
   showFrameworks = true,
+  sizeHint = "",
 }) {
   const fileInputRef = useRef(null);
   const cropPendingRef = useRef(null);
@@ -447,6 +448,9 @@ export function MediaPickerModal({
               >
                 <strong>Drag & drop files here</strong>
                 <span>or browse from your device</span>
+                {sizeHint ? (
+                  <span className="ua-media-picker__size-hint">Recommended size: {sizeHint}</span>
+                ) : null}
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"

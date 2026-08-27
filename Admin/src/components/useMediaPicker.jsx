@@ -14,16 +14,25 @@ export function useMediaPicker({
   cropWidth,
   cropHeight,
   showFrameworks = false,
+  sizeHint = "",
+  resolveSizeHint,
   onFiles,
   onError,
 }) {
   const [open, setOpen] = useState(false);
+  const [activeSizeHint, setActiveSizeHint] = useState(sizeHint);
   const contextRef = useRef(null);
 
-  const openPicker = useCallback((context = null) => {
-    contextRef.current = context;
-    setOpen(true);
-  }, []);
+  const openPicker = useCallback(
+    (context = null) => {
+      contextRef.current = context;
+      const hint =
+        typeof resolveSizeHint === "function" ? resolveSizeHint(context) : sizeHint;
+      setActiveSizeHint(hint || "");
+      setOpen(true);
+    },
+    [resolveSizeHint, sizeHint]
+  );
 
   const closePicker = useCallback(() => {
     setOpen(false);
@@ -56,6 +65,7 @@ export function useMediaPicker({
       cropWidth={cropWidth}
       cropHeight={cropHeight}
       showFrameworks={showFrameworks}
+      sizeHint={activeSizeHint}
     />
   );
 

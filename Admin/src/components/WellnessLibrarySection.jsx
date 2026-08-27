@@ -34,11 +34,18 @@ const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
 
-/** Locked cover crop for yoga, physical exercise, and mental wellbeing libraries (16:9). */
-const LIB_COVER_CROP_WIDTH = 640;
-const LIB_COVER_CROP_HEIGHT = 360;
-const LIB_COVER_CROP_RATIO = "16:9";
+/** Locked cover crop sizes by wellness library kind. */
+const LIB_COVER_SPECS = {
+  yoga: { width: 260, height: 140, label: "Thumbnail: 260x140", ratio: "260:140" },
+  exercise: { width: 154, height: 109, label: "Thumbnail: 154x109", ratio: "154:109" },
+  mental: { width: 260, height: 114, label: "Thumbnail: 260x114", ratio: "260:114" },
+};
+const LIB_VIDEO_SIZE_LABEL = "1920x1080";
 const LIB_COVER_CROP_KINDS = new Set(["yoga", "exercise", "mental"]);
+
+function coverSpecForKind(kind) {
+  return LIB_COVER_SPECS[kind] || LIB_COVER_SPECS.mental;
+}
 
 function CharHint({ value, max }) {
   const length = String(value || "").length;
@@ -210,7 +217,7 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", sizeLabel = ""
   );
 }
 
-function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
+function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, sizeLabel = "", onPick, onRemove }) {
   const isAudio = mode === "audio";
   const filled = Boolean(previewUrl || embedUrl || fileName);
   const label = isAudio ? "Audio file" : "Video file";
@@ -232,6 +239,7 @@ function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, o
       ) : null}
       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">{isAudio ? "♪" : "▶"}</span>
       <p className="ua-cfg-tf-drop__label">{fileName || label}</p>
+      {!filled && sizeLabel ? <span className="ua-cfg-lib-drop__size">{sizeLabel}</span> : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"
@@ -266,6 +274,7 @@ function TimeInput({ value, disabled, detecting, onChange, onBlur, ariaLabel }) 
 export function WellnessLibrarySection({ kind, onToast }) {
   const meta = WELLNESS_LIBRARY_KINDS[kind] || WELLNESS_LIBRARY_KINDS.mental;
   const lockedCoverCrop = LIB_COVER_CROP_KINDS.has(kind);
+  const coverSpec = coverSpecForKind(kind);
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState(emptyWellnessDraft);
   const [draftThumb, setDraftThumb] = useState(null);
@@ -336,9 +345,10 @@ export function WellnessLibrarySection({ kind, onToast }) {
     accept: "image",
     title: "Choose cover photo",
     cropImages: !lockedCoverCrop,
-    cropWidth: lockedCoverCrop ? LIB_COVER_CROP_WIDTH : undefined,
-    cropHeight: lockedCoverCrop ? LIB_COVER_CROP_HEIGHT : undefined,
+    cropWidth: lockedCoverCrop ? coverSpec.width : undefined,
+    cropHeight: lockedCoverCrop ? coverSpec.height : undefined,
     showFrameworks: false,
+    sizeHint: lockedCoverCrop ? coverSpec.label : "",
     onFiles: (file, context) => {
       if (!file) return;
       if (lockedCoverCrop) {
@@ -354,6 +364,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
     accept: "video",
     title: "Choose video",
+    sizeHint: LIB_VIDEO_SIZE_LABEL,
     onFiles: (file, context) => {
       if (!file) return;
       if (context === "draft") pickDraftMedia(file, "video");
@@ -797,7 +808,9 @@ export function WellnessLibrarySection({ kind, onToast }) {
   const hasFilters = Boolean(search || typeFilter);
 
   return (
-    <div className={`ua-cfg-rc ua-cfg-lib${lockedCoverCrop ? " ua-cfg-lib--cover-16x9" : ""}`}>
+    <div
+      className={`ua-cfg-rc ua-cfg-lib${lockedCoverCrop ? ` ua-cfg-lib--cover-locked ua-cfg-lib--cover-${coverSpec.width}x${coverSpec.height}` : ""}`}
+    >
       <Panel
         title={meta.title}
         subtitle={
@@ -841,7 +854,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                 <CoverDrop
                   previewUrl={draftPreview}
                   disabled={locked}
-                  sizeLabel={lockedCoverCrop ? `${LIB_COVER_CROP_WIDTH}px × ${LIB_COVER_CROP_HEIGHT}px` : ""}
+                  sizeLabel={lockedCoverCrop ? coverSpec.label : ""}
                   onPick={() => openImagePicker("draft")}
                   onRemove={() => pickDraftImage(null)}
                 />
@@ -851,6 +864,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                   embedUrl={draftVideo || draft.type === "audio" || draft.type === "video" ? "" : youtubeEmbedUrl(draft.ytLink)}
                   fileName={draftVideo?.name || ""}
                   disabled={locked}
+                  sizeLabel={draft.type === "audio" ? "" : LIB_VIDEO_SIZE_LABEL}
                   onPick={() => {
                     if (draft.type === "audio") openAudioPicker("draft");
                     else openVideoPicker("draft");
@@ -1192,12 +1206,12 @@ export function WellnessLibrarySection({ kind, onToast }) {
           file={cropPending.file}
           previewUrl={cropPending.previewUrl || ""}
           busy={busy}
-          defaultRatio={LIB_COVER_CROP_RATIO}
-          originalAspectCss={`${LIB_COVER_CROP_WIDTH} / ${LIB_COVER_CROP_HEIGHT}`}
-          originalAspectNumber={LIB_COVER_CROP_WIDTH / LIB_COVER_CROP_HEIGHT}
-          cropWidth={LIB_COVER_CROP_WIDTH}
-          cropHeight={LIB_COVER_CROP_HEIGHT}
-          backdropClassName="ua-cfg-lib-cover-crop-modal"
+          defaultRatio={coverSpec.ratio}
+          originalAspectCss={`${coverSpec.width} / ${coverSpec.height}`}
+          originalAspectNumber={coverSpec.width / coverSpec.height}
+          cropWidth={coverSpec.width}
+          cropHeight={coverSpec.height}
+          backdropClassName={`ua-cfg-lib-cover-crop-modal ua-cfg-lib-cover-crop-modal--${coverSpec.width}x${coverSpec.height}`}
           onClose={closeCoverCrop}
           onConfirm={confirmCoverCrop}
         />
