@@ -175,11 +175,57 @@
   color: #9ca3af;
 }
 
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__content,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__fields,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__story-col,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-points-ed {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  min-width: 0;
+  min-height: 250px;
+  height: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-table {
+  align-content: start;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__story {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+
 .updated-admin .ua-cfg-tf .ua-cfg-tf-photos {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: 12px;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-photos {
+  flex-wrap: nowrap;
+  width: auto;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
@@ -219,13 +265,161 @@
   object-fit: cover;
 }
 
-.updated-admin .ua-cfg-tf-view__shot {
-  aspect-ratio: 4 / 5;
-  max-height: none;
+.updated-admin .ua-cfg-tf-view.ua-cfg-rc-view,
+.updated-admin .ua-cfg-tf-view.ua-cfg-rc-view--sheet {
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(90vh, 860px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  resize: none;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
 }
 
-.updated-admin .ua-cfg-tf-view__shot img {
+.updated-admin .ua-cfg-tf-view .ua-cfg-rc-view__head,
+.updated-admin .ua-cfg-tf-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 18px 18px 12px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-rc-view__head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+.updated-admin .ua-cfg-tf-view__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-tf-view__close:hover {
+  background: #dc2626;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 18px 20px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3px;
+  margin: 0;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  max-height: none;
+  aspect-ratio: 4 / 5;
+  border: 0;
+  background: #f3f4f6;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot--before {
+  border-radius: 12px 4px 4px 12px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot--after {
+  border-radius: 4px 12px 12px 4px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  padding: 8px 10px 9px;
+  border-radius: 0;
+  background: #e89b4c;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot--after span {
+  background: #2ecc71;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chips {
+  margin: 14px 0 0;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip {
+  padding: 7px 12px;
+  background: #f2f2f2;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip dt,
+.updated-admin .ua-cfg-tf-view .ua-cfg-tf-chip dd {
+  font-size: 13px;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-rc-view__copy {
+  margin: 14px 0 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  text-align: left;
+  color: #4b5563;
+  overflow-wrap: anywhere;
+}
+
+.updated-admin .ua-cfg-tf-view .ua-cfg-rc-view__foot {
+  display: none;
 }
 
 .updated-admin .ua-cfg-tf-preview-image {
@@ -254,6 +448,28 @@
   flex-shrink: 0;
 }
 
+@media (max-width: 1100px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__split {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-new__story {
+    min-height: 140px;
+  }
+}
+
+@media (max-width: 820px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-new .ua-cfg-tf-new__top .ua-cfg-tf-photos {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
 @media (max-width: 720px) {
   .updated-admin .ua-cfg-tf .ua-cfg-tf-photos .ua-cfg-tf-drop {
     flex: 0 0 200px;
@@ -261,6 +477,16 @@
     height: 250px;
     max-height: 250px;
     min-height: 250px;
+    aspect-ratio: 4 / 5;
+  }
+
+  .updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__compare,
+  .updated-admin .ua-cfg-tf-view.ua-cfg-rc-view .ua-cfg-tf-view__compare {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-tf-view .ua-cfg-tf-view__shot {
+    max-height: none;
     aspect-ratio: 4 / 5;
   }
 }

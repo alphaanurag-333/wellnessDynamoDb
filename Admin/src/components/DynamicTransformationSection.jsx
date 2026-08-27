@@ -160,28 +160,26 @@ function DataPointEditor({ points, options, busy, onChange }) {
 
 function TransformationViewModal({ entry, onClose, onEdit }) {
   if (!entry) return null;
-  const points = (entry.dataPoints || []).filter((row) => String(row.value || "").trim());
+  const points = (entry.dataPoints || []).filter((row) => {
+    if (!String(row.value || "").trim()) return false;
+    const key = fieldKey(row.field) || fieldKey(row.label);
+    return key !== "client_name" && key !== "name";
+  });
+  const story = asCopyString(entry.description);
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-tf-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="tf-view-title">
         <div className="ua-cfg-rc-view__head">
-          <div>
-            {/* <p className="ua-cfg-rc-view__tag">Transformation</p> */}
-            <h3 id="tf-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
-            {/* <p>{formatRecipeDate(entry.updatedAt)}</p>
-            <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
-              {entry.live ? "Live" : "Hidden"}
-            </span> */}
-          </div>
-          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
+          <h3 id="tf-view-title">{asCopyString(entry.name) || "Untitled client"}</h3>
+          <button type="button" className="ua-cfg-tf-view__close" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-tf-view__body">
-          <div className="ua-cfg-tf-view__compare mrgtegrid " style={{gap:"4px"}}>
-            <div className="ua-cfg-tf-view__shot" style={{borderTopRightRadius:"0px",borderBottomRightRadius:"0px"}}>
+          <div className="ua-cfg-tf-view__compare">
+            <div className="ua-cfg-tf-view__shot ua-cfg-tf-view__shot--before">
               {entry.oldImage ? <img src={entry.oldImage} alt={`${entry.name} before`} /> : <div className="ua-cfg-tf-view__empty">No before photo</div>}
               <span>Before</span>
             </div>
-            <div className="ua-cfg-tf-view__shot" style={{borderTopLeftRadius:"0px",borderBottomLeftRadius:"0px"}}>
+            <div className="ua-cfg-tf-view__shot ua-cfg-tf-view__shot--after">
               {entry.newImage ? <img src={entry.newImage} alt={`${entry.name} after`} /> : <div className="ua-cfg-tf-view__empty">No after photo</div>}
               <span>After</span>
             </div>
@@ -189,28 +187,14 @@ function TransformationViewModal({ entry, onClose, onEdit }) {
           {points.length ? (
             <dl className="ua-cfg-tf-chips">
               {points.map((row) => (
-                <div key={row.id || row.field} className="ua-cfg-tf-chip" style={{padding:"5px 7px"}}>
-                  <dt style={{fontSize:"9px"}}>{asCopyString(row.label) || row.field}</dt>
-                  <dd style={{fontSize:"9px"}}>{asCopyString(row.value)}</dd>
+                <div key={row.id || row.field} className="ua-cfg-tf-chip">
+                  <dt>{asCopyString(row.label) || row.field}</dt>
+                  <dd>{asCopyString(row.value)}</dd>
                 </div>
               ))}
             </dl>
           ) : null}
-          {asCopyString(entry.description) ? <p className="ua-cfg-rc-view__copy" style={{textAlign:"justify",fontSize:"12.5px"}}>{asCopyString(entry.description)}</p> : null}
-          
-        </div>
-        <div className="ua-cfg-rc-view__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
-          <button
-            type="button"
-            className="ua-cfg-btn ua-cfg-btn--primary"
-            onClick={() => {
-              onEdit(entry.id);
-              onClose();
-            }}
-          >
-            Edit transformation
-          </button>
+          {story ? <p className="ua-cfg-rc-view__copy">{story}</p> : null}
         </div>
       </div>
     </div>
@@ -538,47 +522,51 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
             <div className="ua-cfg-rc-new__grid ua-cfg-tf-new__grid">
-              <div className="ua-cfg-tf-photos">
-                <PhotoDrop
-                  previewUrl={draft.oldPreview}
-                  disabled={busy}
-                  label="Before"
-                  tone="before"
-                  onRequestPick={() => openPicker("draft-old")}
-                  onRemove={() => clearDraftImage("old")}
-                />
-                <PhotoDrop
-                  previewUrl={draft.newPreview}
-                  disabled={busy}
-                  label="After"
-                  tone="after"
-                  onRequestPick={() => openPicker("draft-new")}
-                  onRemove={() => clearDraftImage("new")}
-                />
-              </div>
-              <div className="ua-cfg-tf-new__split">
-                <div className="ua-cfg-tf-new__fields">
-                  {!pointOptions.length ? (
-                    <p className="ua-cfg-panel__sub">Add testimonial data points in Configs → Dropdowns first.</p>
-                  ) : (
-                    <DataPointEditor
-                      points={draft.points}
-                      options={pointOptions}
-                      busy={busy}
-                      onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
-                    />
-                  )}
-                </div>
-                <div className="ua-cfg-tf-new__story-col">
-                  <span className="ua-cfg-tf-new__story-label">Story</span>
-                  <textarea
-                    className="ua-cfg-tf-story ua-cfg-tf-new__story"
-                    rows={6}
-                    placeholder="Story / caption shown with the photos…"
-                    value={asCopyString(draft.description)}
+              <div className="ua-cfg-tf-new__top">
+                <div className="ua-cfg-tf-photos">
+                  <PhotoDrop
+                    previewUrl={draft.oldPreview}
                     disabled={busy}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                    label="Before"
+                    tone="before"
+                    onRequestPick={() => openPicker("draft-old")}
+                    onRemove={() => clearDraftImage("old")}
                   />
+                  <PhotoDrop
+                    previewUrl={draft.newPreview}
+                    disabled={busy}
+                    label="After"
+                    tone="after"
+                    onRequestPick={() => openPicker("draft-new")}
+                    onRemove={() => clearDraftImage("new")}
+                  />
+                </div>
+                <div className="ua-cfg-tf-new__content">
+                  <div className="ua-cfg-tf-new__split">
+                    <div className="ua-cfg-tf-new__fields">
+                      {!pointOptions.length ? (
+                        <p className="ua-cfg-panel__sub">Add testimonial data points in Configs → Dropdowns first.</p>
+                      ) : (
+                        <DataPointEditor
+                          points={draft.points}
+                          options={pointOptions}
+                          busy={busy}
+                          onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
+                        />
+                      )}
+                    </div>
+                    <div className="ua-cfg-tf-new__story-col">
+                      <span className="ua-cfg-tf-new__story-label">Story</span>
+                      <textarea
+                        className="ua-cfg-tf-story ua-cfg-tf-new__story"
+                        rows={6}
+                        placeholder="Story / caption shown with the photos…"
+                        value={asCopyString(draft.description)}
+                        disabled={busy}
+                        onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="ua-cfg-tf-new__foot">

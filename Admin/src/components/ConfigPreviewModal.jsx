@@ -15,6 +15,7 @@ import {
   BANNER_MOBILE_SIZE,
 } from "../data/bannerConfigData.js";
 import { formatPack } from "../data/nutritionBankData.js";
+import { BannerLivePreview } from "./BannerLivePreview.jsx";
 import { FeatureFlagsPreview } from "./FeatureFlagsSection.jsx";
 
 function previewSurfaces(item) {
@@ -103,7 +104,7 @@ function surfaceSubtitle(surfaces, activeId, item) {
     return "Common asset · renders on both surfaces · 400 × 400";
   }
   if (item?.id === "common-banner") {
-    return `Desktop ${BANNER_DESKTOP_SIZE.label} · Mobile ${BANNER_MOBILE_SIZE.label}`;
+    return "Common asset · renders on both surfaces";
   }
   if (item?.id === "common-recipes") {
     return "Common asset · renders on both surfaces · 640 × 360";
@@ -1658,48 +1659,19 @@ function VoicePreview({ editor = {}, items = [], heading = "Voice of Healing" })
   );
 }
 
-function BannerPreview({ editor = {}, surfaceEditor = {}, surface, item }) {
-  const sectionWebOn = surfaceEditor.webOn !== false;
-  const sectionAppOn = surfaceEditor.appOn !== false;
-  const surfaceOn = surface === "app"
-    ? sectionAppOn && editor.appOn !== false
-    : sectionWebOn && editor.webOn !== false;
+function BannerPreview({ editor = {}, surfaceEditor = {} }) {
   const placement = bannerPlacementById(editor.placement);
-  const image = surface === "app"
-    ? (editor.mobilePreview || editor.mobileImage || editor.imagePreview || editor.image)
-    : (editor.imagePreview || editor.image);
-  const headline = typeof editor.headline === "string" ? editor.headline : "Banner";
-  const body = asCopyString(editor.body);
-
-  const bodyNode = surfaceOn ? (
-    <div className="ua-cfg-ft-preview">
-      <div className="ua-cfg-ft-preview__bar">
-        <span className="ua-cfg-pt-live-preview__brand">IR</span>
-        <strong>{headline}</strong>
-        <span className="ua-cfg-pt-live-preview__url">{placement.label}</span>
-      </div>
-      <div
-        className={`ua-cfg-bn-preview__banner${image ? " is-on" : ""}`}
-        style={{
-          aspectRatio: surface === "app"
-            ? `${BANNER_MOBILE_SIZE.width} / ${BANNER_MOBILE_SIZE.height}`
-            : `${BANNER_DESKTOP_SIZE.width} / ${BANNER_DESKTOP_SIZE.height}`,
-        }}
-      >
-        {image ? <img className="ua-cfg-bn-preview__img" src={image} alt="" /> : "BANNER"}
-      </div>
-      {body ? <p className="ua-cfg-ft-preview__copy">{body}</p> : null}
-    </div>
-  ) : (
-    <div className="ua-cfg-ft-preview">
-      <p className="ua-cfg-panel__sub">Banners are disabled on this surface.</p>
-    </div>
-  );
+  const webImage = editor.imagePreview || editor.image;
+  const mobileImage = editor.mobilePreview || editor.mobileImage || webImage;
 
   return (
-    <PreviewStage surface={surface} item={item}>
-      {bodyNode}
-    </PreviewStage>
+    <BannerLivePreview
+      webOn={surfaceEditor.webOn !== false && editor.webOn !== false}
+      appOn={surfaceEditor.appOn !== false && editor.appOn !== false}
+      webImage={webImage}
+      mobileImage={mobileImage}
+      placement={placement}
+    />
   );
 }
 
@@ -2624,7 +2596,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </button>
         </div>
 
-        {surfaces.length > 1 && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" && item.id !== "common-health-disorders" ? (
+        {surfaces.length > 1 && item.id !== "common-banner" && item.id !== "common-transformation" && item.id !== "common-client-review" && item.id !== "common-real-people" && item.id !== "common-voice" && item.id !== "common-cofounder" && item.id !== "common-leadership" && item.id !== "common-wellness-team" && item.id !== "common-google-review" && item.id !== "common-recipes" && item.id !== "common-yoga" && item.id !== "common-health-disorders" ? (
           <div className="ua-cfg-preview-modal__tabs" role="tablist">
             {surfaces.map((surface) => (
               <button
@@ -2641,7 +2613,7 @@ export function ConfigPreviewModal({ open, onClose, item, previewState = {} }) {
           </div>
         ) : null}
 
-        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders" ? "dual" : activeSurface}`}>
+        <div className={`ua-cfg-preview-modal__frame ua-cfg-preview-modal__frame--${item.id === "common-banner" || item.id === "common-transformation" || item.id === "common-client-review" || item.id === "common-real-people" || item.id === "common-voice" || item.id === "common-cofounder" || item.id === "common-leadership" || item.id === "common-wellness-team" || item.id === "common-google-review" || item.id === "common-recipes" || item.id === "common-yoga" || item.id === "common-health-disorders" ? "dual" : activeSurface}`}>
           {surfaces.length ? (
             renderPreviewBody(item, activeSurface, previewState)
           ) : (
