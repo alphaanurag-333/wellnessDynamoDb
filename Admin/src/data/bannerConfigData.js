@@ -152,6 +152,10 @@ export function cssAspectRatio(ratio) {
   return "16 / 9";
 }
 
+export function placementChipLabel(placement) {
+  return String(placement?.label || "").replace(/\s·\s\d+\s*[:/]\s*\d+\s*$/, "").trim();
+}
+
 export function asCopyString(value) {
   if (typeof value === "string") return value;
   if (value == null) return "";

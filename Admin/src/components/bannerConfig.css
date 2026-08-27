@@ -1,14 +1,106 @@
 /* Banner config page only — /configs/common-banner
-   Compact editor: type/placement on one row, desktop/mobile side by side. */
+   Page styles live here. Shared ua-cfg-bn-surfaces / preview / live-row
+   classes used by other screens stay in admin.css. */
 
 .updated-admin .ua-cfg-detail--bn,
+.updated-admin .ua-cfg-detail--bn .ua-cfg-detail__body,
+.updated-admin .ua-cfg-detail--bn .ua-cfg-summary,
 .updated-admin .ua-cfg-bn {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-layout {
+.updated-admin .ua-cfg-detail--bn {
+  overflow-x: hidden;
+}
+
+.updated-admin .ua-cfg-detail--bn .ua-cfg-detail__body {
+  width: 100%;
+}
+
+.updated-admin .ua-cfg-bn {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  container-type: inline-size;
+  container-name: ua-cfg-bn;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-panel,
+.updated-admin .ua-cfg-bn .ua-cfg-panel__head,
+.updated-admin .ua-cfg-bn .ua-cfg-panel__copy,
+.updated-admin .ua-cfg-bn .ua-cfg-panel__actions,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-layout,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__row {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-panel__title,
+.updated-admin .ua-cfg-bn .ua-cfg-panel__sub,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__title,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__type {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__head {
+  margin-bottom: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__copy {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: auto;
+  justify-content: flex-end;
+}
+
+.updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-surfaces {
+  width: 100%;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-surface {
+  justify-content: space-between;
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -17,17 +109,74 @@
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-bn-editor-panel.is-new {
+  border-color: #dcdff7;
+  box-shadow: 0 0 0 1px rgba(94, 106, 210, 0.04);
+}
+
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel {
   container-type: inline-size;
   container-name: ua-cfg-bn-editor;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-panel__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 12px;
   margin-bottom: 10px;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-editor {
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-panel__copy {
+  grid-column: 1;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  flex: none;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-panel__actions {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  justify-content: flex-end;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-panel__actions .ua-cfg-icon-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-bn-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px dashed rgb(203, 213, 230);
+  background: #fff;
+  color: rgb(94, 106, 210);
+  border-radius: 10px;
+}
+
+.updated-admin .ua-cfg-bn-editor {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+.updated-admin .ua-cfg-bn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16233f;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-meta {
@@ -48,6 +197,284 @@
   gap: 4px;
 }
 
+.updated-admin .ua-cfg-bn-input,
+.updated-admin .ua-cfg-bn-textarea {
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid #c9d3e3;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #16233f;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn-input {
+  height: 36px;
+}
+
+.updated-admin .ua-cfg-bn-select.ua-cfg-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn-select .ua-cfg-select__trigger {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #c9d3e3;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.updated-admin .ua-cfg-bn-select .ua-cfg-select__chev {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%238a97ac' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px 8px no-repeat;
+}
+
+.updated-admin .ua-cfg-bn-select.is-open .ua-cfg-select__chev {
+  transform: rotate(180deg);
+}
+
+.updated-admin .ua-cfg-bn-select .ua-cfg-select__menu {
+  width: 100%;
+  max-width: none;
+}
+
+.updated-admin .ua-cfg-bn-textarea {
+  min-height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.updated-admin .ua-cfg-bn-select .ua-cfg-select__trigger:hover {
+  border-color: #c7d2fe;
+}
+
+.updated-admin .ua-cfg-bn-select.is-open .ua-cfg-select__trigger,
+.updated-admin .ua-cfg-bn-select .ua-cfg-select__trigger:focus-visible {
+  outline: none;
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-cfg-bn-input:focus,
+.updated-admin .ua-cfg-bn-textarea:focus {
+  outline: none;
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
+}
+
+.updated-admin .ua-cfg-bn-ratio {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef0fc;
+  color: #5e6ad2;
+  font-size: 11px;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.updated-admin .ua-cfg-bn-split {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+  background: #fafbfd;
+}
+
+.updated-admin .ua-cfg-bn-split__icon {
+  font-size: 18px;
+}
+
+.updated-admin .ua-cfg-bn-split div {
+  flex: 1;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn-split strong {
+  display: block;
+  font-size: 13px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-bn-split p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-split-drops {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(132px, 0.72fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.updated-admin .ua-cfg-bn-split-drops__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 8px;
+  margin-bottom: 0;
+}
+
+.updated-admin .ua-cfg-bn-split-drops__label strong {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.updated-admin .ua-cfg-bn-split-drops__label strong.is-web {
+  color: #0f766e;
+}
+
+.updated-admin .ua-cfg-bn-split-drops__label strong.is-app {
+  color: #4f46e5;
+}
+
+.updated-admin .ua-cfg-bn-split-drops__label span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--desktop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--mobile {
+  border: 0;
+  background: transparent;
+}
+
+.updated-admin .ua-cfg-bn-drop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 16px;
+  border-radius: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop {
+  aspect-ratio: 21 / 9;
+  min-height: 148px;
+  border: 1.5px dashed #5eead4;
+  background: #ecfdf8;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile {
+  aspect-ratio: 3 / 4;
+  min-height: 168px;
+  border: 1.5px dashed #a5b4fc;
+  background: #eef2ff;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled {
+  border-style: solid;
+}
+
+.updated-admin .ua-cfg-bn-drop__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.updated-admin .ua-cfg-bn-drop__icon {
+  display: flex;
+  color: #94a3b8;
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled .ua-cfg-bn-drop__icon {
+  display: none;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop .ua-cfg-bn-drop__btn,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop .ua-cfg-btn--outline {
+  position: relative;
+  z-index: 1;
+  height: 34px;
+  padding: 0 14px;
+  color: #16233f;
+  font-weight: 700;
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.updated-admin .ua-cfg-bn-drop.is-filled .ua-cfg-bn-drop__btn {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 24px));
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop {
+  min-height: 200px;
+  max-height: none;
+  padding: 12px;
+}
+
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
+.updated-admin .ua-cfg-bn-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: none;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-bn-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16233f;
+}
+
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-copy {
   padding: 8px 10px;
   border: 1px solid #edf1f7;
@@ -62,89 +489,25 @@
   gap: 8px;
 }
 
+.updated-admin .ua-cfg-bn-copy__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .updated-admin .ua-cfg-bn .ua-cfg-bn-copy__actions {
   margin-top: 2px;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-input {
-  height: 36px;
+.updated-admin .ua-cfg-bn-copy__actions .ua-cfg-btn--outline {
+  color: rgb(94, 106, 210);
+  border: 1px solid rgb(203, 213, 230);
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-select .ua-cfg-select__trigger {
-  height: 36px;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-textarea {
-  min-height: 64px;
-  padding: 8px 10px;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-split-drops {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  align-items: stretch;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-slot {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding: 8px;
-  border: 1px solid #e6ebf2;
-  border-radius: 12px;
-  background: #fff;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--desktop {
-  border-color: #d1fae5;
-  background: #f6fdf9;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--mobile {
-  border-color: #e0e4fa;
-  background: #f7f8ff;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-slot .ua-cfg-bn-split-drops__label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
-  margin: 0;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-slot .ua-cfg-bn-drop {
-  background: #fff;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop,
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop,
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile,
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop:not(.is-filled),
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile:not(.is-filled) {
-  aspect-ratio: auto;
-  height: 92px;
-  min-height: 92px;
-  max-height: 92px;
-  padding: 8px;
-  gap: 4px;
-  overflow: hidden;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop p {
-  font-size: 12px;
-}
-
-.updated-admin .ua-cfg-bn .ua-cfg-bn-drop.is-filled .ua-cfg-btn {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  z-index: 1;
-  height: 26px;
-  padding: 0 10px;
-  background: rgba(255, 255, 255, 0.94);
+.updated-admin .ua-cfg-bn-editor__surfaces {
+  margin: 2px 0 4px;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-editor__surfaces {
@@ -168,10 +531,22 @@
   box-sizing: border-box;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+.updated-admin .ua-cfg-bn-live-panel.ua-cfg-panel {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   max-height: min(78vh, 760px);
+}
+
+.updated-admin .ua-cfg-bn-live-panel .ua-cfg-panel__head {
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-bn-live-panel .ua-users-pagination {
+  flex-shrink: 0;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #edf1f7;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live {
@@ -239,6 +614,199 @@
   font-size: 10px;
 }
 
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live-preview,
+.updated-admin .ua-cfg-bn-live-preview,
+.updated-admin .ua-cfg-preview-modal__frame .ua-cfg-bn-live-preview {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) 200px;
+  gap: 18px;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.updated-admin .ua-cfg-preview-modal__frame:has(.ua-cfg-bn-live-preview) {
+  min-height: 380px;
+  justify-items: stretch;
+}
+
+.updated-admin .ua-cfg-preview-modal__dialog:has(.ua-cfg-bn-live-preview) {
+  width: min(920px, calc(100vw - 32px));
+}
+
+.updated-admin .ua-cfg-bn-live-preview__pane,
+.updated-admin .ua-cfg-bn-live-preview__browser,
+.updated-admin .ua-cfg-bn-live-preview__phone {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__browser {
+  overflow: hidden;
+  border: 1px solid #e3e9f2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf1f7;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome strong {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #16233f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome-url {
+  min-width: 0;
+  margin-left: auto;
+  font-size: 11px;
+  color: #9aa6b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome-actions span {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #e8edf4;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__chrome-actions span.is-cta {
+  width: 52px;
+  background: #16a34a;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__browser .ua-cfg-bn-preview__banner {
+  margin: 0;
+  border-radius: 0;
+  width: 100%;
+  aspect-ratio: auto;
+  min-height: 270px;
+  height: 270px;
+  background: linear-gradient(135deg, #e8eef8 0%, #f3eee8 100%);
+  color: #64748b;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__pane--app {
+  justify-self: end;
+  width: 100%;
+  max-width: 210px;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__phone {
+  overflow: hidden;
+  border: 8px solid #111827;
+  border-radius: 22px;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 8px;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-head strong {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__bell {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__phone .ua-cfg-bn-preview__banner {
+  margin: 0 8px;
+  border-radius: 8px;
+  width: auto;
+  aspect-ratio: auto;
+  min-height: 88px;
+  height: 88px;
+  background: linear-gradient(135deg, #e8eef8 0%, #f3eee8 100%);
+  color: #64748b;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px 10px 0;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-tiles span {
+  display: block;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-tiles span.is-green {
+  background: #dcfce7;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-tiles span.is-blue {
+  background: #dbeafe;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__app-wide {
+  height: 28px;
+  margin: 8px 10px;
+  border-radius: 8px;
+  background: #eef2f6;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+  padding: 8px 8px 12px;
+  border-top: 1px solid #f1f4f9;
+  color: #9aa6b8;
+  font-size: 14px;
+  text-align: center;
+}
+
+.updated-admin .ua-cfg-bn-live-preview__nav .is-active {
+  color: #16a34a;
+}
+
 .updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__grid {
   align-items: stretch;
   padding-bottom: 8px;
@@ -248,14 +816,21 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
+  border: 1px solid #e3e9f2;
+  border-radius: 16px;
+  background: #fff;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card__thumb.ua-cfg-bn-thumb {
-  aspect-ratio: 1905 / 640;
-  min-height: 96px;
+  /* aspect-ratio: 4 / 3; */
+  min-height: 128px;
   height: auto;
-  background: #f4f7fb;
+  margin: 8px 8px 0;
+  border: 1px dashed #d5dceb;
+  border-radius: 12px;
+  background: #f4f6fb;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card__thumb.ua-cfg-bn-thumb img {
@@ -263,7 +838,28 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
+  border-radius: 11px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-thumb__label {
+  position: relative;
+  z-index: 1;
+  font-size: 12px;
+  font-weight: 650;
+  color: #6b7280;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card__body {
+  margin-top: 8px;
+  border-top: 1px dashed #e3e9f2;
+}
+
+.updated-admin .ua-cfg-bn-gallery__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 14px;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-gallery__foot {
@@ -271,21 +867,207 @@
   margin-top: auto;
 }
 
+.updated-admin .ua-cfg-bn-gallery__foot .ua-cfg-faq__shown {
+  margin-right: auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn-gallery__open {
+  height: 28px;
+  padding: 0 12px;
+  color: rgb(94, 106, 210);
+  border: 1px solid rgb(203, 213, 230);
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.updated-admin .ua-cfg-bn-gallery__open:hover,
+.updated-admin .ua-cfg-bn-gallery__open:focus-visible {
+  text-decoration: none;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-gallery__foot .ua-cfg-icon-btn {
+  border-radius: 8px;
+}
+
+@container ua-cfg-bn (max-width: 640px) {
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}
+
+@container ua-cfg-bn-editor (max-width: 520px) {
+  .ua-cfg-bn-split-drops {
+    grid-template-columns: 1fr;
+  }
+
+  .ua-cfg-bn-drop--desktop,
+  .ua-cfg-bn-drop--mobile {
+    min-height: 140px;
+    max-height: 220px;
+  }
+}
+
 @container ua-cfg-bn-editor (max-width: 380px) {
   .ua-cfg-bn-meta,
-  .ua-cfg-bn-split-drops,
   .ua-cfg-bn-copy__row,
   .ua-cfg-bn-editor__surfaces {
     grid-template-columns: 1fr;
   }
 }
 
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-bn-editor-panel .ua-cfg-panel__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex-wrap: nowrap;
+  }
+
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-bn-editor-panel .ua-cfg-panel__copy,
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-bn-editor-panel .ua-cfg-panel__actions {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-bn-editor-panel .ua-cfg-panel__copy {
+    grid-column: 1;
+  }
+
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-bn-editor-panel .ua-cfg-panel__actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .updated-admin .ua-cfg-bn-layout,
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live-preview,
+  .updated-admin .ua-cfg-bn-live-preview,
+  .updated-admin .ua-cfg-preview-modal__frame .ua-cfg-bn-live-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-bn-live-preview__pane--app {
+    justify-self: start;
+    max-width: 240px;
+  }
+
+  .updated-admin .ua-cfg-bn-live-preview__chrome-url {
+    display: none;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+    flex: 1 1 auto;
+    width: auto;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-surface {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+    flex: 0 1 auto;
+    width: auto;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-add {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-copy__actions .ua-cfg-btn {
+    flex: 1 1 8rem;
+    justify-content: center;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__handle,
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__thumb {
+    grid-row: 1;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__title,
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__type {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__rank {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 720px) {
+  .updated-admin .ua-cfg-detail--bn {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-panel {
+    padding: 14px 12px;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__copy,
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-panel__actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surfaces {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-bn > .ua-cfg-panel:first-child .ua-cfg-bn-surface {
+    width: 100%;
+    flex: 1 1 auto;
+    justify-content: space-between;
+  }
+
   .updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions {
     flex-wrap: wrap;
   }
 
   .updated-admin .ua-cfg-bn .ua-cfg-bn-live__tools {
     margin-left: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .updated-admin .ua-cfg-detail--bn .ua-cfg-summary__grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .updated-admin .ua-cfg-detail--bn {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-panel {
+    padding: 12px 10px;
   }
 }

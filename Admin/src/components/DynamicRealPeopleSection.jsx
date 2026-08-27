@@ -609,28 +609,26 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                   {!concernOptions.length ? (
                     <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">Add health concerns in Configs → Dropdowns first.</p>
                   ) : null}
+                  <div className="ua-cfg-rp-new__fields">
+                    <DataPointEditor
+                      points={draft.points}
+                      options={pointOptions}
+                      busy={busy}
+                      onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="ua-cfg-rp-new__split">
-                <div className="ua-cfg-rp-new__fields">
-                  <DataPointEditor
-                    points={draft.points}
-                    options={pointOptions}
-                    busy={busy}
-                    onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
-                  />
-                </div>
-                <div className="ua-cfg-rp-new__story-col">
-                  <span className="ua-cfg-rp-new__story-label">Review</span>
-                  <textarea
-                    className="ua-cfg-tf-story ua-cfg-rp-new__story"
-                    rows={6}
-                    placeholder="Client review shown with the photo…"
-                    value={asCopyString(draft.review)}
-                    disabled={busy}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
-                  />
-                </div>
+              <div className="ua-cfg-rp-new__story-col">
+                <span className="ua-cfg-rp-new__story-label">Review</span>
+                <textarea
+                  className="ua-cfg-tf-story ua-cfg-rp-new__story"
+                  rows={5}
+                  placeholder="Client review shown with the photo…"
+                  value={asCopyString(draft.review)}
+                  disabled={busy}
+                  onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
+                />
               </div>
               <div className="ua-cfg-rp-new__foot">
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>

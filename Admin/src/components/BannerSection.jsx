@@ -20,12 +20,14 @@ import {
   emptyBannerEditor,
   mapDropdownOptions,
   optionLabel,
+  placementChipLabel,
   preserveOption,
 } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
+import { BannerLivePreview } from "./BannerLivePreview.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./bannerConfig.css";
 
@@ -48,28 +50,26 @@ function bannerCropForKind(kind) {
   return kind === "mobile" ? BANNER_MOBILE_SIZE : BANNER_DESKTOP_SIZE;
 }
 
-function DropZone({ label, hint, previewUrl, onUpload, className = "" }) {
+const BANNER_DROP_ICON = (
+  <span className="ua-cfg-bn-drop__icon" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
+  </span>
+);
+
+function DropZone({ label, previewUrl, onUpload, className = "" }) {
   const uploaded = Boolean(previewUrl);
   return (
     <div className={`ua-cfg-bn-drop${uploaded ? " is-filled" : ""}${className ? ` ${className}` : ""}`}>
-      {uploaded ? (
-        <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" />
-      ) : (
-        <>
-          <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
-          <p>{hint}</p>
-        </>
-      )}
-      <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onUpload}>
-        {uploaded ? "Replace" : label}
+      {uploaded ? <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" /> : BANNER_DROP_ICON}
+      <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-bn-drop__btn" onClick={onUpload}>
+        {uploaded ? label.replace(/^Upload/, "Replace") : label}
       </button>
     </div>
   );
-}
-
-function BannerImage({ src, className }) {
-  if (!src) return null;
-  return <img className={className} src={src} alt="" />;
 }
 
 function LiveToggle({ label, on, disabled, ariaLabel, onToggle }) {
@@ -542,13 +542,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             <div className="ua-cfg-bn-split-drops">
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
                 <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-web">DESKTOP</strong>
-                  <span>{BANNER_DESKTOP_SIZE.label}</span>
+                  <strong className="is-web">WEB</strong>
+                  <span>Desktop - wide crop</span>
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--desktop"
-                  label="Upload"
-                  hint="Upload desktop"
+                  label="Upload Web"
                   previewUrl={webPreview}
                   onUpload={() => openFilePicker("web")}
                 />
@@ -556,19 +555,18 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-app">MOBILE</strong>
-                  <span>{BANNER_MOBILE_SIZE.label}</span>
+                  <span>Portrait - app crop</span>
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--mobile"
-                  label="Upload"
-                  hint="Upload mobile"
+                  label="Upload Mobile"
                   previewUrl={mobileSlotPreview}
                   onUpload={() => openFilePicker("mobile")}
                 />
               </div>
             </div>
 
-            <div className="ua-cfg-bn-surfaces ua-cfg-bn-editor__surfaces">
+            <div style={{display:"none"}} className="ua-cfg-bn-surfaces ua-cfg-bn-editor__surfaces">
               <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn !== false ? " is-on" : ""}`}>
                 <span>Web {editor.webOn !== false ? "On" : "Off"}</span>
                 <button
@@ -738,51 +736,24 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
 
       <Panel
         title="Live preview"
-        subtitle={`Desktop ${BANNER_DESKTOP_SIZE.label} · Mobile ${BANNER_MOBILE_SIZE.label}`}
-        actions={<span className="ua-cfg-bn-ratio">{placement.label}</span>}
+        subtitle={
+          webSurfaceOn && appSurfaceOn
+            ? "Common asset · renders on both surfaces"
+            : webSurfaceOn
+              ? "Web only"
+              : appSurfaceOn
+                ? "App only"
+                : "No surfaces enabled"
+        }
+        actions={<span className="ua-cfg-bn-ratio">{placementChipLabel(placement)}</span>}
       >
-        <div className="ua-cfg-bn-preview">
-          <div className="ua-cfg-bn-preview__web">
-            <span className="ua-cfg-bn-preview__label is-web">Website</span>
-            {webSurfaceOn ? (
-              <div className="ua-cfg-bn-preview__browser">
-                <div className="ua-cfg-bn-preview__chrome">
-                  <span className="ua-cfg-pt-live-preview__brand">IR</span>
-                  <strong>India Redefining Wellness</strong>
-                  <em>irwellness.in</em>
-                </div>
-                <div
-                  className={`ua-cfg-bn-preview__banner${webPreview ? " is-on" : ""}`}
-                  style={{ aspectRatio: `${BANNER_DESKTOP_SIZE.width} / ${BANNER_DESKTOP_SIZE.height}` }}
-                >
-                  {webPreview ? <BannerImage src={webPreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
-                </div>
-              </div>
-            ) : (
-              <p className="ua-cfg-panel__sub">Disabled on web.</p>
-            )}
-          </div>
-          <div className="ua-cfg-bn-preview__app">
-            <span className="ua-cfg-bn-preview__label is-app">App</span>
-            {appSurfaceOn ? (
-              <div className="ua-cfg-bn-preview__phone">
-                <div className="ua-cfg-bn-preview__phone-bar">
-                  <span>9:41</span>
-                  <strong>Good morning</strong>
-                  <span aria-hidden="true">🔔</span>
-                </div>
-                <div
-                  className={`ua-cfg-bn-preview__banner ua-cfg-bn-preview__banner--app${mobilePreview ? " is-on" : ""}`}
-                  style={{ aspectRatio: `${BANNER_MOBILE_SIZE.width} / ${BANNER_MOBILE_SIZE.height}` }}
-                >
-                  {mobilePreview ? <BannerImage src={mobilePreview} className="ua-cfg-bn-preview__img" /> : "BANNER"}
-                </div>
-              </div>
-            ) : (
-              <p className="ua-cfg-panel__sub">Disabled on app.</p>
-            )}
-          </div>
-        </div>
+        <BannerLivePreview
+          webOn={webSurfaceOn}
+          appOn={appSurfaceOn}
+          webImage={webPreview}
+          mobileImage={mobilePreview}
+          placement={placement}
+        />
       </Panel>
 
       <Panel
@@ -805,9 +776,16 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           {filteredGallery.map((entry) => (
             <article key={entry.id} className="ua-cfg-mv-gallery-card">
               <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
-                {entry.url ? <img src={entry.url} alt="" /> : <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>}
+                {entry.url ? (
+                  <img src={entry.url} alt="" />
+                ) : (
+                  <>
+                    <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>
+                    <span className="ua-cfg-bn-thumb__label">Banner image</span>
+                  </>
+                )}
                 <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">
-                  {entry.kind} · {optionLabel(entry.type, typeOptions, BANNER_TYPES) || "Banner"}
+                  {entry.kind}
                 </span>
               </div>
               <div className="ua-cfg-mv-gallery-card__body">

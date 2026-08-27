@@ -105,7 +105,7 @@ function LeadershipViewModal({ entry, onClose, onEdit }) {
           {asCopyString(entry.message) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.message)}</p> : null}
           <dl className="ua-cfg-rc-view__meta">
             <div>
-              <dt>Web</dt>
+              <dt>dWeb</dt>
               <dd>{entry.webVisible ? "Visible" : "Hidden"}</dd>
             </div>
             <div>
