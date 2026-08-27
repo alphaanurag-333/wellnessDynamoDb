@@ -83,9 +83,8 @@ exports.verifySubscriptionPaymentController = asyncHandler(async (req, res) => {
   try {
     transaction = await verifySubscriptionPayment(userId, {
       transactionId,
-      razorpay_order_id: req.body?.razorpay_order_id ?? req.body?.orderId,
-      razorpay_payment_id: req.body?.razorpay_payment_id ?? req.body?.paymentId,
-      razorpay_signature: req.body?.razorpay_signature ?? req.body?.signature,
+      orderId: req.body?.orderId ?? req.body?.order_id ?? req.body?.cashfree_order_id ?? req.body?.razorpay_order_id,
+      paymentId: req.body?.paymentId ?? req.body?.payment_id ?? req.body?.cashfree_payment_id ?? req.body?.razorpay_payment_id,
     });
   } catch (err) {
     if (err?.name === "NotFoundError") throw new AppError("Transaction not found", 404);

@@ -1,5 +1,4 @@
 const { getAppConfig } = require("../models/appConfigModel");
-const config = require("../config");
 const { getUserById, updateUser } = require("../models/userModel");
 const { convertSeekToHeal, convertHealToMaintenance } = require("../models/userConversionModel");
 const {
@@ -9,14 +8,13 @@ const {
 } = require("../models/userAssignmentLogic");
 const { buildSubscriptionCheckoutPreview } = require("../services/subscriptionPricingService");
 const { resolveSubscriptionPlanForPayment } = require("../services/subscriptionCategoryService");
-const { getActiveRazorpayGateway } = require("../services/consultancyPricingService");
+const { getActiveCashfreeGateway } = require("../services/consultancyPricingService");
 const {
-  createRazorpayOrder,
-  verifyRazorpayPaymentSignature,
-  createMockOrder,
-  verifyMockPayment,
-  shouldUseMockPayments,
+  createCashfreeOrder,
+  verifyCashfreePayment,
+  buildClientPaymentPayload,
 } = require("../utils/paymentGateway");
+const { ensureCashfreeCheckoutOrder } = require("./paymentOrderHelpers");
 const {
   createConsultancyTransaction,
   getConsultancyTransactionById,
@@ -104,40 +102,51 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     Number(existingPending.totalAmount) === Number(previewForReuse.pricing.totalAmount)
   ) {
     const appConfig = await getAppConfig();
-    const gateway = getActiveRazorpayGateway(appConfig);
-    const useMock = shouldUseMockPayments(gateway);
+    const gateway = getActiveCashfreeGateway(appConfig);
+    const ensured = await ensureCashfreeCheckoutOrder({
+      transaction: existingPending,
+      user,
+      gateway,
+      amountInRupees: existingPending.totalAmount,
+      notes: {
+        productType: "subscription",
+        catalogItemId: offer?.itemId || previewForReuse.subscription?.id || "",
+      },
+    });
     const publicOffer = offer ? toPublicCoachProgramOffer(offer) : null;
+    const pricing = {
+      baseAmount: ensured.transaction.baseAmount,
+      discountAmount: ensured.transaction.discountAmount,
+      discountedBase: ensured.transaction.discountedBase,
+      taxAmount: ensured.transaction.taxAmount,
+      taxPercent: ensured.transaction.taxPercent,
+      taxType: ensured.transaction.taxType,
+      totalAmount: ensured.transaction.totalAmount,
+      currency: ensured.transaction.currency || "INR",
+    };
+    const subscription = publicOffer
+      ? {
+          id: publicOffer.itemId,
+          name: publicOffer.itemName,
+          amount: publicOffer.amount,
+          currency: ensured.transaction.currency || "INR",
+          source: "coach_checkout",
+        }
+      : null;
+
     return {
-      transaction: toPublicTransaction(existingPending),
-      pricing: {
-        baseAmount: existingPending.baseAmount,
-        discountAmount: existingPending.discountAmount,
-        discountedBase: existingPending.discountedBase,
-        taxAmount: existingPending.taxAmount,
-        taxPercent: existingPending.taxPercent,
-        taxType: existingPending.taxType,
-        totalAmount: existingPending.totalAmount,
-        currency: existingPending.currency || "INR",
-      },
-      subscription: publicOffer
-        ? {
-            id: publicOffer.itemId,
-            name: publicOffer.itemName,
-            amount: publicOffer.amount,
-            currency: existingPending.currency || "INR",
-            source: "coach_checkout",
-          }
-        : null,
+      transaction: toPublicTransaction(ensured.transaction),
+      pricing,
+      subscription,
       offer: publicOffer,
-      payment: {
-        provider: useMock ? "mock" : "razorpay",
-        orderId: existingPending.paymentGatewayOrderId,
-        amount: Math.round(Number(existingPending.totalAmount) * 100),
-        currency: existingPending.currency || "INR",
-        keyId: gateway?.keyId || null,
-        mockPayment: useMock,
-        reusedPendingOrder: true,
-      },
+      payment: buildClientPaymentPayload({
+        gateway,
+        order: ensured.order,
+        extras: {
+          reusedPendingOrder: true,
+          repairedPendingOrder: ensured.repaired,
+        },
+      }),
     };
   }
 
@@ -159,14 +168,13 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
   }
 
   const appConfig = await getAppConfig();
-  const gateway = getActiveRazorpayGateway(appConfig);
-  const useMock = shouldUseMockPayments(gateway);
+  const gateway = getActiveCashfreeGateway(appConfig);
 
   const transaction = await createConsultancyTransaction({
     userId,
     productType: "subscription",
     paymentStatus: "pending",
-    paymentProvider: useMock ? "mock" : "razorpay",
+    paymentProvider: "cashfree",
     paymentMethod,
     baseAmount: preview.pricing.baseAmount,
     discountAmount: preview.pricing.discountAmount,
@@ -194,65 +202,35 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
     },
   });
 
-  let order;
-  if (useMock) {
-    order = createMockOrder({
-      amountInRupees: preview.pricing.totalAmount,
-      receipt: transaction.referenceNumber,
-    });
-  } else {
-    order = await createRazorpayOrder({
-      gateway,
-      amountInRupees: preview.pricing.totalAmount,
-      receipt: transaction.referenceNumber,
-      notes: {
-        transactionId: transaction.id,
-        userId,
-        productType: "subscription",
-        catalogItemId: offer?.itemId || preview.subscription?.id || "",
-      },
-    });
-  }
+  const order = await createCashfreeOrder({
+    gateway,
+    amountInRupees: preview.pricing.totalAmount,
+    receipt: transaction.referenceNumber,
+    customer: {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      name: user.name,
+    },
+    notes: {
+      transactionId: transaction.id,
+      userId,
+      productType: "subscription",
+      catalogItemId: offer?.itemId || preview.subscription?.id || "",
+    },
+  });
 
   const updated = await updateConsultancyTransaction(transaction.id, {
     paymentGatewayOrderId: order.id,
+    paymentGatewaySessionId: order.payment_session_id || null,
   });
-
-  if (useMock && config.autoConfirmMockPayments) {
-    const paidTransaction = await finalizePaidSubscriptionTransaction(updated, {
-      paymentId: `pay_mock_sub_${Date.now()}`,
-      provider: "mock",
-    });
-    return {
-      transaction: paidTransaction,
-      pricing: preview.pricing,
-      subscription: preview.subscription,
-      offer: preview.offer || null,
-      payment: {
-        provider: "mock",
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency || "INR",
-        keyId: gateway?.keyId || null,
-        mockPayment: true,
-        autoConfirmed: true,
-      },
-    };
-  }
 
   return {
     transaction: toPublicTransaction(updated),
     pricing: preview.pricing,
     subscription: preview.subscription,
     offer: preview.offer || null,
-    payment: {
-      provider: useMock ? "mock" : "razorpay",
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency || "INR",
-      keyId: gateway?.keyId || null,
-      mockPayment: useMock,
-    },
+    payment: buildClientPaymentPayload({ gateway, order }),
   };
 }
 
@@ -341,9 +319,10 @@ async function finalizePaidSubscriptionTransaction(transaction, { paymentId, pro
 
 async function verifySubscriptionPayment(userId, {
   transactionId,
+  orderId,
+  paymentId: clientPaymentId,
   razorpay_order_id,
   razorpay_payment_id,
-  razorpay_signature,
 }) {
   const transaction = await getConsultancyTransactionById(transactionId);
   if (!transaction) {
@@ -366,33 +345,23 @@ async function verifySubscriptionPayment(userId, {
   }
 
   const appConfig = await getAppConfig();
-  const gateway = getActiveRazorpayGateway(appConfig);
-  const useMock = shouldUseMockPayments(gateway);
+  const gateway = getActiveCashfreeGateway(appConfig);
+  const resolvedOrderId = orderId || razorpay_order_id || transaction.paymentGatewayOrderId;
 
-  let verified = false;
-  let paymentId = razorpay_payment_id;
-
-  if (useMock) {
-    verified = verifyMockPayment({ orderId: razorpay_order_id || transaction.paymentGatewayOrderId });
-    paymentId = paymentId || `pay_mock_sub_${Date.now()}`;
-  } else {
-    if (!gateway) {
-      const err = new Error("Payment gateway is not configured");
-      err.name = "PaymentGatewayError";
-      throw err;
-    }
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      const err = new Error("razorpay_order_id, razorpay_payment_id and razorpay_signature are required");
-      err.name = "ValidationError";
-      throw err;
-    }
-    verified = verifyRazorpayPaymentSignature({
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      signature: razorpay_signature,
-      keySecret: gateway.keySecret,
-    });
+  if (!gateway) {
+    const err = new Error("Payment gateway is not configured");
+    err.name = "PaymentGatewayError";
+    throw err;
   }
+  if (!resolvedOrderId) {
+    const err = new Error("orderId is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const result = await verifyCashfreePayment({ gateway, orderId: resolvedOrderId });
+  const verified = result.verified;
+  const paymentId = clientPaymentId || razorpay_payment_id || result.paymentId || null;
 
   if (!verified) {
     const failureReason = "Payment verification failed";
@@ -409,7 +378,7 @@ async function verifySubscriptionPayment(userId, {
 
   return finalizePaidSubscriptionTransaction(transaction, {
     paymentId,
-    provider: useMock ? "mock" : "razorpay",
+    provider: "cashfree",
   });
 }
 

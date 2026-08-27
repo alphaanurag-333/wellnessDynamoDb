@@ -81,85 +81,106 @@ export const REFERRAL_LOOKUP = {
 };
 
 export const PAYMENT_GATEWAY_OPTIONS = [
-  { id: "razorpay", name: "Razorpay", note: "UPI · cards · net banking" },
-  { id: "stripe", name: "Stripe", note: "International cards" },
-  { id: "payu", name: "PayU", note: "UPI · wallets · EMI" },
+  { id: "cashfree", name: "Cashfree", note: "UPI · cards · net banking · wallets" },
 ];
 
-export function createDefaultGateways() {
-  return Object.fromEntries(
-    PAYMENT_GATEWAY_OPTIONS.map((option) => [
-      option.id,
-      { active: false, keyId: "", keySecret: "", webhookSecret: "", merchantId: "" },
-    ]),
-  );
+export const PAYMENT_GATEWAY_MODES = [
+  { id: "uat", label: "UAT" },
+  { id: "live", label: "Live" },
+];
+
+function emptyModeCredentials() {
+  return { appId: "", secretKey: "", webhookSecret: "" };
 }
 
-function credentialsFromRow(row) {
-  const creds = row?.credentials && typeof row.credentials === "object" ? row.credentials : {};
+export function createDefaultCashfreeEntry() {
   return {
-    keyId: String(creds.key_id ?? creds.keyId ?? ""),
-    keySecret: String(creds.key_secret ?? creds.keySecret ?? ""),
-    webhookSecret: String(creds.webhook_secret ?? creds.webhookSecret ?? ""),
-    merchantId: String(creds.merchant_id ?? creds.merchantId ?? ""),
+    active: true,
+    mode: "uat",
+    uat: emptyModeCredentials(),
+    live: emptyModeCredentials(),
   };
+}
+
+export function createDefaultGateways() {
+  return { cashfree: createDefaultCashfreeEntry() };
+}
+
+function modeCredentialsFromObject(value) {
+  const creds = value && typeof value === "object" ? value : {};
+  return {
+    appId: String(creds.app_id ?? creds.appId ?? "").trim(),
+    secretKey: String(creds.secret_key ?? creds.secretKey ?? "").trim(),
+    webhookSecret: String(creds.webhook_secret ?? creds.webhookSecret ?? "").trim(),
+  };
+}
+
+function modeCredentialsToObject(entry) {
+  const creds = entry && typeof entry === "object" ? entry : {};
+  return {
+    app_id: String(creds.appId || "").trim(),
+    secret_key: String(creds.secretKey || "").trim(),
+    webhook_secret: String(creds.webhookSecret || "").trim(),
+  };
+}
+
+export function credentialsForMode(entry, mode = entry?.mode) {
+  const resolvedMode = String(mode || "uat").toLowerCase() === "live" ? "live" : "uat";
+  return entry?.[resolvedMode] || emptyModeCredentials();
 }
 
 export function mapPaymentGatewaysFromConfig(rows) {
   const gateways = createDefaultGateways();
-  const known = new Set(PAYMENT_GATEWAY_OPTIONS.map((option) => option.id));
   const extras = [];
   for (const row of Array.isArray(rows) ? rows : []) {
     const id = String(row?.provider || "").trim().toLowerCase();
     if (!id) continue;
-    const mapped = {
-      active: Boolean(row.isActive ?? row.active),
-      ...credentialsFromRow(row),
+    if (id !== "cashfree") {
+      // Drop legacy Razorpay / Stripe / PayU rows from the UI mapping.
+      continue;
+    }
+    const creds = row?.credentials && typeof row.credentials === "object" ? row.credentials : {};
+    const mode = String(row?.mode || "uat").toLowerCase() === "live" ? "live" : "uat";
+    gateways.cashfree = {
+      active: true,
+      mode,
+      uat: modeCredentialsFromObject(creds.uat),
+      live: modeCredentialsFromObject(creds.live),
     };
-    if (known.has(id)) gateways[id] = mapped;
-    else extras.push(row);
   }
   return { gateways, extras };
 }
 
-export function mapPaymentGatewaysToConfig(gateways, extras = []) {
-  const uiActive = PAYMENT_GATEWAY_OPTIONS.some((option) => gateways[option.id]?.active);
-  const uiRows = PAYMENT_GATEWAY_OPTIONS.map((option) => {
-    const entry = gateways[option.id] || {};
-    return {
-      provider: option.id,
-      isActive: Boolean(entry.active),
+export function mapPaymentGatewaysToConfig(gateways) {
+  const entry = gateways?.cashfree || createDefaultCashfreeEntry();
+  const mode = String(entry.mode || "uat").toLowerCase() === "live" ? "live" : "uat";
+  return [
+    {
+      provider: "cashfree",
+      isActive: true,
+      mode,
       credentials: {
-        key_id: String(entry.keyId || "").trim(),
-        key_secret: String(entry.keySecret || "").trim(),
-        webhook_secret: String(entry.webhookSecret || "").trim(),
-        merchant_id: String(entry.merchantId || "").trim(),
+        uat: modeCredentialsToObject(entry.uat),
+        live: modeCredentialsToObject(entry.live),
       },
-    };
-  });
-  const extraRows = extras.map((row) => ({
-    ...row,
-    isActive: uiActive ? false : Boolean(row.isActive),
-  }));
-  return [...uiRows, ...extraRows];
+    },
+  ];
 }
 
 export function activePaymentGateway(gateways) {
-  return (
-    PAYMENT_GATEWAY_OPTIONS.find(
-      (option) => gateways[option.id]?.active && gateways[option.id]?.keyId?.trim(),
-    ) ?? null
-  );
+  const entry = gateways?.cashfree || createDefaultCashfreeEntry();
+  const modeCreds = credentialsForMode(entry);
+  if (!modeCreds.appId?.trim() || !modeCreds.secretKey?.trim()) return null;
+  return {
+    ...PAYMENT_GATEWAY_OPTIONS[0],
+    mode: entry.mode === "live" ? "live" : "uat",
+  };
 }
 
 export function paymentMethodsForGateway(gatewayId) {
   switch (gatewayId) {
-    case "razorpay":
-      return ["UPI", "Card", "Net banking"];
-    case "stripe":
-      return ["Card", "Apple Pay"];
-    case "payu":
-      return ["UPI", "Wallet", "EMI"];
+    case "cashfree":
+      return ["UPI", "Card", "Net banking", "Wallet"];
     default:
       return [];
   }

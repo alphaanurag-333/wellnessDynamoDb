@@ -21,12 +21,10 @@ const {
 const {
   roundMoney,
   parseMoney,
-  getActiveRazorpayGateway,
+  getActiveCashfreeGateway,
 } = require("./consultancyPricingService");
 const {
-  createRazorpayOrder,
-  createMockOrder,
-  shouldUseMockPayments,
+  createCashfreeOrder,
 } = require("../utils/paymentGateway");
 const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
 const {
@@ -285,7 +283,6 @@ function deriveCheckoutCoachIds({ actor, user, wellnessCoachId, assistantCoachId
 function isPendingCheckoutOrderReusable(transaction, now = Date.now()) {
   if (!transaction) return false;
   if (String(transaction.paymentStatus || "").toLowerCase() !== "pending") return false;
-  if (!transaction.paymentGatewayOrderId) return false;
   if (!transaction.linkExpiresAt) return true;
   return new Date(transaction.linkExpiresAt).getTime() > now;
 }
@@ -743,28 +740,29 @@ async function triggerCoachCheckout({
     });
   }
 
-  const gateway = getActiveRazorpayGateway(config);
-  const useMock = shouldUseMockPayments(gateway);
-  const order = useMock
-    ? createMockOrder({
-        amountInRupees: pricing.totalAmount,
-        receipt: transaction.referenceNumber,
-      })
-    : await createRazorpayOrder({
-        gateway,
-        amountInRupees: pricing.totalAmount,
-        receipt: transaction.referenceNumber,
-        notes: {
-          transactionId: transaction.id,
-          userId: user.id,
-          productType: type,
-          catalogItemId: item.id,
-        },
-      });
+  const gateway = getActiveCashfreeGateway(config);
+  const order = await createCashfreeOrder({
+    gateway,
+    amountInRupees: pricing.totalAmount,
+    receipt: transaction.referenceNumber,
+    customer: {
+      id: user.id,
+      phone: user.phone,
+      email: user.email,
+      name: user.name,
+    },
+    notes: {
+      transactionId: transaction.id,
+      userId: user.id,
+      productType: type,
+      catalogItemId: item.id,
+    },
+  });
 
   transaction = await updateConsultancyTransaction(transaction.id, {
-    paymentProvider: useMock ? "mock" : "razorpay",
+    paymentProvider: "cashfree",
     paymentGatewayOrderId: order.id,
+    paymentGatewaySessionId: order.payment_session_id || null,
   });
 
   const offer = {

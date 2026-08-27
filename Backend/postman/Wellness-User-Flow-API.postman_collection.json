@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "Wellness User App — Complete Flow",
-    "description": "User App API collection organized by onboarding flow:\n\n**Seek → PWC → Zoom Call → Energy Exchange → Client Payment → Profile Settings**\n\n## Flow overview\n1. **Seek** — Register with health concern + optional referral code (WC/AWC assignment)\n2. **PWC** — Consultancy payment (application subscription by health concern)\n3. **Zoom Call** — Zoom link created after consultancy payment; view via transaction detail\n4. **Heal Subscription** — Full Heal tier unlock (required for most wellness features)\n5. **Energy Exchange** — Coach enables program; user previews, orders, and pays\n6. **Client Payment** — Coach-triggered App Program checkout (optional)\n7. **Paid Onboarding** — Post-subscription profile setup\n8. **Profile Settings** — Update profile, phone, WhatsApp\n\n## Setup\n- Import `Wellness-API.postman_environment.json`\n- Set `baseUrl` (default: `http://localhost:5000/api`)\n- For dev payments: `MOCK_PAYMENTS=true` in backend `.env`\n\n## Auth\nUser auth endpoints auto-save `accessToken` and `refreshToken` to collection variables.\n\n## Staff prerequisites (folder A)\nSome steps require coach/admin actions (enable Energy Exchange, trigger program checkout, assign coach). Use folder **A - Staff Prerequisites** when testing end-to-end.",
+    "description": "User App API collection organized by onboarding flow:\n\n**Seek → PWC → Zoom Call → Energy Exchange → Client Payment → Profile Settings**\n\n## Flow overview\n1. **Seek** — Register with health concern + optional referral code (WC/AWC assignment)\n2. **PWC** — Consultancy payment (application subscription by health concern)\n3. **Zoom Call** — Zoom link created after consultancy payment; view via transaction detail\n4. **Heal Subscription** — Full Heal tier unlock (required for most wellness features)\n5. **Energy Exchange** — Coach enables program; user previews, orders, and pays\n6. **Client Payment** — Coach-triggered App Program checkout (optional)\n7. **Paid Onboarding** — Post-subscription profile setup\n8. **Profile Settings** — Update profile, phone, WhatsApp\n\n## Setup\n- Import `Wellness-API.postman_environment.json`\n- Set `baseUrl` (default: `http://localhost:5000/api`)\n- Configure Cashfree keys in Admin → Configs → Payment gateway\n\n## Auth\nUser auth endpoints auto-save `accessToken` and `refreshToken` to collection variables.\n\n## Staff prerequisites (folder A)\nSome steps require coach/admin actions (enable Energy Exchange, trigger program checkout, assign coach). Use folder **A - Staff Prerequisites** when testing end-to-end.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -31,7 +31,7 @@
       "value": ""
     },
     {
-      "key": "razorpay_order_id",
+      "key": "payment_order_id",
       "value": ""
     },
     {
@@ -412,7 +412,7 @@
               }
             ],
             "url": "{{baseUrl}}/user/consultancy-payment/orders",
-            "description": "Creates Razorpay/mock order. Saves consultancyTransactionId and razorpay_order_id.",
+            "description": "Creates Cashfree order. Saves consultancyTransactionId and payment_order_id.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"healthConcernId\": \"{{healthConcernId}}\",\n  \"referralCode\": \"{{referralCode}}\",\n  \"paymentMethod\": \"upi\"\n}"
@@ -439,7 +439,7 @@
                   "  const txn = json.data?.transaction;",
                   "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
                   "  if (txn?.id) pm.collectionVariables.set(\"consultancyTransactionId\", txn.id);",
-                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "  if (orderId) pm.collectionVariables.set(\"payment_order_id\", orderId);",
                   "} catch (e) {}"
                 ]
               }
@@ -460,7 +460,7 @@
             "description": "Verify payment. User tier → consultancy_only. Zoom meeting scheduled.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionId\": \"{{consultancyTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+              "raw": "{\n  \"transactionId\": \"{{consultancyTransactionId}}\",\n  \"orderId\": \"{{payment_order_id}}\",\n  \"paymentId\": \"OPTIONAL_CF_PAYMENT_ID\"\n}"
             },
             "auth": {
               "type": "bearer",
@@ -750,7 +750,7 @@
                   "  const txn = json.data?.transaction;",
                   "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
                   "  if (txn?.id) pm.collectionVariables.set(\"subscriptionTransactionId\", txn.id);",
-                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "  if (orderId) pm.collectionVariables.set(\"payment_order_id\", orderId);",
                   "} catch (e) {}"
                 ]
               }
@@ -771,7 +771,7 @@
             "description": "Verify payment. User tier → heal.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionId\": \"{{subscriptionTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+              "raw": "{\n  \"transactionId\": \"{{subscriptionTransactionId}}\",\n  \"orderId\": \"{{payment_order_id}}\",\n  \"paymentId\": \"OPTIONAL_CF_PAYMENT_ID\"\n}"
             },
             "auth": {
               "type": "bearer",
@@ -953,7 +953,7 @@
                   "  const txn = json.data?.transaction;",
                   "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
                   "  if (txn?.id) pm.collectionVariables.set(\"energyExchangeTransactionId\", txn.id);",
-                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "  if (orderId) pm.collectionVariables.set(\"payment_order_id\", orderId);",
                   "} catch (e) {}"
                 ]
               }
@@ -974,7 +974,7 @@
             "description": "Verify EE payment.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionId\": \"{{energyExchangeTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+              "raw": "{\n  \"transactionId\": \"{{energyExchangeTransactionId}}\",\n  \"orderId\": \"{{payment_order_id}}\",\n  \"paymentId\": \"OPTIONAL_CF_PAYMENT_ID\"\n}"
             },
             "auth": {
               "type": "bearer",
@@ -1108,7 +1108,7 @@
                   "  const txn = json.data?.transaction;",
                   "  const orderId = json.data?.payment?.orderId || json.data?.payment?.id;",
                   "  if (txn?.id) pm.collectionVariables.set(\"programTransactionId\", txn.id);",
-                  "  if (orderId) pm.collectionVariables.set(\"razorpay_order_id\", orderId);",
+                  "  if (orderId) pm.collectionVariables.set(\"payment_order_id\", orderId);",
                   "} catch (e) {}"
                 ]
               }
@@ -1129,7 +1129,7 @@
             "description": "Verify program payment. Sets programPurchased=true.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionId\": \"{{programTransactionId}}\",\n  \"razorpay_order_id\": \"{{razorpay_order_id}}\",\n  \"razorpay_payment_id\": \"pay_mock_dev\",\n  \"razorpay_signature\": \"mock\"\n}"
+              "raw": "{\n  \"transactionId\": \"{{programTransactionId}}\",\n  \"orderId\": \"{{payment_order_id}}\",\n  \"paymentId\": \"OPTIONAL_CF_PAYMENT_ID\"\n}"
             },
             "auth": {
               "type": "bearer",

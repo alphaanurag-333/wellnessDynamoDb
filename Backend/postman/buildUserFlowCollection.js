@@ -32,7 +32,7 @@ try {
   const txn = json.data?.transaction;
   const orderId = json.data?.payment?.orderId || json.data?.payment?.id;
   if (txn?.id) pm.collectionVariables.set("consultancyTransactionId", txn.id);
-  if (orderId) pm.collectionVariables.set("razorpay_order_id", orderId);
+  if (orderId) pm.collectionVariables.set("payment_order_id", orderId);
 } catch (e) {}
 `.trim();
 
@@ -42,7 +42,7 @@ try {
   const txn = json.data?.transaction;
   const orderId = json.data?.payment?.orderId || json.data?.payment?.id;
   if (txn?.id) pm.collectionVariables.set("subscriptionTransactionId", txn.id);
-  if (orderId) pm.collectionVariables.set("razorpay_order_id", orderId);
+  if (orderId) pm.collectionVariables.set("payment_order_id", orderId);
 } catch (e) {}
 `.trim();
 
@@ -52,7 +52,7 @@ try {
   const txn = json.data?.transaction;
   const orderId = json.data?.payment?.orderId || json.data?.payment?.id;
   if (txn?.id) pm.collectionVariables.set("energyExchangeTransactionId", txn.id);
-  if (orderId) pm.collectionVariables.set("razorpay_order_id", orderId);
+  if (orderId) pm.collectionVariables.set("payment_order_id", orderId);
 } catch (e) {}
 `.trim();
 
@@ -62,15 +62,14 @@ try {
   const txn = json.data?.transaction;
   const orderId = json.data?.payment?.orderId || json.data?.payment?.id;
   if (txn?.id) pm.collectionVariables.set("programTransactionId", txn.id);
-  if (orderId) pm.collectionVariables.set("razorpay_order_id", orderId);
+  if (orderId) pm.collectionVariables.set("payment_order_id", orderId);
 } catch (e) {}
 `.trim();
 
 const VERIFY_PAYMENT_BODY = `{
   "transactionId": "{{transactionId}}",
-  "razorpay_order_id": "{{razorpay_order_id}}",
-  "razorpay_payment_id": "pay_mock_dev",
-  "razorpay_signature": "mock"
+  "orderId": "{{payment_order_id}}",
+  "paymentId": "OPTIONAL_CF_PAYMENT_ID"
 }`;
 
 function bearerAuth() {
@@ -110,7 +109,7 @@ const collection = {
     _postman_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     name: "Wellness User App — Complete Flow",
     description:
-      "User App API collection organized by onboarding flow:\n\n**Seek → PWC → Zoom Call → Energy Exchange → Client Payment → Profile Settings**\n\n## Flow overview\n1. **Seek** — Register with health concern + optional referral code (WC/AWC assignment)\n2. **PWC** — Consultancy payment (application subscription by health concern)\n3. **Zoom Call** — Zoom link created after consultancy payment; view via transaction detail\n4. **Heal Subscription** — Full Heal tier unlock (required for most wellness features)\n5. **Energy Exchange** — Coach enables program; user previews, orders, and pays\n6. **Client Payment** — Coach-triggered App Program checkout (optional)\n7. **Paid Onboarding** — Post-subscription profile setup\n8. **Profile Settings** — Update profile, phone, WhatsApp\n\n## Setup\n- Import `Wellness-API.postman_environment.json`\n- Set `baseUrl` (default: `http://localhost:5000/api`)\n- For dev payments: `MOCK_PAYMENTS=true` in backend `.env`\n\n## Auth\nUser auth endpoints auto-save `accessToken` and `refreshToken` to collection variables.\n\n## Staff prerequisites (folder A)\nSome steps require coach/admin actions (enable Energy Exchange, trigger program checkout, assign coach). Use folder **A - Staff Prerequisites** when testing end-to-end.",
+      "User App API collection organized by onboarding flow:\n\n**Seek → PWC → Zoom Call → Energy Exchange → Client Payment → Profile Settings**\n\n## Flow overview\n1. **Seek** — Register with health concern + optional referral code (WC/AWC assignment)\n2. **PWC** — Consultancy payment (application subscription by health concern)\n3. **Zoom Call** — Zoom link created after consultancy payment; view via transaction detail\n4. **Heal Subscription** — Full Heal tier unlock (required for most wellness features)\n5. **Energy Exchange** — Coach enables program; user previews, orders, and pays\n6. **Client Payment** — Coach-triggered App Program checkout (optional)\n7. **Paid Onboarding** — Post-subscription profile setup\n8. **Profile Settings** — Update profile, phone, WhatsApp\n\n## Setup\n- Import `Wellness-API.postman_environment.json`\n- Set `baseUrl` (default: `http://localhost:5000/api`)\n- Configure Cashfree keys in Admin → Configs → Payment gateway\n\n## Auth\nUser auth endpoints auto-save `accessToken` and `refreshToken` to collection variables.\n\n## Staff prerequisites (folder A)\nSome steps require coach/admin actions (enable Energy Exchange, trigger program checkout, assign coach). Use folder **A - Staff Prerequisites** when testing end-to-end.",
     schema: "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
   },
   variable: [
@@ -120,7 +119,7 @@ const collection = {
     { key: "userId", value: "" },
     { key: "healthConcernId", value: "" },
     { key: "referralCode", value: "" },
-    { key: "razorpay_order_id", value: "" },
+    { key: "payment_order_id", value: "" },
     { key: "consultancyTransactionId", value: "" },
     { key: "subscriptionTransactionId", value: "" },
     { key: "energyExchangeTransactionId", value: "" },
@@ -275,7 +274,7 @@ const collection = {
   "paymentMethod": "upi"
 }`,
           SAVE_CONSULTANCY_ORDER_SCRIPT,
-          "Creates Razorpay/mock order. Saves consultancyTransactionId and razorpay_order_id."
+          "Creates Cashfree order. Saves consultancyTransactionId and payment_order_id."
         ),
         authRequest(
           "Verify Consultancy Payment",
@@ -283,9 +282,8 @@ const collection = {
           "/user/consultancy-payment/verify",
           `{
   "transactionId": "{{consultancyTransactionId}}",
-  "razorpay_order_id": "{{razorpay_order_id}}",
-  "razorpay_payment_id": "pay_mock_dev",
-  "razorpay_signature": "mock"
+  "orderId": "{{payment_order_id}}",
+  "paymentId": "OPTIONAL_CF_PAYMENT_ID"
 }`,
           null,
           "Verify payment. User tier → consultancy_only. Zoom meeting scheduled."
@@ -402,9 +400,8 @@ const collection = {
           "/user/subscription-payment/verify",
           `{
   "transactionId": "{{subscriptionTransactionId}}",
-  "razorpay_order_id": "{{razorpay_order_id}}",
-  "razorpay_payment_id": "pay_mock_dev",
-  "razorpay_signature": "mock"
+  "orderId": "{{payment_order_id}}",
+  "paymentId": "OPTIONAL_CF_PAYMENT_ID"
 }`,
           null,
           "Verify payment. User tier → heal."
@@ -475,9 +472,8 @@ const collection = {
           "/user/energy-exchange/verify",
           `{
   "transactionId": "{{energyExchangeTransactionId}}",
-  "razorpay_order_id": "{{razorpay_order_id}}",
-  "razorpay_payment_id": "pay_mock_dev",
-  "razorpay_signature": "mock"
+  "orderId": "{{payment_order_id}}",
+  "paymentId": "OPTIONAL_CF_PAYMENT_ID"
 }`,
           null,
           "Verify EE payment."
@@ -529,9 +525,8 @@ const collection = {
           "/user/program/verify",
           `{
   "transactionId": "{{programTransactionId}}",
-  "razorpay_order_id": "{{razorpay_order_id}}",
-  "razorpay_payment_id": "pay_mock_dev",
-  "razorpay_signature": "mock"
+  "orderId": "{{payment_order_id}}",
+  "paymentId": "OPTIONAL_CF_PAYMENT_ID"
 }`,
           null,
           "Verify program payment. Sets programPurchased=true."

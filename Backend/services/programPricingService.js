@@ -5,7 +5,7 @@ const { getConsultancyTransactionById } = require("../models/consultancyTransact
 const {
   roundMoney,
   parseMoney,
-  getActiveRazorpayGateway,
+  getActiveCashfreeGateway,
 } = require("./consultancyPricingService");
 const {
   getActiveCoachCheckoutOffer,
@@ -147,7 +147,7 @@ async function previewCoachProgramOffer(user, offer) {
       ? storedPricing
       : freshPricing;
 
-  const gateway = getActiveRazorpayGateway(config);
+  const gateway = getActiveCashfreeGateway(config);
   const breakdown = toPublicPricingBreakdown(pricing, {
     discountPercent: offer.discountPercent,
     discountLabel: offer.discountLabel,
@@ -169,8 +169,7 @@ async function previewCoachProgramOffer(user, offer) {
     },
     offer: publicOffer,
     pricing: breakdown,
-    paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
-    mockPaymentsEnabled: !gateway,
+    paymentGateway: gateway ? { provider: gateway.provider, mode: gateway.mode } : null,
   };
 }
 
@@ -202,7 +201,7 @@ async function previewProgramCheckout(userId) {
   const pricing = toPublicPricingBreakdown(
     calculateProgramPricing(config, { baseAmount: program.price })
   );
-  const gateway = getActiveRazorpayGateway(config);
+  const gateway = getActiveCashfreeGateway(config);
 
   return {
     source: "assigned_program",
@@ -218,8 +217,7 @@ async function previewProgramCheckout(userId) {
     },
     offer: null,
     pricing,
-    paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
-    mockPaymentsEnabled: !gateway,
+    paymentGateway: gateway ? { provider: gateway.provider, mode: gateway.mode } : null,
   };
 }
 

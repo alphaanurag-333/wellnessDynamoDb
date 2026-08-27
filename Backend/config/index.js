@@ -59,10 +59,6 @@ module.exports = {
 
   firebaseServiceAccountPath: str("FIREBASE_SERVICE_ACCOUNT_PATH"),
 
-  mockPayments: bool("MOCK_PAYMENTS"),
-  autoConfirmMockPayments:
-    process.env.AUTO_CONFIRM_MOCK_PAYMENT !== "false" && nodeEnv !== "production",
-
   zoomAccountId: str("ZOOM_ACCOUNT_ID"),
   zoomClientId: str("ZOOM_CLIENT_ID"),
   zoomClientSecret: str("ZOOM_CLIENT_SECRET"),

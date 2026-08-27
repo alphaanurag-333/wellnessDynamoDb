@@ -78,6 +78,7 @@ async function createConsultancyTransaction(payload) {
     paymentStatus: normalizePaymentStatus(payload.paymentStatus, "pending"),
     paymentProvider: payload.paymentProvider || null,
     paymentGatewayOrderId: payload.paymentGatewayOrderId || null,
+    paymentGatewaySessionId: payload.paymentGatewaySessionId || null,
     paymentGatewayPaymentId: payload.paymentGatewayPaymentId || null,
     paymentMethod: payload.paymentMethod || null,
     baseAmount: payload.baseAmount,

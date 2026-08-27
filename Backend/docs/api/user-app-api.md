@@ -241,7 +241,7 @@ See also [consultancy-payment.md](../domain/consultancy-payment.md).
 | `POST` | `/user/program/order` |
 | `POST` | `/user/program/verify` |
 
-Flow: `GET` → `preview` → `order` → Razorpay/mock → `verify`.  
+Flow: `GET` → `preview` → `order` → Cashfree → `verify`.  
 Guide: [program-payment.md](../domain/program-payment.md).
 
 ---

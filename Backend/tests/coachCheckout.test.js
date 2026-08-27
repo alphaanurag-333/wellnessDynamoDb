@@ -379,7 +379,7 @@ describe("pending order reuse", () => {
     assert.equal(
       isPendingCheckoutOrderReusable({
         paymentStatus: "pending",
-        paymentGatewayOrderId: "order_mock_1",
+        paymentGatewayOrderId: "wd_order_1",
         linkExpiresAt: futureIso(),
       }),
       true
@@ -390,7 +390,7 @@ describe("pending order reuse", () => {
     assert.equal(
       isPendingCheckoutOrderReusable({
         paymentStatus: "pending",
-        paymentGatewayOrderId: "order_mock_1",
+        paymentGatewayOrderId: "wd_order_1",
         checkoutOffer: true,
         linkExpiresAt: pastIso(),
       }),

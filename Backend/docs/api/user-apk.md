@@ -161,7 +161,7 @@ curl -s "$BASE/api/public/misc/transformations?page=1&limit=20&platform=app"
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/checkout-preview` | Pricing preview |
-| POST | `/orders` | Create Razorpay order |
+| POST | `/orders` | Create Cashfree order |
 | POST | `/verify` | Verify payment |
 | GET | `/transactions` | My transactions |
 | GET | `/transactions/:id` | Transaction detail |

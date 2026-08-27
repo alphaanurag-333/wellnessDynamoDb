@@ -1,5 +1,6 @@
 const { getAppConfig } = require("../models/appConfigModel");
 const { getReferralCodeRecord } = require("../models/referralCodeModel");
+const { cashfreeBaseUrl } = require("../utils/paymentGateway");
 
 function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -10,18 +11,27 @@ function parseMoney(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function getActiveRazorpayGateway(appConfig) {
+function getActiveCashfreeGateway(appConfig) {
   const gateways = Array.isArray(appConfig?.payment_gateways) ? appConfig.payment_gateways : [];
-  const row = gateways.find((g) => String(g.provider).toLowerCase() === "razorpay" && g.isActive);
+  const row = gateways.find((g) => String(g.provider).toLowerCase() === "cashfree" && g.isActive);
   if (!row) return null;
-  const keyId = String(row.credentials?.key_id || "").trim();
-  const keySecret = String(row.credentials?.key_secret || "").trim();
-  if (!keyId || !keySecret) return null;
+
+  const mode = String(row.mode || "uat").toLowerCase() === "live" ? "live" : "uat";
+  const creds =
+    row.credentials && typeof row.credentials === "object"
+      ? row.credentials[mode] || {}
+      : {};
+  const appId = String(creds.app_id || creds.appId || "").trim();
+  const secretKey = String(creds.secret_key || creds.secretKey || "").trim();
+  if (!appId || !secretKey) return null;
+
   return {
-    provider: "razorpay",
-    keyId,
-    keySecret,
-    webhookSecret: String(row.credentials?.webhook_secret || "").trim() || null,
+    provider: "cashfree",
+    mode,
+    appId,
+    secretKey,
+    webhookSecret: String(creds.webhook_secret || creds.webhookSecret || "").trim() || null,
+    baseUrl: cashfreeBaseUrl(mode),
   };
 }
 
@@ -78,23 +88,24 @@ async function buildCheckoutPreview({ referralCode } = {}) {
 
   const referral = await isReferralCodeValidForDiscount(referralCode);
   const pricing = calculateConsultancyPricing(config, { referralCodeValid: referral.valid });
-  const gateway = getActiveRazorpayGateway(config);
+  const gateway = getActiveCashfreeGateway(config);
 
   return {
     pricing,
     referralCode: referral.valid ? String(referralCode).trim().toUpperCase() : null,
     referralCodeValid: referral.valid,
     paymentGateway: gateway
-      ? { provider: gateway.provider, keyId: gateway.keyId }
+      ? { provider: gateway.provider, mode: gateway.mode }
       : null,
-    mockPaymentsEnabled: !gateway,
   };
 }
 
 module.exports = {
   roundMoney,
   parseMoney,
-  getActiveRazorpayGateway,
+  getActiveCashfreeGateway,
+  /** @deprecated Use getActiveCashfreeGateway */
+  getActiveRazorpayGateway: getActiveCashfreeGateway,
   isReferralCodeValidForDiscount,
   calculateConsultancyPricing,
   buildCheckoutPreview,

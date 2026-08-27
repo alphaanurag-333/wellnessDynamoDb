@@ -31,7 +31,7 @@ Coach IDs are optional. When omitted, the API attributes the offer to the authen
 **What it writes:**
 
 - `User.pendingCoachCheckout` — offer object (`itemId`, amounts, `expiresAt`, `transactionId`)
-- `ConsultancyTransaction` — `productType: "program"`, `checkoutOffer: true`, discounted + tax pricing, Razorpay/mock `paymentGatewayOrderId`
+- `ConsultancyTransaction` — `productType: "program"`, `checkoutOffer: true`, discounted + tax pricing, Cashfree `paymentGatewayOrderId` + `paymentGatewaySessionId`
 
 Expired unpaid offers are not payable. Re-triggering replaces the pending offer.
 
@@ -42,7 +42,7 @@ Use the user JWT from `/user/auth/*`.
 1. `GET /api/user/program`
 2. `POST /api/user/program/preview`
 3. `POST /api/user/program/order`
-4. Complete Razorpay (or mock in development)
+4. Complete Cashfree checkout with `paymentSessionId` + `mode`
 5. `POST /api/user/program/verify`
 
 ### `GET /api/user/program`
@@ -117,27 +117,16 @@ Uses the pending offer transaction's discounted/tax amounts when a coach offer i
 
 ### `POST /api/user/program/order`
 
-Reuses the existing pending Razorpay/mock order while the link is valid (`data.payment.reusedPendingOrder: true`). Body: `{ "paymentMethod": "upi" }` (optional).
+Reuses the existing pending Cashfree order while the link is valid (`data.payment.reusedPendingOrder: true`). Body: `{ "paymentMethod": "upi" }` (optional).
 
 ### `POST /api/user/program/verify`
 
 ```json
 {
   "transactionId": "<transactionId>",
-  "razorpay_order_id": "<orderId>",
-  "razorpay_payment_id": "<paymentId>",
-  "razorpay_signature": "<signature>"
+  "orderId": "<orderId>",
+  "paymentId": "<paymentId>"
 }
 ```
 
 On success the transaction is `paid`, `user.programPurchased` is set, and `pendingCoachCheckout` is cleared.
-
-### Development mock
-
-```env
-NODE_ENV=development
-MOCK_PAYMENTS=true
-AUTO_CONFIRM_MOCK_PAYMENT=false
-```
-
-Verify with the mock order id from `/order` (`order_mock_...`).

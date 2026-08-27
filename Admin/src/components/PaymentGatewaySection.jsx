@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAppPaymentGateways, saveAppPaymentGateways } from "../api/paymentGatewayApi.js";
-import { PAYMENT_GATEWAY_OPTIONS, createDefaultGateways } from "../data/configDetailData.js";
+import {
+  PAYMENT_GATEWAY_MODES,
+  createDefaultCashfreeEntry,
+  createDefaultGateways,
+} from "../data/configDetailData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, children }) {
   return (
@@ -16,184 +21,331 @@ function Panel({ title, subtitle, children }) {
   );
 }
 
-function emptyEntry() {
-  return { active: false, keyId: "", keySecret: "", webhookSecret: "", merchantId: "" };
+function emptyModeSafe() {
+  return { appId: "", secretKey: "", webhookSecret: "" };
+}
+
+function cloneEntry(entry) {
+  const src = entry || createDefaultCashfreeEntry();
+  return {
+    active: true,
+    mode: src.mode === "live" ? "live" : "uat",
+    uat: { ...(src.uat || emptyModeSafe()) },
+    live: { ...(src.live || emptyModeSafe()) },
+  };
+}
+
+function entryEquals(a, b) {
+  const left = cloneEntry(a);
+  const right = cloneEntry(b);
+  return (
+    left.mode === right.mode &&
+    left.uat.appId === right.uat.appId &&
+    left.uat.secretKey === right.uat.secretKey &&
+    left.uat.webhookSecret === right.uat.webhookSecret &&
+    left.live.appId === right.live.appId &&
+    left.live.secretKey === right.live.secretKey &&
+    left.live.webhookSecret === right.live.webhookSecret
+  );
+}
+
+function modeLabel(modeId) {
+  return modeId === "live" ? "Live" : "UAT";
+}
+
+function SecretInput({ value, disabled, placeholder, onChange }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="ua-cfg-pgw-secret">
+      <input
+        type={visible ? "text" : "password"}
+        className="ua-cfg-pgw-field__input"
+        value={value}
+        autoComplete="off"
+        disabled={disabled}
+        placeholder={placeholder}
+        onChange={(event) => onChange(event.target.value)}
+        spellCheck={false}
+      />
+      <button
+        type="button"
+        className="ua-cfg-pgw-secret__toggle"
+        disabled={disabled}
+        onClick={() => setVisible((prev) => !prev)}
+        aria-label={visible ? "Hide secret" : "Show secret"}
+      >
+        {visible ? "Hide" : "Show"}
+      </button>
+    </div>
+  );
+}
+
+function ModeCredentialFields({ label, modeId, values, disabled, required, onChange }) {
+  return (
+    <div className="ua-cfg-pgw-mode-block">
+      <div className="ua-cfg-pgw-mode-block__title">{label}</div>
+      <div className="ua-cfg-pgw-card__fields ua-cfg-pgw-card__fields--stack">
+        <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
+          <span className="ua-cfg-pgw-field__label">App ID{required ? " *" : ""}</span>
+          <input
+            type="text"
+            className="ua-cfg-pgw-field__input"
+            value={values.appId}
+            autoComplete="off"
+            disabled={disabled}
+            placeholder={modeId === "live" ? "Production App ID" : "Sandbox App ID"}
+            onChange={(event) => onChange(modeId, { appId: event.target.value })}
+            spellCheck={false}
+          />
+        </label>
+        <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
+          <span className="ua-cfg-pgw-field__label">Secret key{required ? " *" : ""}</span>
+          <SecretInput
+            value={values.secretKey}
+            disabled={disabled}
+            placeholder="••••••••"
+            onChange={(secretKey) => onChange(modeId, { secretKey })}
+          />
+        </label>
+        <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
+          <span className="ua-cfg-pgw-field__label">Webhook secret (optional)</span>
+          <SecretInput
+            value={values.webhookSecret}
+            disabled={disabled}
+            placeholder="whsec_…"
+            onChange={(webhookSecret) => onChange(modeId, { webhookSecret })}
+          />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const extrasRef = useRef([]);
-  const savedRef = useRef(gateways);
+  const [draft, setDraft] = useState(() => cloneEntry(gateways?.cashfree));
+  const [pendingMode, setPendingMode] = useState(null);
+  const savedRef = useRef(cloneEntry(gateways?.cashfree));
+
+  const applyLoaded = useCallback(
+    (nextGateways) => {
+      const next = cloneEntry(nextGateways?.cashfree);
+      savedRef.current = next;
+      setDraft(next);
+      setGateways({ cashfree: next });
+    },
+    [setGateways],
+  );
 
   const loadGateways = useCallback(async () => {
     setLoading(true);
     try {
-      const { gateways: next, extras } = await getAppPaymentGateways();
-      extrasRef.current = extras || [];
-      setGateways(next);
-      savedRef.current = next;
+      const { gateways: next } = await getAppPaymentGateways();
+      applyLoaded(next);
     } catch (error) {
       onToast(error?.message || "Failed to load payment gateways");
-      const fallback = createDefaultGateways();
-      extrasRef.current = [];
-      setGateways(fallback);
-      savedRef.current = fallback;
+      applyLoaded(createDefaultGateways());
     } finally {
       setLoading(false);
     }
-  }, [onToast, setGateways]);
+  }, [applyLoaded, onToast]);
 
   useEffect(() => {
     loadGateways();
   }, [loadGateways]);
 
-  async function persist(next, successMessage) {
+  const dirty = !entryEquals(draft, savedRef.current);
+  const mode = draft.mode === "live" ? "live" : "uat";
+
+  function updateModeCredentials(modeId, patch) {
+    setDraft((prev) => {
+      const current = cloneEntry(prev);
+      return {
+        ...current,
+        [modeId]: { ...(current[modeId] || emptyModeSafe()), ...patch },
+      };
+    });
+  }
+
+  function validateModeCredentials(entry, modeId) {
+    const creds = entry?.[modeId] || emptyModeSafe();
+    if (!creds.appId.trim() || !creds.secretKey.trim()) {
+      return `${modeLabel(modeId)} App ID and secret key are required`;
+    }
+    return null;
+  }
+
+  async function persist(nextEntry, successMessage) {
     setBusy(true);
     try {
-      const saved = await saveAppPaymentGateways(next, extrasRef.current);
-      extrasRef.current = saved.extras || [];
-      setGateways(saved.gateways);
-      savedRef.current = saved.gateways;
+      const payload = { cashfree: cloneEntry(nextEntry) };
+      const saved = await saveAppPaymentGateways(payload);
+      applyLoaded(saved.gateways);
       if (successMessage) onToast(successMessage);
       return true;
     } catch (error) {
       onToast(error?.message || "Failed to save payment gateways");
-      setGateways(savedRef.current);
       return false;
     } finally {
       setBusy(false);
     }
   }
 
-  function updateGateway(id, patch) {
-    setGateways((prev) => ({
-      ...prev,
-      [id]: { ...(prev[id] || emptyEntry()), ...patch },
-    }));
-  }
-
-  async function commitField(id) {
+  async function saveCredentials() {
     if (busy) return;
-    const current = gateways[id] || emptyEntry();
-    const previous = savedRef.current[id] || emptyEntry();
-    if (
-      current.keyId === previous.keyId &&
-      current.keySecret === previous.keySecret &&
-      current.webhookSecret === previous.webhookSecret
-    ) {
-      return;
-    }
-    await persist(gateways, "Gateway credentials saved");
-  }
+    const next = cloneEntry(draft);
 
-  async function toggleGateway(id) {
-    if (busy) return;
-    const current = gateways[id] || emptyEntry();
-    const turningOn = !current.active;
-    if (turningOn && (!current.keyId.trim() || !current.keySecret.trim())) {
-      onToast("Key ID and key secret are required to enable this gateway");
+    const uatError = validateModeCredentials(next, "uat");
+    if (uatError) {
+      onToast(uatError);
       return;
     }
 
-    const next = { ...gateways };
-    PAYMENT_GATEWAY_OPTIONS.forEach((option) => {
-      next[option.id] = {
-        ...(next[option.id] || emptyEntry()),
-        active: option.id === id ? turningOn : false,
-      };
-    });
-    setGateways(next);
-    const option = PAYMENT_GATEWAY_OPTIONS.find((entry) => entry.id === id);
-    await persist(next, `${option?.name ?? "Gateway"} ${turningOn ? "enabled" : "disabled"}`);
+    const live = next.live || emptyModeSafe();
+    const livePartial = Boolean(
+      live.appId.trim() || live.secretKey.trim() || live.webhookSecret.trim(),
+    );
+    if (next.mode === "live" || livePartial) {
+      const liveError = validateModeCredentials(next, "live");
+      if (liveError) {
+        onToast(liveError);
+        return;
+      }
+    }
+
+    await persist(next, "Cashfree credentials saved");
+  }
+
+  function requestModeChange(modeId) {
+    if (busy || loading) return;
+    if (draft.mode === modeId) return;
+    const modeError = validateModeCredentials(draft, modeId);
+    if (modeError) {
+      onToast(`Add ${modeLabel(modeId)} credentials before switching mode`);
+      return;
+    }
+    if (dirty) {
+      onToast("Save credential changes before switching mode");
+      return;
+    }
+    setPendingMode(modeId);
+  }
+
+  async function confirmModeChange() {
+    if (!pendingMode) return;
+    const modeId = pendingMode;
+    setPendingMode(null);
+    const next = { ...cloneEntry(savedRef.current), mode: modeId };
+    setDraft(next);
+    await persist(next, `Cashfree mode set to ${modeLabel(modeId)}`);
+  }
+
+  function cancelModeChange() {
+    setPendingMode(null);
+  }
+
+  function resetDraft() {
+    setDraft(cloneEntry(savedRef.current));
   }
 
   return (
     <Panel
-      title="Payment gateways"
+      title="Cashfree payment gateway"
       subtitle={
         loading
-          ? "Loading payment gateways…"
-          : "Turn a gateway on only when credentials are correct. One active gateway at a time. Saved to App Config."
+          ? "Loading payment gateway…"
+          : "Cashfree is always on. Edit UAT / Live credentials, then save. Mode switch asks for confirmation."
       }
     >
       {loading ? (
         <p className="ua-cfg-panel__sub">Fetching gateway settings from App Config…</p>
       ) : (
-        <div className="ua-cfg-pgw-grid">
-          {PAYMENT_GATEWAY_OPTIONS.map((option) => {
-            const entry = gateways[option.id] || emptyEntry();
-            const active = Boolean(entry.active);
-
-            return (
-              <div key={option.id} className={`ua-cfg-pgw-card${active ? " ua-cfg-pgw-card--active" : ""}`}>
-                <div className="ua-cfg-pgw-card__head">
-                  <div>
-                    <div className="ua-cfg-pgw-card__name">{option.name}</div>
-                    <div className="ua-cfg-pgw-card__note">{option.note}</div>
-                  </div>
-                  <button
-                    type="button"
-                    className={`ua-toggle${active ? " ua-toggle--on" : ""}`}
-                    aria-pressed={active}
-                    aria-label={`${option.name} ${active ? "on" : "off"}`}
-                    disabled={busy}
-                    onClick={() => toggleGateway(option.id)}
-                  >
-                    <span className="ua-toggle__knob" />
-                  </button>
-                </div>
-
-                <div className="ua-cfg-pgw-card__fields">
-                  <label className="ua-cfg-pgw-field">
-                    <span className="ua-cfg-pgw-field__label">
-                      Key ID{active ? " *" : ""}
-                    </span>
-                    <input
-                      type="text"
-                      className="ua-cfg-pgw-field__input"
-                      value={entry.keyId}
-                      autoComplete="off"
-                      disabled={busy}
-                      placeholder="pk_… / rzp_… / client id"
-                      onChange={(event) => updateGateway(option.id, { keyId: event.target.value })}
-                      onBlur={() => commitField(option.id)}
-                    />
-                  </label>
-                  <label className="ua-cfg-pgw-field">
-                    <span className="ua-cfg-pgw-field__label">
-                      Key secret{active ? " *" : ""}
-                    </span>
-                    <input
-                      type="password"
-                      className="ua-cfg-pgw-field__input"
-                      value={entry.keySecret}
-                      autoComplete="new-password"
-                      disabled={busy}
-                      placeholder="••••••••"
-                      onChange={(event) => updateGateway(option.id, { keySecret: event.target.value })}
-                      onBlur={() => commitField(option.id)}
-                    />
-                  </label>
-                  <label className="ua-cfg-pgw-field ua-cfg-pgw-field--full">
-                    <span className="ua-cfg-pgw-field__label">Webhook secret (optional)</span>
-                    <input
-                      type="password"
-                      className="ua-cfg-pgw-field__input"
-                      value={entry.webhookSecret}
-                      autoComplete="new-password"
-                      disabled={busy}
-                      placeholder="whsec_…"
-                      onChange={(event) => updateGateway(option.id, { webhookSecret: event.target.value })}
-                      onBlur={() => commitField(option.id)}
-                    />
-                  </label>
-                </div>
+        <div className="ua-cfg-pgw-grid ua-cfg-pgw-grid--single">
+          <div className="ua-cfg-pgw-card ua-cfg-pgw-card--active">
+            <div className="ua-cfg-pgw-card__head">
+              <div>
+                <div className="ua-cfg-pgw-card__name">Cashfree</div>
+                <div className="ua-cfg-pgw-card__note">UPI · cards · net banking · wallets</div>
               </div>
-            );
-          })}
+              <span className="ua-cfg-pgw-badge">{modeLabel(mode)} mode</span>
+            </div>
+
+            <div className="ua-cfg-pgw-mode">
+              <span className="ua-cfg-pgw-field__label">Mode</span>
+              <div className="ua-cfg-pgw-mode__toggle" role="group" aria-label="Cashfree mode">
+                {PAYMENT_GATEWAY_MODES.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={`ua-cfg-pgw-mode__btn${mode === option.id ? " is-active" : ""}`}
+                    disabled={busy}
+                    aria-pressed={mode === option.id}
+                    onClick={() => requestModeChange(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="ua-cfg-pgw-mode__hint">
+                Switching mode uses that environment for all app payments. You will be asked to confirm.
+              </p>
+            </div>
+
+            <ModeCredentialFields
+              label="UAT (sandbox)"
+              modeId="uat"
+              values={draft.uat || emptyModeSafe()}
+              disabled={busy}
+              required
+              onChange={updateModeCredentials}
+            />
+            <ModeCredentialFields
+              label="Live (production)"
+              modeId="live"
+              values={draft.live || emptyModeSafe()}
+              disabled={busy}
+              required={mode === "live"}
+              onChange={updateModeCredentials}
+            />
+
+            <div className="ua-cfg-pgw-actions">
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--outline"
+                disabled={busy || !dirty}
+                onClick={resetDraft}
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--primary"
+                disabled={busy || !dirty}
+                onClick={saveCredentials}
+              >
+                {busy ? "Saving…" : "Save credentials"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingMode)}
+        tag="Payment gateway"
+        title={`Switch Cashfree to ${modeLabel(pendingMode)}?`}
+        body={
+          pendingMode === "live"
+            ? "Live credentials will be used for all payment orders. Make sure production keys are correct before continuing."
+            : "UAT (sandbox) credentials will be used for all payment orders. Use this for testing only."
+        }
+        cancelLabel="Cancel"
+        confirmLabel={`Use ${modeLabel(pendingMode)}`}
+        confirmTone={pendingMode === "live" ? "danger" : "primary"}
+        onCancel={cancelModeChange}
+        onConfirm={confirmModeChange}
+      />
     </Panel>
   );
 }

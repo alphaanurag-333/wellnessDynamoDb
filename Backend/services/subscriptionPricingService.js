@@ -4,7 +4,7 @@ const { getUserById } = require("../models/userModel");
 const {
   roundMoney,
   parseMoney,
-  getActiveRazorpayGateway,
+  getActiveCashfreeGateway,
 } = require("./consultancyPricingService");
 const {
   getActiveCoachCheckoutOffer,
@@ -85,7 +85,7 @@ async function previewCoachSubscriptionOffer(user, offer) {
       ? storedPricing
       : freshPricing;
 
-  const gateway = getActiveRazorpayGateway(config);
+  const gateway = getActiveCashfreeGateway(config);
   const publicOffer = {
     ...toPublicCoachProgramOffer(offer),
     netPayable: pricing.totalAmount,
@@ -103,8 +103,7 @@ async function previewCoachSubscriptionOffer(user, offer) {
     },
     offer: publicOffer,
     pricing,
-    paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
-    mockPaymentsEnabled: !gateway,
+    paymentGateway: gateway ? { provider: gateway.provider, mode: gateway.mode } : null,
   };
 }
 
@@ -126,15 +125,14 @@ async function buildSubscriptionCheckoutPreview(userId) {
   if (!config) throwNamed("App configuration not found", "ConfigNotFoundError");
 
   const pricing = calculateSubscriptionPricing(config);
-  const gateway = getActiveRazorpayGateway(config);
+  const gateway = getActiveCashfreeGateway(config);
 
   return {
     source: "default",
     subscription: null,
     offer: null,
     pricing,
-    paymentGateway: gateway ? { provider: gateway.provider, keyId: gateway.keyId } : null,
-    mockPaymentsEnabled: !gateway,
+    paymentGateway: gateway ? { provider: gateway.provider, mode: gateway.mode } : null,
   };
 }
 

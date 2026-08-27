@@ -60,6 +60,15 @@ function normalizeBooleanFlag(value, fallback = false) {
   return Boolean(fallback);
 }
 
+function normalizeModeCredentials(value) {
+  const creds = value && typeof value === "object" ? value : {};
+  return {
+    app_id: String(creds.app_id ?? creds.appId ?? "").trim(),
+    secret_key: String(creds.secret_key ?? creds.secretKey ?? "").trim(),
+    webhook_secret: String(creds.webhook_secret ?? creds.webhookSecret ?? "").trim(),
+  };
+}
+
 function normalizePaymentGateways(value) {
   const parsed = parseJSON(value, null);
   if (!Array.isArray(parsed)) {
@@ -67,10 +76,17 @@ function normalizePaymentGateways(value) {
   }
 
   const seen = new Set();
-  const rows = parsed.map((row, index) => {
+  const rows = [];
+
+  for (let index = 0; index < parsed.length; index += 1) {
+    const row = parsed[index];
     const provider = String(row?.provider || "").trim().toLowerCase();
     if (!provider) {
       throw new AppError(`Payment gateway ${index + 1} provider is required`, 400);
+    }
+    // Drop legacy providers (razorpay / stripe / payu) instead of storing them.
+    if (provider !== "cashfree") {
+      continue;
     }
     if (seen.has(provider)) {
       throw new AppError(`Duplicate payment gateway provider: ${provider}`, 400);
@@ -78,35 +94,29 @@ function normalizePaymentGateways(value) {
     seen.add(provider);
 
     const credentials = row?.credentials && typeof row.credentials === "object" ? row.credentials : {};
-    const isActive = normalizeBooleanFlag(row?.isActive ?? row?.active, false);
-    const keyId = String(credentials.key_id ?? credentials.keyId ?? "").trim();
-    const keySecret = String(credentials.key_secret ?? credentials.keySecret ?? "").trim();
-    const webhookSecret = String(credentials.webhook_secret ?? credentials.webhookSecret ?? "").trim();
-    const merchantId = String(credentials.merchant_id ?? credentials.merchantId ?? "").trim();
+    // Cashfree is always the active gateway — no on/off toggle.
+    const isActive = true;
+    const mode = String(row?.mode || "uat").trim().toLowerCase() === "live" ? "live" : "uat";
+    const uat = normalizeModeCredentials(credentials.uat);
+    const live = normalizeModeCredentials(credentials.live);
+    const activeCreds = mode === "live" ? live : uat;
 
-    if (isActive && (!keyId || !keySecret)) {
-      throw new AppError(`Key ID and key secret are required when ${provider} is active`, 400);
+    if (!activeCreds.app_id || !activeCreds.secret_key) {
+      throw new AppError(
+        `App ID and secret key are required for Cashfree ${mode.toUpperCase()} mode`,
+        400
+      );
     }
 
-    return {
+    rows.push({
       provider,
       isActive,
-      credentials: {
-        key_id: keyId,
-        key_secret: keySecret,
-        webhook_secret: webhookSecret,
-        merchant_id: merchantId,
-      },
-    };
-  });
+      mode,
+      credentials: { uat, live },
+    });
+  }
 
-  let activeSeen = false;
-  return rows.map((row) => {
-    if (!row.isActive) return row;
-    if (activeSeen) return { ...row, isActive: false };
-    activeSeen = true;
-    return row;
-  });
+  return rows;
 }
 
 function normalizeAppProgramPricing(value) {

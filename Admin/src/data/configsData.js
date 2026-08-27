@@ -105,7 +105,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-payment-gateway",
           name: "Payment gateway",
-          note: "Pick Razorpay, Stripe, or PayU · keys managed here",
+          note: "Cashfree UAT / Live keys · mode managed here",
           owner: "Admin",
           app: true,
           web: false,

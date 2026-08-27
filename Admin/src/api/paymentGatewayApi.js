@@ -18,10 +18,10 @@ export async function getAppPaymentGateways() {
   }
 }
 
-export async function saveAppPaymentGateways(gateways, extras = []) {
+export async function saveAppPaymentGateways(gateways) {
   try {
     const { data } = await api.patch(appConfigBase(), {
-      payment_gateways: mapPaymentGatewaysToConfig(gateways, extras),
+      payment_gateways: mapPaymentGatewaysToConfig(gateways),
     });
     return mapPaymentGatewaysFromConfig(data?.data?.payment_gateways);
   } catch (error) {

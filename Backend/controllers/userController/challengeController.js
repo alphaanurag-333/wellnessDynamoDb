@@ -112,9 +112,8 @@ exports.verifyChallengePaymentController = asyncHandler(async (req, res) => {
   try {
     const data = await verifyChallengePayment(req.user.id, {
       transactionId: req.body.transactionId,
-      razorpay_order_id: req.body.razorpay_order_id,
-      razorpay_payment_id: req.body.razorpay_payment_id,
-      razorpay_signature: req.body.razorpay_signature,
+      orderId: req.body.orderId ?? req.body.order_id ?? req.body.cashfree_order_id ?? req.body.razorpay_order_id,
+      paymentId: req.body.paymentId ?? req.body.payment_id ?? req.body.cashfree_payment_id ?? req.body.razorpay_payment_id,
     });
     return res.status(200).json({ status: true, data });
   } catch (err) {

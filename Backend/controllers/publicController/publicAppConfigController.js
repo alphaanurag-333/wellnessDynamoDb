@@ -14,7 +14,11 @@ function toPublicClientAppConfig(doc) {
 
   const config = resolveAppConfigMediaUrls(doc);
   const payment_gateways = Array.isArray(config.payment_gateways)
-    ? config.payment_gateways.map(({ provider, isActive }) => ({ provider, isActive }))
+    ? config.payment_gateways.map(({ provider, isActive, mode }) => ({
+        provider,
+        isActive,
+        mode: String(mode || "uat").toLowerCase() === "live" ? "live" : "uat",
+      }))
     : [];
 
   return {

@@ -64,7 +64,7 @@ Details of completed work: [`FUNCTIONALITY_DONE.md`](./FUNCTIONALITY_DONE.md) (n
 | Dashboard FY month fixed to April | `adminDashboardStatsService.js` (ignores app-config) |
 | Config dropdown option seeds in code | `configDropdownModel.js` |
 | Default staff temp password `Admin@12345` | `accountAdminController.js`, seed scripts |
-| Mock payments / Zoom / WhatsApp | `paymentGateway.js`, `zoom.js`, `whatsapp.js` |
+| Zoom / WhatsApp | `zoom.js`, `whatsapp.js` |
 
 ### 3.3 Frontend (marketing)
 
@@ -118,10 +118,9 @@ Details of completed work: [`FUNCTIONALITY_DONE.md`](./FUNCTIONALITY_DONE.md) (n
 | B4 | **Admin API default localhost** if `VITE_API_URL` unset | `Admin/src/api.js` | Deployed Admin hits wrong host |
 | B5 | **Frontend API hardcoded** to staging host | `Frontend/src/api.js` | Env ignored; wrong environment |
 | B6 | **No payment webhook** | Routes | Missed/failed client verifies leave paid state inconsistent |
-| B7 | **Mock payments** when gateway missing (non-prod) | `paymentGateway.js` | Accidental mock in staging if misconfigured |
-| B8 | Default seed passwords (`Admin@12345`) | Seeds / account create | Weak defaults if reused |
-| B9 | Fake dashboard/revenue without banner | Admin dashboard | Business decisions on wrong numbers |
-| B10 | Numeric mock user IDs in Admin | `UserDetailPage` | Demo data mistaken for real clients |
+| B7 | Default seed passwords (`Admin@12345`) | Seeds / account create | Weak defaults if reused |
+| B8 | Fake dashboard/revenue without banner | Admin dashboard | Business decisions on wrong numbers |
+| B9 | Numeric mock user IDs in Admin | `UserDetailPage` | Demo data mistaken for real clients |
 
 ---
 

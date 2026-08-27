@@ -1,25 +1,49 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const {
-  createMockOrder,
-  verifyMockPayment,
+  buildClientPaymentPayload,
+  cashfreeBaseUrl,
+  resolveVerifyPaymentFields,
 } = require("../utils/paymentGateway");
 
-describe("development mock payment gateway", () => {
-  it("creates verifiable mock order IDs", () => {
-    const order = createMockOrder({
-      amountInRupees: 313.95,
-      receipt: "WD-DEV-TEST",
-    });
-
-    assert.match(order.id, /^order_mock_\d+$/);
-    assert.equal(order.amount, 31395);
-    assert.equal(order.provider, "mock");
-    assert.equal(verifyMockPayment({ orderId: order.id }), true);
+describe("cashfree helpers", () => {
+  it("resolves UAT and Live base URLs", () => {
+    assert.equal(cashfreeBaseUrl("uat"), "https://sandbox.cashfree.com/pg");
+    assert.equal(cashfreeBaseUrl("live"), "https://api.cashfree.com/pg");
+    assert.equal(cashfreeBaseUrl("anything"), "https://sandbox.cashfree.com/pg");
   });
 
-  it("rejects non-mock order IDs", () => {
-    assert.equal(verifyMockPayment({ orderId: "" }), false);
-    assert.equal(verifyMockPayment({ orderId: "order_razorpay_test" }), false);
+  it("builds client payment payload for Cashfree", () => {
+    const payload = buildClientPaymentPayload({
+      gateway: { mode: "uat" },
+      order: {
+        id: "order_cf_1",
+        payment_session_id: "session_abc",
+        amount: 10000,
+        currency: "INR",
+      },
+    });
+    assert.deepEqual(payload, {
+      provider: "cashfree",
+      orderId: "order_cf_1",
+      paymentSessionId: "session_abc",
+      amount: 10000,
+      currency: "INR",
+      mode: "uat",
+    });
+  });
+
+  it("resolves verify fields from Cashfree and legacy aliases", () => {
+    assert.deepEqual(
+      resolveVerifyPaymentFields({ orderId: "o1", paymentId: "p1" }),
+      { orderId: "o1", paymentId: "p1" }
+    );
+    assert.deepEqual(
+      resolveVerifyPaymentFields({
+        cashfree_order_id: "o2",
+        razorpay_payment_id: "p2",
+      }),
+      { orderId: "o2", paymentId: "p2" }
+    );
   });
 });

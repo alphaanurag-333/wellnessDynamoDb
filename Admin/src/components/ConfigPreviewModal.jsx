@@ -644,7 +644,10 @@ function PaymentGatewayPreview({ activeGateway, surface, item }) {
               </div>
               <div className="ua-cfg-preview-pgw__gateway">
                 <span className="ua-cfg-preview-pgw__gateway-label">Gateway</span>
-                <strong>{activeGateway.name}</strong>
+                <strong>
+                  {activeGateway.name}
+                  {activeGateway.mode ? ` · ${String(activeGateway.mode).toUpperCase()}` : ""}
+                </strong>
               </div>
               <div className="ua-cfg-preview-pgw__methods">
                 <span className="ua-cfg-preview-pgw__methods-label">Payment methods</span>
