@@ -12769,7 +12769,7 @@ bottom: -18px;
     gap: var(--space-4);
   }
 .about-page .methodology-card {
-    width: min(100%, 279px);
+    width: min(100%, 322px);
     margin: 0 auto;
   }
 .about-page .medicalBoard__top {
@@ -13145,7 +13145,7 @@ bottom: -18px;
           line-height: 1.35;
     }
     .site-cards:not(.site-stats__card) {
-      padding: 0.0rem !important;
+      padding: 1rem !important;
     }
     .transformation-header {
       flex-direction:row !important;

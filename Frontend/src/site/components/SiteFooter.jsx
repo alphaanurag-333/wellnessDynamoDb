@@ -118,7 +118,7 @@ export function SiteFooter() {
 
       <div className="site-container">
         <div className="site-footer__grid">
-          <div className="site-footer__brand d-flex">
+          <div className="site-footer__brand d-flex gap-2">
             <Link to="/" className="site-footer__brand-head">
 
               <img src={logoSrc} alt={appName} className="site-footer__brand-logo" />
