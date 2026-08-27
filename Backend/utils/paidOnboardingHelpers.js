@@ -120,6 +120,12 @@ function computePaidOnboardingCompleted(stepStatus) {
   return PAID_ONBOARDING_STATUS_KEYS.every((key) => status[key] === "done");
 }
 
+function onboardingStepJustCompleted(previousStatus, nextStatus, stepKey) {
+  const prev = normalizePaidOnboardingStepStatus(previousStatus);
+  const next = normalizePaidOnboardingStepStatus(nextStatus);
+  return prev[stepKey] !== "done" && next[stepKey] === "done";
+}
+
 function getNextIncompleteStep(stepStatus) {
   const status = normalizePaidOnboardingStepStatus(stepStatus);
   for (const key of PAID_ONBOARDING_STATUS_KEYS) {
@@ -319,6 +325,7 @@ module.exports = {
   defaultPaidOnboardingStepStatus,
   normalizePaidOnboardingStepStatus,
   computePaidOnboardingCompleted,
+  onboardingStepJustCompleted,
   getNextIncompleteStep,
   countCompletedSteps,
   markStepDone,

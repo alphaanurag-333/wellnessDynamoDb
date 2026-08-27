@@ -12,6 +12,7 @@ const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
 const { sendWhatsAppText } = require("../utils/whatsapp");
 const { resolveWhatsappNumber } = require("./meetingAssigneeService");
+const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync } = require("./whatsappJourneyService");
 const {
   emitMealLogged,
   emitLabReportUploaded,
@@ -516,6 +517,7 @@ async function dispatchWellnessYogaAssignedNotification({
 
 async function dispatchLabReportUploadCoachNotification({ user, reportId }) {
   emitLabReportUploaded({ user, reportId });
+  notifyLabReportUpdatedToCoachesAsync(user);
 
   const tokens = await collectCoachFcmTokensForUser(user);
   if (tokens.length === 0) {
@@ -761,6 +763,7 @@ async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey, mee
     title: "New meeting slots",
   });
   runPushSafely(deliverTargetedPush(userId, notification));
+  notifyOnboardingSlotsOfferedAsync({ userId, stepKey });
   return notification;
 }
 

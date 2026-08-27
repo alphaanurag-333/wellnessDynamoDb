@@ -12,6 +12,7 @@ const {
   wizardStepAfterPhotosComplete,
   computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 const {
   createProgressPhoto,
   listProgressPhotosByUser,
@@ -71,6 +72,12 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
     paidOnboardingStep: nextWizardStep,
     paidOnboardingCompleted:
       alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
+  });
+
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus: currentStatus,
+    nextStatus,
   });
 
   return res.status(201).json({

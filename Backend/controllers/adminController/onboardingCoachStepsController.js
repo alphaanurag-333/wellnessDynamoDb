@@ -20,13 +20,21 @@ const {
   markStepDone,
   computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 
 async function persistStepDone(user, stepKey) {
+  const previousStatus = user.paidOnboardingStepStatus;
   const nextStatus = markStepDone(user.paidOnboardingStepStatus, stepKey);
-  return updateUser(user.id, {
+  const updated = await updateUser(user.id, {
     paidOnboardingStepStatus: nextStatus,
     paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   });
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus,
+    nextStatus,
+  });
+  return updated;
 }
 
 exports.listStaffUserRcaController = asyncHandler(async (req, res) => {

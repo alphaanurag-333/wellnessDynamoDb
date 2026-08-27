@@ -17,6 +17,7 @@ const {
   parseHealthConcernOtherFromBody,
   isOtherHealthConcernTitle,
 } = require("../../services/consultancyHealthConcern");
+const { notifyPwcUserRegisteredAsync } = require("../../services/whatsappJourneyService");
 const {
   createUser,
   getUserById,
@@ -251,6 +252,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
     fields.passwordHash = await hashPassword(password);
   }
 
+  let healthConcernTitle = "";
   if (fields.primaryHealthConcern) {
     try {
       const healthConcernOther =
@@ -265,6 +267,11 @@ exports.registerUser = asyncHandler(async (req, res) => {
       fields.primaryHealthConcernOther = isOtherHealthConcernTitle(concern?.title)
         ? String(healthConcernOther || "").trim() || null
         : null;
+      healthConcernTitle =
+        fields.primaryHealthConcernOther ||
+        resolved.healthConcernSnapshot?.title ||
+        concern?.title ||
+        "";
     } catch (err) {
       if (err?.name === "ValidationError") {
         throw new AppError(err.message, 400);
@@ -289,6 +296,11 @@ exports.registerUser = asyncHandler(async (req, res) => {
     email: fields.email,
     phone: delivery.phone,
     phoneCountryCode: delivery.phoneCountryCode,
+  });
+
+  notifyPwcUserRegisteredAsync({
+    user,
+    healthConcernTitle: healthConcernTitle || "your health concern",
   });
 
   return sendAuthResponse(res, 201, await enrichUser(user), "Registration successful");

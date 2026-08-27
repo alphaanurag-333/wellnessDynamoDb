@@ -25,6 +25,7 @@ const {
 const { ensureCashfreeCheckoutOrder } = require("./paymentOrderHelpers");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPaymentReceived } = require("./adminActivityService");
+const { notifyProgramPaymentConfirmedAsync } = require("./whatsappJourneyService");
 const {
   toPublicTransactionWithInvoice,
 } = require("../utils/consultancyInvoiceResponse");
@@ -414,6 +415,10 @@ async function finalizePaidProgramTransaction(transaction, { paymentId, provider
       amount: transaction.totalAmount,
       productLabel: "Program",
       transactionId: transaction.id,
+    });
+    notifyProgramPaymentConfirmedAsync({
+      user,
+      totalAmount: transaction.totalAmount,
     });
   }
 
