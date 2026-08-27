@@ -46,6 +46,10 @@ module.exports = {
   exposeOtpInResponse: bool("EXPOSE_OTP_IN_RESPONSE"),
   otpLength: num("OTP_LENGTH", 6),
   otpExpiresMinutes: num("OTP_EXPIRES_MINUTES", 1),
+  /** Max OTP sends for login/register before cooldown (default: 3). */
+  otpMaxSendsBeforeCooldown: num("OTP_MAX_SENDS_BEFORE_COOLDOWN", 3),
+  /** Cooldown after max OTP sends, in minutes (default: 10). */
+  otpCooldownMinutes: num("OTP_COOLDOWN_MINUTES", 10),
   totpIssuer: str("TOTP_ISSUER", "Wellness Admin"),
   totpMaxFailedAttempts: num("TOTP_MAX_FAILED_ATTEMPTS", 5),
 
