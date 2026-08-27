@@ -45,7 +45,7 @@
   --space-4: 1rem;
   --space-5: 1.3rem;
   --space-6: 1rem;
-  --space-8: 2rem;
+  --space-8: 1rem;
   --space-10: 4rem;
   --space-12: 5rem;
 
@@ -266,7 +266,9 @@
   --site-shadow: 0 20px 50px rgba(21, 34, 56, 0.1);
   --site-shadow-sm: 0 8px 24px rgba(21, 34, 56, 0.06);
   --site-shadow-hover: 0 24px 48px rgba(21, 34, 56, 0.14);
-  --site-container: 1180px;
+  --container-width: 1320px;
+  --container-padding: 15px;
+  --site-container: var(--container-width);
   --site-section-y: var(--section-padding-y);
   --site-gradient-hero: linear-gradient(
     145deg,
@@ -320,9 +322,17 @@ min-height: 100dvh;
   color: var(--site-navy);
 }
 
-.site-container {
-  width: min(100% - 2rem, var(--site-container));
-  margin-inline: auto;
+/* Shared content width: header + every section edge-aligns to this */
+.site-container,
+.site-shell .container,
+.wellness-hero__container {
+  width: 100%;
+  max-width: var(--container-width, 1320px);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding, 15px);
+  padding-right: var(--container-padding, 15px);
+  box-sizing: border-box;
 }
 
 .site-section {
@@ -921,7 +931,7 @@ min-height: 100dvh;
   gap: 0.75rem;
   height: 100%;
   min-height: 100%;
-  background-color: #fef4ed;
+  background-color: #fff;
   border-radius: 15px;
   box-sizing: border-box;
 }
@@ -1542,12 +1552,7 @@ min-height: 100dvh;
   margin-top: 0;
 }
 
-.site-container {
-  max-width: 1320px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 15px;
-}
+/* .site-container canonical rules live near --site-container tokens above */
 
 .site-section--about {
   background: var(--site-bg-soft);
@@ -2298,11 +2303,7 @@ to {
 }
 
 .wellness-hero__container {
-  max-width: var(--container-width);
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
-display: flex;
+  display: flex;
   justify-content: space-between;
   align-items: center;
 }
@@ -2517,15 +2518,18 @@ color: var(--text-body);
 }
 
 .methodology__cards {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
-  flex-wrap: wrap;
+  align-items: stretch;
 }
 
 .methodology-card {
-  width: 28.8%;
+  width: auto;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   border: 1px solid rgba(231, 134, 58, 0.1);
@@ -2563,12 +2567,12 @@ color: var(--text-body);
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 1 1 auto;
   padding: 0 20px 24px;
   text-align: center;
   position: relative;
   margin-bottom: 0;
   min-height: 0;
-  height: auto;
 }
 
 .methodology-card__content h3 {
@@ -2612,7 +2616,7 @@ h5.pillar-card__head-title {
 }
 
 .methodology-card__more {
-  margin: 6px 0 0;
+  margin: 6px 0 10px;
   padding: 0;
   display: inline-flex;
   align-items: center;
@@ -2645,7 +2649,7 @@ h5.pillar-card__head-title {
   justify-content: center;
   width: 100%;
   height: 44px;
-  margin-top: 14px;
+  margin-top: auto;
   border: none;
   border-radius: var(--radius-pill);
   background: var(--primary);
@@ -6754,12 +6758,16 @@ box-shadow: var(--shadow-sm);
   background: #fef4ed;
 }
 
-.transformation-section .container {
+.transformation-section .container,
+.transformation-section .site-container {
   width: 100%;
+  max-width: var(--container-width, 1320px);
   overflow: hidden;
-  /* max-width: var(--container-width); */
-  margin: 0 auto;
-  padding: 0 var(--container-padding);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--container-padding, 15px);
+  padding-right: var(--container-padding, 15px);
+  box-sizing: border-box;
 }
 
 /* HEADER */
@@ -7476,8 +7484,6 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .real-healing-section .site-container {
-  width: min(100% - 2rem, var(--site-container));
-  margin-inline: auto;
   box-sizing: border-box;
   overflow-x: clip;
   overflow-y: visible;
@@ -8784,7 +8790,7 @@ flex-shrink: 0;
 }
 
 .static-page-hero__inner {
-  max-width: 860px;
+  /* max-width: 860px; */
 }
 
 .static-page-tag {
@@ -8805,15 +8811,22 @@ flex-shrink: 0;
 .static-page-title {
   margin: 0;
   color: var(--text-heading);
-  font-size: var(--font-size-h2);
-  line-height: 1.1;
-  font-weight: var(--fw-bold);
+  /* font-size: var(--font-size-h2); */
+  /* line-height: 1.1;
+  font-weight: var(--fw-bold); */
   letter-spacing: -0.5px;
+
+
+
+  font-family: var(--font-family-base) !important;
+    font-size: var(--font-size-h2) !important;
+    font-weight: var(--fw-bold) !important;
+    line-height: var(--line-height-heading) !important;
 }
 
 .static-page-body {
   padding: 10px 0 10px;
-  max-width: 860px;
+  /* max-width: 860px; */
 }
 
 .static-page-message {
@@ -9874,6 +9887,14 @@ h5.pillar-card__head-title.is-expanded {
 
 /* WELLNESSPEDIA PAGE */
 
+.backgroundmanage {
+
+background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55%), radial-gradient(820px 360px at 100% 100%, rgba(232, 136, 79, 0.18), transparent 52%), #fff3ea !important;
+  /* background: radial-gradient(900px 320px at 0% 0%, rgba(232, 136, 79, 0.18), transparent 55%), radial-gradient(820px 360px at 100% 100%, rgba(122, 201, 154, 0.22), transparent 52%), #fef4ed; */
+}
+
+
+
 .wellnesspedia-page .wellness-toolkit__badge {
   margin-bottom: var(--space-3);
 }
@@ -10738,11 +10759,11 @@ h5.pillar-card__head-title.is-expanded {
     max-width: 100%;
   }
 .methodology__cards {
-    flex-wrap: wrap;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 24px;
   }
 .methodology-card {
-    width: 48%;
+    width: auto;
   }
 .about-wrapper {
     flex-direction: column;
@@ -11287,10 +11308,10 @@ gap: 45px;
     text-align: justify;
   }
 .methodology__cards {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 .methodology-card {
-    width: 100%;
+    width: auto;
   }
 .methodology-card__image {
     height: 200px;
@@ -11876,9 +11897,6 @@ font-size: 0.62rem;
 .champion-section,
   .real-healing-section {
     margin: 0;
-  }
-.real-healing-section .site-container {
-    width: min(100% - 1.5rem, var(--site-container));
   }
 .realHealingSwiper {
     overflow: hidden;
@@ -13531,11 +13549,13 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-recipe-card__body {
-  display: flex;
+  margin: 10px var(--space-5) var(--space-5);
+  min-width: 0;
+  /* display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   padding: 0.65rem 0.8rem 0.75rem;
-  min-height: 5.5rem;
+  min-height: 5.5rem; */
 }
 
 .wellnesspedia-page .wp-recipe-card__title-row {
@@ -13607,10 +13627,10 @@ bottom: -18px;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.1);
 }
 
-.wellnesspedia-page .wp-tool-card--orange { background: #fff1e6; color: #e11d48; }
-.wellnesspedia-page .wp-tool-card--purple { background: #f3e8ff; color: #7c3aed; }
-.wellnesspedia-page .wp-tool-card--pink { background: #fce7f3; color: #db2777; }
-.wellnesspedia-page .wp-tool-card--yellow { background: #fef9c3; color: #ca8a04; }
+.wellnesspedia-page .wp-tool-card--orange { background: #ffd0ac; color: #e11d48; }
+.wellnesspedia-page .wp-tool-card--purple { background: #e4ccfd; color: #7c3aed; }
+.wellnesspedia-page .wp-tool-card--pink { background: #f7d0e7; color: #db2777; }
+.wellnesspedia-page .wp-tool-card--yellow { background: #f9f3ab; color: #ca8a04; }
 
 .wellnesspedia-page .wp-tool-card__icon {
   width: 64px;
@@ -15109,7 +15129,9 @@ bottom: -18px;
   }
 
   .wellnesspedia-page .wp-recipe-card__body {
-    padding: 0.55rem 0.7rem 0.65rem;
+    /* padding: 0.55rem 0.7rem 0.65rem; */
+    margin: 10px var(--space-5) var(--space-5);
+    min-width: 0;
   }
 
   .wellnesspedia-page .wp-recipe-card__title-row h3 {
