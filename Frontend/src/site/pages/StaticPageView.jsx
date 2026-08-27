@@ -40,6 +40,7 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
 
   return (
     <section className="static-page-section">
+      <div className="site-container">
       <div className="static-page-hero">
         <div className="site-container static-page-hero__inner paddingmanages">
           {/* <span className="static-page-tag">INFORMATION</span> */}
@@ -64,8 +65,9 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
           <p className="static-page-message">This page has no published content yet.</p>
         )}
       </div>
-
+      </div>
       <FinalCTA />
+     
     </section>
   );
 }

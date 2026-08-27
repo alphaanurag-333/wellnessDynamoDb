@@ -184,7 +184,7 @@ export default function TransformationStoriesSection() {
     <>
     {hasTransformations ? (
     <section className="transformation-section pb-3" aria-label="Real transformations">
-      <div className="container">
+      <div className="site-container">
         <div className="transformation-header mb-2">
           <div className="header-left">
             <h2>Transformations</h2>
