@@ -1,5 +1,5 @@
 /* Banner config page only — /configs/common-banner
-   Desktop vs mobile upload cards stay visually separate on Add/Edit banner. */
+   Compact editor: type/placement on one row, desktop/mobile side by side. */
 
 .updated-admin .ua-cfg-detail--bn,
 .updated-admin .ua-cfg-bn {
@@ -8,24 +8,92 @@
   box-sizing: border-box;
 }
 
+.updated-admin .ua-cfg-bn .ua-cfg-bn-layout {
+  align-items: start;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel.ua-cfg-panel,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel {
+  container-type: inline-size;
+  container-name: ua-cfg-bn-editor;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-panel__head {
+  margin-bottom: 10px;
+}
+
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor {
-  gap: 16px;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+  background: #fbfcff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-field {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 4px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-copy {
+  padding: 8px 10px;
+  border: 1px solid #edf1f7;
+  border-radius: 12px;
+  background: #fbfcff;
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-copy__row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-copy__actions {
+  margin-top: 2px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-input {
+  height: 36px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-select .ua-cfg-select__trigger {
+  height: 36px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-textarea {
+  min-height: 64px;
+  padding: 8px 10px;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-split-drops {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-slot {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 12px;
+  padding: 8px;
   border: 1px solid #e6ebf2;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
 }
 
@@ -43,7 +111,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px 8px;
+  gap: 4px 8px;
   margin: 0;
 }
 
@@ -51,31 +119,42 @@
   background: #fff;
 }
 
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile,
 .updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop:not(.is-filled),
 .updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile:not(.is-filled) {
   aspect-ratio: auto;
-  min-height: 176px;
-  height: auto;
-  padding: 16px 12px;
-  overflow: visible;
+  height: 92px;
+  min-height: 92px;
+  max-height: 92px;
+  padding: 8px;
+  gap: 4px;
+  overflow: hidden;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-field,
-.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-copy {
-  padding: 12px;
-  border: 1px solid #edf1f7;
-  border-radius: 14px;
-  background: #fbfcff;
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop p {
+  font-size: 12px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop.is-filled .ua-cfg-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  height: 26px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-editor__surfaces {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   margin: 0;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px;
   border: 1px solid #edf1f7;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
 }
 
@@ -83,8 +162,130 @@
   flex: 1 1 auto;
   width: 100%;
   max-width: 100%;
-  min-height: 44px;
-  height: auto;
-  padding: 8px 12px 8px 14px;
+  min-height: 36px;
+  height: 36px;
+  padding: 0 10px 0 12px;
   box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(78vh, 760px);
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live {
+  min-height: 280px;
+  max-height: min(62vh, 620px);
+  gap: 6px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__row {
+  grid-template-columns: 16px 56px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__thumb {
+  width: 56px;
+  height: 32px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__type {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__rank {
+  margin-left: auto;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__toggles {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__tools {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions .ua-cfg-faq__shown {
+  min-width: 28px;
+  font-size: 10px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__grid {
+  align-items: stretch;
+  padding-bottom: 8px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: visible;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card__thumb.ua-cfg-bn-thumb {
+  aspect-ratio: 1905 / 640;
+  min-height: 96px;
+  height: auto;
+  background: #f4f7fb;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery-card__thumb.ua-cfg-bn-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-gallery__foot {
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+@container ua-cfg-bn-editor (max-width: 380px) {
+  .ua-cfg-bn-meta,
+  .ua-cfg-bn-split-drops,
+  .ua-cfg-bn-copy__row,
+  .ua-cfg-bn-editor__surfaces {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live__tools {
+    margin-left: auto;
+  }
 }

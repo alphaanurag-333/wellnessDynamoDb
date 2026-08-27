@@ -48,17 +48,18 @@ function bannerCropForKind(kind) {
   return kind === "mobile" ? BANNER_MOBILE_SIZE : BANNER_DESKTOP_SIZE;
 }
 
-function DropZone({ label, hint, size, previewUrl, onUpload, className = "" }) {
+function DropZone({ label, hint, previewUrl, onUpload, className = "" }) {
   const uploaded = Boolean(previewUrl);
   return (
     <div className={`ua-cfg-bn-drop${uploaded ? " is-filled" : ""}${className ? ` ${className}` : ""}`}>
       {uploaded ? (
         <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" />
       ) : (
-        <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
+        <>
+          <span className="ua-cfg-bn-drop__icon" aria-hidden="true">▢</span>
+          <p>{hint}</p>
+        </>
       )}
-      <p>{uploaded ? "Banner attached" : hint}</p>
-      {size ? <span className="ua-cfg-bn-drop__size">{size}</span> : null}
       <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" onClick={onUpload}>
         {uploaded ? "Replace" : label}
       </button>
@@ -115,7 +116,6 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const typeOptions = preserveOption(editor.type, bannerTypes, BANNER_TYPES);
   const placementOptions = preserveOption(editor.placement, placements, BANNER_PLACEMENTS);
   const placement = bannerPlacementById(editor.placement, placementOptions);
-  const selectedTypeLabel = optionLabel(editor.type, typeOptions, BANNER_TYPES);
   const webPreview = editor.imagePreview || editor.image;
   const mobileSlotPreview = editor.mobilePreview || editor.mobileImage;
   const mobilePreview = mobileSlotPreview || webPreview;
@@ -163,7 +163,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const loadItems = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await adminListBanners(null, { page: 1, limit: 100 });
+      const result = await adminListBanners(null, { page: 1, limit: 200 });
       const next = result.items || [];
       setItems(next);
       setEditor((prev) => {
@@ -443,20 +443,47 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
   }
 
-  const gallery = useMemo(() => (
-    items.map((entry) => ({
-      id: entry.id,
-      title: entry.title,
-      type: entry.type,
-      date: entry.updatedAt || entry.createdAt,
-      url: entry.image || entry.mobileImage,
-      live: entry.shown,
-    })).filter((entry) => entry.url)
-  ), [items]);
+  const gallery = useMemo(() => {
+    const rows = [];
+    items.forEach((entry) => {
+      const title = asCopyString(entry.title);
+      const date = entry.updatedAt || entry.createdAt;
+      const desktop = String(entry.image || "").trim();
+      const mobile = String(entry.mobileImage || "").trim();
+      if (desktop) {
+        rows.push({
+          id: `${entry.id}-desktop`,
+          bannerId: entry.id,
+          title,
+          type: entry.type,
+          kind: "Desktop",
+          date,
+          url: desktop,
+        });
+      }
+      if (mobile && mobile !== desktop) {
+        rows.push({
+          id: `${entry.id}-mobile`,
+          bannerId: entry.id,
+          title,
+          type: entry.type,
+          kind: "Mobile",
+          date,
+          url: mobile,
+        });
+      }
+    });
+    return rows;
+  }, [items]);
 
-  const filteredGallery = gallery.filter((entry) => (
-    entry.title.toLowerCase().includes(galleryQuery.trim().toLowerCase())
-  ));
+  const filteredGallery = gallery.filter((entry) => {
+    const query = galleryQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [entry.title, entry.kind, optionLabel(entry.type, typeOptions, BANNER_TYPES)]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+  });
 
   return (
     <div className="ua-cfg-bn">
@@ -479,23 +506,35 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           ) : null}
         >
           <div className="ua-cfg-bn-editor">
-            <label className="ua-cfg-bn-field">
-              <span>
-                Banner type
-                {selectedTypeLabel ? (
-                  <em className="ua-cfg-bn-ratio">{selectedTypeLabel}</em>
-                ) : null}
-              </span>
-              <CfgSelect
-                className="ua-cfg-bn-select"
-                ariaLabel="Banner type"
-                placeholder={typeOptions.length ? "Select banner type" : "No banner types"}
-                options={typeOptions}
-                value={editor.type}
-                disabled={busy || !typeOptions.length}
-                onChange={(value) => patch({ type: value })}
-              />
-            </label>
+            <div className="ua-cfg-bn-meta">
+              <label className="ua-cfg-bn-field">
+                <span>Banner type</span>
+                <CfgSelect
+                  className="ua-cfg-bn-select"
+                  ariaLabel="Banner type"
+                  placeholder={typeOptions.length ? "Select banner type" : "No banner types"}
+                  options={typeOptions}
+                  value={editor.type}
+                  disabled={busy || !typeOptions.length}
+                  onChange={(value) => patch({ type: value })}
+                />
+              </label>
+              <label className="ua-cfg-bn-field">
+                <span>
+                  Placement
+                  <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
+                </span>
+                <CfgSelect
+                  className="ua-cfg-bn-select"
+                  ariaLabel="Placement"
+                  placeholder={placementOptions.length ? "Select placement" : "No placements"}
+                  options={placementOptions}
+                  value={editor.placement}
+                  disabled={busy || !placementOptions.length}
+                  onChange={(value) => patch({ placement: value })}
+                />
+              </label>
+            </div>
             {!bannerTypes.length ? (
               <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
             ) : null}
@@ -504,13 +543,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-web">DESKTOP</strong>
-                  <span>Desktop banner image · {BANNER_DESKTOP_SIZE.label}</span>
+                  <span>{BANNER_DESKTOP_SIZE.label}</span>
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--desktop"
-                  label="Upload desktop"
-                  hint="Desktop banner image"
-                  size={BANNER_DESKTOP_SIZE.label}
+                  label="Upload"
+                  hint="Upload desktop"
                   previewUrl={webPreview}
                   onUpload={() => openFilePicker("web")}
                 />
@@ -518,38 +556,21 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
                 <div className="ua-cfg-bn-split-drops__label">
                   <strong className="is-app">MOBILE</strong>
-                  <span>Mobile banner image · {BANNER_MOBILE_SIZE.label}</span>
+                  <span>{BANNER_MOBILE_SIZE.label}</span>
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--mobile"
-                  label="Upload mobile"
-                  hint="Mobile banner image"
-                  size={BANNER_MOBILE_SIZE.label}
+                  label="Upload"
+                  hint="Upload mobile"
                   previewUrl={mobileSlotPreview}
                   onUpload={() => openFilePicker("mobile")}
                 />
               </div>
             </div>
 
-            <label className="ua-cfg-bn-field">
-              <span>
-                Placement
-                <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
-              </span>
-              <CfgSelect
-                className="ua-cfg-bn-select"
-                ariaLabel="Placement"
-                placeholder={placementOptions.length ? "Select placement" : "No placements"}
-                options={placementOptions}
-                value={editor.placement}
-                disabled={busy || !placementOptions.length}
-                onChange={(value) => patch({ placement: value })}
-              />
-            </label>
-
             <div className="ua-cfg-bn-surfaces ua-cfg-bn-editor__surfaces">
               <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn !== false ? " is-on" : ""}`}>
-                <span>Web {editor.webOn !== false ? "Enabled" : "Disabled"}</span>
+                <span>Web {editor.webOn !== false ? "On" : "Off"}</span>
                 <button
                   type="button"
                   className={`ua-toggle ua-toggle--sm${editor.webOn !== false ? " ua-toggle--on" : ""}`}
@@ -561,7 +582,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 </button>
               </div>
               <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--app${editor.appOn !== false ? " is-on" : ""}`}>
-                <span>App {editor.appOn !== false ? "Enabled" : "Disabled"}</span>
+                <span>App {editor.appOn !== false ? "On" : "Off"}</span>
                 <button
                   type="button"
                   className={`ua-toggle ua-toggle--sm${editor.appOn !== false ? " ua-toggle--on" : ""}`}
@@ -602,28 +623,30 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               />
               <textarea
                 className="ua-cfg-bn-textarea"
-                rows={4}
+                rows={3}
                 placeholder="Banner body copy"
                 value={bodyText}
                 disabled={busy}
                 onChange={(event) => patch({ body: event.target.value })}
               />
-              <input
-                className="ua-cfg-bn-input"
-                type="text"
-                value={asCopyString(editor.cta)}
-                disabled={busy}
-                onChange={(event) => patch({ cta: event.target.value })}
-                placeholder="Call to action"
-              />
-              <input
-                className="ua-cfg-bn-input"
-                type="text"
-                value={asCopyString(editor.ctaLink)}
-                disabled={busy}
-                onChange={(event) => patch({ ctaLink: event.target.value })}
-                placeholder="CTA link · https://…"
-              />
+              <div className="ua-cfg-bn-copy__row">
+                <input
+                  className="ua-cfg-bn-input"
+                  type="text"
+                  value={asCopyString(editor.cta)}
+                  disabled={busy}
+                  onChange={(event) => patch({ cta: event.target.value })}
+                  placeholder="Call to action"
+                />
+                <input
+                  className="ua-cfg-bn-input"
+                  type="text"
+                  value={asCopyString(editor.ctaLink)}
+                  disabled={busy}
+                  onChange={(event) => patch({ ctaLink: event.target.value })}
+                  placeholder="CTA link · https://…"
+                />
+              </div>
               <div className="ua-cfg-bn-copy__actions">
                 <button
                   type="button"
@@ -662,34 +685,40 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 </button>
                 <div className="ua-cfg-bn-live__copy">
                   <strong className="ua-cfg-bn-live__title">{asCopyString(entry.title)}</strong>
-                  {typeLabel ? <span className="ua-cfg-bn-live__type">{typeLabel}</span> : null}
+                  <span className="ua-cfg-bn-live__meta">
+                    {typeLabel ? <span className="ua-cfg-bn-live__type">{typeLabel}</span> : null}
+                    <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
+                  </span>
                 </div>
                 <div className="ua-cfg-bn-live__actions">
-                  <LiveToggle
-                    label="WEB"
-                    on={entry.webOn !== false}
-                    disabled={busy}
-                    ariaLabel={entry.webOn !== false ? "Hide on web" : "Show on web"}
-                    onToggle={() => persistPatch(entry, { webOn: entry.webOn === false })}
-                  />
-                  <LiveToggle
-                    label="APP"
-                    on={entry.appOn !== false}
-                    disabled={busy}
-                    ariaLabel={entry.appOn !== false ? "Hide on app" : "Show on app"}
-                    onToggle={() => persistPatch(entry, { appOn: entry.appOn === false })}
-                  />
-                  <LiveToggle
-                    label={entry.shown ? "LIVE" : "HIDDEN"}
-                    on={Boolean(entry.shown)}
-                    disabled={busy}
-                    ariaLabel={entry.shown ? "Hide banner" : "Show banner"}
-                    onToggle={() => persistPatch(entry, { shown: !entry.shown })}
-                  />
-                  <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
-                  <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
-                  <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
-                  <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.title)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                  <div className="ua-cfg-bn-live__toggles">
+                    <LiveToggle
+                      label="WEB"
+                      on={entry.webOn !== false}
+                      disabled={busy}
+                      ariaLabel={entry.webOn !== false ? "Hide on web" : "Show on web"}
+                      onToggle={() => persistPatch(entry, { webOn: entry.webOn === false })}
+                    />
+                    <LiveToggle
+                      label="APP"
+                      on={entry.appOn !== false}
+                      disabled={busy}
+                      ariaLabel={entry.appOn !== false ? "Hide on app" : "Show on app"}
+                      onToggle={() => persistPatch(entry, { appOn: entry.appOn === false })}
+                    />
+                    <LiveToggle
+                      label={entry.shown ? "LIVE" : "HIDDEN"}
+                      on={Boolean(entry.shown)}
+                      disabled={busy}
+                      ariaLabel={entry.shown ? "Hide banner" : "Show banner"}
+                      onToggle={() => persistPatch(entry, { shown: !entry.shown })}
+                    />
+                  </div>
+                  <div className="ua-cfg-bn-live__tools">
+                    <button type="button" className="ua-cfg-icon-btn" aria-label="Move up" disabled={index === 0 || busy} onClick={() => moveItem(index, -1)}>↑</button>
+                    <button type="button" className="ua-cfg-icon-btn" aria-label="Move down" disabled={index === items.length - 1 || busy} onClick={() => moveItem(index, 1)}>↓</button>
+                    <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.title)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                  </div>
                 </div>
               </article>
               );
@@ -758,7 +787,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
 
       <Panel
         title="Gallery"
-        subtitle="Images attached to banners in this section. Live banners must be unmarked first."
+        subtitle="Images attached to banners in this section."
       >
         <div className="ua-cfg-mv-gallery__filters">
           <input
@@ -778,46 +807,35 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
                 {entry.url ? <img src={entry.url} alt="" /> : <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>}
                 <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">
-                  {optionLabel(entry.type, typeOptions, BANNER_TYPES) || "Banner"}
+                  {entry.kind} · {optionLabel(entry.type, typeOptions, BANNER_TYPES) || "Banner"}
                 </span>
               </div>
               <div className="ua-cfg-mv-gallery-card__body">
-                <strong>{asCopyString(entry.title)}</strong>
+                <strong>{entry.title || "Untitled banner"}</strong>
                 <span>{entry.date ? new Date(entry.date).toLocaleDateString("en-IN") : "—"}</span>
               </div>
               <div className="ua-cfg-bn-gallery__foot">
-                <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                  {entry.live ? "LIVE" : "HIDDEN"}
-                </span>
-                <button
-                  type="button"
-                  className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                  aria-pressed={entry.live}
-                  disabled={busy}
-                  onClick={() => persistPatch({ id: entry.id }, { shown: !entry.live })}
-                >
-                  <span className="ua-toggle__knob" />
-                </button>
                 <a
                   className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-bn-gallery__open"
                   href={entry.url}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open
+                  View
                 </a>
                 <button
                   type="button"
                   className="ua-cfg-icon-btn"
-                  aria-label="Delete"
-                  disabled={entry.live || busy}
-                  onClick={() => setPendingDelete(items.find((row) => row.id === entry.id))}
+                  aria-label={`Delete ${entry.title || "banner"}`}
+                  disabled={busy}
+                  onClick={() => setPendingDelete(items.find((row) => row.id === entry.bannerId))}
                 >
                   ×
                 </button>
               </div>
             </article>
           ))}
+          {!loading && !filteredGallery.length ? <p className="ua-cfg-panel__sub">No banner images yet.</p> : null}
         </div>
       </Panel>
 

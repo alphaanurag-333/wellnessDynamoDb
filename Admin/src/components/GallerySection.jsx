@@ -9,6 +9,7 @@ import {
   galleryOwnersFromAssets,
 } from "../api/mediaAssetApi.js";
 import { galleryCategoryClass, galleryVersionLabel } from "../data/galleryData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { MediaTypeIcon } from "./GalleryMediaIcons.jsx";
 import { MediaPickerModal } from "./MediaPickerModal.jsx";
 
@@ -165,6 +166,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
   const [busyId, setBusyId] = useState("");
   const [historyBusy, setHistoryBusy] = useState(false);
   const [downloadingId, setDownloadingId] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   const owners = useMemo(() => galleryOwnersFromAssets(media), [media]);
 
@@ -312,23 +314,21 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
     }
   }
 
-  async function deleteItem(id) {
-    setBusyId(id);
-    try {
-      await adminDeleteMediaAsset(null, id);
-      const next = media.filter((entry) => entry.id !== id);
-      setMedia(next);
-      setSelected((prev) => prev.filter((entry) => entry !== id));
-      onLiveChange?.(next.some((entry) => entry.live));
-      onToast?.("Asset deleted");
-    } catch (err) {
-      onToast?.(err?.message || "Failed to delete asset");
-    } finally {
-      setBusyId("");
-    }
+  function assetKindLabel(entry) {
+    if (entry?.type === "video") return "video";
+    if (entry?.type === "audio") return "audio";
+    return "image";
   }
 
-  async function deleteSelected() {
+  function requestDeleteItem(entry) {
+    if (!entry || entry.live) {
+      onToast?.("Unmark live assets before delete");
+      return;
+    }
+    setPendingDelete({ ids: [entry.id], title: entry.title, kind: assetKindLabel(entry) });
+  }
+
+  function requestDeleteSelected() {
     const ids = selected.filter((id) => {
       const entry = media.find((item) => item.id === id);
       return entry && !entry.live;
@@ -337,20 +337,30 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
       onToast?.("Unmark live assets before delete");
       return;
     }
-    for (const id of ids) {
-      try {
+    setPendingDelete({ ids, title: null, kind: "asset" });
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete?.ids?.length) return;
+    const ids = pendingDelete.ids;
+    const single = ids.length === 1;
+    setPendingDelete(null);
+    if (single) setBusyId(ids[0]);
+    try {
+      for (const id of ids) {
         await adminDeleteMediaAsset(null, id);
-      } catch (err) {
-        onToast?.(err?.message || "Failed to delete some assets");
-        await loadMedia();
-        return;
       }
+      const next = media.filter((entry) => !ids.includes(entry.id));
+      setMedia(next);
+      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
+      onLiveChange?.(next.some((entry) => entry.live));
+      onToast?.(single ? "Asset deleted" : "Deleted selected items");
+    } catch (err) {
+      onToast?.(err?.message || (single ? "Failed to delete asset" : "Failed to delete some assets"));
+      await loadMedia();
+    } finally {
+      setBusyId("");
     }
-    const next = media.filter((entry) => !ids.includes(entry.id));
-    setMedia(next);
-    setSelected([]);
-    onLiveChange?.(next.some((entry) => entry.live));
-    onToast?.("Deleted selected items");
   }
 
   return (
@@ -498,7 +508,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                 <button
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
-                  onClick={deleteSelected}
+                  onClick={requestDeleteSelected}
                 >
                   Delete
                 </button>
@@ -575,7 +585,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                       className="ua-cfg-icon-btn ua-cfg-gl-card__delete"
                       aria-label="Delete"
                       disabled={entry.live || busyId === entry.id}
-                      onClick={() => deleteItem(entry.id)}
+                      onClick={() => requestDeleteItem(entry)}
                     >
                       🗑
                     </button>
@@ -617,6 +627,25 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
           onToast?.(`${assets.length} asset${assets.length === 1 ? "" : "s"} ready`);
           loadMedia();
         }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Gallery"
+        title={
+          pendingDelete?.ids?.length === 1
+            ? `Delete ${pendingDelete.title ? `“${pendingDelete.title}”` : `this ${pendingDelete.kind}`}?`
+            : `Delete ${pendingDelete?.ids?.length || 0} selected items?`
+        }
+        body={
+          pendingDelete?.ids?.length === 1
+            ? `This permanently removes the ${pendingDelete.kind} from the gallery.`
+            : "This permanently removes the selected items from the gallery."
+        }
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmDelete}
       />
     </>
   );
