@@ -71,7 +71,8 @@ async function rotateUserSession(userId, extraUpdates = {}) {
   });
 }
 
-function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
+async function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
+  // Mint tokens from the raw user before enrichUser/toPublicProfile strips sessionVersion.
   const { accessToken, refreshToken } = createTokenPair({
     sub: user.id,
     role: "user",
@@ -82,7 +83,7 @@ function sendAuthResponse(res, statusCode, user, message = "Authentication succe
     message,
     accessToken,
     refreshToken,
-    user,
+    user: await enrichUser(user),
   });
 }
 
@@ -344,7 +345,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
     healthConcernTitle: healthConcernTitle || "your health concern",
   });
 
-  return sendAuthResponse(res, 201, await enrichUser(user), "Registration successful");
+  return sendAuthResponse(res, 201, user, "Registration successful");
 });
 
 /** POST /user/auth/login/password — email+password or phone+password */
@@ -377,7 +378,7 @@ exports.loginWithPassword = asyncHandler(async (req, res) => {
   if (fcm_id !== undefined) activityUpdates.fcm_id = fcm_id;
 
   const updated = await rotateUserSession(user.id, activityUpdates);
-  return sendAuthResponse(res, 200, await enrichUser(updated));
+  return sendAuthResponse(res, 200, updated);
 });
 
 /** POST /user/auth/otp/send — request login OTP */
@@ -466,7 +467,7 @@ exports.verifyLoginOtp = asyncHandler(async (req, res) => {
   if (fcm_id !== undefined) otpUpdates.fcm_id = fcm_id;
 
   const updated = await rotateUserSession(user.id, otpUpdates);
-  return sendAuthResponse(res, 200, await enrichUser(updated));
+  return sendAuthResponse(res, 200, updated);
 });
 
 /** POST /user/auth/refresh-token */

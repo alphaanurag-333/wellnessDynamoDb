@@ -856,7 +856,7 @@ async function dispatchOnboardingMeetingConfirmedNotification({ userId, stepKey 
   const notification = await createTargetedNotification({
     userId,
     kind: "onboarding_meeting_confirmed",
-    message: `Your ${label} meeting is confirmed. Join using the Zoom link in the app.`,
+    message: `Your ${label} meeting is confirmed.`,
     referenceType: "onboarding_meeting",
     title: "Meeting confirmed",
   });
@@ -966,7 +966,7 @@ async function dispatchCounsellingScheduledNotification({ userId, trackId }) {
   const notification = await createTargetedNotification({
     userId,
     kind: "counselling_scheduled",
-    message: "Your counselling session time is confirmed. Join using the Zoom link in the app.",
+    message: "Your counselling session time is confirmed.",
     referenceId: trackId ? String(trackId) : null,
     referenceType: "heal_consultancy_track",
     title: "Counselling confirmed",
