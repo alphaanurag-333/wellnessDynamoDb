@@ -44,7 +44,7 @@ const PLACEHOLDER_META = {
   presentable: { title: "Presentable Pics", subtitle: "Client photo requests and approvals." },
   exchange: { title: "Energy Exchange", subtitle: "Energy Exchange program and billing." },
   protocol: { title: "Protocol Settings", subtitle: "Client protocol and settings configuration." },
-  gut: { title: "Gut Reset", subtitle: "Gut reset program tracking." },
+  gut: { title: "Load Preset", subtitle: "Gut reset program tracking." },
 };
 
 function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectionNav) {

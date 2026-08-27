@@ -14,6 +14,8 @@ const {
   getMembership,
   updateAccount,
   deleteAccount,
+  ALLOWED_APPROVAL,
+  normalizeApprovalStatus,
 } = require("../../models/accountModel");
 const {
   uploadMulterFile,
@@ -46,6 +48,7 @@ const {
   assertValidLocationCity,
 } = require("../../utils/personFieldValidation");
 const { generateTotpSecret, buildOtpauthUrl } = require("../../utils/totp");
+const { hasPermission } = require("../../utils/permissions");
 
 const DEFAULT_TEMP_PASSWORD = process.env.SEED_STAFF_PASSWORD || "Admin@12345";
 const CONSOLE_SCOPE = "CONSOLE";
@@ -55,6 +58,15 @@ const COACH_CLIENT_COUNT_ROLE_KEYS = new Set([
   "assistant_wellness_coach",
   "trainee",
 ]);
+
+/** Map Teams UI status labels → Account.approvalStatus. */
+function approvalStatusFromMemberStatus(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return null;
+  if (raw === "active" || raw === "approved") return "approved";
+  if (raw === "pending") return "pending";
+  return null;
+}
 
 function accountRoleKeyFromDataScope(dataScope) {
   const scope = String(dataScope || "").toLowerCase();
@@ -405,11 +417,11 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
 
 /**
  * Update a staff Account profile (Teams page).
- * Body: name?, email?, phone?, phoneCountryCode?
+ * Body: name?, email?, phone?, phoneCountryCode?, approvalStatus?|memberStatus? (Active|Pending)
  */
 exports.updateAccountHandler = asyncHandler(async (req, res) => {
-  if (!req.auth?.isSuperAdmin) {
-    throw new AppError("Only the Super Admin can edit team members", 403);
+  if (!hasPermission(req.auth, "console.tm.edit")) {
+    throw new AppError("You do not have permission to edit team members", 403);
   }
 
   const account = await getAccountById(req.params.id);
@@ -418,8 +430,22 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
     throw new AppError("This account cannot be edited here", 403);
   }
 
-  const { name, email, phone, phoneCountryCode, profileImage, dateOfBirth, dob, country, state, city, bio } =
-    req.body || {};
+  const {
+    name,
+    email,
+    phone,
+    phoneCountryCode,
+    profileImage,
+    dateOfBirth,
+    dob,
+    country,
+    state,
+    city,
+    bio,
+    approvalStatus,
+    memberStatus,
+    displayStatus,
+  } = req.body || {};
   const updates = {};
 
   if (name !== undefined) {
@@ -465,6 +491,23 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
   }
   if (bio !== undefined) {
     updates.bio = bio == null || String(bio).trim() === "" ? null : String(bio).trim().slice(0, 500);
+  }
+
+  const statusInput =
+    approvalStatus !== undefined
+      ? approvalStatus
+      : memberStatus !== undefined
+        ? memberStatus
+        : displayStatus !== undefined
+          ? displayStatus
+          : undefined;
+  if (statusInput !== undefined) {
+    const mapped = approvalStatusFromMemberStatus(statusInput);
+    const nextApproval = mapped || normalizeApprovalStatus(statusInput, "");
+    if (!nextApproval || !ALLOWED_APPROVAL.has(nextApproval) || nextApproval === "rejected") {
+      throw new AppError("Status must be Active or Pending", 400);
+    }
+    updates.approvalStatus = nextApproval;
   }
 
   if (profileImage !== undefined) {
@@ -908,6 +951,39 @@ exports.patchMyCoachContentHandler = asyncHandler(async (req, res) => {
     message: "Coach content updated",
     account: toPublicAccount(updated),
     letter: letterTemplatePayload(await getAppConfig()),
+  });
+});
+
+/**
+ * Admin sets a team member password (no current password required).
+ * Body: { password } or { newPassword }
+ */
+exports.setAccountPasswordHandler = asyncHandler(async (req, res) => {
+  if (!hasPermission(req.auth, "console.tm.edit")) {
+    throw new AppError("You do not have permission to change team passwords", 403);
+  }
+
+  const account = await getAccountById(req.params.id);
+  if (!account) throw new AppError("Account not found", 404);
+  if (account.isSuperAdmin) {
+    throw new AppError("This account cannot be edited here", 403);
+  }
+  if (req.auth?.sub && String(req.auth.sub) === String(account.id)) {
+    throw new AppError("Use your profile to change your own password", 400);
+  }
+
+  const password = req.body?.password ?? req.body?.newPassword;
+  if (!password) {
+    throw new AppError("password is required", 400);
+  }
+  assertPasswordPolicy(password);
+
+  const passwordHash = await hashPassword(password);
+  const updated = await updateAccount(account.id, { password: passwordHash });
+  return res.json({
+    status: true,
+    message: "Password updated",
+    account: toPublicAccount(updated),
   });
 });
 

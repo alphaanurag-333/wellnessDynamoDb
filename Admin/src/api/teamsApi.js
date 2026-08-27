@@ -71,6 +71,20 @@ export async function createTeamMember(payload) {
   }
 }
 
+export async function setTeamMemberPassword(id, { password, newPassword } = {}) {
+  const nextPassword = password ?? newPassword;
+  try {
+    const { data } = await api.patch(
+      `/account/accounts/${encodeURIComponent(id)}/password`,
+      { password: nextPassword },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function setTeamMemberTotp(id, { totpRequired }) {
   try {
     const { data } = await api.patch(

@@ -29,6 +29,7 @@ const {
   patchCoachContentHandler,
   patchAccountTotpHandler,
   regenerateAccountTotpHandler,
+  setAccountPasswordHandler,
 } = require("../../controllers/accountController/accountAdminController");
 const { optionalCoachContentFiles, optionalUserFile } = require("../../middleware/authMultipart");
 
@@ -122,6 +123,12 @@ router.post(
   protectAccount,
   requireActiveRole("admin"),
   regenerateAccountTotpHandler
+);
+router.patch(
+  "/accounts/:id/password",
+  protectAccount,
+  requireActiveRole("admin"),
+  setAccountPasswordHandler
 );
 router.route("/accounts/:id")
   .get(protectAccount, requireActiveRole("admin"), getAccountHandler)

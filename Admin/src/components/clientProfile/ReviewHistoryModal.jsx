@@ -19,15 +19,18 @@ function StopwatchIcon() {
   );
 }
 
-/** Same date shape as the app Review Tracking sheet (`en-US` short month). */
+/** Date + time for Review Tracking rows (`en-US` short month). */
 function formatReviewDate(value) {
   if (!value) return "—";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleDateString("en-US", {
+  return parsed.toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
