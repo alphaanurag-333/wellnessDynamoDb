@@ -931,7 +931,7 @@ export function UsersPage() {
                 <svg className="ua-search-wrap__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                 <input
                   className="ua-search-wrap__input"
-                  placeholder="Search name, email, phone"
+                  placeholder="Search name, email, phone, WhatsApp"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);

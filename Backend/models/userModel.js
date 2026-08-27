@@ -24,6 +24,15 @@ const {
 const { computeDobMonthDay, birthdayQueryMonthDays, userBirthdayMatchesDate } = require("../utils/dobMonthDay");
 
 const TABLE = "User";
+const USER_LIST_SEARCH_FIELDS = ["name", "email", "phone", "whatsappPhone"];
+
+function userMatchesListSearch(user, normalizedSearch) {
+  const term = String(normalizedSearch || "").trim().toLowerCase();
+  if (!term) return true;
+  return USER_LIST_SEARCH_FIELDS.some((field) =>
+    String(user?.[field] || "").toLowerCase().includes(term),
+  );
+}
 
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
 const SPARSE_GSI_ATTRIBUTES = new Set([
@@ -284,8 +293,12 @@ function sanitizeUpdateField(key, value) {
   if (key === "gender") return normalizeGender(value);
   if (key === "dob") return normalizeDob(value);
   if (key === "termsAcceptedAt") return normalizeDob(value);
-  if (key === "otpExpire" || key === "resetPasswordExpire") {
+  if (key === "otpExpire" || key === "resetPasswordExpire" || key === "otpCooldownUntil") {
     return value ? normalizeDob(value) : null;
+  }
+  if (key === "otpSendCount" || key === "sessionVersion") {
+    const n = Number(value);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
   }
   if (key === "whatsappSameAsMobile" || key === "termsAccepted") {
     return Boolean(value);
@@ -440,6 +453,13 @@ function buildUserItem(input, { id, now } = {}) {
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
     otpExpire: input.otpExpire ? normalizeDob(input.otpExpire) : null,
+    otpSendCount: Number.isFinite(Number(input.otpSendCount))
+      ? Math.max(0, Math.floor(Number(input.otpSendCount)))
+      : 0,
+    otpCooldownUntil: input.otpCooldownUntil ? normalizeDob(input.otpCooldownUntil) : null,
+    sessionVersion: Number.isFinite(Number(input.sessionVersion))
+      ? Math.max(0, Math.floor(Number(input.sessionVersion)))
+      : 0,
     resetPasswordToken: input.resetPasswordToken != null ? String(input.resetPasswordToken) : null,
     resetPasswordExpire: input.resetPasswordExpire ? normalizeDob(input.resetPasswordExpire) : null,
     userTier: normalizeUserTier(input.userTier),
@@ -716,7 +736,8 @@ async function deleteUser(id) {
         "deletedEmail = if_not_exists(email, :empty), " +
         "deletedPhoneKey = if_not_exists(phoneKey, :empty), " +
         "deletedWhatsappKey = if_not_exists(whatsappKey, :empty) " +
-        "REMOVE email, phoneKey, whatsappKey, passwordHash, otp, otpExpire, resetPasswordToken, " +
+        "REMOVE email, phoneKey, whatsappKey, passwordHash, otp, otpExpire, otpSendCount, otpCooldownUntil, " +
+        "sessionVersion, resetPasswordToken, " +
         "resetPasswordExpire, fcm_id, profileImage, presentablePic",
       ExpressionAttributeNames: { "#status": "status" },
       ExpressionAttributeValues: {
@@ -809,12 +830,7 @@ async function listUsersByParentCoachId(
   }
 
   if (normalizedSearch) {
-    rows = rows.filter(
-      (r) =>
-        String(r.name || "").toLowerCase().includes(normalizedSearch) ||
-        String(r.email || "").toLowerCase().includes(normalizedSearch) ||
-        String(r.phone || "").includes(normalizedSearch)
-    );
+    rows = rows.filter((r) => userMatchesListSearch(r, normalizedSearch));
   }
 
   if (normalizedCategory) {
@@ -1286,12 +1302,7 @@ async function listUsersByAssignedCoachId(
   }
 
   if (normalizedSearch) {
-    rows = rows.filter(
-      (r) =>
-        String(r.name || "").toLowerCase().includes(normalizedSearch) ||
-        String(r.email || "").toLowerCase().includes(normalizedSearch) ||
-        String(r.phone || "").includes(normalizedSearch)
-    );
+    rows = rows.filter((r) => userMatchesListSearch(r, normalizedSearch));
   }
 
   const total = rows.length;
@@ -1432,15 +1443,10 @@ async function listUsers({
     }
     users = applyUserListExclusions(users, excludeUserTiers, excludeClientCategories);
 
-    const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
+    const searchFilter = buildContainsFilter(USER_LIST_SEARCH_FIELDS, search);
     const normalizedSearch = String(searchFilter.search || "").trim().toLowerCase();
     if (normalizedSearch) {
-      users = users.filter(
-        (row) =>
-          String(row.name || "").toLowerCase().includes(normalizedSearch) ||
-          String(row.email || "").toLowerCase().includes(normalizedSearch) ||
-          String(row.phone || "").includes(normalizedSearch),
-      );
+      users = users.filter((row) => userMatchesListSearch(row, normalizedSearch));
     }
 
     users.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -1458,7 +1464,7 @@ async function listUsers({
     || excludeUserTiers.size
     || excludeClientCategories.size,
   );
-  const searchFilter = buildContainsFilter(["name", "email", "phone"], search);
+  const searchFilter = buildContainsFilter(USER_LIST_SEARCH_FIELDS, search);
 
   // When filtering by tier/assignment in memory, load the full status set first, then page.
   const { items, pagination } = await listByPartitionKey({

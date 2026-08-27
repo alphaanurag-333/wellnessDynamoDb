@@ -8,6 +8,7 @@ const {
   setRegistrationOtp,
   clearRegistrationOtp,
   verifyRegistrationOtp,
+  getRegistrationOtpMeta,
 } = require("../../utils/registrationOtpStore");
 const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
@@ -47,11 +48,34 @@ const { uploadFileFromRequest } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
 const { ensureHealIfProgramPurchased } = require("../../models/userConversionModel");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
+const {
+  assertOtpSendAllowed,
+  buildNextOtpSendState,
+  clearOtpSendState,
+} = require("../../utils/otpSendGuard");
+
+function getSessionVersion(user) {
+  return Number(user?.sessionVersion || 0);
+}
+
+/** Bump sessionVersion so other devices' JWTs become invalid. */
+async function rotateUserSession(userId, extraUpdates = {}) {
+  const current = await getUserById(userId);
+  if (!current) {
+    throw new AppError("User not found", 404);
+  }
+  const sessionVersion = getSessionVersion(current) + 1;
+  return updateUser(userId, {
+    ...extraUpdates,
+    sessionVersion,
+  });
+}
 
 function sendAuthResponse(res, statusCode, user, message = "Authentication successful") {
   const { accessToken, refreshToken } = createTokenPair({
     sub: user.id,
     role: "user",
+    sv: getSessionVersion(user),
   });
   return res.status(statusCode).json({
     status: true,
@@ -174,13 +198,27 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
     delivery.phone
   );
 
+  const identifiers = {
+    email,
+    phone: delivery.phone,
+    phoneCountryCode: delivery.phoneCountryCode,
+  };
+  const existingOtpMeta = await getRegistrationOtpMeta(identifiers);
+  const { effectiveCount } = assertOtpSendAllowed({
+    sendCount: existingOtpMeta?.otpSendCount,
+    cooldownUntil: existingOtpMeta?.otpCooldownUntil,
+  });
+  const nextSendState = buildNextOtpSendState(effectiveCount);
+
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
 
-  await setRegistrationOtp(
-    { email, phone: delivery.phone, phoneCountryCode: delivery.phoneCountryCode },
-    { otp, otpExpire }
-  );
+  await setRegistrationOtp(identifiers, {
+    otp,
+    otpExpire,
+    otpSendCount: nextSendState.otpSendCount,
+    otpCooldownUntil: nextSendState.otpCooldownUntil,
+  });
 
   await deliverOtp({
     email,
@@ -290,7 +328,10 @@ exports.registerUser = asyncHandler(async (req, res) => {
   const referralFields = await resolveRegistrationReferralFields(referralCodeInput);
   Object.assign(fields, referralFields);
 
-  const user = await createUser(fields);
+  const user = await createUser({
+    ...fields,
+    sessionVersion: 1,
+  });
 
   await clearRegistrationOtp({
     email: fields.email,
@@ -328,11 +369,14 @@ exports.loginWithPassword = asyncHandler(async (req, res) => {
   const matched = await comparePassword(password, user.passwordHash);
   if (!matched) throw new AppError("Invalid credentials", 401);
 
-  const activityUpdates = { lastActiveAt: new Date().toISOString() };
+  const activityUpdates = {
+    lastActiveAt: new Date().toISOString(),
+    ...clearOtpSendState(),
+  };
   const fcm_id = parseFcmIdFromBody(req.body);
   if (fcm_id !== undefined) activityUpdates.fcm_id = fcm_id;
 
-  const updated = await updateUser(user.id, activityUpdates);
+  const updated = await rotateUserSession(user.id, activityUpdates);
   return sendAuthResponse(res, 200, await enrichUser(updated));
 });
 
@@ -349,10 +393,21 @@ exports.sendLoginOtp = asyncHandler(async (req, res) => {
   const user = await resolveUserByIdentifier({ email, phone, phoneCountryCode });
   assertUserCanLogin(user);
 
+  const { effectiveCount } = assertOtpSendAllowed({
+    sendCount: user.otpSendCount,
+    cooldownUntil: user.otpCooldownUntil,
+  });
+  const nextSendState = buildNextOtpSendState(effectiveCount);
+
   const otp = generateOtp();
   const otpExpire = getOtpExpiryDate();
 
-  await updateUser(user.id, { otp, otpExpire });
+  await updateUser(user.id, {
+    otp,
+    otpExpire,
+    otpSendCount: nextSendState.otpSendCount,
+    otpCooldownUntil: nextSendState.otpCooldownUntil,
+  });
 
   const effectiveWhatsapp = getEffectiveWhatsapp(user);
   await deliverOtp({
@@ -401,14 +456,17 @@ exports.verifyLoginOtp = asyncHandler(async (req, res) => {
     throw new AppError("Invalid OTP", 401);
   }
 
-  const otpUpdates = { otp: null, otpExpire: null, lastActiveAt: new Date().toISOString() };
+  const otpUpdates = {
+    otp: null,
+    otpExpire: null,
+    lastActiveAt: new Date().toISOString(),
+    ...clearOtpSendState(),
+  };
   const fcm_id = parseFcmIdFromBody(req.body);
   if (fcm_id !== undefined) otpUpdates.fcm_id = fcm_id;
 
-  await updateUser(user.id, otpUpdates);
-
-  const fresh = await getUserById(user.id);
-  return sendAuthResponse(res, 200, await enrichUser(fresh));
+  const updated = await rotateUserSession(user.id, otpUpdates);
+  return sendAuthResponse(res, 200, await enrichUser(updated));
 });
 
 /** POST /user/auth/refresh-token */
@@ -430,13 +488,24 @@ exports.refreshUserToken = asyncHandler(async (req, res) => {
   const user = await getUserById(payload.sub);
   assertUserCanLogin(user);
 
+  const tokenSv = payload.sv == null ? 0 : Number(payload.sv);
+  if (tokenSv !== getSessionVersion(user)) {
+    const err = new AppError("Logged in on another device. Please login again.", 401);
+    err.code = "SESSION_REPLACED";
+    throw err;
+  }
+
   try {
     await updateUser(user.id, { lastActiveAt: new Date().toISOString() });
   } catch (err) {
     console.error("[UserAuth] lastActiveAt update failed", err.message);
   }
 
-  const tokens = createTokenPair({ sub: user.id, role: "user" });
+  const tokens = createTokenPair({
+    sub: user.id,
+    role: "user",
+    sv: getSessionVersion(user),
+  });
 
   return res.status(200).json({
     status: true,

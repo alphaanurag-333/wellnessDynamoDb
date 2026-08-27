@@ -13,6 +13,9 @@ function toPublicProfile(doc) {
   delete o.passwordHash;
   delete o.otp;
   delete o.otpExpire;
+  delete o.otpSendCount;
+  delete o.otpCooldownUntil;
+  delete o.sessionVersion;
   delete o.resetPasswordToken;
   delete o.resetPasswordExpire;
   delete o.pendingPhone;
