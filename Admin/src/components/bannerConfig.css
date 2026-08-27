@@ -1,0 +1,90 @@
+/* Banner config page only — /configs/common-banner
+   Desktop vs mobile upload cards stay visually separate on Add/Edit banner. */
+
+.updated-admin .ua-cfg-detail--bn,
+.updated-admin .ua-cfg-bn {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor {
+  gap: 16px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-split-drops {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--desktop {
+  border-color: #d1fae5;
+  background: #f6fdf9;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot--mobile {
+  border-color: #e0e4fa;
+  background: #f7f8ff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot .ua-cfg-bn-split-drops__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 0;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-slot .ua-cfg-bn-drop {
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--desktop:not(.is-filled),
+.updated-admin .ua-cfg-bn .ua-cfg-bn-drop--mobile:not(.is-filled) {
+  aspect-ratio: auto;
+  min-height: 176px;
+  height: auto;
+  padding: 16px 12px;
+  overflow: visible;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-field,
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-copy {
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 14px;
+  background: #fbfcff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-editor__surfaces {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #edf1f7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel .ua-cfg-bn-surface {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  height: auto;
+  padding: 8px 12px 8px 14px;
+  box-sizing: border-box;
+}
