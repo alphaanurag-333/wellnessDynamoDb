@@ -571,11 +571,15 @@
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__row {
-  grid-template-columns: 16px 56px minmax(0, 1fr);
-  column-gap: 8px;
+  display: grid;
+  grid-template-columns: 18px 72px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 10px;
   row-gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__row.is-off-web {
@@ -592,18 +596,26 @@
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__handle {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   cursor: grab;
   user-select: none;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__thumb {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  box-sizing: border-box;
   width: 72px;
+  max-width: 100%;
   height: auto;
   aspect-ratio: 1905 / 640;
   overflow: hidden;
   border-radius: 6px;
   background: #f1f5f9;
   padding: 0;
+  align-self: center;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__thumb img {
@@ -612,6 +624,13 @@
   object-fit: contain;
   object-position: center center;
   display: block;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live__copy {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__meta {
@@ -625,19 +644,25 @@
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__type {
   margin-top: 0;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__rank {
   margin-left: auto;
+  flex-shrink: 0;
   min-width: 0;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__actions {
+  grid-column: 3;
+  grid-row: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: nowrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__toggles {
