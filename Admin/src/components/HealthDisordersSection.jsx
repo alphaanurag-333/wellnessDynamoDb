@@ -290,6 +290,22 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
     }
   }
 
+  async function toggleSurface(item, field) {
+    if (field !== "webVisible" && field !== "appVisible") return;
+    const next = !item[field];
+    setBusy(true);
+    try {
+      const saved = await adminUpdateHealthDisorder(null, item.id, { [field]: next });
+      setItems((list) => list.map((row) => (row.id === item.id ? saved : row)));
+      const label = field === "webVisible" ? "web" : "app";
+      onToast?.(`${item.title} ${next ? "shown" : "hidden"} on ${label}`);
+    } catch (error) {
+      onToast?.(error?.message || "Failed to update visibility");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function confirmDelete() {
     if (!pendingDelete) return;
     const target = pendingDelete;
@@ -536,6 +552,36 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                       </div>
                       <div className="ua-cfg-bl-item__actions">
                         <div className="ua-cfg-bl-item__surfaces">
+                          <div className="ua-cfg-bl-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.webVisible !== false ? " is-on" : ""}`}>
+                              WEB
+                            </span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.webVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.webVisible !== false}
+                              aria-label={entry.webVisible !== false ? "Hide on web" : "Show on web"}
+                              disabled={locked}
+                              onClick={() => toggleSurface(entry, "webVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
+                          <div className="ua-cfg-bl-item__live">
+                            <span className={`ua-cfg-faq__shown${entry.appVisible !== false ? " is-on" : ""}`}>
+                              APP
+                            </span>
+                            <button
+                              type="button"
+                              className={`ua-toggle ua-toggle--sm${entry.appVisible !== false ? " ua-toggle--on" : ""}`}
+                              aria-pressed={entry.appVisible !== false}
+                              aria-label={entry.appVisible !== false ? "Hide on app" : "Show on app"}
+                              disabled={locked}
+                              onClick={() => toggleSurface(entry, "appVisible")}
+                            >
+                              <span className="ua-toggle__knob" />
+                            </button>
+                          </div>
                           <div className="ua-cfg-bl-item__live">
                             <span className={`ua-cfg-faq__shown${live ? " is-on" : ""}`}>
                               {live ? "LIVE" : "HIDDEN"}

@@ -35,10 +35,10 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 const RECIPE_SEARCH_DEBOUNCE_MS = 400;
-const YG_CROP_WIDTH = 280;
-const YG_CROP_HEIGHT = 160;
+const YG_CROP_WIDTH = 840;
+const YG_CROP_HEIGHT = 480;
 const YG_CROP_RATIO = "16:9";
-const YG_COVER_SIZE_LABEL = "Thumbnail: 280x160";
+const YG_COVER_SIZE_LABEL = "Thumbnail: 840x480";
 const YG_VIDEO_SIZE_LABEL = "1920x1080";
 
 function CharHint({ value, max }) {

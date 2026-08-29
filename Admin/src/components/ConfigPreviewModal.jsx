@@ -1529,11 +1529,14 @@ function ClientReviewPreview({ editor = {}, published = [] }) {
 
 function HealthDisordersPreview({ editor = {}, items = [] }) {
   const live = items.filter((entry) => entry.status === "active" || entry.live);
-  const featured = live[0];
+  const webFeatured = live.find((entry) => entry.webVisible !== false);
+  const appFeatured = live.find((entry) => entry.appVisible !== false);
   const webOn = editor.webOn !== false;
   const appOn = editor.appOn !== false;
-  const title = featured?.title || "Health disorders";
-  const symptoms = Array.isArray(featured?.symptoms) ? featured.symptoms.slice(0, 4) : [];
+  const webTitle = webFeatured?.title || "Health disorders";
+  const appTitle = appFeatured?.title || "Health disorders";
+  const webSymptoms = Array.isArray(webFeatured?.symptoms) ? webFeatured.symptoms.slice(0, 4) : [];
+  const appSymptoms = Array.isArray(appFeatured?.symptoms) ? appFeatured.symptoms.slice(0, 4) : [];
 
   return (
     <div className="ua-cfg-tf-live">
@@ -1546,15 +1549,21 @@ function HealthDisordersPreview({ editor = {}, items = [] }) {
               <strong>Health Disorders</strong>
               <span className="ua-cfg-pt-live-preview__url">irwellness.in</span>
             </div>
-            <p className="ua-cfg-ft-preview__copy">{title}</p>
-            {symptoms.length ? (
-              <ul className="ua-cfg-hd-preview__list">
-                {symptoms.map((symptom) => (
-                  <li key={symptom}>{symptom}</li>
-                ))}
-              </ul>
+            {webFeatured ? (
+              <>
+                <p className="ua-cfg-ft-preview__copy">{webTitle}</p>
+                {webSymptoms.length ? (
+                  <ul className="ua-cfg-hd-preview__list">
+                    {webSymptoms.map((symptom) => (
+                      <li key={symptom}>{symptom}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="ua-cfg-ft-preview__copy">Clinical symptoms appear here.</p>
+                )}
+              </>
             ) : (
-              <p className="ua-cfg-ft-preview__copy">Clinical symptoms appear here.</p>
+              <p className="ua-cfg-ft-preview__copy">No disorders shown on web.</p>
             )}
           </div>
         </div>
@@ -1573,14 +1582,20 @@ function HealthDisordersPreview({ editor = {}, items = [] }) {
                 <span className="ua-cfg-pt-live-preview__brand">IR</span>
                 <strong>Health Disorders</strong>
               </div>
-              <p>{title}</p>
-              {symptoms.length ? (
-                <ul className="ua-cfg-hd-preview__list ua-cfg-hd-preview__list--app">
-                  {symptoms.map((symptom) => (
-                    <li key={symptom}>{symptom}</li>
-                  ))}
-                </ul>
-              ) : null}
+              {appFeatured ? (
+                <>
+                  <p>{appTitle}</p>
+                  {appSymptoms.length ? (
+                    <ul className="ua-cfg-hd-preview__list ua-cfg-hd-preview__list--app">
+                      {appSymptoms.map((symptom) => (
+                        <li key={symptom}>{symptom}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : (
+                <p>No disorders shown on app.</p>
+              )}
               <div className="ua-cfg-preview-content__nav" aria-hidden="true">
                 <span className="is-active">⌂</span>
                 <span>▦</span>

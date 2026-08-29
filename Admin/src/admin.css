@@ -38508,6 +38508,23 @@ scrollbar-width: thin;
   background: #eef0fc;
 }
 
+.updated-admin .ua-cfg-onb-editor__size-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(180deg, #eef2ff 0%, #e0e7ff 100%);
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(67, 56, 202, 0.08);
+}
+
 .updated-admin .ua-cfg-onb-editor__cover-saved {
   border-color: #86efac !important;
   background: #ecfdf5 !important;

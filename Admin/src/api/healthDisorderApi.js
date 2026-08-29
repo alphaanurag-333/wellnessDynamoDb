@@ -35,6 +35,8 @@ export function mapHealthDisorder(row) {
     type,
     order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     status: row.status === "inactive" ? "inactive" : "active",
+    webVisible: row.webVisible !== false,
+    appVisible: row.appVisible !== false,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -72,6 +74,8 @@ export async function adminCreateHealthDisorder(token, fields) {
     symptoms: normalizeSymptoms(fields.symptoms),
     type: String(fields.type || "acute").toLowerCase() === "chronic" ? "chronic" : "acute",
     status: fields.status === "inactive" || fields.on === false ? "inactive" : "active",
+    webVisible: fields.webVisible !== false,
+    appVisible: fields.appVisible !== false,
   };
   try {
     const { data } = await api.post(healthDisorderBase(), payload, {
@@ -97,6 +101,8 @@ export async function adminUpdateHealthDisorder(token, id, fields) {
   } else if (fields.on !== undefined) {
     payload.status = fields.on ? "active" : "inactive";
   }
+  if (fields.webVisible !== undefined) payload.webVisible = Boolean(fields.webVisible);
+  if (fields.appVisible !== undefined) payload.appVisible = Boolean(fields.appVisible);
   try {
     const { data } = await api.patch(`${healthDisorderBase()}/${encodeURIComponent(id)}`, payload, {
       headers: authHeader(tokenOrStored(token)),

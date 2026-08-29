@@ -7,8 +7,13 @@ function appConfigBase() {
   return "/admin/app-config";
 }
 
+/**
+ * Match public app-config + AppConfig create default: missing field = shown.
+ * (Previously `undefined` mapped to false here while the app still showed the drawer line.)
+ */
 function toEnabled(value) {
-  return value === true || String(value || "").toLowerCase() === "true";
+  if (value === undefined || value === null || value === "") return true;
+  return value === true || String(value).trim().toLowerCase() === "true";
 }
 
 export function mapCompliance(config = {}) {

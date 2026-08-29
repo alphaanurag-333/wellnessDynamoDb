@@ -22,6 +22,8 @@ import {
 import { ListPagination } from "./shared.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
+const ONB_VIDEO_SIZE_LABEL = "1920x1080";
+
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
     <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
@@ -162,6 +164,7 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
   const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
     accept: "video",
     title: "Choose video",
+    sizeHint: ONB_VIDEO_SIZE_LABEL,
     onFiles: (file) => {
       if (!file) return;
       const invalid = validateIntroVideoFile(file);
@@ -257,6 +260,9 @@ function CoachEditor({ coach, busy, onToast, onSaveCopy, onSaveLink, onSaveVideo
                 <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" disabled={busy} onClick={saveCopy}>
                   {saved ? "Saved" : "Save"}
                 </button>
+                <span className="ua-cfg-onb-editor__size-chip" title="Recommended video resolution">
+                  Video · {ONB_VIDEO_SIZE_LABEL}
+                </span>
               </div>
               <div className="ua-cfg-onb-editor__live">
                 <span>Live</span>
