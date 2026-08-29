@@ -32,8 +32,8 @@ const EMPTY_DRAFT = {
   newPreview: "",
 };
 
-const TF_CROP_WIDTH = 200;
-const TF_CROP_HEIGHT = 250;
+const TF_CROP_WIDTH = 400;
+const TF_CROP_HEIGHT = 500;
 const TF_CROP_RATIO = "4:5";
 
 function Panel({ title, subtitle, actions, children }) {
@@ -518,7 +518,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
         {creating ? (
           <section className="ua-cfg-rc-new ua-cfg-tf-new">
             <div className="ua-cfg-rc-new__head">
-              <strong><span aria-hidden="true"></span> New transformation</strong>
+              <strong><span aria-hidden="true"></span> New transformation <span className="ua-cfg-panel__sub">(Aspect ratio of image should be 4:5. Ex:400x500, 600x750)</span> </strong>
               <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={() => setCreating(false)}>×</button>
             </div>
             <div className="ua-cfg-rc-new__grid ua-cfg-tf-new__grid">
