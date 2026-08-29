@@ -129,6 +129,11 @@ function MediaThumb({ entry }) {
       : type === "audio"
         ? "AUDIO"
         : "VIDEO";
+  const videoSrc = entry.url
+    ? entry.url.includes("#")
+      ? entry.url
+      : `${entry.url}#t=0.1`
+    : "";
 
   return (
     <>
@@ -138,6 +143,14 @@ function MediaThumb({ entry }) {
 
       {type === "image" && entry.url ? (
         <img className="ua-cfg-gl-card__preview" src={entry.url} alt="" />
+      ) : type === "video" && videoSrc ? (
+        <video
+          className="ua-cfg-gl-card__preview ua-cfg-gl-card__preview--video"
+          src={videoSrc}
+          muted
+          playsInline
+          preload="metadata"
+        />
       ) : (
         <span className={`ua-cfg-gl-card__icon-tile is-${type}`} aria-hidden="true">
           <MediaTypeIcon type={type} />
@@ -403,9 +416,19 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                 videoPreviews.map((entry) => (
                   <article key={entry.id} className="ua-cfg-gl-video">
                     <div className="ua-cfg-gl-video__thumb" aria-hidden="true">
-                      <span className="ua-cfg-gl-card__icon-tile is-video">
-                        <MediaTypeIcon type="video" />
-                      </span>
+                      {entry.url ? (
+                        <video
+                          className="ua-cfg-gl-video__preview"
+                          src={entry.url.includes("#") ? entry.url : `${entry.url}#t=0.1`}
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <span className="ua-cfg-gl-card__icon-tile is-video">
+                          <MediaTypeIcon type="video" />
+                        </span>
+                      )}
                     </div>
                     <strong>{entry.title}</strong>
                     <div className="ua-cfg-gl-video__meta">

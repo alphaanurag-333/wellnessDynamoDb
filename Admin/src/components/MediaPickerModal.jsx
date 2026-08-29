@@ -36,6 +36,37 @@ function galleryCategoryClass(category) {
     .replace(/^-|-$/g, "") || "media";
 }
 
+function videoPreviewSrc(url) {
+  const src = String(url || "").trim();
+  if (!src) return "";
+  // Seek slightly so browsers paint a visible frame instead of a blank poster.
+  return src.includes("#") ? src : `${src}#t=0.1`;
+}
+
+function VideoThumb({ url, className = "ua-media-picker__video" }) {
+  const [failed, setFailed] = useState(false);
+  const src = videoPreviewSrc(url);
+
+  if (!src || failed) {
+    return (
+      <span className="ua-cfg-gl-card__icon-tile is-video" aria-hidden="true">
+        <MediaTypeIcon type="video" />
+      </span>
+    );
+  }
+
+  return (
+    <video
+      className={className}
+      src={src}
+      muted
+      playsInline
+      preload="metadata"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function MediaCard({ asset, selected, onToggle }) {
   const type = asset.type === "audio" || asset.type === "video" ? asset.type : "image";
   return (
@@ -46,6 +77,8 @@ function MediaCard({ asset, selected, onToggle }) {
         </label>
         {type === "image" && asset.url ? (
           <img src={asset.url} alt="" />
+        ) : type === "video" && asset.url ? (
+          <VideoThumb url={asset.url} />
         ) : (
           <span className={`ua-cfg-gl-card__icon-tile is-${type}`} aria-hidden="true">
             <MediaTypeIcon type={type} />
@@ -104,6 +137,7 @@ export function MediaPickerModal({
 }) {
   const fileInputRef = useRef(null);
   const cropPendingRef = useRef(null);
+  const confirmingRef = useRef(false);
   const [tab, setTab] = useState("upload");
   const [search, setSearch] = useState("");
   const [owner, setOwner] = useState("All owners");
@@ -120,8 +154,10 @@ export function MediaPickerModal({
   const [cropQueue, setCropQueue] = useState([]);
   const [cropPending, setCropPending] = useState(null);
   const [cropBusy, setCropBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   cropPendingRef.current = cropPending;
+  confirmingRef.current = confirming;
 
   const selectedAssets = useMemo(() => {
     const byId = new Map(items.map((item) => [item.id, item]));
@@ -131,7 +167,18 @@ export function MediaPickerModal({
     return selected.map((id) => byId.get(id)).filter(Boolean);
   }, [items, uploads, selected]);
 
+  const confirmingLabel = useMemo(() => {
+    if (selectedAssets.some((asset) => asset.type === "video")) {
+      return "Preparing video…";
+    }
+    if (selectedAssets.some((asset) => asset.type === "audio")) {
+      return "Preparing audio…";
+    }
+    return "Preparing media…";
+  }, [selectedAssets]);
+
   const showTypeFilter = accept === "mixed" || accept === "all" || Array.isArray(accept);
+  const uiLocked = cropBusy || confirming;
 
   function openNextCrop(queue) {
     const next = queue[0];
@@ -193,9 +240,11 @@ export function MediaPickerModal({
     setCropPending(null);
     setCropQueue([]);
     setCropBusy(false);
+    setConfirming(false);
 
     const onKey = (event) => {
       if (event.key !== "Escape") return;
+      if (confirmingRef.current) return;
       if (cropPendingRef.current) {
         discardCurrentCrop();
         return;
@@ -253,6 +302,7 @@ export function MediaPickerModal({
   }, [open, tab, token, search, owner, typeFilter, fromDate, toDate, accept, libraryCategory]);
 
   function toggleSelect(id) {
+    if (confirming) return;
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((entry) => entry !== id);
       if (!multiple) return [id];
@@ -373,14 +423,22 @@ export function MediaPickerModal({
   }
 
   async function handleConfirm() {
-    if (!selectedAssets.length || cropPending) return;
+    if (!selectedAssets.length || cropPending || confirming) return;
     const picked = multiple ? selectedAssets : selectedAssets.slice(0, 1);
+    setConfirming(true);
+    setError("");
     try {
       await onConfirm?.(picked);
       onClose?.();
     } catch (err) {
       setError(err?.message || "Could not use selected media");
+      setConfirming(false);
     }
+  }
+
+  function requestClose() {
+    if (confirming) return;
+    onClose?.();
   }
 
   if (!open) return null;
@@ -390,16 +448,25 @@ export function MediaPickerModal({
       {cropPending ? null : (
       <div
         className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer"
-        onClick={onClose}
+        onClick={requestClose}
         role="presentation"
       >
         <div
-          className="ua-media-picker"
+          className={`ua-media-picker${confirming ? " is-confirming" : ""}`}
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
+          aria-busy={confirming || undefined}
           aria-label={title}
         >
+          {confirming ? (
+            <div className="ua-media-picker__busy" role="status" aria-live="polite">
+              <span className="ua-media-picker__busy-spinner" aria-hidden="true" />
+              <strong>{confirmingLabel}</strong>
+              <span>Large files can take a moment — please wait</span>
+            </div>
+          ) : null}
+
           <div className="ua-media-picker__head">
             <div>
               <h3 className="ua-media-picker__title">{title}</h3>
@@ -411,8 +478,8 @@ export function MediaPickerModal({
               type="button"
               className="ua-media-picker__close"
               aria-label="Close"
-              onClick={onClose}
-              disabled={cropBusy}
+              onClick={requestClose}
+              disabled={uiLocked}
             >
               ×
             </button>
@@ -425,6 +492,7 @@ export function MediaPickerModal({
               aria-selected={tab === "upload"}
               className={`ua-media-picker__tab${tab === "upload" ? " is-active" : ""}`}
               onClick={() => setTab("upload")}
+              disabled={uiLocked}
             >
               Upload files
             </button>
@@ -434,6 +502,7 @@ export function MediaPickerModal({
               aria-selected={tab === "library"}
               className={`ua-media-picker__tab${tab === "library" ? " is-active" : ""}`}
               onClick={() => setTab("library")}
+              disabled={uiLocked}
             >
               Media Library
             </button>
@@ -447,10 +516,17 @@ export function MediaPickerModal({
                 className={`ua-media-picker__drop${dragOver ? " is-over" : ""}`}
                 onDragOver={(event) => {
                   event.preventDefault();
+                  if (uiLocked) return;
                   setDragOver(true);
                 }}
                 onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
+                onDrop={(event) => {
+                  if (uiLocked) {
+                    event.preventDefault();
+                    return;
+                  }
+                  onDrop(event);
+                }}
               >
                 <strong>Drag & drop files here</strong>
                 <span>or browse from your device</span>
@@ -461,7 +537,7 @@ export function MediaPickerModal({
                   type="button"
                   className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={Boolean(cropPending) || cropBusy}
+                  disabled={Boolean(cropPending) || uiLocked}
                 >
                   Browse files
                 </button>
@@ -471,6 +547,7 @@ export function MediaPickerModal({
                   multiple={multiple}
                   accept={acceptAttr(accept)}
                   hidden
+                  disabled={uiLocked}
                   onChange={(event) => {
                     uploadFiles(event.target.files);
                     event.target.value = "";
@@ -510,11 +587,13 @@ export function MediaPickerModal({
                   className="ua-cfg-mv-gallery__search"
                   placeholder="Search media by name"
                   value={search}
+                  disabled={uiLocked}
                   onChange={(event) => setSearch(event.target.value)}
                 />
                 <select
                   className="ua-cfg-mv-gallery__select"
                   value={owner}
+                  disabled={uiLocked}
                   onChange={(event) => setOwner(event.target.value)}
                 >
                   {owners.map((entry) => (
@@ -527,6 +606,7 @@ export function MediaPickerModal({
                   <select
                     className="ua-cfg-mv-gallery__select"
                     value={typeFilter}
+                    disabled={uiLocked}
                     onChange={(event) => setTypeFilter(event.target.value)}
                   >
                     <option value="all">All types</option>
@@ -540,6 +620,7 @@ export function MediaPickerModal({
                   className="ua-cfg-mv-gallery__date"
                   aria-label="From date"
                   value={fromDate}
+                  disabled={uiLocked}
                   onChange={(event) => setFromDate(event.target.value)}
                 />
                 <input
@@ -547,6 +628,7 @@ export function MediaPickerModal({
                   className="ua-cfg-mv-gallery__date"
                   aria-label="To date"
                   value={toDate}
+                  disabled={uiLocked}
                   onChange={(event) => setToDate(event.target.value)}
                 />
               </div>
@@ -556,7 +638,13 @@ export function MediaPickerModal({
                 {selected.length ? ` · ${selected.length} selected` : ""}
               </div>
 
-              <div className="ua-media-picker__grid">
+              <div className={`ua-media-picker__grid${loading ? " is-loading" : ""}`}>
+                {loading && !items.length ? (
+                  <div className="ua-media-picker__library-busy" role="status" aria-live="polite">
+                    <span className="ua-media-picker__busy-spinner" aria-hidden="true" />
+                    <span>Loading media library…</span>
+                  </div>
+                ) : null}
                 {items.map((asset) => (
                   <MediaCard
                     key={asset.id}
@@ -573,16 +661,23 @@ export function MediaPickerModal({
           )}
 
           <div className="ua-media-picker__foot">
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={cropBusy}>
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline"
+              onClick={requestClose}
+              disabled={uiLocked}
+            >
               Cancel
             </button>
             <button
               type="button"
               className="ua-cfg-btn ua-cfg-btn--primary"
-              disabled={!selectedAssets.length || Boolean(cropPending) || cropBusy}
+              disabled={!selectedAssets.length || Boolean(cropPending) || uiLocked}
               onClick={handleConfirm}
             >
-              Use selected{selectedAssets.length ? ` (${selectedAssets.length})` : ""}
+              {confirming
+                ? confirmingLabel
+                : `Use selected${selectedAssets.length ? ` (${selectedAssets.length})` : ""}`}
             </button>
           </div>
         </div>
