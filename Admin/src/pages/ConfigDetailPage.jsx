@@ -8,7 +8,11 @@ import {
   AboutSection,
   AiEnableSection,
   AppContentSection,
+  AppCommunityGuidelinesMobileSection,
+  AppComplianceSection,
+  AppPrivacyPolicySection,
   AppSubscriptionFySection,
+  AppTermsConditionsSection,
   BannerSection,
   ChallengesSection,
   CommitmentLetterSection,
@@ -97,6 +101,9 @@ import {
   activePaymentGateway,
   createDefaultGateways,
   APP_DPA_BLOCKS,
+  APP_PRIVACY_POLICY_BLOCKS,
+  APP_TERMS_CONDITIONS_BLOCKS,
+  APP_COMMUNITY_GUIDELINES_BLOCKS,
 } from "../data/configDetailData.js";
 import { configPermissionPrefix, findConfigItem, getConfigStateLabel } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
@@ -1276,6 +1283,10 @@ const PUBLISH_CONFIGS = new Set([
   "app-consultancy-amount",
   "app-tos",
   "app-dpa",
+  "app-privacy-policy",
+  "app-terms-conditions",
+  "app-community-guidelines",
+  "app-compliance",
   "web-fs-social",
   "web-fs-privacy",
   "web-fs-tos",
@@ -1346,6 +1357,13 @@ export function ConfigDetailPage() {
   });
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [dpaBlocks, setDpaBlocks] = useState(APP_DPA_BLOCKS);
+  const [appPrivacyBlocks, setAppPrivacyBlocks] = useState(APP_PRIVACY_POLICY_BLOCKS);
+  const [appTermsBlocks, setAppTermsBlocks] = useState(APP_TERMS_CONDITIONS_BLOCKS);
+  const [appGuidelinesBlocks, setAppGuidelinesBlocks] = useState(APP_COMMUNITY_GUIDELINES_BLOCKS);
+  const [complianceSettings, setComplianceSettings] = useState({
+    enabled: true,
+    names: "GDPR, HIPAA",
+  });
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
@@ -1514,7 +1532,8 @@ export function ConfigDetailPage() {
       || current.id === "web-fs-social"
       || current.id === "app-consultancy-amount"
       || current.id === "app-language-disable"
-      || current.id === "app-whatsapp-support";
+      || current.id === "app-whatsapp-support"
+      || current.id === "app-compliance";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1527,6 +1546,8 @@ export function ConfigDetailPage() {
           setHindiOn(Boolean(saved));
         } else if (current.id === "app-whatsapp-support" && saved) {
           setWhatsappSupportSettings(saved);
+        } else if (current.id === "app-compliance" && saved) {
+          setComplianceSettings(saved);
         } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
@@ -1542,6 +1563,12 @@ export function ConfigDetailPage() {
           setGuidelineBlocks(saved.blocks);
         } else if (current.id === "app-dpa" && saved?.blocks?.length) {
           setDpaBlocks(saved.blocks);
+        } else if (current.id === "app-privacy-policy" && saved?.blocks?.length) {
+          setAppPrivacyBlocks(saved.blocks);
+        } else if (current.id === "app-terms-conditions" && saved?.blocks?.length) {
+          setAppTermsBlocks(saved.blocks);
+        } else if (current.id === "app-community-guidelines" && saved?.blocks?.length) {
+          setAppGuidelinesBlocks(saved.blocks);
         } else if (current.id === "web-fs-contact" && saved?.blocks?.length) {
           setContactPageBlocks(saved.blocks);
         } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
@@ -1627,6 +1654,14 @@ export function ConfigDetailPage() {
           ? activeGateway?.name ?? false
           : item.id === "app-dpa"
             ? dpaBlocks.some((entry) => entry.shown)
+          : item.id === "app-privacy-policy"
+            ? appPrivacyBlocks.some((entry) => entry.shown)
+          : item.id === "app-terms-conditions"
+            ? appTermsBlocks.some((entry) => entry.shown)
+          : item.id === "app-community-guidelines"
+            ? appGuidelinesBlocks.some((entry) => entry.shown)
+          : item.id === "app-compliance"
+            ? Boolean(complianceSettings?.enabled)
           : item.id === "app-measurement-video"
             ? measurementGuide.live
           : item.id === "app-onboarding-video"
@@ -1901,6 +1936,46 @@ export function ConfigDetailPage() {
           <DpaSection
             blocks={dpaBlocks}
             setBlocks={setDpaBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-privacy-policy":
+        return (
+          <AppPrivacyPolicySection
+            blocks={appPrivacyBlocks}
+            setBlocks={setAppPrivacyBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-terms-conditions":
+        return (
+          <AppTermsConditionsSection
+            blocks={appTermsBlocks}
+            setBlocks={setAppTermsBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-community-guidelines":
+        return (
+          <AppCommunityGuidelinesMobileSection
+            blocks={appGuidelinesBlocks}
+            setBlocks={setAppGuidelinesBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-compliance":
+        return (
+          <AppComplianceSection
+            settings={complianceSettings}
+            setSettings={setComplianceSettings}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
@@ -2384,6 +2459,10 @@ export function ConfigDetailPage() {
           gateways,
           activeGateway,
           dpaBlocks,
+          appPrivacyBlocks,
+          appTermsBlocks,
+          appGuidelinesBlocks,
+          complianceSettings,
           measurementGuide,
           measurementParams,
           onboardingCoaches,

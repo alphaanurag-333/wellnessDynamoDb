@@ -386,6 +386,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     android_app_link,
     ios_app_link,
     app_download_qr_link,
+    ios_app_qr_link,
     app_details,
     app_footer_text,
     payment_gateways,
@@ -443,6 +444,7 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     android_app_link: android_app_link ?? "",
     ios_app_link: ios_app_link ?? "",
     app_download_qr_link: app_download_qr_link ?? "",
+    ios_app_qr_link: ios_app_qr_link ?? "",
     app_details: app_details ?? "",
     app_footer_text: app_footer_text ?? "",
     improved_user: improved_user ?? "",
@@ -575,6 +577,7 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     "android_app_link",
     "ios_app_link",
     "app_download_qr_link",
+    "ios_app_qr_link",
     "app_details",
     "improved_user",
     "success_rate",
@@ -621,6 +624,16 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   }
   if (req.body.support_whatsapp_message !== undefined) {
     updates.support_whatsapp_message = String(req.body.support_whatsapp_message ?? "").trim();
+  }
+
+  if (req.body.compliance_enabled !== undefined) {
+    updates.compliance_enabled = normalizeBooleanFlag(
+      req.body.compliance_enabled,
+      false
+    );
+  }
+  if (req.body.compliance_names !== undefined) {
+    updates.compliance_names = String(req.body.compliance_names ?? "").trim().slice(0, 120);
   }
 
   for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {

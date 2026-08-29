@@ -79,6 +79,7 @@ function toPublicClientAppConfig(doc) {
     android_app_link: config.android_app_link ?? "",
     ios_app_link: config.ios_app_link ?? "",
     app_download_qr_link: config.app_download_qr_link ?? "",
+    ios_app_qr_link: config.ios_app_qr_link ?? "",
     app_details: config.app_details ?? "",
     app_footer_text: config.app_footer_text ?? "",
     payment_gateways,
@@ -90,6 +91,13 @@ function toPublicClientAppConfig(doc) {
       || String(config.support_whatsapp_enabled || "").toLowerCase() === "true",
     support_whatsapp_number: String(config.support_whatsapp_number ?? "").trim(),
     support_whatsapp_message: String(config.support_whatsapp_message ?? "").trim(),
+    /** Drawer compliance line — not a full legal page */
+    compliance_enabled:
+      config.compliance_enabled === undefined
+        ? true
+        : config.compliance_enabled === true
+          || String(config.compliance_enabled || "").toLowerCase() === "true",
+    compliance_names: String(config.compliance_names ?? "").trim() || "GDPR, HIPAA",
     updatedAt: config.updatedAt,
   };
 }

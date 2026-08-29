@@ -9,6 +9,7 @@ const {
 const {
   createLaunchDomain,
   listAllDomainsUnpaged,
+  updateLaunchDomain,
 } = require("../models/launchDomainModel");
 const {
   createLaunchDomainQuestion,
@@ -146,7 +147,7 @@ const PSYCHOLOGICAL_QUESTIONS = [
 ];
 
 const DOMAINS = [
-  { name: "Gut Health", weight: 20, sortOrder: 1, questions: GUT_HEALTH_QUESTIONS },
+  { name: "Load Preset", weight: 20, sortOrder: 1, questions: GUT_HEALTH_QUESTIONS },
   { name: "Immunity", weight: 20, sortOrder: 2, questions: IMMUNITY_QUESTIONS },
   { name: "Physical Health", weight: 20, sortOrder: 3, questions: PHYSICAL_QUESTIONS },
   { name: "Mental Health", weight: 20, sortOrder: 4, questions: MENTAL_QUESTIONS },
@@ -197,6 +198,14 @@ async function main() {
   }
 
   const existingDomains = await listAllDomainsUnpaged();
+  // Rename legacy "Gut Health" domain → "Load Preset" when present
+  for (const row of existingDomains) {
+    if (keyName(row.name) === "gut health") {
+      const updated = await updateLaunchDomain(row.id, { name: "Load Preset" });
+      row.name = updated.name;
+      console.log(`  ✓ renamed domain: Gut Health → Load Preset`);
+    }
+  }
   const domainByName = new Map(existingDomains.map((row) => [keyName(row.name), row]));
   const existingQuestions = await listAllQuestionsUnpaged();
   const questionKeys = new Set(

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
-import { ChevronLeft, ChevronRight, ArrowRight, ArrowUpRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { fetchHealthDisorders, isSectionLiveOnWeb } from "../../api/publicMisc.js";
 import { usePagedSwiper } from "../../hooks/usePagedSwiper.js";
 import { SiteLoader } from "../SiteLoader.jsx";
+import DisorderDetailModal from "./DisorderDetailModal.jsx";
 
 const ACCENTS = ["#3B82F6", "#F97316", "#22C55E", "#EAB308", "#A855F7", "#EC4899"];
 
@@ -24,70 +25,49 @@ function mapDisorder(row, index) {
   return {
     id,
     title,
+    description: String(row.description || "").trim(),
+    type: String(row.type || "").trim().toLowerCase(),
     symptoms,
     accent: ACCENTS[index % ACCENTS.length],
   };
 }
 
-function DisorderCard({ item }) {
-  const [expanded, setExpanded] = useState(false);
-  const [titleOverflows, setTitleOverflows] = useState(false);
-  const titleRef = useRef(null);
-  const extraSymptoms = item.symptoms.length > PREVIEW_SYMPTOMS;
-  const canToggle = extraSymptoms || titleOverflows;
-  const visible = extraSymptoms && !expanded
-    ? item.symptoms.slice(0, PREVIEW_SYMPTOMS)
-    : item.symptoms;
-
-  const measureTitle = useCallback(() => {
-    if (expanded) return;
-    const el = titleRef.current;
-    if (!el) return;
-    setTitleOverflows(el.scrollWidth > el.clientWidth + 1);
-  }, [expanded, item.title]);
-
-  useLayoutEffect(() => {
-    measureTitle();
-  }, [measureTitle]);
-
-  useEffect(() => {
-    const el = titleRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measureTitle);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [measureTitle]);
+function DisorderCard({ item, onOpen }) {
+  const previewSymptoms = item.symptoms.slice(0, PREVIEW_SYMPTOMS);
+  const hasContent = item.symptoms.length > 0 || Boolean(item.description);
 
   return (
     <article className="wp-disorder-card" style={{ borderTopColor: item.accent }}>
-      <h3
-        ref={titleRef}
-        className={expanded ? "is-expanded" : "is-clamped"}
-      >
+      <h3 className="is-clamped" title={item.title}>
         {item.title}
       </h3>
+
+      {item.description ? (
+        <p className="wp-disorder-card__desc">{item.description}</p>
+      ) : null}
+
       <p className="wp-disorder-card__label">Clinical Symptoms</p>
-      {item.symptoms.length > 0 ? (
+      {previewSymptoms.length > 0 ? (
         <ul>
-          {visible.map((symptom, index) => (
+          {previewSymptoms.map((symptom, index) => (
             <li key={`${item.id}-${index}`}>{symptom}</li>
           ))}
         </ul>
       ) : (
         <p className="wp-disorder-card__empty">Details coming soon.</p>
       )}
-      {canToggle ? (
+
+      {hasContent ? (
         <button
           type="button"
           className="wp-disorder-card__more"
-          aria-expanded={expanded}
           onClick={(event) => {
             event.stopPropagation();
-            setExpanded((open) => !open);
+            onOpen(item);
           }}
         >
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
+          Read More
+          <ArrowRight size={16} aria-hidden />
         </button>
       ) : null}
     </article>
@@ -96,6 +76,7 @@ function DisorderCard({ item }) {
 
 export default function HealthDisordersSection() {
   const [webLive, setWebLive] = useState(null);
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,7 +174,7 @@ export default function HealthDisordersSection() {
             >
               {items.map((item) => (
                 <SwiperSlide key={item.id}>
-                  <DisorderCard item={item} />
+                  <DisorderCard item={item} onOpen={setSelected} />
                 </SwiperSlide>
               ))}
             </Swiper>
@@ -205,6 +186,12 @@ export default function HealthDisordersSection() {
           </>
         )}
       </div>
+
+      <DisorderDetailModal
+        open={Boolean(selected)}
+        item={selected}
+        onClose={() => setSelected(null)}
+      />
     </section>
   );
 }

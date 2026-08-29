@@ -142,7 +142,7 @@ export const LAUNCH_CONFIG_RATINGS = [
 export const LAUNCH_CONFIG_DOMAINS = [
   {
     id: "domain-gut",
-    name: "Gut Health",
+    name: "Load Preset",
     weight: 20,
     live: true,
     fixed: false,

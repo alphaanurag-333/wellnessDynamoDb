@@ -9,22 +9,56 @@ import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import apkScreenshot from "../images/apk.png";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
 
+async function toQrDataUrl(target) {
+  if (!target) return "";
+  try {
+    return await QRCode.toDataURL(target, {
+      width: 240,
+      margin: 2,
+      color: { dark: "#0f1f38", light: "#ffffff" },
+      errorCorrectionLevel: "M",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function QrCard({ dataUrl, target, label, hint }) {
+  return (
+    <div className="app-dl-modal__qr-card">
+      <div className={`app-dl-modal__qr${dataUrl ? "" : " is-empty"}`}>
+        {dataUrl ? (
+          <img src={dataUrl} alt={`${label} QR code`} />
+        ) : (
+          <span className="app-dl-modal__qr-fallback">
+            {target
+              ? "Generating…"
+              : `Add ${label} in Admin → Social links`}
+          </span>
+        )}
+      </div>
+      <div className="app-dl-modal__qr-copy">
+        <strong>{label}</strong>
+        <span>{hint}</span>
+      </div>
+    </div>
+  );
+}
+
 export function AppDownloadModal({ open, onClose }) {
   const { appName, mobileApp } = useSiteConfig();
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const logoSrc = brandLogoUrl || defaultLogo;
-  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [iosQrDataUrl, setIosQrDataUrl] = useState("");
+  const [playQrDataUrl, setPlayQrDataUrl] = useState("");
 
-  // Prefer Admin → Social links → "App download QR link"; fall back to store URLs.
-  const qrTarget = useMemo(() => {
-    return (
-      mobileApp.qrUrl
-      || mobileApp.primaryUrl
-      || mobileApp.androidUrl
-      || mobileApp.iosUrl
-      || ""
-    );
-  }, [mobileApp.androidUrl, mobileApp.iosUrl, mobileApp.primaryUrl, mobileApp.qrUrl]);
+  const iosQrTarget = useMemo(() => {
+    return mobileApp.iosQrUrl || mobileApp.iosUrl || mobileApp.qrUrl || "";
+  }, [mobileApp.iosQrUrl, mobileApp.iosUrl, mobileApp.qrUrl]);
+
+  const playQrTarget = useMemo(() => {
+    return mobileApp.playQrUrl || mobileApp.androidUrl || "";
+  }, [mobileApp.playQrUrl, mobileApp.androidUrl]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -42,26 +76,20 @@ export function AppDownloadModal({ open, onClose }) {
 
   useEffect(() => {
     let cancelled = false;
-    if (!open || !qrTarget) {
-      setQrDataUrl("");
+    if (!open) {
+      setIosQrDataUrl("");
+      setPlayQrDataUrl("");
       return undefined;
     }
-    QRCode.toDataURL(qrTarget, {
-      width: 240,
-      margin: 2,
-      color: { dark: "#0f1f38", light: "#ffffff" },
-      errorCorrectionLevel: "M",
-    })
-      .then((url) => {
-        if (!cancelled) setQrDataUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setQrDataUrl("");
-      });
+    Promise.all([toQrDataUrl(iosQrTarget), toQrDataUrl(playQrTarget)]).then(([ios, play]) => {
+      if (cancelled) return;
+      setIosQrDataUrl(ios);
+      setPlayQrDataUrl(play);
+    });
     return () => {
       cancelled = true;
     };
-  }, [open, qrTarget]);
+  }, [open, iosQrTarget, playQrTarget]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -110,33 +138,26 @@ export function AppDownloadModal({ open, onClose }) {
               Download {appName} to book your consultation
             </h2>
             <p className="app-dl-modal__text">
-              Get the app on your phone — scan the QR code or open the store links below.
+              Get the app on your phone — scan a QR code or open the store links below.
             </p>
 
             <div className="app-dl-modal__stores">
               <AppDownloadButtons tone="dark" appleFirst />
             </div>
 
-            <div className="app-dl-modal__qr-block">
-              <div className={`app-dl-modal__qr${qrDataUrl ? "" : " is-empty"}`}>
-                {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QR code to download the app" />
-                ) : (
-                  <span className="app-dl-modal__qr-fallback">
-                    {qrTarget
-                      ? "Generating…"
-                      : "Add App download QR link in Admin → Social links"}
-                  </span>
-                )}
-              </div>
-              <div className="app-dl-modal__qr-copy">
-                <strong>Scan to download</strong>
-                <span>
-                  {mobileApp.qrUrl
-                    ? "Point your phone camera at the code to open the download Link."
-                    : "Point your phone camera at the code to open the app store."}
-                </span>
-              </div>
+            <div className="app-dl-modal__qr-block app-dl-modal__qr-block--dual">
+              <QrCard
+                dataUrl={iosQrDataUrl}
+                target={iosQrTarget}
+                label="App Store QR"
+                hint="Scan to open the App Store."
+              />
+              <QrCard
+                dataUrl={playQrDataUrl}
+                target={playQrTarget}
+                label="Google Play QR"
+                hint="Scan to open Google Play."
+              />
             </div>
           </div>
         </div>

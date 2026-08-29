@@ -258,6 +258,39 @@ export const DPA_CONTENT = {
   ],
 };
 
+export const APP_PRIVACY_POLICY_CONTENT = {
+  intro:
+    "This Privacy Policy explains how IR Wellness collects, uses, and protects personal information when you use our mobile application.",
+  bullets: [
+    "We collect account details, health profile inputs, and usage data needed to run your program.",
+    "Information is used to deliver coaching, improve the app, and meet legal obligations.",
+    "We do not sell your personal data. Trusted processors only receive what is required for a service.",
+    "You may request access, correction, or deletion of your data through in-app support, subject to legal retention rules.",
+  ],
+};
+
+export const APP_TERMS_CONDITIONS_CONTENT = {
+  intro:
+    "These Terms & Conditions govern your use of the IR Wellness mobile app. By creating an account or continuing to use the app, you agree to these terms.",
+  bullets: [
+    "You must be at least 18 years old and provide accurate account information.",
+    "App access is personal and non-transferable; keep your login credentials secure.",
+    "Program guidance is wellness support and does not replace emergency or specialist medical care.",
+    "We may update these terms; continued use after updates means you accept the revised terms.",
+  ],
+};
+
+export const APP_COMMUNITY_GUIDELINES_CONTENT = {
+  intro:
+    "Our community spaces are for respectful wellness support. These guidelines keep conversations safe, helpful, and inclusive for every member.",
+  bullets: [
+    "Be kind, honest, and supportive — no harassment, hate speech, or personal attacks.",
+    "Do not share another person's private health details without clear consent.",
+    "Avoid spam, solicitation, or medical claims that could mislead others.",
+    "Report concerns through in-app tools or support so our team can review them promptly.",
+  ],
+};
+
 function escapeLegalHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -294,4 +327,28 @@ export const APP_DPA_BLOCKS = legalCopyToBlocks(
   DPA_CONTENT.intro,
   "How we process data",
   DPA_CONTENT.bullets
+);
+
+export const APP_PRIVACY_POLICY_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Overview",
+  APP_PRIVACY_POLICY_CONTENT.intro,
+  "Key points",
+  APP_PRIVACY_POLICY_CONTENT.bullets
+);
+
+export const APP_TERMS_CONDITIONS_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Overview",
+  APP_TERMS_CONDITIONS_CONTENT.intro,
+  "Key points",
+  APP_TERMS_CONDITIONS_CONTENT.bullets
+);
+
+export const APP_COMMUNITY_GUIDELINES_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Overview",
+  APP_COMMUNITY_GUIDELINES_CONTENT.intro,
+  "Key points",
+  APP_COMMUNITY_GUIDELINES_CONTENT.bullets
 );

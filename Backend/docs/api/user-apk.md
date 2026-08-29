@@ -125,7 +125,7 @@ curl -s "$BASE/api/public/misc/transformations?page=1&limit=20&platform=app"
 | GET | `/api/public/misc/banners` | `page`, `limit`, `type` / `bannerType` (default `main`) |
 | GET | `/api/public/misc/config-dropdowns` | All active dropdowns |
 | GET | `/api/public/misc/config-dropdowns/:slug` | One dropdown |
-| GET | `/api/public/misc/pages/:slug` | Static CMS page |
+| GET | `/api/public/misc/pages/:slug` | Static CMS page. App legal: `app-privacy-policy`, `app-terms-conditions`, `app-community-guidelines`, `app-dpa`. Use `?platform=app`. Compliance is a drawer line on `GET /api/public/app-config` (`compliance_enabled`, `compliance_names`). |
 | GET | `/api/public/misc/client-testimonials` | `page`, `limit` |
 | GET | `/api/public/misc/program-testimonials` | `page`, `limit`, `type` |
 | GET | `/api/public/misc/cofounder-message` | — |

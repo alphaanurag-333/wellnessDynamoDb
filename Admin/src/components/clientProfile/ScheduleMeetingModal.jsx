@@ -214,10 +214,11 @@ function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
       : Array.from({ length: 12 }, (_, i) => ({ v: i * 5, label: padTimePart(i * 5) }))
   ), [step]);
 
-  const selIdx = step === "h"
-    ? (draft.h === 12 ? 11 : draft.h - 1)
-    : ((Math.round(draft.m / 5) % 12) + 11) % 12;
-  const handDeg = (selIdx + 1) * 30 - 90;
+  // Clock position 0 = top (12 / 00), then clockwise by 30°.
+  const selPos = step === "h"
+    ? draft.h % 12
+    : Math.round(draft.m / 5) % 12;
+  const handDeg = selPos * 30 - 90;
 
   function pickNum(value) {
     if (step === "h") {
@@ -276,11 +277,13 @@ function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
           <span className="ua-cp-clock__center" />
           <span className="ua-cp-clock__hand" style={{ transform: `rotate(${handDeg}deg)` }} />
           {nums.map((n, i) => {
-            const ang = ((i + 1) * 30 - 90) * (Math.PI / 180);
+            // Hours: index 0 = "1" at 1 o'clock; Minutes: index 0 = "00" at top.
+            const pos = step === "h" ? (i + 1) % 12 : i;
+            const ang = (pos * 30 - 90) * (Math.PI / 180);
             const r = 62;
             const x = 86 + r * Math.cos(ang);
             const y = 86 + r * Math.sin(ang);
-            const on = i === selIdx;
+            const on = pos === selPos;
             return (
               <button
                 key={`${step}-${n.v}`}

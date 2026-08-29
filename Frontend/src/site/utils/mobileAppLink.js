@@ -23,19 +23,36 @@ export function resolveMobileAppUrl({ androidUrl, iosUrl } = {}) {
 }
 
 export function buildMobileAppLinks(config) {
-  const androidUrl = str(config?.android_app_link) || str(MOBILE_APP.androidUrl);
-  const iosUrl = str(config?.ios_app_link) || str(MOBILE_APP.iosUrl);
-  const qrUrl =
-    str(config?.app_download_qr_link)
-    || str(MOBILE_APP.qrUrl)
+  const adminAndroid = str(config?.android_app_link);
+  const adminIos = str(config?.ios_app_link);
+  const adminPlayQr = str(config?.app_download_qr_link);
+  const adminIosQr = str(config?.ios_app_qr_link);
+
+  const androidUrl = adminAndroid || str(MOBILE_APP.androidUrl);
+  const iosUrl = adminIos || str(MOBILE_APP.iosUrl);
+
+  const playQrUrl =
+    adminPlayQr
     || androidUrl
-    || iosUrl;
+    || str(MOBILE_APP.playQrUrl)
+    || str(MOBILE_APP.qrUrl);
+
+  const iosQrUrl =
+    adminIosQr
+    || iosUrl
+    || str(MOBILE_APP.iosQrUrl)
+    || str(MOBILE_APP.qrUrl);
+
+  // Primary QR prefers App Store (desktop / wellnesspedia), then Play.
+  const qrUrl = iosQrUrl || playQrUrl;
   const primaryUrl = resolveMobileAppUrl({ androidUrl, iosUrl });
 
   return {
     androidUrl,
     iosUrl,
-    /** Admin QR link when set; otherwise seed/dummy URL. */
+    playQrUrl,
+    iosQrUrl,
+    /** @deprecated Prefer iosQrUrl / playQrUrl — kept for callers that expect one QR */
     qrUrl,
     primaryUrl,
     ctaLabel: str(MOBILE_APP.ctaLabel) || "Download the App",

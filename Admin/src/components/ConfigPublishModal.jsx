@@ -7,6 +7,7 @@ const DEFERRED_PUBLISH_CONFIGS = new Set([
   "app-consultancy-amount",
   "app-language-disable",
   "app-whatsapp-support",
+  "app-compliance",
 ]);
 
 function publishBody(item) {

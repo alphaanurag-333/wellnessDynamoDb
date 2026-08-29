@@ -311,6 +311,7 @@ async function createAppConfig() {
     android_app_link: "https://play.google.com/store/apps/details?id=com.example.irwellness",
     ios_app_link: "https://apps.apple.com/app/id0000000000",
     app_download_qr_link: "https://play.google.com/store/apps/details?id=com.example.irwellness",
+    ios_app_qr_link: "https://apps.apple.com/app/id0000000000",
     app_details:    "",
     app_footer_text:"",
     improved_user:      "",
@@ -371,6 +372,10 @@ async function createAppConfig() {
     support_whatsapp_enabled: false,
     support_whatsapp_number: "",
     support_whatsapp_message: "",
+
+    // Drawer compliance line (e.g. "GDPR, HIPAA") — not a full page
+    compliance_enabled: true,
+    compliance_names: "GDPR, HIPAA",
 
     // Nested array with credentials object
     payment_gateways: [],   // default empty 

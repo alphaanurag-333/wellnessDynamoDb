@@ -115,7 +115,7 @@ export const LAUNCH_DOMAINS = [
   {
     id: "gut",
     num: 1,
-    title: "Gut Health",
+    title: "Load Preset",
     questions: 16,
     score: 1108,
     max: 1600,

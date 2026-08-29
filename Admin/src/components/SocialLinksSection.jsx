@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAppSocialLinks, saveAppSocialLinks } from "../api/socialLinksApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import {
+  APP_DOWNLOAD_IDS,
   SOCIAL_APP_CONFIG_FIELDS,
   socialIconForLabel,
   toDisplaySocialUrl,
@@ -32,13 +33,98 @@ function SocialGlyph({ icon }) {
     icon === "facebook" ? "f" :
     icon === "play" ? "G" :
     icon === "apple" ? "A" :
-    icon === "globe" ? "🌐" :
+    icon === "globe" ? "QR" :
     "🔗";
 
   return (
     <span className={`ua-cfg-sm-icon ua-cfg-sm-icon--${icon}`} aria-hidden="true">
       {mark}
     </span>
+  );
+}
+
+function LinkRows({
+  entries,
+  editingId,
+  draftUrl,
+  locked,
+  persistToAppConfig,
+  onStartEdit,
+  onCancelEdit,
+  onDraftChange,
+  onSaveEdit,
+  onRemove,
+}) {
+  if (!entries.length) return null;
+
+  return (
+    <div className="ua-cfg-sm-list">
+      {entries.map((entry) => {
+        const isEditing = editingId === entry.id;
+        const label = asCopyString(entry.label);
+        const url = asCopyString(entry.url);
+        const hint = asCopyString(entry.hint);
+        return (
+          <article key={entry.id} className={`ua-cfg-sm-row${isEditing ? " is-editing" : ""}`}>
+            <SocialGlyph icon={entry.icon} />
+            <div className="ua-cfg-sm-row__meta">
+              <strong className="ua-cfg-sm-row__label">{label}</strong>
+              {hint && !isEditing ? (
+                <span className="ua-cfg-sm-row__hint">{hint}</span>
+              ) : null}
+            </div>
+            {isEditing ? (
+              <input
+                type="text"
+                className="ua-cfg-sm-row__input"
+                value={asCopyString(draftUrl)}
+                disabled={locked}
+                placeholder={hint || "https://…"}
+                onChange={(event) => onDraftChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") onSaveEdit(entry.id);
+                  if (event.key === "Escape") onCancelEdit();
+                }}
+              />
+            ) : (
+              <span className="ua-cfg-sm-row__url">{url || "Not set"}</span>
+            )}
+            <div className="ua-cfg-sm-row__actions">
+              {isEditing ? (
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                  disabled={locked}
+                  onClick={() => onSaveEdit(entry.id)}
+                >
+                  Save
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="ua-cfg-cr-link ua-cfg-cr-link--modify"
+                  disabled={locked}
+                  onClick={() => onStartEdit(entry)}
+                >
+                  Edit
+                </button>
+              )}
+              {persistToAppConfig ? null : (
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn"
+                  aria-label={`Remove ${label}`}
+                  disabled={locked}
+                  onClick={() => onRemove(entry)}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </article>
+        );
+      })}
+    </div>
   );
 }
 
@@ -94,6 +180,7 @@ export function SocialLinksSection({
         id: field.id,
         label: field.label,
         icon: field.icon,
+        hint: field.hint || "",
         url: "",
       })));
     } finally {
@@ -204,6 +291,33 @@ export function SocialLinksSection({
   const canAdd = !persistToAppConfig;
   const locked = busy || loading;
 
+  const { socialEntries, downloadEntries } = useMemo(() => {
+    const fieldById = Object.fromEntries(SOCIAL_APP_CONFIG_FIELDS.map((field) => [field.id, field]));
+    const enriched = (Array.isArray(links) ? links : []).map((entry) => ({
+      ...entry,
+      hint: entry.hint || fieldById[entry.id]?.hint || "",
+    }));
+    if (!persistToAppConfig) {
+      return { socialEntries: enriched, downloadEntries: [] };
+    }
+    return {
+      socialEntries: enriched.filter((entry) => !APP_DOWNLOAD_IDS.has(entry.id)),
+      downloadEntries: enriched.filter((entry) => APP_DOWNLOAD_IDS.has(entry.id)),
+    };
+  }, [links, persistToAppConfig]);
+
+  const rowProps = {
+    editingId,
+    draftUrl,
+    locked,
+    persistToAppConfig,
+    onStartEdit: startEdit,
+    onCancelEdit: cancelEdit,
+    onDraftChange: setDraftUrl,
+    onSaveEdit: saveEdit,
+    onRemove: removeLink,
+  };
+
   return (
     <div className="ua-cfg-sm">
     {deferPublish && hasLocalChanges ? (
@@ -211,17 +325,45 @@ export function SocialLinksSection({
         Unsaved changes — stored in this session only. Click <strong>Publish</strong> to save to the site, or refresh to discard.
       </p>
     ) : null}
+
+    {persistToAppConfig ? (
+      <>
+        <Panel
+          title="App download"
+          subtitle={
+            loading
+              ? "Loading store links…"
+              : "Google Play / App Store URLs and separate QR links for each store. Publish to save."
+          }
+        >
+          {loading ? (
+            <p className="ua-cfg-panel__sub">Fetching app download links from App Config…</p>
+          ) : (
+            <LinkRows entries={downloadEntries} {...rowProps} />
+          )}
+        </Panel>
+
+        <Panel
+          title="Social media"
+          subtitle={
+            loading
+              ? "Loading social links…"
+              : deferPublish
+                ? "Shown in the website footer. Edits stay local until you publish."
+                : "Footer social links. Saved to App Config."
+          }
+        >
+          {loading ? (
+            <p className="ua-cfg-panel__sub">Fetching social links from App Config…</p>
+          ) : (
+            <LinkRows entries={socialEntries} {...rowProps} />
+          )}
+        </Panel>
+      </>
+    ) : (
     <Panel
       title="Links"
-      subtitle={
-        loading
-          ? "Loading social links…"
-          : deferPublish
-            ? "Shown in the website footer. Edits stay local until you publish."
-            : persistToAppConfig
-              ? "Footer social links, Google Play / App Store URLs, and the App download QR link used on the website. Saved to App Config."
-              : "Shown in the website footer."
-      }
+      subtitle="Shown in the website footer."
       actions={
         loading || !canAdd ? null : (
           <button
@@ -282,73 +424,11 @@ export function SocialLinksSection({
             </section>
           ) : null}
 
-          {links.length ? (
-            <div className="ua-cfg-sm-list">
-              {links.map((entry) => {
-                const isEditing = editingId === entry.id;
-                const label = asCopyString(entry.label);
-                const url = asCopyString(entry.url);
-                return (
-                  <article key={entry.id} className={`ua-cfg-sm-row${isEditing ? " is-editing" : ""}`}>
-                    <SocialGlyph icon={entry.icon} />
-                    <strong className="ua-cfg-sm-row__label">{label}</strong>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        className="ua-cfg-sm-row__input"
-                        value={asCopyString(draftUrl)}
-                        disabled={locked}
-                        onChange={(event) => setDraftUrl(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") saveEdit(entry.id);
-                          if (event.key === "Escape") cancelEdit();
-                        }}
-                      />
-                    ) : (
-                      <span className="ua-cfg-sm-row__url">{url || "Not set"}</span>
-                    )}
-                    <div className="ua-cfg-sm-row__actions">
-                      {isEditing ? (
-                        <button
-                          type="button"
-                          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                          disabled={locked}
-                          onClick={() => saveEdit(entry.id)}
-                        >
-                          Save
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className="ua-cfg-cr-link ua-cfg-cr-link--modify"
-                          disabled={locked}
-                          onClick={() => startEdit(entry)}
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {persistToAppConfig ? null : (
-                        <button
-                          type="button"
-                          className="ua-cfg-icon-btn"
-                          aria-label={`Remove ${label}`}
-                          disabled={locked}
-                          onClick={() => removeLink(entry)}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          ) : persistToAppConfig ? (
-            <p className="ua-cfg-panel__sub">Could not load social links.</p>
-          ) : null}
+          <LinkRows entries={socialEntries} {...rowProps} />
         </>
       )}
     </Panel>
+    )}
     </div>
   );
 }

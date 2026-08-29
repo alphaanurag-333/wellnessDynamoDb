@@ -91,5 +91,8 @@ export const MOBILE_APP = {
   /** Dummy seed — replace via Admin → Social links */
   androidUrl: "https://play.google.com/store/apps/details?id=com.example.irwellness",
   iosUrl: "https://apps.apple.com/app/id0000000000",
-  qrUrl: "https://play.google.com/store/apps/details?id=com.example.irwellness",
+  /** Defaults — override via Admin → Social links → Google Play / App Store QR */
+  playQrUrl: "https://play.google.com/store/apps/details?id=com.example.irwellness",
+  iosQrUrl: "https://apps.apple.com/app/id0000000000",
+  qrUrl: "https://apps.apple.com/app/id0000000000",
 };

@@ -69,6 +69,22 @@ export const AppSubscriptionFySection = named(
   "AppSubscriptionFySection",
 );
 export const DpaSection = named(() => import("../components/DpaSection.jsx"), "DpaSection");
+export const AppPrivacyPolicySection = named(
+  () => import("../components/AppMobileLegalSections.jsx"),
+  "AppPrivacyPolicySection",
+);
+export const AppTermsConditionsSection = named(
+  () => import("../components/AppMobileLegalSections.jsx"),
+  "AppTermsConditionsSection",
+);
+export const AppCommunityGuidelinesMobileSection = named(
+  () => import("../components/AppMobileLegalSections.jsx"),
+  "AppCommunityGuidelinesMobileSection",
+);
+export const AppComplianceSection = named(
+  () => import("../components/AppComplianceSection.jsx"),
+  "AppComplianceSection",
+);
 export const PrivacyPolicySection = named(
   () => import("../components/PrivacyPolicySection.jsx"),
   "PrivacyPolicySection",

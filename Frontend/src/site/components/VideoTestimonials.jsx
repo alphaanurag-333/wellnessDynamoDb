@@ -6,43 +6,9 @@ import { FaPlay } from "react-icons/fa";
 import "swiper/css";
 
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchVideoTestimonials } from "../api/publicMisc.js";
 import { SiteLoader } from "./SiteLoader.jsx";
-
-function youtubeEmbedUrl(url) {
-  const raw = String(url || "").trim();
-  if (!raw) return "";
-
-  if (raw.includes("/embed/")) {
-    try {
-      const parsed = new URL(raw);
-      const parts = parsed.pathname.split("/").filter(Boolean);
-      const embedIndex = parts.indexOf("embed");
-      if (embedIndex >= 0 && parts[embedIndex + 1]) {
-        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
-      }
-    } catch {
-      return raw;
-    }
-    return raw;
-  }
-
-  try {
-    const parsed = new URL(raw);
-    if (parsed.hostname.includes("youtube.com")) {
-      const videoId = parsed.searchParams.get("v");
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-    }
-    if (parsed.hostname === "youtu.be") {
-      const videoId = parsed.pathname.replace(/^\//, "");
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-    }
-  } catch {
-    return "";
-  }
-
-  return "";
-}
 
 function mapVideoTestimonial(row) {
   if (!row) return null;
@@ -179,7 +145,7 @@ export default function VideoTestimonials() {
     return null;
   }
 
-  const enableLoop = items.length > 3 && !playingId;
+  const enableLoop = items.length > 5 && !playingId;
 
   return (
     <section className="video-slider-section pt-3" aria-label="Video testimonials">
@@ -187,8 +153,8 @@ export default function VideoTestimonials() {
         <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
         <Swiper
           modules={[Autoplay]}
-          slidesPerView={3}
-          spaceBetween={20}
+          slidesPerView={5}
+          spaceBetween={18}
           loop={enableLoop}
           autoplay={
             enableLoop
@@ -214,8 +180,16 @@ export default function VideoTestimonials() {
               slidesPerView: 2,
               spaceBetween: 14,
             },
+            768: {
+              slidesPerView: 3,
+              spaceBetween: 14,
+            },
             992: {
               slidesPerView: 4,
+              spaceBetween: 16,
+            },
+            1200: {
+              slidesPerView: 5,
               spaceBetween: 18,
             },
           }}

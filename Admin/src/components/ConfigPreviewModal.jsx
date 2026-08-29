@@ -2166,6 +2166,63 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-privacy-policy":
+      return (
+        <LegalTextPreview
+          title="Privacy Policy"
+          blocks={previewState.appPrivacyBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-terms-conditions":
+      return (
+        <LegalTextPreview
+          title="Terms & Conditions"
+          blocks={previewState.appTermsBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-community-guidelines":
+      return (
+        <LegalTextPreview
+          title="Community Guidelines"
+          blocks={previewState.appGuidelinesBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "app-compliance": {
+      const compliance = previewState.complianceSettings ?? {};
+      const enabled = Boolean(compliance.enabled);
+      const names = String(compliance.names || "").trim() || "GDPR, HIPAA";
+      return (
+        <PreviewStage surface={surface} item={item}>
+          <div className="ua-cfg-preview-phone">
+            <div className="ua-cfg-preview-phone__shell">
+              <div className="ua-cfg-preview-phone__status" aria-hidden="true" />
+              <div className="ua-cfg-preview-legal ua-cfg-preview-legal--app">
+                <div className="ua-cfg-preview-legal__head">
+                  <strong>Drawer</strong>
+                </div>
+                <div className="ua-cfg-preview-legal__body">
+                  <div className="ua-cfg-preview-lang__option">
+                    <div>
+                      <strong>Compliance</strong>
+                      <span>{enabled ? names : "Hidden in drawer"}</span>
+                    </div>
+                    <span className={`ua-cfg-preview-lang__badge${enabled ? " is-on" : ""}`}>
+                      {enabled ? "On" : "Off"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </PreviewStage>
+      );
+    }
     case "app-measurement-video":
       return (
         <MeasurementVideoPreview

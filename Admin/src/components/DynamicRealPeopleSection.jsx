@@ -96,45 +96,11 @@ function ConcernSelect({ options, value, disabled, onChange, className = "" }) {
   );
 }
 
-function DataPointEditor({ points, options, busy, onChange }) {
-  const [addOpen, setAddOpen] = useState(false);
-  const used = new Set(points.map((row) => fieldKey(row.field)));
-  const available = options.filter((row) => !used.has(fieldKey(row.value)) && fieldKey(row.value) !== "client_name");
+function DataPointEditor({ points, busy, onChange }) {
+  if (!points.length) return null;
 
   return (
     <div className="ua-cfg-tf-points-ed">
-      <div className="ua-cfg-tf-add">
-        <button
-          type="button"
-          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-add-pt"
-          disabled={busy}
-          onClick={() => setAddOpen((open) => !open)}
-        >
-          + Add data point
-        </button>
-        {addOpen ? (
-          <div className="ua-cfg-tf-add__menu">
-            {available.length ? available.map((entry) => (
-              <button
-                key={entry.id || entry.value}
-                type="button"
-                onClick={() => {
-                  onChange((prev) => [...prev, {
-                    id: `dp-${Date.now()}`,
-                    field: entry.value,
-                    label: entry.label,
-                    value: "",
-                    source: "AUTO",
-                  }]);
-                  setAddOpen(false);
-                }}
-              >
-                {entry.label}
-              </button>
-            )) : <span>Add options in Configs → Dropdowns</span>}
-          </div>
-        ) : null}
-      </div>
       <div className="ua-cfg-tf-table">
         <div className="ua-cfg-tf-table__head">
           <span>Field</span>
@@ -612,7 +578,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                   <div className="ua-cfg-rp-new__fields">
                     <DataPointEditor
                       points={draft.points}
-                      options={pointOptions}
                       busy={busy}
                       onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
                     />
@@ -802,7 +767,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                       <>
                         <DataPointEditor
                           points={entry.dataPoints || []}
-                          options={pointOptions}
                           busy={busy}
                           onChange={(updater) => patchItem(entry.id, { dataPoints: updater(entry.dataPoints || []) })}
                         />

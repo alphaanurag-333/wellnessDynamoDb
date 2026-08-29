@@ -75,6 +75,11 @@ const SOCIAL_FIELDS = [
   { key: "linkedin", label: "LinkedIn", icon: "linkedin" },
 ];
 
+const STORE_FIELDS = [
+  { key: "android_app_link", label: "Google Play", icon: "play" },
+  { key: "ios_app_link", label: "App Store", icon: "apple" },
+];
+
 const DEFAULT_FOOTER_TAGLINE =
   "Personalized wellness coaching, community support, and programs designed for lasting health transformation.";
 
@@ -264,12 +269,20 @@ export function useSiteConfig() {
       });
     }
 
-    const social = SOCIAL_FIELDS.map(({ key, label, icon }) => ({
-      key,
-      label,
-      icon,
-      href: str(key === "youtube" ? (config?.youtube ?? config?.twitter) : config?.[key]),
-    })).filter((item) => item.href);
+    const social = [
+      ...SOCIAL_FIELDS.map(({ key, label, icon }) => ({
+        key,
+        label,
+        icon,
+        href: str(key === "youtube" ? (config?.youtube ?? config?.twitter) : config?.[key]),
+      })),
+      ...STORE_FIELDS.map(({ key, label, icon }) => ({
+        key,
+        label,
+        icon,
+        href: str(config?.[key]),
+      })),
+    ].filter((item) => item.href);
 
     const footerMeta = parseAppFooterText(footerText);
     const footerBrandText =

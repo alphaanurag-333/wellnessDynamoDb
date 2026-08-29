@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
+import { FaApple, FaFacebookF, FaGooglePlay, FaInstagram, FaLinkedinIn, FaYoutube } from "react-icons/fa";
 import { Mail, MessageCircle, Phone } from "lucide-react";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
@@ -13,6 +13,8 @@ const SOCIAL_ICONS = {
   instagram: FaInstagram,
   youtube: FaYoutube,
   linkedin: FaLinkedinIn,
+  play: FaGooglePlay,
+  apple: FaApple,
 };
 
 const FOOTER_PROGRAM_LINKS = [
@@ -128,7 +130,7 @@ export function SiteFooter() {
                 <FooterBrandText text={footerText} />
                 {/* <br/> */}
                  {social.length > 0 ? (
-              <div className="site-footer__social mt-1" aria-label="Social media links">
+              <div className="site-footer__social mt-1" aria-label="Social and app download links">
                 {social.map((item) => {
                   const Icon = SOCIAL_ICONS[item.icon];
 

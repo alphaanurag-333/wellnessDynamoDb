@@ -11,6 +11,14 @@ const SLUG_ALIASES = {
   "app-dpa": ["data-processing-agreement", "dpa"],
   "data-processing-agreement": ["app-dpa", "dpa"],
   "dpa": ["app-dpa", "data-processing-agreement"],
+  "app-privacy": ["app-privacy-policy"],
+  "app-privacy-policy": ["app-privacy"],
+  "app-terms-conditions": ["app-mobile-terms"],
+  "app-mobile-terms": ["app-terms-conditions"],
+  "app-community-guidelines": ["app-community-guideline"],
+  "app-community-guideline": ["app-community-guidelines"],
+  "app-compliance": ["app-compliance-notice"],
+  "app-compliance-notice": ["app-compliance"],
 };
 
 function slugifyBlockId(value) {

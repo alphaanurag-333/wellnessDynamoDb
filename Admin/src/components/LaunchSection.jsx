@@ -746,7 +746,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
           <input
             type="text"
             className="ua-cfg-drf-add-section__name"
-            placeholder="Domain name · e.g. Gut Health"
+            placeholder="Domain name · e.g. Load Preset"
             value={domainDraft.name}
             disabled={busy}
             onChange={(event) => setDomainDraft({ ...domainDraft, name: event.target.value })}

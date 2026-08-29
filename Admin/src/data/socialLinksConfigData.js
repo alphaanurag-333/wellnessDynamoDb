@@ -1,17 +1,46 @@
-export const SOCIAL_APP_CONFIG_FIELDS = [
-  { id: "facebook", key: "facebook", label: "Facebook", icon: "facebook" },
-  { id: "instagram", key: "instagram", label: "Instagram", icon: "instagram" },
-  { id: "youtube", key: "youtube", label: "YouTube", icon: "youtube" },
-  { id: "linkedin", key: "linkedin", label: "LinkedIn", icon: "linkedin" },
-  { id: "android", key: "android_app_link", label: "Google Play", icon: "play" },
-  { id: "ios", key: "ios_app_link", label: "App Store", icon: "apple" },
+export const SOCIAL_MEDIA_FIELDS = [
+  { id: "facebook", key: "facebook", label: "Facebook", icon: "facebook", group: "social" },
+  { id: "instagram", key: "instagram", label: "Instagram", icon: "instagram", group: "social" },
+  { id: "youtube", key: "youtube", label: "YouTube", icon: "youtube", group: "social" },
+  { id: "linkedin", key: "linkedin", label: "LinkedIn", icon: "linkedin", group: "social" },
+];
+
+export const APP_DOWNLOAD_FIELDS = [
   {
-    id: "app-qr",
+    id: "android",
+    key: "android_app_link",
+    label: "Google Play",
+    icon: "play",
+    group: "download",
+    hint: "Android app download · play.google.com/store/apps/…",
+  },
+  {
+    id: "ios",
+    key: "ios_app_link",
+    label: "App Store",
+    icon: "apple",
+    group: "download",
+    hint: "iOS app download · apps.apple.com/app/…",
+  },
+  {
+    id: "play-qr",
     key: "app_download_qr_link",
-    label: "App download QR link",
-    icon: "globe",
+    label: "Google Play QR link",
+    icon: "play",
+    group: "download",
+    hint: "URL encoded in the Play Store QR on the website",
+  },
+  {
+    id: "ios-qr",
+    key: "ios_app_qr_link",
+    label: "App Store QR link",
+    icon: "apple",
+    group: "download",
+    hint: "URL encoded in the App Store QR on the website",
   },
 ];
+
+export const SOCIAL_APP_CONFIG_FIELDS = [...SOCIAL_MEDIA_FIELDS, ...APP_DOWNLOAD_FIELDS];
 
 export const SOCIAL_FOOTER_LINKS = SOCIAL_APP_CONFIG_FIELDS.map((field) => ({
   id: field.id,
@@ -19,6 +48,8 @@ export const SOCIAL_FOOTER_LINKS = SOCIAL_APP_CONFIG_FIELDS.map((field) => ({
   url: "",
   icon: field.icon,
 }));
+
+export const APP_DOWNLOAD_IDS = new Set(APP_DOWNLOAD_FIELDS.map((field) => field.id));
 
 export function socialIconForLabel(label) {
   const key = String(label || "").toLowerCase();
@@ -50,11 +81,28 @@ export function toStoredSocialUrl(value) {
 }
 
 export function mapSocialLinksFromConfig(config) {
+  let playQr = config?.app_download_qr_link || "";
+  let iosQr = config?.ios_app_qr_link || "";
+
+  // Legacy: single QR field often held the App Store URL — move it to App Store QR.
+  if (!String(iosQr).trim() && /apple\.com|itunes\.apple|apps\.apple/i.test(String(playQr))) {
+    iosQr = playQr;
+    playQr = config?.android_app_link || "";
+  }
+
+  const overrides = {
+    app_download_qr_link: playQr,
+    ios_app_qr_link: iosQr,
+  };
+
   return SOCIAL_APP_CONFIG_FIELDS.map((field) => ({
     id: field.id,
     label: field.label,
     icon: field.icon,
-    url: toDisplaySocialUrl(config?.[field.key] || ""),
+    hint: field.hint || "",
+    url: toDisplaySocialUrl(
+      overrides[field.key] !== undefined ? overrides[field.key] : (config?.[field.key] || ""),
+    ),
   }));
 }
 

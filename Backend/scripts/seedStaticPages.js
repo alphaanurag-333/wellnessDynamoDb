@@ -265,6 +265,70 @@ const STATIC_PAGES = [
     `.trim(),
   },
   {
+    title: "Privacy Policy",
+    slug: "app-privacy-policy",
+    status: "active",
+    content: `
+      <p>This Privacy Policy explains how ${COMPANY_NAME} collects, uses, and protects personal information when you use our mobile application.</p>
+      <h2>Key points</h2>
+      <ul>
+        <li>We collect account details, health profile inputs, and usage data needed to run your program.</li>
+        <li>Information is used to deliver coaching, improve the app, and meet legal obligations.</li>
+        <li>We do not sell your personal data. Trusted processors only receive what is required for a service.</li>
+        <li>You may request access, correction, or deletion of your data through in-app support, subject to legal retention rules.</li>
+      </ul>
+      <p>Questions: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+    `.trim(),
+  },
+  {
+    title: "Terms & Conditions",
+    slug: "app-terms-conditions",
+    status: "active",
+    content: `
+      <p>These Terms &amp; Conditions govern your use of the ${COMPANY_NAME} mobile app. By creating an account or continuing to use the app, you agree to these terms.</p>
+      <h2>Key points</h2>
+      <ul>
+        <li>You must be at least 18 years old and provide accurate account information.</li>
+        <li>App access is personal and non-transferable; keep your login credentials secure.</li>
+        <li>Program guidance is wellness support and does not replace emergency or specialist medical care.</li>
+        <li>We may update these terms; continued use after updates means you accept the revised terms.</li>
+      </ul>
+      <p>Contact: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+    `.trim(),
+  },
+  {
+    title: "Community Guidelines",
+    slug: "app-community-guidelines",
+    status: "active",
+    content: `
+      <p>Our community spaces are for respectful wellness support. These guidelines keep conversations safe, helpful, and inclusive for every member.</p>
+      <h2>Key points</h2>
+      <ul>
+        <li>Be kind, honest, and supportive — no harassment, hate speech, or personal attacks.</li>
+        <li>Do not share another person's private health details without clear consent.</li>
+        <li>Avoid spam, solicitation, or medical claims that could mislead others.</li>
+        <li>Report concerns through in-app tools or support so our team can review them promptly.</li>
+      </ul>
+      <p>Report issues: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+    `.trim(),
+  },
+  {
+    title: "Compliance",
+    slug: "app-compliance",
+    status: "active",
+    content: `
+      <p>This Compliance notice summarises how ${COMPANY_NAME} operates the mobile app in line with applicable laws, platform policies, and internal controls.</p>
+      <h2>Key points</h2>
+      <ul>
+        <li>We follow applicable data protection, consumer, and health-information practices for the markets we serve.</li>
+        <li>Payments, communications, and record retention are handled through approved vendors and audit-ready processes.</li>
+        <li>Users can raise compliance concerns with support; serious issues are escalated to the compliance owner.</li>
+        <li>We review policies periodically and update the app experience when regulations or platform rules change.</li>
+      </ul>
+      <p>Compliance contact: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+    `.trim(),
+  },
+  {
     title: "Meet Your Wellness Partner",
     slug: "about-us",
     status: "active",
@@ -348,6 +412,10 @@ async function upsertPage(row) {
     "privacy-policy",
     "community-guideline",
     "app-dpa",
+    "app-privacy-policy",
+    "app-terms-conditions",
+    "app-community-guidelines",
+    "app-compliance",
   ]);
   if (!payload.blocks && payload.content && legalSlugs.has(payload.slug)) {
     payload.blocks = htmlToLegalBlocks(payload.content, payload.title);

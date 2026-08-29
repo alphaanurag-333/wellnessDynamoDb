@@ -11,7 +11,12 @@ import {
   validateMeasurementImageFile,
   validateMeasurementVideoFile,
 } from "../api/measurementVideoApi.js";
-import { MEASUREMENT_GUIDE, MEASUREMENT_PARAMETERS } from "../data/measurementVideoData.js";
+import {
+  MEASUREMENT_GUIDE,
+  MEASUREMENT_IMAGE_SIZE_LABEL,
+  MEASUREMENT_PARAMETERS,
+  MEASUREMENT_VIDEO_SIZE_LABEL,
+} from "../data/measurementVideoData.js";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
@@ -152,6 +157,7 @@ function GuidePanel({ guide, busy, onToast, onChangeCopy, onChangeLink, onOpenVi
 
           <div className="ua-cfg-mv-guide__main">
             <div className="ua-cfg-mv-guide__copy">
+              <span className="ua-cfg-mv-guide__size">{MEASUREMENT_VIDEO_SIZE_LABEL}</span>
               {editing ? (
                 <input
                   type="text"
@@ -277,7 +283,12 @@ function ParametersPanel({ parameters, busy, onOpenImage, onToggleShown }) {
   return (
     <Panel
       className="ua-cfg-mv-params"
-      title="Internal parameters"
+      title={
+        <>
+          Internal parameters
+          <span className="ua-cfg-mv-params__size">{MEASUREMENT_IMAGE_SIZE_LABEL}</span>
+        </>
+      }
       subtitle="Reference images shown beside each measurement in the app. Toggle off to hide the info icon for that field."
       actions={<span className="ua-cfg-mv-params__count">{shownCount} of {parameters.length} shown in app</span>}
     >
@@ -372,6 +383,7 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
   const { openPicker: openGuideVideo, mediaPickerModal: guideVideoModal } = useMediaPicker({
     accept: "video",
     title: "Choose guide video",
+    sizeHint: "1920x1080",
     onFiles: (file) => {
       if (!file) return;
       const invalid = validateMeasurementVideoFile(file);
@@ -387,6 +399,7 @@ export function MeasurementVideoSection({ guide, setGuide, parameters, setParame
   const { openPicker: openParamImage, mediaPickerModal: paramImageModal } = useMediaPicker({
     accept: "image",
     title: "Choose parameter image",
+    sizeHint: "500x300",
     onFiles: (file, entry) => {
       if (!file || !entry) return;
       const invalid = validateMeasurementImageFile(file);
