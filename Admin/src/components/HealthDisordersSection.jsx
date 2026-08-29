@@ -12,9 +12,6 @@ import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import "./healthDisordersConfig.css";
 
 const PAGE_SIZE = 10;
-const TITLE_MAX_LEN = 100;
-const DESCRIPTION_MAX_LEN = 500;
-const SYMPTOM_MAX_LEN = 120;
 
 const TYPE_OPTIONS = [
   { value: "acute", label: "Acute" },
@@ -27,19 +24,6 @@ const EMPTY_DRAFT = {
   symptoms: [""],
   type: "acute",
 };
-
-function clampText(raw, maxLen) {
-  return String(raw ?? "").slice(0, maxLen);
-}
-
-function CharHint({ value, max }) {
-  const length = String(value || "").length;
-  return (
-    <span className={`ua-cfg-dd-char${length >= max ? " is-limit" : ""}`}>
-      {length}/{max}
-    </span>
-  );
-}
 
 function Panel({ title, subtitle, actions, children }) {
   return (
@@ -98,11 +82,10 @@ function SymptomsEditor({ value, disabled, onChange }) {
           <input
             className="ua-cfg-vh-input"
             value={row}
-            maxLength={SYMPTOM_MAX_LEN}
             disabled={disabled}
             placeholder={index === 0 ? "Symptom · e.g. Fatigue" : "Add another symptom"}
             aria-label={index === 0 ? "Symptom" : `Symptom ${index + 1}`}
-            onChange={(event) => emit(rows.map((entry, i) => (i === index ? clampText(event.target.value, SYMPTOM_MAX_LEN) : entry)))}
+            onChange={(event) => emit(rows.map((entry, i) => (i === index ? event.target.value : entry)))}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
               event.preventDefault();
@@ -222,9 +205,9 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
   }
 
   async function saveEdit(entry) {
-    const title = clampText(String(entry.title || "").trim(), TITLE_MAX_LEN);
-    const description = clampText(String(entry.description || "").trim(), DESCRIPTION_MAX_LEN);
-    const symptoms = cleanSymptoms(entry.symptoms).map((row) => clampText(row, SYMPTOM_MAX_LEN));
+    const title = String(entry.title || "").trim();
+    const description = String(entry.description || "").trim();
+    const symptoms = cleanSymptoms(entry.symptoms);
     if (!title) {
       onToast?.("Title is required");
       return;
@@ -257,9 +240,9 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
   }
 
   async function addItem() {
-    const title = clampText(draft.title.trim(), TITLE_MAX_LEN);
-    const description = clampText(draft.description.trim(), DESCRIPTION_MAX_LEN);
-    const symptoms = cleanSymptoms(draft.symptoms).map((row) => clampText(row, SYMPTOM_MAX_LEN));
+    const title = String(draft.title || "").trim();
+    const description = String(draft.description || "").trim();
+    const symptoms = cleanSymptoms(draft.symptoms);
     if (!title) {
       onToast?.("Title is required");
       return;
@@ -403,19 +386,15 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
             </div>
             <div className="ua-cfg-rc-new__fields">
               <label className="ua-cfg-rc-field">
-                <span className="ua-cfg-rc-field__head">
-                  <span>Title</span>
-                  <CharHint value={draft.title} max={TITLE_MAX_LEN} />
-                </span>
+                <span>Title</span>
                 <input
                   className="ua-cfg-vh-input"
                   placeholder="e.g. Type 2 diabetes"
                   value={draft.title}
-                  maxLength={TITLE_MAX_LEN}
                   disabled={locked}
                   onChange={(event) => setDraft((prev) => ({
                     ...prev,
-                    title: clampText(event.target.value, TITLE_MAX_LEN),
+                    title: event.target.value,
                   }))}
                 />
               </label>
@@ -432,20 +411,16 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                 />
               </label>
               <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
-                <span className="ua-cfg-rc-field__head">
-                  <span>Description</span>
-                  <CharHint value={draft.description} max={DESCRIPTION_MAX_LEN} />
-                </span>
+                <span>Description</span>
                 <textarea
                   className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                  rows={2}
-                  placeholder="Short description shown with this disorder…"
+                  rows={6}
+                  placeholder="Write the disorder description…"
                   value={draft.description}
-                  maxLength={DESCRIPTION_MAX_LEN}
                   disabled={locked}
                   onChange={(event) => setDraft((prev) => ({
                     ...prev,
-                    description: clampText(event.target.value, DESCRIPTION_MAX_LEN),
+                    description: event.target.value,
                   }))}
                 />
               </label>
@@ -495,18 +470,14 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                         {editing ? (
                           <div className="ua-cfg-hd-edit">
                             <label className="ua-cfg-rc-field">
-                              <span className="ua-cfg-rc-field__head">
-                                <span>Title</span>
-                                <CharHint value={entry.title} max={TITLE_MAX_LEN} />
-                              </span>
+                              <span>Title</span>
                               <input
                                 className="ua-cfg-vh-input"
                                 placeholder="Enter disorder title"
                                 value={entry.title}
-                                maxLength={TITLE_MAX_LEN}
                                 disabled={locked}
                                 onChange={(event) => updateLocalItem(entry.id, {
-                                  title: clampText(event.target.value, TITLE_MAX_LEN),
+                                  title: event.target.value,
                                 })}
                               />
                             </label>
@@ -523,19 +494,15 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                               />
                             </label>
                             <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
-                              <span className="ua-cfg-rc-field__head">
-                                <span>Description</span>
-                                <CharHint value={entry.description} max={DESCRIPTION_MAX_LEN} />
-                              </span>
+                              <span>Description</span>
                               <textarea
                                 className="ua-cfg-tf-story ua-cfg-bl-edit__desc"
-                                rows={2}
+                                rows={6}
                                 placeholder="Enter description"
                                 value={entry.description}
-                                maxLength={DESCRIPTION_MAX_LEN}
                                 disabled={locked}
                                 onChange={(event) => updateLocalItem(entry.id, {
-                                  description: clampText(event.target.value, DESCRIPTION_MAX_LEN),
+                                  description: event.target.value,
                                 })}
                               />
                             </label>
