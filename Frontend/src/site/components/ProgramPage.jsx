@@ -1,5 +1,5 @@
 import FinalCTA from "./FinalCTA";
-import { CONSULTATION_WHATSAPP } from "../data/programPages";
+import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
 
 export default function ProgramPage({
   title,
@@ -28,14 +28,9 @@ export default function ProgramPage({
             {description ? (
               <p className="program-hero__description">{description}</p>
             ) : null}
-            <a
-              href={CONSULTATION_WHATSAPP}
-              className="program-hero__cta"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <BookConsultationButton className="program-hero__cta">
               Book a consultation
-            </a>
+            </BookConsultationButton>
           </div>
         </div>
       </section>

@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { Suspense, useEffect } from "react";
 import { PATH_TO_SECTION_ID } from "../data/siteSections.js";
+import { AppDownloadModalProvider } from "../components/AppDownloadModalContext.jsx";
 import { SiteFooter } from "../components/SiteFooter.jsx";
 import { SiteHeader } from "../components/SiteHeader.jsx";
 import { SiteLoader } from "../components/SiteLoader.jsx";
@@ -28,18 +29,20 @@ export function PublicLayout() {
   }, [pathname]);
 
   return (
-    <div className="site-shell">
-      <a href="#main-content" className="visually-hidden-focusable">
-        Skip to main content
-      </a>
-      <SiteHeader />
-      <main id="main-content" className="site-main">
-        <Suspense fallback={<SiteLoader variant="page" />}>
-          <Outlet />
-        </Suspense>
-      </main>
-      <SiteFooter />
-      <ScrollToTopButton/>
-    </div>
+    <AppDownloadModalProvider>
+      <div className="site-shell">
+        {/* <a href="#main-content" className="visually-hidden-focusable">
+          Skip to main content
+        </a> */}
+        <SiteHeader />
+        <main id="main-content" className="site-main">
+          <Suspense fallback={<SiteLoader variant="page" />}>
+            <Outlet />
+          </Suspense>
+        </main>
+        <SiteFooter />
+        <ScrollToTopButton />
+      </div>
+    </AppDownloadModalProvider>
   );
 }

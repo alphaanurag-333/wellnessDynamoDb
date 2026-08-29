@@ -7,7 +7,7 @@ import {
   selectLoginBrandLogoUrl,
 } from "../../store/appConfigSelectors.js";
 import { ChevronDown } from "lucide-react";
-import { CONSULTATION_WHATSAPP } from "../data/programPages";
+import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
 
 export function SiteHeader() {
   const location = useLocation();
@@ -177,14 +177,9 @@ export function SiteHeader() {
             </nav>
 
             {/* CTA */}
-            <a
-              href={CONSULTATION_WHATSAPP}
-              className="site-header__cta"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <BookConsultationButton className="site-header__cta">
               Book a consultation
-            </a>
+            </BookConsultationButton>
 
             {/* Mobile Button */}
             <button
@@ -324,15 +319,12 @@ export function SiteHeader() {
           </NavLink>
         </nav>
 
-        <a
-          href={CONSULTATION_WHATSAPP}
+        <BookConsultationButton
           className="mobile-cta"
-          target="_blank"
-          rel="noopener noreferrer"
           onClick={() => setMobileMenuOpen(false)}
         >
           Book a consultation
-        </a>
+        </BookConsultationButton>
       </div>
     </>
   );

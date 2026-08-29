@@ -15787,3 +15787,243 @@ h5.pillar-card__head-title,
     height: 0.7rem;
   }
 }
+
+/* ---------- App download consultation modal ---------- */
+.app-dl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 31, 56, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: app-dl-fade-in 180ms ease;
+}
+
+@keyframes app-dl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.app-dl-modal {
+  position: relative;
+  width: min(920px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(232, 136, 79, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(107, 163, 224, 0.14), transparent 50%),
+    #fff;
+  box-shadow: 0 28px 64px rgba(15, 31, 56, 0.28);
+  animation: app-dl-rise 220ms ease;
+}
+
+@keyframes app-dl-rise {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.app-dl-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #16233f;
+  box-shadow: 0 4px 14px rgba(15, 31, 56, 0.12);
+  cursor: pointer;
+}
+
+.app-dl-modal__close:hover {
+  background: #fff;
+  color: var(--site-orange, #e7863a);
+}
+
+.app-dl-modal__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: 1.25rem 1.75rem;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1.5rem 1.25rem;
+}
+
+.app-dl-modal__phone {
+  display: flex;
+  justify-content: center;
+}
+
+.app-dl-modal__phone-frame {
+  width: min(100%, 260px);
+  filter: drop-shadow(0 22px 36px rgba(15, 31, 56, 0.22));
+}
+
+.app-dl-modal__screenshot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 28px;
+}
+
+.app-dl-modal__copy {
+  min-width: 0;
+  padding-right: 0.5rem;
+}
+
+.app-dl-modal__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #5f6f86;
+}
+
+.app-dl-modal__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.app-dl-modal__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--site-orange, #e7863a);
+}
+
+.app-dl-modal__title {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: #16233f;
+}
+
+.app-dl-modal__text {
+  margin: 0 0 1.15rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #5f6f86;
+}
+
+.app-dl-modal__stores {
+  margin-bottom: 1.25rem;
+}
+
+.app-dl-modal__stores .site-app-badges {
+  flex-wrap: wrap;
+}
+
+.app-dl-modal__qr-block {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem;
+  border: 1px solid #dde6f2;
+  border-radius: 16px;
+  background: #f7f9fc;
+}
+
+.app-dl-modal__qr {
+  flex-shrink: 0;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  overflow: hidden;
+}
+
+.app-dl-modal__qr img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.app-dl-modal__qr-fallback {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.app-dl-modal__qr-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.app-dl-modal__qr-copy strong {
+  font-size: 0.95rem;
+  color: #16233f;
+}
+
+.app-dl-modal__qr-copy span {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #5f6f86;
+}
+
+@media (max-width: 760px) {
+  .app-dl-modal {
+    max-height: 94vh;
+    border-radius: 18px;
+  }
+
+  .app-dl-modal__grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.25rem 1rem 1.25rem;
+  }
+
+  .app-dl-modal__phone-frame {
+    width: min(100%, 200px);
+  }
+
+  .app-dl-modal__qr-block {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .app-dl-modal__stores .site-app-badges {
+    justify-content: center;
+  }
+
+  .app-dl-modal__brand {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .app-dl-modal__copy {
+    text-align: center;
+    padding-right: 0;
+  }
+}
+
+/* Consultation CTAs are buttons that open the app download modal */
+button.site-header__cta,
+button.mobile-cta,
+button.wellness-btn,
+button.methodology-card__cta,
+button.program-hero__cta {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}

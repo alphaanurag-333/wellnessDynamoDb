@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
-import { CONSULTATION_WHATSAPP } from "../data/programPages";
+import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
 import discoveryImg from "../images/discovery.png";
 import analysisImg from "../images/analysis.png";
 import programImg from "../images/program.png";
@@ -65,14 +65,9 @@ function MethodologyCard({ item }) {
           </button>
         ) : null}
 
-        <a
-          href={CONSULTATION_WHATSAPP}
-          className="methodology-card__cta"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <BookConsultationButton className="methodology-card__cta">
           Book a consultation
-        </a>
+        </BookConsultationButton>
       </div>
     </div>
   );
