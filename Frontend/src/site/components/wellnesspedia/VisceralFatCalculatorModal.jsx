@@ -9,6 +9,7 @@ import {
   collectCalculatorErrors,
 } from "../../utils/calculatorValidation.jsx";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import CalcBackButton from "./CalcBackButton.jsx";
 import { VisceralInfoPanel } from "./calculatorInfo.jsx";
 import {
   AgeField,
@@ -70,6 +71,10 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
     setVisceralPercent(null);
     setErrors({});
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setView("form");
   };
 
   const calculate = () => {
@@ -165,72 +170,75 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
           </button>
         </div>
       ) : (
-        <div className="wp-visceral-result">
-          <div className="wp-visceral-metrics">
-            <div className="wp-visceral-metric">
-              <span>Waist : Height</span>
-              <div className="wp-ring wp-ring--sm">
-                <strong>{ratio}</strong>
+        <div className="wp-calc-result">
+          <div className="wp-visceral-result">
+            <div className="wp-visceral-metrics">
+              <div className="wp-visceral-metric">
+                <span>Waist : Height</span>
+                <div className="wp-ring wp-ring--sm">
+                  <strong>{ratio}</strong>
+                </div>
+              </div>
+              <div className="wp-visceral-metric">
+                <span>Est. Visceral Fat</span>
+                <div className="wp-ring wp-ring--sm">
+                  <strong>{visceralFat}</strong>
+                </div>
+              </div>
+              <div className="wp-visceral-metric">
+                <span>Visceral Fat %</span>
+                <div className="wp-ring wp-ring--sm">
+                  <strong>{visceralPercent}</strong>
+                </div>
               </div>
             </div>
-            <div className="wp-visceral-metric">
-              <span>Est. Visceral Fat</span>
-              <div className="wp-ring wp-ring--sm">
-                <strong>{visceralFat}</strong>
-              </div>
-            </div>
-            <div className="wp-visceral-metric">
-              <span>Visceral Fat %</span>
-              <div className="wp-ring wp-ring--sm">
-                <strong>{visceralPercent}</strong>
-              </div>
-            </div>
-          </div>
 
-          <div className="wp-visceral-tables">
-            <div className="wp-ref-table">
-              <h4>Waist Cut Off</h4>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Risk Level</th>
-                    <th>Men (cm)</th>
-                    <th>Women (cm)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {WAIST_CUTOFF.map((row) => (
-                    <tr key={row.level}>
-                      <td>
-                        <strong>{row.level}</strong>
-                      </td>
-                      <td>{row.men}</td>
-                      <td>{row.women}</td>
+            <div className="wp-visceral-tables">
+              <div className="wp-ref-table">
+                <h4>Waist Cut Off</h4>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Risk Level</th>
+                      <th>Men (cm)</th>
+                      <th>Women (cm)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="wp-ref-table">
-              <h4>Visceral Fat Risk</h4>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Waist : Height</th>
-                    <th>Risk Assessment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {VISCERAL_RISK.map((row) => (
-                    <tr key={row.ratio}>
-                      <td>{row.ratio}</td>
-                      <td style={{ color: row.color }}>{row.risk}</td>
+                  </thead>
+                  <tbody>
+                    {WAIST_CUTOFF.map((row) => (
+                      <tr key={row.level}>
+                        <td>
+                          <strong>{row.level}</strong>
+                        </td>
+                        <td>{row.men}</td>
+                        <td>{row.women}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="wp-ref-table">
+                <h4>Visceral Fat Risk</h4>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Waist : Height</th>
+                      <th>Risk Assessment</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {VISCERAL_RISK.map((row) => (
+                      <tr key={row.ratio}>
+                        <td>{row.ratio}</td>
+                        <td style={{ color: row.color }}>{row.risk}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
+          <CalcBackButton onClick={handleBack} />
         </div>
       )}
     </WellnesspediaModal>

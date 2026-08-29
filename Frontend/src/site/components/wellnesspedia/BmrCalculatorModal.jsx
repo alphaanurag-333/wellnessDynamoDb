@@ -9,6 +9,7 @@ import {
   collectCalculatorErrors,
 } from "../../utils/calculatorValidation.jsx";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import CalcBackButton from "./CalcBackButton.jsx";
 import { BmrInfoPanel } from "./calculatorInfo.jsx";
 import {
   AgeField,
@@ -70,6 +71,10 @@ export default function BmrCalculatorModal({ open, onClose }) {
     setBmr(0);
     setErrors({});
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setView("form");
   };
 
   const calculate = () => {
@@ -159,33 +164,36 @@ export default function BmrCalculatorModal({ open, onClose }) {
           </button>
         </div>
       ) : (
-        <div className="wp-bmr-result">
-          <div className="wp-bmr-result__circle-panel">
-            <p className="wp-result-label">Your Daily Baseline</p>
-            <div className="wp-bmr-circle">
-              <strong>{bmr.toLocaleString()}</strong>
-              <span>KCAL / DAY</span>
+        <div className="wp-calc-result">
+          <div className="wp-bmr-result">
+            <div className="wp-bmr-result__circle-panel">
+              <p className="wp-result-label">Your Daily Baseline</p>
+              <div className="wp-bmr-circle">
+                <strong>{bmr.toLocaleString()}</strong>
+                <span>KCAL / DAY</span>
+              </div>
+              <p className="wp-bmr-note">TDEE - Total Daily Energy Expenditure*</p>
             </div>
-            <p className="wp-bmr-note">TDEE - Total Daily Energy Expenditure*</p>
-          </div>
-          <div className="wp-bmr-result__table-panel">
-            <div className="wp-bmr-table-head">
-              <span>Activity Levels</span>
-              <span>TDEE</span>
+            <div className="wp-bmr-result__table-panel">
+              <div className="wp-bmr-table-head">
+                <span>Activity Levels</span>
+                <span>TDEE</span>
+              </div>
+              <ul className="wp-bmr-table">
+                {tdee.map((row) => (
+                  <li key={row.name}>
+                    <span className="wp-bmr-table__name">
+                      <i className="wp-dot" />
+                      {row.name}
+                    </span>
+                    <strong>{row.value.toLocaleString()}</strong>
+                  </li>
+                ))}
+              </ul>
+              <p className="wp-bmr-note">TDEE - Total Daily Energy Expenditure*</p>
             </div>
-            <ul className="wp-bmr-table">
-              {tdee.map((row) => (
-                <li key={row.name}>
-                  <span className="wp-bmr-table__name">
-                    <i className="wp-dot" />
-                    {row.name}
-                  </span>
-                  <strong>{row.value.toLocaleString()}</strong>
-                </li>
-              ))}
-            </ul>
-            <p className="wp-bmr-note">TDEE - Total Daily Energy Expenditure*</p>
           </div>
+          <CalcBackButton onClick={handleBack} />
         </div>
       )}
     </WellnesspediaModal>
