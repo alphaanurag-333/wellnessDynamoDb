@@ -8,6 +8,7 @@ const {
   listHealthDisorders,
   normalizeSymptoms,
   normalizeType,
+  normalizeVisibleFlag,
 } = require("../../models/healthDisorderModel");
 
 function parseSymptomsInput(input) {
@@ -59,12 +60,19 @@ exports.createHealthDisorderController = asyncHandler(async (req, res) => {
     throw new AppError("type must be acute or chronic", 400);
   }
 
+  const webVisible =
+    req.body.webVisible !== undefined ? normalizeVisibleFlag(req.body.webVisible, true) : true;
+  const appVisible =
+    req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
+
   const healthDisorder = await createHealthDisorder({
     title,
     description,
     symptoms,
     type,
     status,
+    webVisible,
+    appVisible,
   });
 
   return res.status(201).json({
@@ -111,6 +119,12 @@ exports.updateHealthDisorderController = asyncHandler(async (req, res) => {
   }
   if (req.body.order !== undefined) {
     updates.order = req.body.order;
+  }
+  if (req.body.webVisible !== undefined) {
+    updates.webVisible = normalizeVisibleFlag(req.body.webVisible, true);
+  }
+  if (req.body.appVisible !== undefined) {
+    updates.appVisible = normalizeVisibleFlag(req.body.appVisible, true);
   }
 
   if (Object.keys(updates).length === 0) {

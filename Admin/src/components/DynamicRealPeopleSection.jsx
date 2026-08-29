@@ -6,14 +6,9 @@ import {
   adminUpdateRealPeopleTestimonial,
 } from "../api/realPeopleTestimonialApi.js";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
-import { adminGetConfigDropdown, adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
   TESTIMONIAL_PAGE_SIZE,
-  TESTIMONIAL_POINT_SLUG,
-  defaultDraftPoints,
-  fieldKey,
   healthConcernIdOptions,
-  mapTestimonialPointOptions,
 } from "../data/testimonialDropdownData.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
@@ -212,34 +207,19 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
   const [pendingDelete, setPendingDelete] = useState(null);
   const [cropPending, setCropPending] = useState(null);
   const [concernOptions, setConcernOptions] = useState([]);
-  const [pointOptions, setPointOptions] = useState([]);
 
   const loadLookups = useCallback(async () => {
     try {
-      const [{ healthConcerns }, dropdownResult] = await Promise.all([
-        adminListHealthConcerns(null, { page: 1, limit: 200, status: "active" }),
-        (async () => {
-          try {
-            return await adminGetConfigDropdown(null, TESTIMONIAL_POINT_SLUG);
-          } catch {
-            const { lists } = await adminListConfigDropdowns(null, { limit: 50 });
-            return (lists || []).find((row) => row.slug === TESTIMONIAL_POINT_SLUG) || null;
-          }
-        })(),
-      ]);
+      const { healthConcerns } = await adminListHealthConcerns(null, { page: 1, limit: 200, status: "active" });
       const concerns = healthConcernIdOptions(healthConcerns);
-      const points = mapTestimonialPointOptions(dropdownResult).filter((row) => fieldKey(row.value) !== "client_name");
       setConcernOptions(concerns);
-      setPointOptions(points);
       setDraft((prev) => ({
         ...prev,
         healthConcernId: prev.healthConcernId || concerns[0]?.value || "",
-        points: prev.points.length ? prev.points : defaultDraftPoints(points).filter((row) => fieldKey(row.field) !== "client_name"),
       }));
     } catch (error) {
       setConcernOptions([]);
-      setPointOptions([]);
-      onToast(error?.message || "Could not load dropdowns");
+      onToast(error?.message || "Could not load health concerns");
     }
   }, [onToast]);
 
@@ -389,7 +369,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
       setDraft({
         ...EMPTY_DRAFT,
         healthConcernId: concernOptions[0]?.value || "",
-        points: defaultDraftPoints(pointOptions).filter((row) => fieldKey(row.field) !== "client_name"),
       });
       setCreating(false);
       setPage(1);
@@ -506,7 +485,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
       />
       <Panel
         title="Real People Real Healing"
-        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern + testimonial data points from Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}
+        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern from Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}
         actions={(
           <button
             type="button"
@@ -519,7 +498,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
               setDraft({
                 ...EMPTY_DRAFT,
                 healthConcernId: concernOptions[0]?.value || "",
-                points: defaultDraftPoints(pointOptions).filter((row) => fieldKey(row.field) !== "client_name"),
               });
             }}
           >
@@ -575,13 +553,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                   {!concernOptions.length ? (
                     <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">Add health concerns in Configs → Dropdowns first.</p>
                   ) : null}
-                  <div className="ua-cfg-rp-new__fields">
-                    <DataPointEditor
-                      points={draft.points}
-                      busy={busy}
-                      onChange={(updater) => setDraft((prev) => ({ ...prev, points: updater(prev.points) }))}
-                    />
-                  </div>
                 </div>
               </div>
               <div className="ua-cfg-rp-new__story-col">

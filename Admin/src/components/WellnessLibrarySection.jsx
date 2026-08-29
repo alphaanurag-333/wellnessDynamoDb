@@ -34,11 +34,11 @@ const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
 
-/** Locked cover crop sizes by wellness library kind. */
+/** Locked cover crop sizes by wellness library kind (3× display size for retina). */
 const LIB_COVER_SPECS = {
-  yoga: { width: 260, height: 140, label: "Thumbnail: 260x140", ratio: "260:140" },
-  exercise: { width: 154, height: 109, label: "Thumbnail: 154x109", ratio: "154:109" },
-  mental: { width: 260, height: 114, label: "Thumbnail: 260x114", ratio: "260:114" },
+  yoga: { width: 780, height: 420, label: "Thumbnail: 780x420", ratio: "780:420" },
+  exercise: { width: 462, height: 327, label: "Thumbnail: 462x327", ratio: "462:327" },
+  mental: { width: 780, height: 342, label: "Thumbnail: 780x342", ratio: "780:342" },
 };
 const LIB_VIDEO_SIZE_LABEL = "1920x1080";
 const LIB_COVER_CROP_KINDS = new Set(["yoga", "exercise", "mental"]);

@@ -337,6 +337,7 @@ exports.getActiveHealthDisorders = asyncHandler(async (req, res) => {
     status: "active",
     type,
     search: readSearch(req.query),
+    platform,
   });
   return res.status(200).json({
     status: true,
