@@ -97,6 +97,10 @@ export function MediaPickerModal({
   cropHeight,
   showFrameworks = true,
   sizeHint = "",
+  /** Saved on new uploads (e.g. "Banner" for banner config gallery). */
+  uploadCategory = "",
+  /** When set, library tab only lists assets in this category. */
+  libraryCategory = "",
 }) {
   const fileInputRef = useRef(null);
   const cropPendingRef = useRef(null);
@@ -227,6 +231,7 @@ export function MediaPickerModal({
           search: search.trim() || undefined,
           owner: owner === "All owners" ? undefined : owner,
           type: effectiveType,
+          category: String(libraryCategory || "").trim() || undefined,
           from: fromDate || undefined,
           to: toDate || undefined,
         });
@@ -245,7 +250,7 @@ export function MediaPickerModal({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [open, tab, token, search, owner, typeFilter, fromDate, toDate, accept]);
+  }, [open, tab, token, search, owner, typeFilter, fromDate, toDate, accept, libraryCategory]);
 
   function toggleSelect(id) {
     setSelected((prev) => {
@@ -265,6 +270,7 @@ export function MediaPickerModal({
         {
           title: file.name.replace(/\.[^.]+$/, "") || file.name,
           type: typeFromFile(file),
+          category: String(uploadCategory || "").trim() || undefined,
           live: false,
         },
         { file }

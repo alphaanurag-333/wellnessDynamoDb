@@ -288,6 +288,7 @@ export function galleryCategoryClass(category = "") {
   if (key.includes("champion")) return "champion";
   if (key.includes("logo")) return "logo";
   if (key.includes("testimonial")) return "testimonials";
+  if (key.includes("banner")) return "default";
   if (key.includes("audio")) return "audio";
   if (key.includes("video")) return "video";
   return "default";

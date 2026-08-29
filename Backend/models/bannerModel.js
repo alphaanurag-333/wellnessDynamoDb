@@ -130,6 +130,34 @@ async function nextSortOrder() {
   return Math.min(max + 1, SORT_ORDER_MAX);
 }
 
+/** Put a new banner at the top: shift existing orders down, return sortOrder 1. */
+async function allocateTopSortOrder() {
+  const items = await listAllBannersUnpaged();
+  if (!items.length) return 1;
+
+  await Promise.all(
+    items.map(async (item) => {
+      if (!item?.id) return;
+      const order = normalizeSortOrder(item.sortOrder, 9999);
+      const next = Math.min(order + 1, SORT_ORDER_MAX);
+      if (next === order) return;
+      await docClient.send(
+        new UpdateCommand({
+          TableName: TABLE,
+          Key: { id: item.id },
+          UpdateExpression: "SET sortOrder = :sortOrder, updatedAt = :updatedAt",
+          ExpressionAttributeValues: {
+            ":sortOrder": next,
+            ":updatedAt": new Date().toISOString(),
+          },
+          ConditionExpression: "attribute_exists(id)",
+        })
+      );
+    })
+  );
+  return 1;
+}
+
 async function createBanner({
   title,
   description,
@@ -148,7 +176,7 @@ async function createBanner({
   const now = new Date().toISOString();
   const resolvedOrder =
     sortOrder === undefined || sortOrder === null || sortOrder === ""
-      ? await nextSortOrder()
+      ? await allocateTopSortOrder()
       : normalizeSortOrder(sortOrder);
   const item = {
     id: uuidv4(),
@@ -281,8 +309,10 @@ async function deleteBanner(id) {
 function matchesPlatform(item, platform) {
   const channel = String(platform || "").trim().toLowerCase();
   if (channel !== "app" && channel !== "web") return true;
-  if (channel === "app") return parseBool(item.appOn, true);
-  return parseBool(item.webOn, true);
+  // Explicit false / "false" / 0 hides the banner on that channel.
+  // Missing flag still defaults to on (legacy rows).
+  if (channel === "app") return parseBool(item.appOn, true) === true;
+  return parseBool(item.webOn, true) === true;
 }
 
 async function listBanners({ page = 1, limit = 10, status, search, bannerType, platform } = {}) {

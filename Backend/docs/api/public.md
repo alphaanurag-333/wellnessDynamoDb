@@ -32,7 +32,7 @@ Many list endpoints accept `?platform=app|web` so Admin Web/App visibility toggl
 
 | Method | Path | Notes |
 |--------|------|-------|
-| `GET` | `/public/misc/banners` | `page`, `limit`, `bannerType` |
+| `GET` | `/public/misc/banners` | `page`, `limit`, `bannerType` / `type`, `platform` — see [banner-feature.md](./banner-feature.md) |
 | `GET` | `/public/misc/faqs` | `platform` |
 | `GET` | `/public/misc/config-dropdowns` | |
 | `GET` | `/public/misc/config-dropdowns/:slug` | |

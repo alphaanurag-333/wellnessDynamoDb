@@ -9,8 +9,17 @@ import {
 } from "../api/bannerApi.js";
 import { adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
+  adminDeleteMediaAsset,
+  adminListMediaAssets,
+  adminUpdateMediaAsset,
+  attachMediaAsset,
+  downloadMediaAsset,
+  galleryOwnersFromAssets,
+} from "../api/mediaAssetApi.js";
+import {
   BANNER_COPY,
   BANNER_DESKTOP_SIZE,
+  BANNER_MEDIA_CATEGORY,
   BANNER_MOBILE_SIZE,
   BANNER_PAGE_SIZE,
   BANNER_PLACEMENTS,
@@ -23,8 +32,10 @@ import {
   placementChipLabel,
   preserveOption,
 } from "../data/bannerConfigData.js";
+import { galleryVersionLabel } from "../data/galleryData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
+import { MediaPickerModal } from "./MediaPickerModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 import { BannerLivePreview } from "./BannerLivePreview.jsx";
@@ -48,6 +59,17 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 
 function bannerCropForKind(kind) {
   return kind === "mobile" ? BANNER_MOBILE_SIZE : BANNER_DESKTOP_SIZE;
+}
+
+function applyBannerOrder(items, fromId, toId) {
+  if (!fromId || !toId || fromId === toId) return items;
+  const fromIdx = items.findIndex((entry) => entry.id === fromId);
+  const toIdx = items.findIndex((entry) => entry.id === toId);
+  if (fromIdx < 0 || toIdx < 0) return items;
+  const next = [...items];
+  const [moved] = next.splice(fromIdx, 1);
+  next.splice(toIdx, 0, moved);
+  return next.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
 }
 
 const BANNER_DROP_ICON = (
@@ -106,11 +128,21 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const [cropPending, setCropPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [galleryQuery, setGalleryQuery] = useState("");
+  const [galleryOwner, setGalleryOwner] = useState("All owners");
   const [page, setPage] = useState(1);
+  const [dragId, setDragId] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+  const [bannerMedia, setBannerMedia] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(true);
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
+  const [galleryBusyId, setGalleryBusyId] = useState("");
+  const [pendingMediaDelete, setPendingMediaDelete] = useState(null);
   const cropKindRef = useRef("banner");
   const creatingRef = useRef(false);
   const liveListRef = useRef(null);
+  const itemsRef = useRef(items);
   creatingRef.current = creating;
+  itemsRef.current = items;
 
   const bodyText = asCopyString(editor.body);
   const typeOptions = preserveOption(editor.type, bannerTypes, BANNER_TYPES);
@@ -190,10 +222,36 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     loadItems();
   }, [loadItems]);
 
+  const loadBannerGallery = useCallback(async () => {
+    setGalleryLoading(true);
+    try {
+      const result = await adminListMediaAssets(null, {
+        page: 1,
+        limit: 200,
+        type: "image",
+        category: BANNER_MEDIA_CATEGORY,
+        search: galleryQuery.trim() || undefined,
+        owner: galleryOwner === "All owners" ? undefined : galleryOwner,
+      });
+      setBannerMedia(Array.isArray(result?.items) ? result.items : []);
+    } catch (error) {
+      setBannerMedia([]);
+      onToast(error?.message || "Could not load banner gallery");
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, [galleryOwner, galleryQuery, onToast]);
+
+  useEffect(() => {
+    const timer = setTimeout(loadBannerGallery, 200);
+    return () => clearTimeout(timer);
+  }, [loadBannerGallery]);
+
   useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
   }, [cropPending?.previewUrl]);
 
+  const webLiveCount = items.filter((row) => row.shown && row.webOn !== false).length;
   const pageCount = Math.max(1, Math.ceil((items.length || 0) / BANNER_PAGE_SIZE));
   const safePage = Math.min(Math.max(1, page), pageCount);
   const pageStart = (safePage - 1) * BANNER_PAGE_SIZE;
@@ -314,8 +372,13 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
     setBusy(true);
     try {
-      const files = kind === "mobile" ? { mobileFile: croppedFile } : { imageFile: croppedFile };
-      const saved = await adminUpdateBanner(null, editor.id, {}, files);
+      const files =
+        kind === "mobile"
+          ? { mobileFile: croppedFile }
+          : kind === "banner" || !editor.split
+            ? { imageFile: croppedFile, mobileFile: croppedFile }
+            : { imageFile: croppedFile };
+      const saved = await adminUpdateBanner(null, editor.id, { split: Boolean(editor.split) }, files);
       selectItem(saved);
       setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
       onToast(kind === "mobile" ? "Mobile banner updated" : "Banner image updated");
@@ -335,7 +398,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       placement: editor.placement,
       cta: editor.cta,
       ctaLink: editor.ctaLink,
-      split: true,
+      split: Boolean(editor.split),
       appOn: editor.appOn !== false,
       webOn: editor.webOn !== false,
     };
@@ -351,24 +414,34 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       onToast("Pick a banner type from Configs → Dropdowns");
       return;
     }
-    if (!editor.id && !(editor.imageFile instanceof File) && !editor.image) {
+    const hasDesktop = editor.imageFile instanceof File || Boolean(editor.image);
+    const hasMobile = editor.mobileFile instanceof File || Boolean(editor.mobileImage);
+    if (!editor.id && !hasDesktop && !(payload.split && hasMobile)) {
+      onToast(payload.split ? "Add a desktop or mobile banner image" : "Add a banner image");
+      return;
+    }
+    if (!editor.id && payload.split && !hasDesktop) {
       onToast("Add a desktop banner image");
       return;
     }
-    if (!editor.id && !(editor.mobileFile instanceof File) && !editor.mobileImage) {
+    if (!editor.id && payload.split && !hasMobile) {
       onToast("Add a mobile banner image");
       return;
     }
     setBusy(true);
     try {
       if (!editor.id) {
+        const sharedFile = editor.imageFile || editor.mobileFile;
         const created = await adminCreateBanner(null, payload, {
-          imageFile: editor.imageFile,
-          mobileFile: editor.mobileFile || editor.imageFile,
+          imageFile: editor.imageFile || sharedFile,
+          mobileFile: payload.split
+            ? (editor.mobileFile || editor.imageFile || sharedFile)
+            : (editor.imageFile || sharedFile),
         });
         setCreating(false);
         onToast("Banner added");
         const next = await loadItems();
+        setPage(1);
         if (created?.id) {
           selectItem(created);
           goToItemPage(created.id, next);
@@ -413,7 +486,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
 
   async function moveItem(index, direction) {
     const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= items.length) return;
+    if (nextIndex < 0 || nextIndex >= items.length || busy) return;
     const ordered = [...items];
     const [row] = ordered.splice(index, 1);
     ordered.splice(nextIndex, 0, row);
@@ -425,6 +498,30 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     } catch (error) {
       onToast(error?.message || "Could not reorder banners");
       loadItems();
+    }
+  }
+
+  async function finishDrag(fromId, toId) {
+    if (!fromId || !toId || fromId === toId || busy) {
+      setDragId(null);
+      setDragOverId(null);
+      return;
+    }
+    const previous = itemsRef.current;
+    const next = applyBannerOrder(previous, fromId, toId);
+    setDragId(null);
+    setDragOverId(null);
+    if (next === previous || next.every((entry, i) => entry.id === previous[i]?.id)) return;
+    setItems(next);
+    const droppedIndex = next.findIndex((entry) => entry.id === fromId);
+    if (droppedIndex >= 0) goToItemPage(fromId, next);
+    try {
+      const saved = await adminReorderBanners(null, next.map((entry) => entry.id));
+      if (saved?.length) setItems(saved);
+      onToast("Order updated");
+    } catch (error) {
+      setItems(previous);
+      onToast(error?.message || "Could not reorder banners");
     }
   }
 
@@ -444,47 +541,168 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
   }
 
-  const gallery = useMemo(() => {
+  async function useGalleryImage(asset) {
+    if (!asset?.url || busy) return;
+    setBusy(true);
+    try {
+      const file = await attachMediaAsset(asset);
+      const kind = asset.kind === "Mobile" || asset.slot === "mobile"
+        ? "mobile"
+        : editor.split
+          ? "web"
+          : "banner";
+      beginCropFromFile(file, kind);
+    } catch (error) {
+      onToast(error?.message || "Could not use gallery image");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleGalleryLive(entry) {
+    if (!entry?.id || entry.source !== "library") return;
+    setGalleryBusyId(entry.id);
+    try {
+      const updated = await adminUpdateMediaAsset(null, entry.id, { live: !entry.live });
+      setBannerMedia((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      onToast(updated.live ? "Marked live in gallery" : "Unmarked in gallery");
+    } catch (error) {
+      onToast(error?.message || "Could not update gallery asset");
+    } finally {
+      setGalleryBusyId("");
+    }
+  }
+
+  async function downloadGalleryAsset(entry) {
+    if (!entry?.url) {
+      onToast("No file available to download");
+      return;
+    }
+    setGalleryBusyId(entry.id);
+    try {
+      await downloadMediaAsset(entry);
+      onToast("Download started");
+    } catch (error) {
+      onToast(error?.message || "Failed to download file");
+    } finally {
+      setGalleryBusyId("");
+    }
+  }
+
+  async function confirmMediaDelete() {
+    if (!pendingMediaDelete?.id || pendingMediaDelete.source !== "library") {
+      setPendingMediaDelete(null);
+      return;
+    }
+    const id = pendingMediaDelete.id;
+    setPendingMediaDelete(null);
+    setGalleryBusyId(id);
+    try {
+      await adminDeleteMediaAsset(null, id);
+      setBannerMedia((prev) => prev.filter((row) => row.id !== id));
+      onToast("Removed from banner gallery");
+    } catch (error) {
+      onToast(error?.message || "Could not delete gallery asset");
+      loadBannerGallery();
+    } finally {
+      setGalleryBusyId("");
+    }
+  }
+
+  const galleryFromBanners = useMemo(() => {
     const rows = [];
-    items.forEach((entry) => {
-      const title = asCopyString(entry.title);
-      const date = entry.updatedAt || entry.createdAt;
+    const seen = new Set();
+    for (const entry of items) {
+      const title = asCopyString(entry.title) || "Untitled banner";
+      const date = entry.updatedAt || entry.createdAt
+        ? new Date(entry.updatedAt || entry.createdAt).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : "—";
       const desktop = String(entry.image || "").trim();
       const mobile = String(entry.mobileImage || "").trim();
-      if (desktop) {
+      if (desktop && !seen.has(desktop)) {
+        seen.add(desktop);
         rows.push({
-          id: `${entry.id}-desktop`,
+          id: `banner-${entry.id}-desktop`,
+          source: "banner",
           bannerId: entry.id,
-          title,
-          type: entry.type,
+          slot: "desktop",
           kind: "Desktop",
-          date,
-          url: desktop,
-        });
-      }
-      if (mobile && mobile !== desktop) {
-        rows.push({
-          id: `${entry.id}-mobile`,
-          bannerId: entry.id,
           title,
-          type: entry.type,
-          kind: "Mobile",
+          owner: "Banner",
           date,
-          url: mobile,
+          size: "",
+          versions: 1,
+          live: Boolean(entry.shown),
+          url: desktop,
+          type: "image",
+          category: BANNER_MEDIA_CATEGORY,
         });
       }
-    });
+      if (mobile && mobile !== desktop && !seen.has(mobile)) {
+        seen.add(mobile);
+        rows.push({
+          id: `banner-${entry.id}-mobile`,
+          source: "banner",
+          bannerId: entry.id,
+          slot: "mobile",
+          kind: "Mobile",
+          title,
+          owner: "Banner",
+          date,
+          size: "",
+          versions: 1,
+          live: Boolean(entry.shown),
+          url: mobile,
+          type: "image",
+          category: BANNER_MEDIA_CATEGORY,
+        });
+      }
+    }
     return rows;
   }, [items]);
 
-  const filteredGallery = gallery.filter((entry) => {
+  const galleryFromLibrary = useMemo(
+    () =>
+      bannerMedia.map((entry) => ({
+        ...entry,
+        source: "library",
+        kind: "Library",
+        slot: "desktop",
+      })),
+    [bannerMedia],
+  );
+
+  const filteredGallery = useMemo(() => {
+    const map = new Map();
+    for (const entry of [...galleryFromLibrary, ...galleryFromBanners]) {
+      const key = entry.url || entry.id;
+      if (!key || map.has(key)) continue;
+      map.set(key, entry);
+    }
+    let rows = Array.from(map.values());
     const query = galleryQuery.trim().toLowerCase();
-    if (!query) return true;
-    return [entry.title, entry.kind, optionLabel(entry.type, typeOptions, BANNER_TYPES)]
-      .join(" ")
-      .toLowerCase()
-      .includes(query);
-  });
+    if (query) {
+      rows = rows.filter((entry) =>
+        [entry.title, entry.owner, entry.kind, entry.category]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      );
+    }
+    if (galleryOwner !== "All owners") {
+      rows = rows.filter((entry) => entry.owner === galleryOwner);
+    }
+    return rows;
+  }, [galleryFromBanners, galleryFromLibrary, galleryOwner, galleryQuery]);
+
+  const galleryOwners = useMemo(
+    () => galleryOwnersFromAssets(filteredGallery),
+    [filteredGallery],
+  );
 
   return (
     <div className="ua-cfg-bn">
@@ -540,32 +758,69 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <p className="ua-cfg-panel__sub">Add banner types in Configs → Dropdowns first.</p>
             ) : null}
 
-            <div className="ua-cfg-bn-split-drops">
-              <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
+            <div className="ua-cfg-bn-split">
+              <span className="ua-cfg-bn-split__icon" aria-hidden="true">🖥</span>
+              <div>
+                <strong>Split web &amp; mobile</strong>
+                <p>
+                  {editor.split
+                    ? "Separate web and mobile artwork."
+                    : "One artwork for both surfaces."}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={`ua-toggle ua-toggle--sm${editor.split ? " ua-toggle--on" : ""}`}
+                aria-pressed={Boolean(editor.split)}
+                aria-label={editor.split ? "Use one artwork for web and mobile" : "Split web and mobile artwork"}
+                disabled={busy}
+                onClick={() => patch({ split: !editor.split })}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+            </div>
+
+            {editor.split ? (
+              <div className="ua-cfg-bn-split-drops">
+                <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
+                  <div className="ua-cfg-bn-split-drops__label">
+                    <strong className="is-web">WEB</strong>
+                    <span>Desktop · wide crop</span>
+                  </div>
+                  <DropZone
+                    className="ua-cfg-bn-drop--desktop"
+                    label="Upload Web"
+                    previewUrl={webPreview}
+                    onUpload={() => openFilePicker("web")}
+                  />
+                </div>
+                <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
+                  <div className="ua-cfg-bn-split-drops__label">
+                    <strong className="is-app">MOBILE</strong>
+                    <span>App · mobile crop</span>
+                  </div>
+                  <DropZone
+                    className="ua-cfg-bn-drop--mobile"
+                    label="Upload Mobile"
+                    previewUrl={mobileSlotPreview}
+                    onUpload={() => openFilePicker("mobile")}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="ua-cfg-bn-slot ua-cfg-bn-slot--shared">
                 <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-web">WEB</strong>
-                  <span>Desktop - wide crop</span>
+                  <strong className="is-web">BANNER</strong>
+                  <span>Shared · {placementChipLabel(placement) || BANNER_DESKTOP_SIZE.label}</span>
                 </div>
                 <DropZone
                   className="ua-cfg-bn-drop--desktop"
-                  label="Upload Web"
-                  previewUrl={webPreview}
-                  onUpload={() => openFilePicker("web")}
+                  label="Upload banner"
+                  previewUrl={webPreview || mobileSlotPreview}
+                  onUpload={() => openFilePicker("banner")}
                 />
               </div>
-              <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
-                <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-app">MOBILE</strong>
-                  {/* <span>Portrait - app crop</span> */}
-                </div>
-                <DropZone
-                  className="ua-cfg-bn-drop--mobile"
-                  label="Upload Mobile"
-                  previewUrl={mobileSlotPreview}
-                  onUpload={() => openFilePicker("mobile")}
-                />
-              </div>
-            </div>
+            )}
 
             <div style={{display:"none"}} className="ua-cfg-bn-surfaces ua-cfg-bn-editor__surfaces">
               <div className={`ua-cfg-bn-surface ua-cfg-bn-surface--web${editor.webOn !== false ? " is-on" : ""}`}>
@@ -663,7 +918,11 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         <Panel
           className="ua-cfg-bn-live-panel"
           title="Live in this placement"
-          subtitle={loading ? "Loading banners…" : `${items.length} banner${items.length === 1 ? "" : "s"}`}
+          subtitle={
+            loading
+              ? "Loading banners…"
+              : `${webLiveCount} on website (LIVE + WEB) · ${items.length} total · drag to reorder`
+          }
           actions={(
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-bn-add" disabled={busy} onClick={startCreate}>
               + Add banner
@@ -674,12 +933,58 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             {pagedItems.map((entry, pageIndex) => {
               const index = pageStart + pageIndex;
               const typeLabel = optionLabel(entry.type, typeOptions, BANNER_TYPES);
+              const onWebsite = Boolean(entry.shown) && entry.webOn !== false;
+              const isDragging = dragId === entry.id;
+              const isDragOver = dragOverId === entry.id && dragId !== entry.id;
               return (
-              <article key={entry.id} className={`ua-cfg-bn-live__row${entry.id === editor.id && !creating ? " is-selected" : ""}`}>
-                <span className="ua-cfg-bn-live__handle" aria-hidden="true">⠿</span>
+              <article
+                key={entry.id}
+                className={[
+                  "ua-cfg-bn-live__row",
+                  entry.id === editor.id && !creating ? "is-selected" : "",
+                  onWebsite ? "" : "is-off-web",
+                  isDragging ? "is-dragging" : "",
+                  isDragOver ? "is-drag-over" : "",
+                ].filter(Boolean).join(" ")}
+                draggable={!busy}
+                onDragStart={(event) => {
+                  if (busy) {
+                    event.preventDefault();
+                    return;
+                  }
+                  // Ignore drags that start on interactive controls
+                  const tag = String(event.target?.tagName || "").toLowerCase();
+                  if (tag === "button" || tag === "input" || event.target?.closest?.("button")) {
+                    event.preventDefault();
+                    return;
+                  }
+                  setDragId(entry.id);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", entry.id);
+                }}
+                onDragOver={(event) => {
+                  if (!dragId || dragId === entry.id || busy) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  if (dragOverId !== entry.id) setDragOverId(entry.id);
+                }}
+                onDragLeave={() => {
+                  if (dragOverId === entry.id) setDragOverId(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const fromId = event.dataTransfer.getData("text/plain") || dragId;
+                  finishDrag(fromId, entry.id);
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setDragOverId(null);
+                }}
+              >
+                <span className="ua-cfg-bn-live__handle" title="Drag to reorder" aria-hidden="true">⠿</span>
                 <button type="button" className="ua-cfg-bn-live__thumb" onClick={() => selectItem(entry)}>
                   {entry.image || entry.mobileImage ? (
-                    <img src={entry.image || entry.mobileImage} alt="" />
+                    <img src={entry.image || entry.mobileImage} alt="" draggable={false} />
                   ) : null}
                 </button>
                 <div className="ua-cfg-bn-live__copy">
@@ -687,6 +992,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                   <span className="ua-cfg-bn-live__meta">
                     {typeLabel ? <span className="ua-cfg-bn-live__type">{typeLabel}</span> : null}
                     <span className="ua-cfg-bn-live__rank">#{index + 1}</span>
+                    {!onWebsite ? <span className="ua-cfg-bn-live__type">Not on website</span> : null}
                   </span>
                 </div>
                 <div className="ua-cfg-bn-live__actions">
@@ -752,77 +1058,169 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           webOn={webSurfaceOn}
           appOn={appSurfaceOn}
           webImage={webPreview}
-          mobileImage={mobilePreview}
+          mobileImage={editor.split ? mobilePreview : (webPreview || mobilePreview)}
           placement={placement}
         />
       </Panel>
 
       <Panel
-        title="Gallery"
-        subtitle="Images attached to banners in this section."
+        className="ua-cfg-bn-ref-gallery ua-cfg-gl"
+        title="Banner gallery"
+        subtitle="Images uploaded for banners in this section. Use one in the editor, download, or upload new media. Deleting a library upload does not remove live banners."
+        actions={(
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+            disabled={busy}
+            onClick={() => setGalleryPickerOpen(true)}
+          >
+            + Upload media
+          </button>
+        )}
       >
         <div className="ua-cfg-mv-gallery__filters">
           <input
             type="search"
             className="ua-cfg-mv-gallery__search"
-            placeholder="Search media by name"
+            placeholder="Search banner media by name"
             value={galleryQuery}
             onChange={(event) => setGalleryQuery(event.target.value)}
           />
+          <select
+            className="ua-cfg-mv-gallery__select"
+            value={galleryOwner}
+            onChange={(event) => setGalleryOwner(event.target.value)}
+          >
+            {galleryOwners.map((entry) => (
+              <option key={entry} value={entry}>{entry}</option>
+            ))}
+          </select>
         </div>
         <div className="ua-cfg-mv-gallery__bar">
-          <span>{filteredGallery.length} of {gallery.length} items</span>
+          <span>
+            {galleryLoading && !items.length
+              ? "Loading banner gallery…"
+              : `${filteredGallery.length} banner image${filteredGallery.length === 1 ? "" : "s"}`}
+          </span>
         </div>
         <div className="ua-cfg-mv-gallery__grid">
           {filteredGallery.map((entry) => (
-            <article key={entry.id} className="ua-cfg-mv-gallery-card">
-              <div className="ua-cfg-mv-gallery-card__thumb ua-cfg-bn-thumb">
+            <article key={entry.id} className="ua-cfg-gl-card">
+              <div className="ua-cfg-gl-card__thumb is-image">
                 {entry.url ? (
-                  <img src={entry.url} alt="" />
+                  <img className="ua-cfg-gl-card__preview" src={entry.url} alt="" />
                 ) : (
-                  <>
-                    <span className="ua-cfg-bn-thumb__mark" aria-hidden="true">🖼</span>
-                    <span className="ua-cfg-bn-thumb__label">Banner image</span>
-                  </>
+                  <span className="ua-cfg-gl-card__placeholder">Banner image</span>
                 )}
-                <span className="ua-cfg-mv-gallery-card__type ua-cfg-bn-badge">
-                  {entry.kind}
+                <span className="ua-cfg-gl-card__badge is-default">
+                  {entry.kind || BANNER_MEDIA_CATEGORY}
                 </span>
               </div>
-              <div className="ua-cfg-mv-gallery-card__body">
-                <strong>{entry.title || "Untitled banner"}</strong>
-                <span>{entry.date ? new Date(entry.date).toLocaleDateString("en-IN") : "—"}</span>
+              <div className="ua-cfg-gl-card__body">
+                <strong>{entry.title || "Untitled"}</strong>
+                <span>{entry.owner || "Admin"} · {entry.date || "—"}</span>
+                <span>
+                  {entry.source === "library"
+                    ? `${entry.size || "—"} · ${galleryVersionLabel(entry.versions)}`
+                    : "From live banner list"}
+                </span>
               </div>
-              <div className="ua-cfg-bn-gallery__foot">
-                <a
-                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-bn-gallery__open"
-                  href={entry.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  View
-                </a>
+              <div className={`ua-cfg-gl-card__live${entry.live ? " is-live" : ""}`}>
+                <span className={`ua-cfg-gl-card__status${entry.live ? " is-live" : ""}`}>
+                  {entry.source === "banner"
+                    ? (entry.live ? "On banner" : "Hidden")
+                    : (entry.live ? "Live" : "Not live")}
+                </span>
+                {entry.source === "library" ? (
+                  <button
+                    type="button"
+                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                    aria-pressed={Boolean(entry.live)}
+                    disabled={galleryBusyId === entry.id}
+                    onClick={() => toggleGalleryLive(entry)}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                ) : null}
+              </div>
+              <div className="ua-cfg-gl-card__actions">
                 <button
                   type="button"
-                  className="ua-cfg-icon-btn"
-                  aria-label={`Delete ${entry.title || "banner"}`}
-                  disabled={busy}
-                  onClick={() => setPendingDelete(items.find((row) => row.id === entry.bannerId))}
+                  className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                  disabled={busy || !entry.url}
+                  onClick={() => useGalleryImage(entry)}
                 >
-                  ×
+                  Use
                 </button>
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn ua-cfg-gl-card__download"
+                  aria-label="Download"
+                  disabled={!entry.url || galleryBusyId === entry.id}
+                  onClick={() => downloadGalleryAsset(entry)}
+                >
+                  ↓
+                </button>
+                {entry.source === "library" ? (
+                  <button
+                    type="button"
+                    className="ua-cfg-icon-btn ua-cfg-gl-card__delete"
+                    aria-label="Delete"
+                    disabled={entry.live || galleryBusyId === entry.id}
+                    onClick={() => {
+                      if (entry.live) {
+                        onToast("Unmark live assets before delete");
+                        return;
+                      }
+                      setPendingMediaDelete(entry);
+                    }}
+                  >
+                    🗑
+                  </button>
+                ) : null}
               </div>
             </article>
           ))}
-          {!loading && !filteredGallery.length ? <p className="ua-cfg-panel__sub">No banner images yet.</p> : null}
+          {!galleryLoading && !filteredGallery.length ? (
+            <p className="ua-cfg-gl-section__empty">No banner media yet. Upload a banner or use + Upload media.</p>
+          ) : null}
         </div>
       </Panel>
+
+      <MediaPickerModal
+        open={galleryPickerOpen}
+        onClose={() => setGalleryPickerOpen(false)}
+        accept="image"
+        multiple
+        title="Upload banner media"
+        uploadCategory={BANNER_MEDIA_CATEGORY}
+        libraryCategory={BANNER_MEDIA_CATEGORY}
+        cropImages
+        cropWidth={BANNER_DESKTOP_SIZE.width}
+        cropHeight={BANNER_DESKTOP_SIZE.height}
+        sizeHint={BANNER_DESKTOP_SIZE.label}
+        onConfirm={(assets) => {
+          setBannerMedia((prev) => {
+            const map = new Map(prev.map((entry) => [entry.id, entry]));
+            for (const asset of assets) map.set(asset.id, asset);
+            return Array.from(map.values());
+          });
+          onToast(`${assets.length} banner image${assets.length === 1 ? "" : "s"} ready`);
+          loadBannerGallery();
+        }}
+      />
 
       {mediaPickerModal}
 
       <ImageCropModal
         open={Boolean(cropPending)}
-        label={cropPending?.kind === "mobile" ? "Mobile banner" : "Desktop banner"}
+        label={
+          cropPending?.kind === "mobile"
+            ? "Mobile banner"
+            : cropPending?.kind === "banner"
+              ? "Banner"
+              : "Desktop banner"
+        }
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
@@ -845,6 +1243,17 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         confirmTone="danger"
         onCancel={() => setPendingDelete(null)}
         onConfirm={deleteItem}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingMediaDelete)}
+        tag="Banner gallery"
+        title={`Delete “${pendingMediaDelete?.title || "this image"}”?`}
+        body="This removes the image from the banner gallery only. Live banners are not changed."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingMediaDelete(null)}
+        onConfirm={confirmMediaDelete}
       />
     </div>
   );

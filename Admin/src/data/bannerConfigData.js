@@ -3,6 +3,9 @@ export const BANNER_TYPES = [
   { id: "wellnesspedia", label: "Wellnesspedia banner" },
 ];
 
+/** Media-library category used by banner config gallery uploads. */
+export const BANNER_MEDIA_CATEGORY = "Banner";
+
 export const BANNER_PLACEMENTS = [
   { id: "home-hero-web", label: "Home hero · web · 21:9", ratio: "21:9" },
   { id: "home-hero-app", label: "Home hero · app · 16:9", ratio: "16:9" },

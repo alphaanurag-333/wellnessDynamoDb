@@ -7,6 +7,25 @@ import "swiper/css/effect-fade";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchActiveBanners } from "../api/publicMisc.js";
 
+function isWebVisibleBanner(banner) {
+  if (!banner) return false;
+  if (String(banner.status || "active").toLowerCase() !== "active") return false;
+  if (banner.webOn === false || banner.webOn === "false" || banner.webOn === 0) return false;
+  // Website always uses the desktop/web asset (never the app/mobile crop).
+  return Boolean(banner.image || banner.mobileImage);
+}
+
+function toHeroSlide(banner) {
+  const desktop = mediaUrl(banner.image) || banner.image || "";
+  const fallback = mediaUrl(banner.mobileImage) || banner.mobileImage || "";
+  return {
+    id: banner.id || banner._id,
+    title: banner.title || "",
+    description: banner.description || "",
+    image: desktop || fallback,
+  };
+}
+
 export function SiteHero() {
   const [slides, setSlides] = useState(null);
 
@@ -15,25 +34,19 @@ export function SiteHero() {
 
     (async () => {
       try {
-        const data = await fetchActiveBanners({ page: 1, limit: 20, bannerType: "main", platform: "web" });
+        const data = await fetchActiveBanners({
+          page: 1,
+          limit: 20,
+          bannerType: "main",
+          platform: "web",
+        });
         if (cancelled) return;
 
         const banners = Array.isArray(data?.banners) ? data.banners : [];
         setSlides(
           banners
-            .filter((banner) => banner?.image || banner?.mobileImage)
-            .map((banner) => {
-              const desktop = mediaUrl(banner.image) || banner.image || "";
-              const mobile =
-                mediaUrl(banner.mobileImage) || banner.mobileImage || desktop;
-              return {
-                id: banner.id || banner._id,
-                title: banner.title || "",
-                description: banner.description || "",
-                image: desktop || mobile,
-                mobileImage: mobile,
-              };
-            })
+            .filter(isWebVisibleBanner)
+            .map(toHeroSlide)
             .filter((slide) => slide.image)
         );
       } catch {
@@ -88,24 +101,14 @@ export function SiteHero() {
         <SwiperSlide key={slide.id}>
           <div className="slide-flash" />
           <div className="hero-bg">
-            <picture>
-              {slide.mobileImage && slide.mobileImage !== slide.image ? (
-                <source media="(max-width: 992px)" srcSet={slide.mobileImage} />
-              ) : null}
-              <img
-                src={slide.image}
-                alt={slide.title || "Banner"}
-                className="hero-bg-image"
-                onError={handleMediaImageError}
-              />
-            </picture>
+            <img
+              src={slide.image}
+              alt={slide.title || "Banner"}
+              className="hero-bg-image"
+              onError={handleMediaImageError}
+            />
           </div>
           <div className="hero-overlay" />
-          {/* <div className="hero-content">
-            <span className="hero-label">PREMIUM COLLECTION</span> 
-            <h1 className="hero-title">{slide.title}</h1>
-            {slide.description ? <p className="hero-description">{slide.description}</p> : null}
-          </div> */}
         </SwiperSlide>
       ))}
     </Swiper>

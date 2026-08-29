@@ -25,13 +25,16 @@ Base path: `/api`
 
 ## banners
 
+Full guide: [banner-feature.md](./banner-feature.md)
+
 | Method | Path | Source |
 |--------|------|--------|
 | `GET` | `/admin/banners` | `routes\adminRoutes\adminBannerRoutes.js` |
 | `POST` | `/admin/banners` | `routes\adminRoutes\adminBannerRoutes.js` |
-| `DELETE` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
+| `PUT` | `/admin/banners/reorder` | `routes\adminRoutes\adminBannerRoutes.js` |
 | `GET` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
 | `PATCH` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
+| `DELETE` | `/admin/banners/:id` | `routes\adminRoutes\adminBannerRoutes.js` |
 
 ## client-testimonials
 

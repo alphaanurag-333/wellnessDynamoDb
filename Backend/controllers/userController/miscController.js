@@ -148,7 +148,22 @@ exports.getActiveBanners = asyncHandler(async (req, res) => {
     "banners",
     ["image", "mobileImage"]
   );
-  return res.status(200).json({ status: true, banners: data.banners, pagination: data.pagination });
+  // Hard require: status active + channel toggle when platform is set.
+  const banners = (data.banners || []).filter((banner) => {
+    if (!banner || String(banner.status || "").toLowerCase() !== "active") return false;
+    if (platform === "app") return banner.appOn !== false;
+    if (platform === "web") return banner.webOn !== false;
+    return true;
+  });
+  return res.status(200).json({
+    status: true,
+    banners,
+    pagination: {
+      ...data.pagination,
+      total: banners.length,
+      pages: Math.max(1, Math.ceil(banners.length / limit) || 1),
+    },
+  });
 });
 
 exports.getActiveFaqs = asyncHandler(async (req, res) => {

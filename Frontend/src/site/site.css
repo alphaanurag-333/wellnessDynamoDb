@@ -2037,11 +2037,11 @@ font-size: var(--fs-sm);
 .swiper.heroSwiper,
 .heroSwiper--loading {
   width: 100%;
-  /* Matches admin banner crop 1905x640 (~3:1) */
-  height: clamp(200px, 33.333vw, 640px);
+  /* Desktop crop 1905×640 on every breakpoint — full image, no crop */
+  height: auto;
   min-height: 0;
   max-height: none;
-  aspect-ratio: auto;
+  aspect-ratio: 1905 / 640;
   background: #121212;
   margin: 0;
   overflow: hidden;
@@ -2075,7 +2075,7 @@ font-size: var(--fs-sm);
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: fill;
+  object-fit: contain;
   object-position: center center;
 }
 
@@ -10560,8 +10560,16 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
 @media (max-width: 992px) {
 .swiper.heroSwiper,
   .heroSwiper--loading {
-    /* Matches mobile banner crop 1080ÃÆÃÆÃâÃÆÃÆÃâÃâÃÆÃÆÃÆÃâÃâÃÆÃâÃâÃÆÃÆÃÆÃâÃÆÃÆÃâÃâÃâÃÆÃÆÃâÃâÃÆÃâÃâÃâ480 (~2.25:1) */
-    height: clamp(160px, 44.444vw, 320px);
+    /* Keep desktop 1905×640 ratio on small screens — do not switch to app crop */
+    height: auto;
+    aspect-ratio: 1905 / 640;
+  }
+
+  .heroSwiper .swiper-slide img,
+  .hero-bg-image,
+  .heroSwiper .swiper-slide .hero-bg-image {
+    object-fit: contain;
+    object-position: center center;
   }
 /* .hero-overlay {
     background: linear-gradient(

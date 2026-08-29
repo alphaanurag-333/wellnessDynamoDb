@@ -48350,8 +48350,8 @@ scrollbar-width: thin;
   flex-direction: column;
   gap: 8px;
   flex: 1 1 auto;
-  min-height: 180px;
-  max-height: min(52vh, 420px);
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -48383,6 +48383,25 @@ scrollbar-width: thin;
   grid-row: 1 / span 2;
   color: #c0c9d6;
   text-align: center;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.updated-admin .ua-cfg-bn-live__row[draggable="true"] {
+  cursor: grab;
+}
+
+.updated-admin .ua-cfg-bn-live__row[draggable="true"]:active,
+.updated-admin .ua-cfg-bn-live__row.is-dragging {
+  cursor: grabbing;
+  opacity: 0.72;
+}
+
+.updated-admin .ua-cfg-bn-live__row.is-drag-over {
+  border-color: #5e6ad2;
+  box-shadow: 0 0 0 1px rgba(94, 106, 210, 0.28);
+  background: #f7f8ff;
 }
 
 .updated-admin .ua-cfg-bn-live__thumb {
@@ -48403,6 +48422,7 @@ scrollbar-width: thin;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: center center;
   display: block;
 }
 
@@ -48551,9 +48571,10 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
   display: block;
+  background: #f1f5f9;
 }
 
 .updated-admin .ua-cfg-bn-preview__banner.is-on {
