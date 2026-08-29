@@ -9,6 +9,7 @@ import {
   collectCalculatorErrors,
 } from "../../utils/calculatorValidation.jsx";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import CalcBackButton from "./CalcBackButton.jsx";
 import { BmiInfoPanel } from "./calculatorInfo.jsx";
 import {
   AgeField,
@@ -86,6 +87,10 @@ export default function BmiCalculatorModal({ open, onClose }) {
     setBmi(null);
     setErrors({});
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setView("form");
   };
 
   const calculate = () => {
@@ -184,50 +189,53 @@ export default function BmiCalculatorModal({ open, onClose }) {
           </button>
         </div>
       ) : (
-        <div className="wp-bmi-result">
-          <div className="wp-bmi-result__gauge-panel">
-            <p className="wp-result-label">Analysis Result</p>
-            <div className="wp-bmi-gauge">
-              <svg viewBox="0 0 200 120" className="wp-bmi-gauge__svg">
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#60A5FA" strokeWidth="14" strokeDasharray="42 210" />
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#22C55E" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-42" />
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#FBBF24" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-84" />
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#F97316" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-126" />
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#EF4444" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-154" />
-                <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#B91C1C" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-182" />
-                <line
-                  x1="100"
-                  y1="100"
-                  x2="100"
-                  y2="35"
-                  stroke="#334155"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  transform={`rotate(${gaugeAngle(bmi)} 100 100)`}
-                />
-                <circle cx="100" cy="100" r="6" fill="#334155" />
-              </svg>
-              <p className="wp-bmi-gauge__value" style={{ color: tier?.color }}>
-                BMI = {bmi}
-              </p>
+        <div className="wp-calc-result">
+          <div className="wp-bmi-result">
+            <div className="wp-bmi-result__gauge-panel">
+              <p className="wp-result-label">Analysis Result</p>
+              <div className="wp-bmi-gauge">
+                <svg viewBox="0 0 200 120" className="wp-bmi-gauge__svg">
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#60A5FA" strokeWidth="14" strokeDasharray="42 210" />
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#22C55E" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-42" />
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#FBBF24" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-84" />
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#F97316" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-126" />
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#EF4444" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-154" />
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#B91C1C" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-182" />
+                  <line
+                    x1="100"
+                    y1="100"
+                    x2="100"
+                    y2="35"
+                    stroke="#334155"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    transform={`rotate(${gaugeAngle(bmi)} 100 100)`}
+                  />
+                  <circle cx="100" cy="100" r="6" fill="#334155" />
+                </svg>
+                <p className="wp-bmi-gauge__value" style={{ color: tier?.color }}>
+                  BMI = {bmi}
+                </p>
+              </div>
+            </div>
+            <div className="wp-bmi-result__tiers">
+              <p className="wp-result-label">Classification Tiers</p>
+              <ul>
+                {TIERS.map((t) => (
+                  <li
+                    key={t.name}
+                    className={tier?.name === t.name ? "is-active" : ""}
+                    style={tier?.name === t.name ? { background: `${t.color}22` } : undefined}
+                  >
+                    <span className="wp-tier-dot" style={{ background: t.color }} />
+                    <span className="wp-tier-name">{t.name}</span>
+                    <span className="wp-tier-range">{t.range}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-          <div className="wp-bmi-result__tiers">
-            <p className="wp-result-label">Classification Tiers</p>
-            <ul>
-              {TIERS.map((t) => (
-                <li
-                  key={t.name}
-                  className={tier?.name === t.name ? "is-active" : ""}
-                  style={tier?.name === t.name ? { background: `${t.color}22` } : undefined}
-                >
-                  <span className="wp-tier-dot" style={{ background: t.color }} />
-                  <span className="wp-tier-name">{t.name}</span>
-                  <span className="wp-tier-range">{t.range}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <CalcBackButton onClick={handleBack} />
         </div>
       )}
     </WellnesspediaModal>

@@ -10,6 +10,7 @@ import {
   collectCalculatorErrors,
 } from "../../utils/calculatorValidation.jsx";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import CalcBackButton from "./CalcBackButton.jsx";
 import { BodyFatInfoPanel } from "./calculatorInfo.jsx";
 import {
   AgeField,
@@ -96,6 +97,10 @@ export default function BodyFatCalculatorModal({ open, onClose }) {
     setBodyFat(null);
     setErrors({});
     onClose?.();
+  };
+
+  const handleBack = () => {
+    setView("form");
   };
 
   const toCm = (value) =>
@@ -258,44 +263,47 @@ export default function BodyFatCalculatorModal({ open, onClose }) {
           </button>
         </div>
       ) : (
-        <div className="wp-bodyfat-result">
-          <div className="wp-bodyfat-result__rings">
-            <p className="wp-result-label">Analysis Result</p>
-            <div className="wp-ring-pair">
-              <div className="wp-ring">
-                <strong>{bodyFat}</strong>
-                <span>Body Fat %</span>
+        <div className="wp-calc-result">
+          <div className="wp-bodyfat-result">
+            <div className="wp-bodyfat-result__rings">
+              <p className="wp-result-label">Analysis Result</p>
+              <div className="wp-ring-pair">
+                <div className="wp-ring">
+                  <strong>{bodyFat}</strong>
+                  <span>Body Fat %</span>
+                </div>
+                <div className="wp-ring">
+                  <strong>{leanMass}</strong>
+                  <span>Lean Muscle %</span>
+                </div>
               </div>
-              <div className="wp-ring">
-                <strong>{leanMass}</strong>
-                <span>Lean Muscle %</span>
+            </div>
+            <div className="wp-bodyfat-result__meta">
+              <div className="wp-meta-card wp-meta-card--wide">
+                <span>Your Category</span>
+                <strong>{category}</strong>
+              </div>
+              <div className="wp-meta-card">
+                <span>Weight</span>
+                <strong>{displayWeight}</strong>
+              </div>
+              <div className="wp-meta-card">
+                <span>Height</span>
+                <strong>{displayHeight}</strong>
+              </div>
+              <div className="wp-meta-card">
+                <span>Gender</span>
+                <strong className="wp-accent-text">
+                  {gender === "male" ? "Male" : "Female"}
+                </strong>
+              </div>
+              <div className="wp-meta-card">
+                <span>Age</span>
+                <strong className="wp-accent-text">{age} Years</strong>
               </div>
             </div>
           </div>
-          <div className="wp-bodyfat-result__meta">
-            <div className="wp-meta-card wp-meta-card--wide">
-              <span>Your Category</span>
-              <strong>{category}</strong>
-            </div>
-            <div className="wp-meta-card">
-              <span>Weight</span>
-              <strong>{displayWeight}</strong>
-            </div>
-            <div className="wp-meta-card">
-              <span>Height</span>
-              <strong>{displayHeight}</strong>
-            </div>
-            <div className="wp-meta-card">
-              <span>Gender</span>
-              <strong className="wp-accent-text">
-                {gender === "male" ? "Male" : "Female"}
-              </strong>
-            </div>
-            <div className="wp-meta-card">
-              <span>Age</span>
-              <strong className="wp-accent-text">{age} Years</strong>
-            </div>
-          </div>
+          <CalcBackButton onClick={handleBack} />
         </div>
       )}
     </WellnesspediaModal>
