@@ -83,7 +83,7 @@ function previewSurfaces(item) {
 
 function surfaceSubtitle(surfaces, activeId, item) {
   if (item?.id === "common-transformation") {
-    return "Common asset · renders on both surfaces · 200 × 250";
+    return "Common asset · renders on both surfaces · 400 × 500";
   }
   if (item?.id === "common-real-people") {
     return "Common asset · renders on both surfaces · 400 × 400";
