@@ -78,6 +78,7 @@ function toPublicClientAppConfig(doc) {
     linkedin: config.linkedin ?? "",
     android_app_link: config.android_app_link ?? "",
     ios_app_link: config.ios_app_link ?? "",
+    app_download_qr_link: config.app_download_qr_link ?? "",
     app_details: config.app_details ?? "",
     app_footer_text: config.app_footer_text ?? "",
     payment_gateways,

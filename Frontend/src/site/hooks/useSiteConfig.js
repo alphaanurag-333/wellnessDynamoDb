@@ -142,7 +142,7 @@ export function useSiteConfig() {
     const shortDetail = pick(config?.app_detail, config?.app_details);
     const longDetail = pick(config?.app_details, config?.app_detail, ABOUT_SECTION.body);
     const amountLabel = formatAmount(consultancyAmount || config?.consultancy_amount);
-    const mobileApp = buildMobileAppLinks(config, appName);
+    const mobileApp = buildMobileAppLinks(config);
     const appCtaLabel = amountLabel ? `Get the App — ${amountLabel}` : mobileApp.ctaLabel;
 
     const hero = {

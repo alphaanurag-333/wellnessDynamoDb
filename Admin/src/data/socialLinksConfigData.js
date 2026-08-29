@@ -5,6 +5,12 @@ export const SOCIAL_APP_CONFIG_FIELDS = [
   { id: "linkedin", key: "linkedin", label: "LinkedIn", icon: "linkedin" },
   { id: "android", key: "android_app_link", label: "Google Play", icon: "play" },
   { id: "ios", key: "ios_app_link", label: "App Store", icon: "apple" },
+  {
+    id: "app-qr",
+    key: "app_download_qr_link",
+    label: "App download QR link",
+    icon: "globe",
+  },
 ];
 
 export const SOCIAL_FOOTER_LINKS = SOCIAL_APP_CONFIG_FIELDS.map((field) => ({

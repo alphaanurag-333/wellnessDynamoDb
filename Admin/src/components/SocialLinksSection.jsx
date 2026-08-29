@@ -219,7 +219,7 @@ export function SocialLinksSection({
           : deferPublish
             ? "Shown in the website footer. Edits stay local until you publish."
             : persistToAppConfig
-              ? "Footer social links plus Google Play and App Store URLs for the website download buttons. Saved to App Config."
+              ? "Footer social links, Google Play / App Store URLs, and the App download QR link used on the website. Saved to App Config."
               : "Shown in the website footer."
       }
       actions={

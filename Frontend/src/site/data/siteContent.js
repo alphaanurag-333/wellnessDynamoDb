@@ -81,10 +81,15 @@ export const TESTIMONIALS_SECTION = {
   viewMoreLabel: "View More",
 };
 
-/** Mobile app store links — set Play Store / App Store URLs here. */
+/**
+ * Mobile app labels + seed/dummy store URLs used only when Admin App Config
+ * (Configs → Social links) has no genuine Google Play / App Store / QR link yet.
+ */
 export const MOBILE_APP = {
-  androidUrl: "",
-  iosUrl: "",
   ctaLabel: "Download the App",
   headerLabel: "Get the App",
+  /** Dummy seed — replace via Admin → Social links */
+  androidUrl: "https://play.google.com/store/apps/details?id=com.example.irwellness",
+  iosUrl: "https://apps.apple.com/app/id0000000000",
+  qrUrl: "https://play.google.com/store/apps/details?id=com.example.irwellness",
 };

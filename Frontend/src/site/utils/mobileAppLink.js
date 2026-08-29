@@ -13,34 +13,30 @@ function isIOS() {
 }
 
 /** Pick the best store / deep link for the current device. */
-export function resolveMobileAppUrl({ androidUrl, iosUrl, appName } = {}) {
+export function resolveMobileAppUrl({ androidUrl, iosUrl } = {}) {
   const android = str(androidUrl);
   const ios = str(iosUrl);
-  const fallbackAndroid =
-    android ||
-    str(MOBILE_APP.androidUrl) ||
-    (appName
-      ? `https://play.google.com/store/search?q=${encodeURIComponent(appName)}&c=apps`
-      : "");
 
-  const fallbackIos =
-    ios ||
-    str(MOBILE_APP.iosUrl) ||
-    (appName ? `https://apps.apple.com/us/search?term=${encodeURIComponent(appName)}` : "");
-
-  if (isAndroid()) return fallbackAndroid || fallbackIos;
-  if (isIOS()) return fallbackIos || fallbackAndroid;
-  return fallbackAndroid || fallbackIos;
+  if (isAndroid()) return android || ios;
+  if (isIOS()) return ios || android;
+  return android || ios;
 }
 
-export function buildMobileAppLinks(config, appName) {
+export function buildMobileAppLinks(config) {
   const androidUrl = str(config?.android_app_link) || str(MOBILE_APP.androidUrl);
   const iosUrl = str(config?.ios_app_link) || str(MOBILE_APP.iosUrl);
-  const primaryUrl = resolveMobileAppUrl({ androidUrl, iosUrl, appName });
+  const qrUrl =
+    str(config?.app_download_qr_link)
+    || str(MOBILE_APP.qrUrl)
+    || androidUrl
+    || iosUrl;
+  const primaryUrl = resolveMobileAppUrl({ androidUrl, iosUrl });
 
   return {
     androidUrl,
     iosUrl,
+    /** Admin QR link when set; otherwise seed/dummy URL. */
+    qrUrl,
     primaryUrl,
     ctaLabel: str(MOBILE_APP.ctaLabel) || "Download the App",
     headerLabel: str(MOBILE_APP.headerLabel) || "Get the App",

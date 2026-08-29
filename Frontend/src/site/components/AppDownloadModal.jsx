@@ -10,19 +10,21 @@ import apkScreenshot from "../images/apk.png";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
 
 export function AppDownloadModal({ open, onClose }) {
-  const { appName, mobileApp, consultancyAmount } = useSiteConfig();
+  const { appName, mobileApp } = useSiteConfig();
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const logoSrc = brandLogoUrl || defaultLogo;
   const [qrDataUrl, setQrDataUrl] = useState("");
 
+  // Prefer Admin → Social links → "App download QR link"; fall back to store URLs.
   const qrTarget = useMemo(() => {
     return (
-      mobileApp.primaryUrl
+      mobileApp.qrUrl
+      || mobileApp.primaryUrl
       || mobileApp.androidUrl
       || mobileApp.iosUrl
-      || (typeof window !== "undefined" ? window.location.origin : "")
+      || ""
     );
-  }, [mobileApp.androidUrl, mobileApp.iosUrl, mobileApp.primaryUrl]);
+  }, [mobileApp.androidUrl, mobileApp.iosUrl, mobileApp.primaryUrl, mobileApp.qrUrl]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -45,9 +47,9 @@ export function AppDownloadModal({ open, onClose }) {
       return undefined;
     }
     QRCode.toDataURL(qrTarget, {
-      width: 220,
-      margin: 1,
-      color: { dark: "#16233f", light: "#ffffff" },
+      width: 240,
+      margin: 2,
+      color: { dark: "#0f1f38", light: "#ffffff" },
       errorCorrectionLevel: "M",
     })
       .then((url) => {
@@ -87,7 +89,7 @@ export function AppDownloadModal({ open, onClose }) {
         </button>
 
         <div className="app-dl-modal__grid">
-          <div className="app-dl-modal__phone" aria-hidden={!apkScreenshot}>
+          <div className="app-dl-modal__phone">
             <div className="app-dl-modal__phone-frame">
               <img
                 className="app-dl-modal__screenshot"
@@ -108,9 +110,6 @@ export function AppDownloadModal({ open, onClose }) {
               Download {appName} to book your consultation
             </h2>
             <p className="app-dl-modal__text">
-              {consultancyAmount
-                ? `Consultations from ${consultancyAmount}. `
-                : ""}
               Get the app on your phone — scan the QR code or open the store links below.
             </p>
 
@@ -119,16 +118,24 @@ export function AppDownloadModal({ open, onClose }) {
             </div>
 
             <div className="app-dl-modal__qr-block">
-              <div className="app-dl-modal__qr">
+              <div className={`app-dl-modal__qr${qrDataUrl ? "" : " is-empty"}`}>
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="QR code to download the app" />
                 ) : (
-                  <span className="app-dl-modal__qr-fallback">QR</span>
+                  <span className="app-dl-modal__qr-fallback">
+                    {qrTarget
+                      ? "Generating…"
+                      : "Add App download QR link in Admin → Social links"}
+                  </span>
                 )}
               </div>
               <div className="app-dl-modal__qr-copy">
                 <strong>Scan to download</strong>
-                <span>Point your phone camera at the code to open the app store.</span>
+                <span>
+                  {mobileApp.qrUrl
+                    ? "Point your phone camera at the code to open the download Link."
+                    : "Point your phone camera at the code to open the app store."}
+                </span>
               </div>
             </div>
           </div>

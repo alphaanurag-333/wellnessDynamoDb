@@ -31,11 +31,12 @@ export function AppDownloadButtons({
   tone = "dark",
   appleFirst = false,
 }) {
-  const { mobileApp, appName } = useSiteConfig();
+  const { mobileApp } = useSiteConfig();
   const { androidUrl, iosUrl, ctaLabel, primaryUrl } = mobileApp;
   const displayLabel = label || ctaLabel;
 
   if (variant === "primary") {
+    if (!primaryUrl) return null;
     return (
       <SiteButton href={primaryUrl} block={block}>
         {displayLabel}
@@ -43,19 +44,10 @@ export function AppDownloadButtons({
     );
   }
 
-  // Prefer admin-configured store URLs; fall back to device-aware search only if needed.
-  const resolvedAndroid =
-    androidUrl ||
-    (appName
-      ? `https://play.google.com/store/search?q=${encodeURIComponent(appName)}&c=apps`
-      : "");
-  const resolvedIos =
-    iosUrl ||
-    (appName ? `https://apps.apple.com/us/search?term=${encodeURIComponent(appName)}` : "");
-  const apple = <StoreBadge href={resolvedIos} label="App Store" icon={FaApple} tone={tone} />;
-  const play = <StoreBadge href={resolvedAndroid} label="Google Play" icon={FaGooglePlay} tone={tone} />;
+  const apple = <StoreBadge href={iosUrl} label="App Store" icon={FaApple} tone={tone} />;
+  const play = <StoreBadge href={androidUrl} label="Google Play" icon={FaGooglePlay} tone={tone} />;
 
-  if (!resolvedAndroid && !resolvedIos) return null;
+  if (!androidUrl && !iosUrl) return null;
 
   return (
     <div className={`site-app-badges site-app-badges--${tone}${block ? " site-app-badges--block" : ""}`}>

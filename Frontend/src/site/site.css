@@ -7148,6 +7148,7 @@ box-shadow: var(--shadow-sm);
 
 .champion-card {
   width: 100%;
+  box-sizing: border-box;
   /* background: linear-gradient(
         135deg,
         #fffdfb,
@@ -7155,14 +7156,16 @@ box-shadow: var(--shadow-sm);
     ); */
   background-image: url("../site/images/champion-card-bg.png");
   background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   border-radius: var(--radius-md);
-  padding: 15px 20px;
+  padding: clamp(12px, 2.5vw, 18px) clamp(14px, 3vw, 22px);
   border: 1px solid var(--border-light);
   /* box-shadow: var(--shadow-sm); */
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  min-height: 150px;
+  min-height: 0;
 }
 
 /* -------- Monthly Champions heading (cards keep existing style) -------- */
@@ -7225,12 +7228,12 @@ box-shadow: var(--shadow-sm);
 }
 
 .monthly-champions__slider--count-1 {
-  max-width: 420px;
+  max-width: min(400px, 100%);
   margin-inline: auto;
 }
 
 .monthly-champions__slider--count-2 {
-  max-width: 880px;
+  max-width: min(780px, 100%);
   margin-inline: auto;
 }
 
@@ -7239,6 +7242,7 @@ box-shadow: var(--shadow-sm);
   height: auto;
   justify-content: center;
   align-items: flex-start;
+  box-sizing: border-box;
 }
 
 .monthly-champions__slider .champion-card {
@@ -7263,9 +7267,64 @@ background-image: url("../site/images/birthday-card-bg.png");
 .birthday-title {
   text-align: center;
   color: var(--primary);
-  font-size: var(--font-size-h4);
+  font-size: clamp(0.95rem, 2.4vw, var(--font-size-h4));
   font-weight: var(--fw-bold);
   margin-bottom: 5px;
+  line-height: 1.25;
+}
+
+.monthly-champions .champion-card {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.monthly-champions .champion-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+
+.monthly-champions .champion-user {
+  gap: 12px;
+}
+
+.monthly-champions .champion-avatar {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  border-width: 2px;
+}
+
+.monthly-champions .champion-info h4,
+.monthly-champions .fonrside {
+  font-size: 0.88rem !important;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.monthly-champions .champion-info p {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-body);
+}
+
+.monthly-champions .champion-info__more {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  gap: 4px;
+}
+
+.monthly-champions .champion-info__more svg {
+  width: 14px;
+  height: 14px;
+}
+
+.monthly-champions .champion-info__text--clamped {
+  -webkit-line-clamp: 2;
+  max-height: 2.8em;
 }
 .birthday-title {
   color: #683f7c;
@@ -7281,8 +7340,15 @@ background-image: url("../site/images/birthday-card-bg.png");
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
+  gap: clamp(10px, 2.5vw, 16px);
+  min-width: 0;
 }
+
+.monthly-champions .champion-user {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
 .birthday-user {
   gap: 40px;
 }
@@ -7292,9 +7358,10 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .champion-avatar {
-  width: 68px;
-  height: 68px;
-  min-width: 68px;
+  width: clamp(56px, 12vw, 72px);
+  height: clamp(56px, 12vw, 72px);
+  min-width: clamp(56px, 12vw, 72px);
+  flex-shrink: 0;
   border-radius: 50%;
   border: 3px solid var(--primary);
   overflow: hidden;
@@ -7304,11 +7371,13 @@ background-image: url("../site/images/birthday-card-bg.png");
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .champion-info,
 .birthday-info {
   flex: 1;
+  min-width: 0;
   text-align: center;
 }
 
@@ -7323,16 +7392,20 @@ background-image: url("../site/images/birthday-card-bg.png");
 .champion-info h4 {
   margin: 0;
   color: var(--primary);
-  font-size: var(--font-size-lg);
+  font-size: clamp(0.95rem, 2.2vw, 1.125rem);
   font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .champion-info p {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: clamp(0.75rem, 1.8vw, 0.875rem);
   color: var(--text-body);
   margin-bottom: 0;
-  text-align: justify;
+  text-align: left;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .champion-info__text--clamped {
@@ -10260,13 +10333,47 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
   }
 }
 
-@media (max-width: 700px) {
-.monthly-champions__header {
-    margin-bottom: 28px;
-  }
-.monthly-champions__slider--count-1,
-  .monthly-champions__slider--count-2 {
+@media (max-width: 767.98px) {
+  /* Match banner + champion to the same content column */
+  .home-page > .swiper.heroSwiper,
+  .home-page > .heroSwiper--loading {
+    box-sizing: border-box;
+    width: calc(100% - (2 * var(--container-padding, 15px)));
     max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 12px;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .home-page > .swiper.heroSwiper .swiper-slide {
+    background: transparent;
+  }
+
+  /* Fill the inset frame so banner isn't visually narrower than the card */
+  .home-page > .swiper.heroSwiper .swiper-slide img,
+  .home-page > .swiper.heroSwiper .swiper-slide .hero-bg-image {
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  .monthly-champions__header {
+    margin-bottom: 16px;
+  }
+
+  .monthly-champions__slider--count-1,
+  .monthly-champions__slider--count-2 {
+    /* Same width as inset banner; never wider */
+    max-width: 100%;
+    width: 100%;
+    margin-inline: auto;
+  }
+
+  .monthly-champions .champion-card {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -11124,6 +11231,9 @@ gap: 45px;
   .champion-user,
   .birthday-user {
     flex-wrap: wrap;
+  }
+  .monthly-champions .champion-user {
+    flex-wrap: nowrap;
   }
 .champion-right {
     width: 100%;
@@ -13081,56 +13191,72 @@ bottom: -18px;
     flex-direction: unset !important;
   }
   .champion-card {
-    padding: 8px 10px !important;
+    padding: clamp(10px, 3.2vw, 14px) clamp(12px, 3.5vw, 16px) !important;
     min-height: 0 !important;
     height: auto !important;
   }
   .champion-card--expanded {
     min-height: auto !important;
   }
+  .monthly-champions .champion-card {
+    padding: 10px 12px !important;
+  }
+  .monthly-champions .champion-avatar {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-width: 2px;
+  }
+  .monthly-champions .champion-user {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
   .champion-avatar {
-    width: 60px;
-    height: 60px;
-    min-width: 60px; }
-.champion-user, .birthday-user {
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+  }
+  .champion-user,
+  .birthday-user {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-}
-  .champion-info p {
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--text-body);
-  margin-bottom: 0;
-  /* text-align: justify; */
-}
-  .champion-info__text--clamped {
-    -webkit-line-clamp: 2;
-    max-height: 2.8em;
   }
-  .champion-info__more {
-    margin-top: 4px;
-    font-size: 11px;
-    gap: 4px;
+  .monthly-champions .champion-title,
+  .monthly-champions .marginmanages {
+    font-size: 0.82rem !important;
+    margin-bottom: 4px !important;
+  }
+  .monthly-champions .champion-info h4,
+  .monthly-champions .fonrside {
+    font-size: 0.8rem !important;
+  }
+  .monthly-champions .champion-info p,
+  .champion-info p {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    color: var(--text-body);
+    margin-bottom: 0;
+  }
+  .monthly-champions .champion-info__more {
+    font-size: 0.68rem;
+  }
+  .monthly-champions__slider--count-1,
+  .monthly-champions__slider--count-2 {
+    max-width: 100%;
+    width: 100%;
+    margin-inline: auto;
   }
   .monthly-champions__header {
-    margin-bottom: 0px !important; 
-  }
-  .monthly-champions__badge {
-    height: 20px !important;
-    margin-bottom:5px !important;
+    margin-bottom: 10px !important;
   }
   .paddingmanage {
     padding-top: 10px !important;
     padding-bottom: 10px !important;
-  }
-  .marginmanages {
-    margin-bottom: 0px !important;
-    font-size: 14px;
-  }
-  .fonrside {
-    font-size: 14px !important;
   }
   .margint {
     margin-top: 0px;
@@ -13147,8 +13273,9 @@ bottom: -18px;
   .displaymain {
     display: block !important;
   }
+  .monthly-champions .displaychampion,
   .displaychampion {
-    display: none !important;
+    display: block !important;
   }
 }
 
@@ -15795,11 +15922,12 @@ h5.pillar-card__head-title,
   z-index: 12000;
   display: grid;
   place-items: center;
-  padding: 1rem;
-  background: rgba(15, 31, 56, 0.55);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  background: rgba(15, 31, 56, 0.58);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   animation: app-dl-fade-in 180ms ease;
+  overscroll-behavior: contain;
 }
 
 @keyframes app-dl-fade-in {
@@ -15809,15 +15937,15 @@ h5.pillar-card__head-title,
 
 .app-dl-modal {
   position: relative;
-  width: min(920px, 100%);
-  max-height: min(92vh, 720px);
-  overflow: auto;
-  border-radius: 22px;
-  background:
-    radial-gradient(ellipse 80% 60% at 0% 0%, rgba(232, 136, 79, 0.12), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(107, 163, 224, 0.14), transparent 50%),
-    #fff;
-  box-shadow: 0 28px 64px rgba(15, 31, 56, 0.28);
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 100%);
+  max-height: min(94vh, 740px);
+  max-height: min(94dvh, 740px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 64px rgba(15, 31, 56, 0.3);
   animation: app-dl-rise 220ms ease;
 }
 
@@ -15828,125 +15956,169 @@ h5.pillar-card__head-title,
 
 .app-dl-modal__close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 14px;
+  right: 14px;
   z-index: 2;
   display: inline-grid;
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 0;
+  border: 1px solid #e6ebf2;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
+  background: #fff;
   color: #16233f;
-  box-shadow: 0 4px 14px rgba(15, 31, 56, 0.12);
+  box-shadow: 0 4px 14px rgba(15, 31, 56, 0.08);
   cursor: pointer;
 }
 
 .app-dl-modal__close:hover {
-  background: #fff;
-  color: var(--site-orange, #e7863a);
+  border-color: #d7deea;
+  color: var(--primary, #e7863a);
 }
 
 .app-dl-modal__grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: 1.25rem 1.75rem;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+  gap: 1.5rem 2rem;
   align-items: center;
-  padding: 1.5rem 1.5rem 1.5rem 1.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2rem 2rem 2rem 1.5rem;
 }
 
 .app-dl-modal__phone {
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .app-dl-modal__phone-frame {
-  width: min(100%, 260px);
-  filter: drop-shadow(0 22px 36px rgba(15, 31, 56, 0.22));
+  width: min(100%, 280px);
+  filter: drop-shadow(0 24px 40px rgba(15, 31, 56, 0.24));
 }
 
 .app-dl-modal__screenshot {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 28px;
+  border-radius: 32px;
 }
 
 .app-dl-modal__copy {
   min-width: 0;
-  padding-right: 0.5rem;
+  padding-right: 0.75rem;
 }
 
 .app-dl-modal__brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.85rem;
-  font-size: 0.82rem;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  color: #5f6f86;
+  color: #334155;
 }
 
 .app-dl-modal__logo {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #edf1f7;
 }
 
 .app-dl-modal__eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--site-orange, #e7863a);
+  color: var(--primary, #e7863a);
 }
 
 .app-dl-modal__title {
-  margin: 0 0 0.65rem;
-  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  margin: 0 0 0.7rem;
+  max-width: 22ch;
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
   font-weight: 800;
   line-height: 1.2;
-  color: #16233f;
+  color: #0f1f38;
 }
 
 .app-dl-modal__text {
-  margin: 0 0 1.15rem;
+  margin: 0 0 1.25rem;
+  max-width: 36ch;
   font-size: 0.95rem;
   line-height: 1.55;
   color: #5f6f86;
 }
 
 .app-dl-modal__stores {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.35rem;
 }
 
 .app-dl-modal__stores .site-app-badges {
+  display: flex;
   flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.app-dl-modal__stores .site-app-badge {
+  min-width: 168px;
+  min-height: 56px;
+  padding: 0.55rem 1.1rem;
+  border-radius: 12px;
+  background: #0f172a !important;
+  color: #fff !important;
+  box-shadow: none;
+}
+
+.app-dl-modal__stores .site-app-badge:hover {
+  background: #1e293b !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+.app-dl-modal__stores .site-app-badge small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  text-transform: none;
+}
+
+.app-dl-modal__stores .site-app-badge strong {
+  color: #fff;
+  font-size: 0.98rem;
 }
 
 .app-dl-modal__qr-block {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.85rem;
-  border: 1px solid #dde6f2;
-  border-radius: 16px;
-  background: #f7f9fc;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e3e9f2;
+  border-radius: 18px;
+  background: #f5f7fb;
 }
 
 .app-dl-modal__qr {
   flex-shrink: 0;
-  width: 112px;
-  height: 112px;
+  width: 124px;
+  height: 124px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  padding: 8px;
+  border-radius: 14px;
   background: #fff;
   border: 1px solid #e8edf5;
   overflow: hidden;
+}
+
+.app-dl-modal__qr.is-empty {
+  padding: 12px;
 }
 
 .app-dl-modal__qr img {
@@ -15957,62 +16129,206 @@ h5.pillar-card__head-title,
 }
 
 .app-dl-modal__qr-fallback {
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
   color: #94a3b8;
 }
 
 .app-dl-modal__qr-copy {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.3rem;
   min-width: 0;
 }
 
 .app-dl-modal__qr-copy strong {
-  font-size: 0.95rem;
-  color: #16233f;
+  font-size: 1rem;
+  color: #0f1f38;
 }
 
 .app-dl-modal__qr-copy span {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   line-height: 1.45;
   color: #5f6f86;
 }
 
 @media (max-width: 760px) {
+  .app-dl-modal-overlay {
+    place-items: end center;
+    padding: max(0.5rem, env(safe-area-inset-top)) 0.5rem max(0.5rem, env(safe-area-inset-bottom));
+  }
+
   .app-dl-modal {
-    max-height: 94vh;
-    border-radius: 18px;
+    width: 100%;
+    max-width: 100%;
+    max-height: min(96vh, 100dvh);
+    border-radius: 20px 20px 16px 16px;
+  }
+
+  .app-dl-modal__close {
+    top: 10px;
+    right: 10px;
+    width: 36px;
+    height: 36px;
   }
 
   .app-dl-modal__grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 1.25rem 1rem 1.25rem;
+    gap: 0.85rem;
+    padding: 1.1rem 0.9rem 1.15rem;
+    align-content: start;
+  }
+
+  .app-dl-modal__phone {
+    padding-top: 0.15rem;
   }
 
   .app-dl-modal__phone-frame {
-    width: min(100%, 200px);
+    width: min(42vw, 150px);
+    filter: drop-shadow(0 14px 24px rgba(15, 31, 56, 0.18));
   }
 
-  .app-dl-modal__qr-block {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .app-dl-modal__stores .site-app-badges {
-    justify-content: center;
-  }
-
-  .app-dl-modal__brand {
-    justify-content: center;
-    width: 100%;
+  .app-dl-modal__screenshot {
+    border-radius: 22px;
   }
 
   .app-dl-modal__copy {
     text-align: center;
     padding-right: 0;
+  }
+
+  .app-dl-modal__brand {
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 0.65rem;
+    font-size: 0.8rem;
+  }
+
+  .app-dl-modal__logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .app-dl-modal__eyebrow {
+    margin-bottom: 0.3rem;
+    font-size: 0.68rem;
+  }
+
+  .app-dl-modal__title {
+    max-width: none;
+    margin: 0 auto 0.5rem;
+    font-size: clamp(1.15rem, 5.2vw, 1.4rem);
+    line-height: 1.25;
+  }
+
+  .app-dl-modal__text {
+    max-width: 34ch;
+    margin: 0 auto 0.95rem;
+    font-size: 0.86rem;
+    line-height: 1.45;
+  }
+
+  .app-dl-modal__stores {
+    margin-bottom: 0.9rem;
+  }
+
+  .app-dl-modal__stores .site-app-badges {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    width: 100%;
+  }
+
+  .app-dl-modal__stores .site-app-badge {
+    min-width: 0;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.45rem 0.55rem;
+    gap: 0.45rem;
+    border-radius: 10px;
+  }
+
+  .app-dl-modal__stores .site-app-badge__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .app-dl-modal__stores .site-app-badge small {
+    font-size: 0.58rem;
+  }
+
+  .app-dl-modal__stores .site-app-badge strong {
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .app-dl-modal__qr-block {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.75rem;
+    border-radius: 14px;
+  }
+
+  .app-dl-modal__qr {
+    width: 112px;
+    height: 112px;
+  }
+
+  .app-dl-modal__qr-copy {
+    text-align: center;
+  }
+
+  .app-dl-modal__qr-copy strong {
+    font-size: 0.9rem;
+  }
+
+  .app-dl-modal__qr-copy span {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-dl-modal__phone-frame {
+    width: min(36vw, 128px);
+  }
+
+  .app-dl-modal__stores .site-app-badges {
+    grid-template-columns: 1fr;
+  }
+
+  .app-dl-modal__stores .site-app-badge {
+    justify-content: center;
+  }
+
+  .app-dl-modal__qr-copy span {
+    display: none;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 760px) {
+  .app-dl-modal__phone-frame {
+    width: min(30vw, 110px);
+  }
+
+  .app-dl-modal__grid {
+    gap: 0.65rem;
+    padding: 0.9rem 0.8rem 1rem;
+  }
+
+  .app-dl-modal__brand {
+    margin-bottom: 0.45rem;
+  }
+
+  .app-dl-modal__text {
+    margin-bottom: 0.7rem;
+  }
+
+  .app-dl-modal__qr {
+    width: 96px;
+    height: 96px;
   }
 }
 
