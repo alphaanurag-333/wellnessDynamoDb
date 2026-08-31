@@ -241,7 +241,7 @@ export default function TransformationStoriesSection() {
                   spaceBetween: 28,
                 },
                 1024: {
-                  slidesPerView: 4,
+                  slidesPerView: 3,
                   spaceBetween: 28,
                 },
               }}

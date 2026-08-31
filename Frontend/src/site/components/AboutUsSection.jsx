@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   fetchCofounderMessage,
   fetchFaqs,
@@ -58,33 +58,41 @@ function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
 }
 
-function PillarDescription({ headTitle, html, text }) {
-  const [expanded, setExpanded] = useState(false);
-  const [canToggle, setCanToggle] = useState(false);
+function PillarDescription({ id, headTitle, html, text, expanded, onToggle }) {
   const headingRef = useRef(null);
   const clampRef = useRef(null);
+  const [overflows, setOverflows] = useState(false);
   const source = html && looksLikeHtml(html) ? html : "";
-
-  const measure = useCallback(() => {
-    if (expanded) return;
-    const heading = headingRef.current;
-    const body = clampRef.current;
-    const headingOverflows = heading ? heading.scrollWidth > heading.clientWidth + 1 : false;
-    const bodyOverflows = body ? body.scrollHeight > body.clientHeight + 1 : false;
-    setCanToggle(headingOverflows || bodyOverflows);
-  }, [expanded, source, text, headTitle]);
+  const contentKey = `${headTitle || ""}\n${source || text || ""}`;
 
   useLayoutEffect(() => {
-    measure();
-  }, [measure]);
+    const heading = headingRef.current;
+    const body = clampRef.current;
+    if (!heading && !body) return undefined;
 
-  useEffect(() => {
-    const nodes = [headingRef.current, clampRef.current].filter(Boolean);
-    if (!nodes.length || typeof ResizeObserver === "undefined") return undefined;
-    const observer = new ResizeObserver(measure);
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, [measure]);
+    const measure = () => {
+      if (expanded) return;
+      const headingOverflows = heading
+        ? heading.scrollWidth > heading.clientWidth + 1
+        : false;
+      const bodyOverflows = body
+        ? body.scrollHeight > body.clientHeight + 2
+        : false;
+      setOverflows(headingOverflows || bodyOverflows);
+    };
+
+    measure();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    if (heading) ro?.observe(heading);
+    if (body) ro?.observe(body);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [contentKey, expanded]);
+
+  const showToggle = overflows || expanded;
 
   return (
     <>
@@ -99,23 +107,23 @@ function PillarDescription({ headTitle, html, text }) {
       {source ? (
         <div
           ref={clampRef}
-          className={`pillar-card__description mb-0 static-page-content${expanded ? "" : " is-clamped"}`}
+          className={`pillar-card__description mb-0 static-page-content${expanded ? " is-expanded" : " is-clamped"}`}
           dangerouslySetInnerHTML={{ __html: source }}
         />
       ) : (
         <p
           ref={clampRef}
-          className={`pillar-card__description mb-0${expanded ? "" : " is-clamped"}`}
+          className={`pillar-card__description mb-0${expanded ? " is-expanded" : " is-clamped"}`}
         >
           {text}
         </p>
       )}
-      {canToggle ? (
+      {showToggle ? (
         <button
           type="button"
           className="pillar-card__more"
           aria-expanded={expanded}
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => onToggle(id)}
         >
           {expanded ? "Read Less" : "Read More"}
           {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
@@ -231,6 +239,7 @@ const AboutUsSection = () => {
   const [aboutPage, setAboutPage] = useState(null);
   const [pillarPages, setPillarPages] = useState({});
   const [aboutPagesLoaded, setAboutPagesLoaded] = useState(false);
+  const [expandedPillar, setExpandedPillar] = useState(null);
 
   const faqData = (faqItems.length ? faqItems : PROCESS_FAQS)
     .map((item, index) => ({
@@ -478,7 +487,10 @@ const AboutUsSection = () => {
 
           <div className="pillars__wrapper">
             {pillars.map((item) => (
-              <article className="pillar-card" key={item.slug}>
+              <article
+                className={`pillar-card${expandedPillar === item.slug ? " pillar-card--expanded" : ""}`}
+                key={item.slug}
+              >
                 <div className="pillar-card__icon">
                   <img
                     src={item.icon}
@@ -490,9 +502,14 @@ const AboutUsSection = () => {
                 <div className="pillar-card__content">
                   <h3 className="pillar-card__title">{item.title}</h3>
                   <PillarDescription
+                    id={item.slug}
                     headTitle={item.headTitle}
                     html={item.html}
                     text={item.description}
+                    expanded={expandedPillar === item.slug}
+                    onToggle={(slug) =>
+                      setExpandedPillar((prev) => (prev === slug ? null : slug))
+                    }
                   />
                 </div>
               </article>
