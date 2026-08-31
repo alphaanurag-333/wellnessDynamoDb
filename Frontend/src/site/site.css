@@ -2521,13 +2521,14 @@ color: var(--text-body);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-5);
-  align-items: stretch;
+  align-items: start;
 }
 
 .methodology-card {
   width: auto;
   min-width: 0;
-  height: 100%;
+  height: auto;
+  align-self: start;
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
@@ -2556,17 +2557,17 @@ color: var(--text-body);
   display: block;
   border-radius: 22px;
   object-fit: cover;
-  transition: transform 0.8s ease;
+  /* transition: transform 0.8s ease; */
 }
 
 .methodology-card:hover .methodology-card__image img {
-  transform: scale(1.06);
+  /* transform: scale(1.06); */
 }
 
 .methodology-card__content {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   flex: 1 1 auto;
   padding: 0 20px 24px;
   text-align: center;
@@ -2577,51 +2578,62 @@ color: var(--text-body);
 
 .methodology-card__content h3 {
   margin: 0;
+  width: 100%;
   color: var(--text-heading);
   font-family: var(--font-family-base);
   font-size: var(--font-size-h3);
   font-weight: var(--fw-bold);
   line-height: var(--line-height-heading);
+  text-align: center;
 }
 .methodology-card__content h5,
 h5.pillar-card__head-title {
   margin: 4px 0 0;
+  width: 100%;
   font-family: var(--font-family-base);
   font-size: var(--font-size-small);
   font-weight: var(--fw-semibold);
   line-height: var(--line-height-heading);
   text-align: center;
 }
-.methodology-card__content p,
-.methodology-card__desc {
+.methodology-card__content p.methodology-card__desc {
   margin: 8px 0 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   color: var(--text-body);
   font-family: var(--font-family-base);
   font-size: var(--font-size-body);
   font-weight: var(--fw-regular);
-  line-height: var(--line-height-body);
-  min-height: 0;
+  line-height: 1.5 !important;
   text-align: justify;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+  overflow-wrap: break-word;
+  word-break: normal;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  overflow: hidden !important;
+  max-height: 4.5em !important;
 }
 
-.methodology-card__content p.methodology-card__desc--expanded,
-.methodology-card__desc--expanded {
-  display: block;
-  -webkit-line-clamp: unset;
-  overflow: visible;
+.methodology-card__content p.methodology-card__desc--expanded {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+  max-height: none !important;
 }
 
 .methodology-card__more {
   margin: 6px 0 10px;
+  margin-left: auto;
   padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: flex-end;
   align-self: flex-end;
+  gap: 6px;
+  width: auto;
+  flex-shrink: 0;
   background: transparent;
   border: none;
   outline: none;
@@ -2640,6 +2652,12 @@ h5.pillar-card__head-title {
 
 .methodology-card__more:hover {
   opacity: 0.85;
+}
+
+.methodology-card__more--spacer {
+  visibility: hidden;
+  pointer-events: none;
+  min-height: 1.2em;
 }
 
 .methodology-card__cta {
@@ -3531,7 +3549,7 @@ transition: var(--transition);
   border-top: 1px solid rgba(231, 134, 58, 0.16);
   padding-top: 14px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 12px 24px;
   flex-wrap: wrap;
@@ -12077,6 +12095,11 @@ font-size: 0.62rem;
   .heroSwiper--loading {
     
     height: clamp(160px, 44.444vw, 220px); 
+             width: calc(100% - (2 * var(--container-padding, 15px))); 
+         max-width: 100%; 
+         margin-left: auto; 
+         margin-right: auto; 
+        border-radius: 12px;
   }
 .champion-section,
   .real-healing-section {
@@ -13343,9 +13366,11 @@ bottom: -18px;
   .displaymain {
     display: block !important;
   }
-  .monthly-champions .displaychampion,
-  .displaychampion {
-    display: block !important;
+}
+
+@media (max-width: 768px) {
+  .monthly-champions__header {
+    display: none;
   }
 }
 
@@ -13379,8 +13404,8 @@ bottom: -18px;
     .final-cta__button {
       margin-top: 0px !important;
     }
-.monthly-champions__title {
-   font-size:  var(--font-size-h3) !important;
+.monthly-champions__header {
+  display: none;
 }
 .header-left p {
   font-size: 11px !important;
@@ -13735,7 +13760,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-recipe-card__placeholder {
   width: 100%;
   height: 100%;
-  /* object-fit: fill; */
+   object-fit: contain; 
   display: block;
 }
 
@@ -13877,7 +13902,7 @@ bottom: -18px;
 .wellnesspedia-page .wp-yoga-card__placeholder {
   width: 100%;
   height: 100%;
-  /* object-fit: cover; */
+  object-fit: contain; 
   display: block;
 }
 
@@ -15430,7 +15455,7 @@ bottom: -18px;
 
 .wp-media-modal__media img,
 .wp-media-modal__placeholder {
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .wp-media-modal__player {

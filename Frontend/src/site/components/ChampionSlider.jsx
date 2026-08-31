@@ -204,7 +204,7 @@ export default function ChampionSlider() {
       <div className="site-container">
         <div className="monthly-champions__header">
           {/* <span className="monthly-champions__badge">Community Pride</span> */}
-          <h2 className="monthly-champions__title displaychampion">
+          <h2 className="monthly-champions__title">
             Champion of the <span>Month</span>
           </h2>
         </div>
