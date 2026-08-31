@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchClientTestimonials } from "../api/publicMisc.js";
-import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
+import InlineReadMore from "./InlineReadMore.jsx";
 import { SiteLoader } from "./SiteLoader.jsx";
 
 function TestimonialStars({ rating }) {
@@ -48,9 +47,6 @@ function mapTestimonial(row) {
 }
 
 function TestimonialCard({ item, expanded, onToggle }) {
-  const { ref: reviewRef, overflows } = useClampedOverflow(item.review, expanded);
-  const showToggle = expanded || overflows;
-
   return (
     <article className={`success-card${expanded ? " success-card--expanded" : ""}`}>
       <div className="success-card__top">
@@ -66,29 +62,13 @@ function TestimonialCard({ item, expanded, onToggle }) {
       </div>
 
       <blockquote className="success-card__review">
-        <p
-          ref={reviewRef}
-          className={expanded ? "success-card__review-text--expanded" : undefined}
-        >
-          {item.review}
-        </p>
+        <InlineReadMore
+          text={item.review}
+          expanded={expanded}
+          onToggle={() => onToggle(item.id)}
+          lines={3}
+        />
       </blockquote>
-
-      {showToggle ? (
-        <button
-          type="button"
-          className="success-card__more"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggle(item.id);
-          }}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
-        </button>
-      ) : null}
 
       <p className="success-card__author">
         <span>— {item.name}</span>

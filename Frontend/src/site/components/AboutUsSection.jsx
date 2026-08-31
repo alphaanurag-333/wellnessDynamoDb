@@ -26,16 +26,12 @@ import {
   ShieldPlus,
   Heart,
   Dumbbell,
-  Target,
-  Eye,
-  Sparkles,
   Gauge,
   Tags,
   CreditCard,
-  ArrowRight,
-  ArrowUpRight,
 } from "lucide-react";
 import Methodology from "./Methodology.jsx";
+import InlineReadMore from "./InlineReadMore.jsx";
 import { LeadershipMessageSection, LeadershipNotesSlider } from "./LeadershipMessageSection.jsx";
 import FinalCTA from "./FinalCTA.jsx";
 
@@ -54,45 +50,42 @@ function highlightWellnessTitle(title) {
   );
 }
 
+function htmlToPlainText(value) {
+  return String(value || "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
 }
 
 function PillarDescription({ id, headTitle, html, text, expanded, onToggle }) {
+  const body = htmlToPlainText(html) || String(text || "").trim();
   const headingRef = useRef(null);
-  const clampRef = useRef(null);
-  const [overflows, setOverflows] = useState(false);
-  const source = html && looksLikeHtml(html) ? html : "";
-  const contentKey = `${headTitle || ""}\n${source || text || ""}`;
+  const [headingOverflows, setHeadingOverflows] = useState(false);
 
   useLayoutEffect(() => {
     const heading = headingRef.current;
-    const body = clampRef.current;
-    if (!heading && !body) return undefined;
+    if (!heading) return undefined;
 
     const measure = () => {
       if (expanded) return;
-      const headingOverflows = heading
-        ? heading.scrollWidth > heading.clientWidth + 1
-        : false;
-      const bodyOverflows = body
-        ? body.scrollHeight > body.clientHeight + 2
-        : false;
-      setOverflows(headingOverflows || bodyOverflows);
+      setHeadingOverflows(heading.scrollWidth > heading.clientWidth + 1);
     };
 
     measure();
+    const frame = window.requestAnimationFrame(measure);
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    if (heading) ro?.observe(heading);
-    if (body) ro?.observe(body);
+    ro?.observe(heading);
     window.addEventListener("resize", measure);
     return () => {
+      window.cancelAnimationFrame(frame);
       ro?.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [contentKey, expanded]);
-
-  const showToggle = overflows || expanded;
+  }, [headTitle, expanded]);
 
   return (
     <>
@@ -104,31 +97,14 @@ function PillarDescription({ id, headTitle, html, text, expanded, onToggle }) {
           {headTitle}
         </h5>
       ) : null}
-      {source ? (
-        <div
-          ref={clampRef}
-          className={`pillar-card__description mb-0 static-page-content${expanded ? " is-expanded" : " is-clamped"}`}
-          dangerouslySetInnerHTML={{ __html: source }}
-        />
-      ) : (
-        <p
-          ref={clampRef}
-          className={`pillar-card__description mb-0${expanded ? " is-expanded" : " is-clamped"}`}
-        >
-          {text}
-        </p>
-      )}
-      {showToggle ? (
-        <button
-          type="button"
-          className="pillar-card__more"
-          aria-expanded={expanded}
-          onClick={() => onToggle(id)}
-        >
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
-        </button>
-      ) : null}
+      <InlineReadMore
+        text={body}
+        expanded={expanded}
+        onToggle={() => onToggle(id)}
+        lines={3}
+        forceToggle={headingOverflows}
+        className="pillar-card__description mb-0"
+      />
     </>
   );
 }

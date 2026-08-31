@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
-import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
+import InlineReadMore from "./InlineReadMore.jsx";
 import discoveryImg from "../images/discovery.png";
 import analysisImg from "../images/analysis.png";
 import programImg from "../images/program.png";
@@ -34,9 +33,6 @@ const methodologyData = [
 ];
 
 function MethodologyCard({ item, expanded, onToggle }) {
-  const { ref: descRef, overflows } = useClampedOverflow(item.description, expanded);
-  const showToggle = overflows || expanded;
-
   return (
     <article className={`methodology-card${expanded ? " methodology-card--expanded" : ""}`}>
       <div className="methodology-card__image">
@@ -46,25 +42,13 @@ function MethodologyCard({ item, expanded, onToggle }) {
       <div className="methodology-card__content">
         <h3>{item.title}</h3>
         <h5>{item.headTitle}</h5>
-        <p
-          ref={descRef}
-          className={`methodology-card__desc${expanded ? " methodology-card__desc--expanded" : ""}`}
-        >
-          {item.description}
-        </p>
-        {showToggle ? (
-          <button
-            type="button"
-            className="methodology-card__more"
-            onClick={() => onToggle(item.id)}
-            aria-expanded={expanded}
-          >
-            {expanded ? "Read Less" : "Read More"}
-            {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
-          </button>
-        ) : (
-          <span className="methodology-card__more methodology-card__more--spacer" aria-hidden />
-        )}
+        <InlineReadMore
+          text={item.description}
+          expanded={expanded}
+          onToggle={() => onToggle(item.id)}
+          lines={3}
+          className="methodology-card__desc"
+        />
 
         <BookConsultationButton className="methodology-card__cta">
           Book a consultation

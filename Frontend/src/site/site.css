@@ -2597,7 +2597,7 @@ h5.pillar-card__head-title {
   text-align: center;
 }
 .methodology-card__content p.methodology-card__desc {
-  margin: 8px 0 0;
+  margin: 8px 0 5px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2608,24 +2608,68 @@ h5.pillar-card__head-title {
   font-size: var(--font-size-body);
   font-weight: var(--fw-regular);
   line-height: 1.5 !important;
-  text-align: justify;
+  text-align: start;
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
-  display: -webkit-box !important;
-  -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 3 !important;
-  line-clamp: 3 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis;
-  max-height: calc(1.5em * 3 + 4px) !important;
 }
 
-.methodology-card__content p.methodology-card__desc--expanded {
+/* Inline "... Read More" in the text flow — must beat card line-clamp rules */
+.rm-flow,
+.methodology-card__content p.methodology-card__desc.rm-flow,
+.pillar-card__description.rm-flow,
+.monthly-champions .champion-info p.champion-info__text.rm-flow,
+.real-healing-review.rm-flow,
+.success-card__review p.rm-flow,
+.program-testimonial-card__quote.rm-flow,
+.leadership__description.rm-flow {
+  width: 100%;
+  min-width: 0;
+  text-align: start !important;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
   display: block !important;
+  -webkit-box-orient: unset !important;
   -webkit-line-clamp: unset !important;
-  overflow: visible !important;
+  line-clamp: unset !important;
   max-height: none !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+}
+
+.rm-flow__text {
+  display: inline;
+}
+
+.rm-flow__btn {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  font-style: normal;
+  line-height: inherit;
+  cursor: pointer;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.rm-flow__btn svg {
+  display: inline;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  vertical-align: -0.12em;
+}
+
+.rm-flow__btn:hover {
+  opacity: 0.85;
 }
 
 .methodology-card__more {
@@ -7471,9 +7515,9 @@ background-image: url("../site/images/birthday-card-bg.png");
 .monthly-champions .champion-info__text--clamped {
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 2 !important;
+  -webkit-line-clamp: 3 !important;
   overflow: hidden !important;
-  max-height: calc(1.45em * 2) !important;
+  max-height: calc(1.45em * 3) !important;
 }
 .birthday-title {
   color: #683f7c;
@@ -7550,24 +7594,32 @@ background-image: url("../site/images/birthday-card-bg.png");
   hyphens: none;
 }
 
+.monthly-champions .champion-info p.champion-info__text.rm-flow {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 .monthly-champions .champion-info p.champion-info__text--clamped {
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
-  -webkit-line-clamp: 2 !important;
-  line-clamp: 2 !important;
+  -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
   overflow: hidden !important;
   text-overflow: ellipsis;
   min-height: 0 !important;
   line-height: 1.45 !important;
-  max-height: calc(1.45em * 2 + 4px) !important;
+  max-height: calc(1.45em * 3 + 4px) !important;
 }
 
 .monthly-champions .champion-info p.champion-info__text:not(.champion-info__text--clamped) {
   display: block !important;
   -webkit-line-clamp: unset !important;
   line-clamp: unset !important;
-  overflow: auto !important;
-  max-height: 11.6em !important;
+  overflow: visible !important;
+  max-height: none !important;
   line-height: 1.45 !important;
 }
 
@@ -10089,16 +10141,16 @@ flex-shrink: 0;
 
 .pillar-card__head-title.is-clamped,
 h5.pillar-card__head-title.is-clamped {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
 }
 
 .pillar-card__head-title.is-expanded,
 h5.pillar-card__head-title.is-expanded {
-  overflow: visible;
-  white-space: normal;
-  text-overflow: unset;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: unset !important;
 }
 
 .about-page .pillar-card__description,
@@ -12734,7 +12786,7 @@ bottom: -18px;
     line-height: 24px;
   }
 .transformation-image {
-    height: 160px;
+    height: 190px;
   }
 .transformation-category-card h4 {
     font-size: 14px;
@@ -16319,6 +16371,7 @@ h5.pillar-card__head-title,
 .real-healing-review,
 .champion-info p,
 .transformation-story-card__body p,
+.program-testimonial-card__quote,
 .program-testimonial-card__quote p,
 .pillar-card__description,
 .pillar-card__description p,
@@ -16337,6 +16390,7 @@ h5.pillar-card__head-title,
 }
 
 /* Text links */
+.rm-flow__btn,
 .methodology-card__more,
 .success-card__more,
 .real-healing-more,
