@@ -124,7 +124,6 @@ export const CONFIG_LEGAL_PUBLISH_SLUGS = {
   "app-dpa": ["app-dpa"],
   "app-terms-of-service": ["app-terms-of-service"],
   "app-privacy-policy": ["app-privacy-policy"],
-  "app-terms-conditions": ["app-terms-conditions"],
   "app-community-guidelines": ["app-community-guidelines"],
   "web-fs-contact": ["contact-us"],
   "web-fs-text": ["footer-text"],

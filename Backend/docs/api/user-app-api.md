@@ -63,7 +63,7 @@ All **Public**. Use `?platform=app` from the APK so Admin Web/App toggles apply 
 | `GET` | `/public/misc/faqs` | `page`, `limit`, **`platform`** |
 | `GET` | `/public/misc/config-dropdowns` | Lists all active dropdowns |
 | `GET` | `/public/misc/config-dropdowns/:slug` | One list by slug |
-| `GET` | `/public/misc/pages/:slug` | Static / legal / about pages. App legal slugs: `app-privacy-policy`, `app-terms-conditions`, `app-community-guidelines`, `app-dpa`, `app-terms-of-service`. Shared / web: `privacy-policy`, `terms-and-conditions`, `community-guideline`. About pillars: `about-us`, `our-vision`, `our-mission`, `our-goal` (pillars may include `icon`). Pass `?platform=app` for app-surface block versions. Compliance is **not** a page — use `GET /public/app-config` fields `compliance_enabled` + `compliance_names`. |
+| `GET` | `/public/misc/pages/:slug` | Static / legal / about pages. App legal slugs: `app-privacy-policy`, `app-terms-of-service`, `app-community-guidelines`, `app-dpa`. Shared / web: `privacy-policy`, `terms-and-conditions`, `community-guideline`. About pillars: `about-us`, `our-vision`, `our-mission`, `our-goal` (pillars may include `icon`). Pass `?platform=app` for app-surface block versions. Compliance is **not** a page — use `GET /public/app-config` fields `compliance_enabled` + `compliance_names`. |
 | `GET` | `/public/misc/client-testimonials` | `page`, `limit`, **`platform`** |
 | `GET` | `/public/misc/program-testimonials` | `page`, `limit` |
 | `GET` | `/public/misc/real-people-testimonials` | `page`, `limit`, **`platform`** |

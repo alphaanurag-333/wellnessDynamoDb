@@ -13,8 +13,6 @@ const SLUG_ALIASES = {
   "dpa": ["app-dpa", "data-processing-agreement"],
   "app-privacy": ["app-privacy-policy"],
   "app-privacy-policy": ["app-privacy"],
-  "app-terms-conditions": ["app-mobile-terms"],
-  "app-mobile-terms": ["app-terms-conditions"],
   "app-terms-of-service": ["app-mobile-tos"],
   "app-mobile-tos": ["app-terms-of-service"],
   "app-community-guidelines": ["app-community-guideline"],

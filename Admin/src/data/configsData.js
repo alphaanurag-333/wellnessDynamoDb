@@ -131,17 +131,6 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
         },
         {
-          id: "app-terms-conditions",
-          name: "Terms & Conditions",
-          note: "Mobile app only · Static Pages",
-          owner: "Admin / Support",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
           id: "app-privacy-policy",
           name: "Privacy Policy",
           note: "Mobile app only · Static Pages",
@@ -829,6 +818,7 @@ export function findConfigItem(configId) {
     [COMMON_LEGAL_PRIVACY_ID]: "web-fs-privacy",
     [COMMON_LEGAL_GUIDELINES_ID]: "web-fs-guidelines",
     "app-tos": "web-fs-tos",
+    "app-terms-conditions": "app-terms-of-service",
   };
   const aliasId = commonToWeb[configId];
   if (aliasId) return findConfigItem(aliasId);

@@ -51639,7 +51639,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-rp .ua-cfg-rp-drop .ua-cfg-tf-drop__img {
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cfg-rp-crop-modal .ua-cfg-pt-upload-modal {

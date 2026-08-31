@@ -1285,7 +1285,6 @@ const PUBLISH_CONFIGS = new Set([
   "app-consultancy-amount",
   "app-dpa",
   "app-terms-of-service",
-  "app-terms-conditions",
   "app-privacy-policy",
   "app-community-guidelines",
   "app-compliance",

@@ -297,22 +297,6 @@ const STATIC_PAGES = [
     `.trim(),
   },
   {
-    title: "Terms & Conditions",
-    slug: "app-terms-conditions",
-    status: "active",
-    content: `
-      <p>These Terms &amp; Conditions govern your use of the ${COMPANY_NAME} mobile app. By creating an account or continuing to use the app, you agree to these terms.</p>
-      <h2>Key points</h2>
-      <ul>
-        <li>You must be at least 18 years old and provide accurate account information.</li>
-        <li>App access is personal and non-transferable; keep your login credentials secure.</li>
-        <li>Program guidance is wellness support and does not replace emergency or specialist medical care.</li>
-        <li>We may update these terms; continued use after updates means you accept the revised terms.</li>
-      </ul>
-      <p>Contact: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
-    `.trim(),
-  },
-  {
     title: "Community Guidelines",
     slug: "app-community-guidelines",
     status: "active",
@@ -430,7 +414,6 @@ async function upsertPage(row) {
     "app-dpa",
     "app-terms-of-service",
     "app-privacy-policy",
-    "app-terms-conditions",
     "app-community-guidelines",
     "app-compliance",
   ]);
