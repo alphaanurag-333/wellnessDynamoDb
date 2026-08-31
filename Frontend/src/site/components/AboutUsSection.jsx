@@ -315,18 +315,22 @@ const AboutUsSection = () => {
   const aboutTitle = aboutHero.title || FALLBACK_DESCRIPTION_TITLE;
   const aboutBody = aboutHero.bodyHtml;
   const aboutRest = aboutHero.rest;
-  const pillars = FALLBACK_PILLARS.map((fallback) => {
-    const page = pillarPages[fallback.slug];
-    if (aboutPagesLoaded && !page) return null;
-    const copy = pillarCopyFromStaticPage(page, fallback);
-    return {
-      ...fallback,
-      title: copy.title || fallback.title,
-      headTitle: copy.headTitle || fallback.headTitle,
-      description: copy.description || fallback.description,
-      html: copy.html || "",
-    };
-  }).filter(Boolean);
+  const pillars = aboutPagesLoaded
+    ? FALLBACK_PILLARS.map((fallback) => {
+      const page = pillarPages[fallback.slug];
+      if (!page) return null;
+      const copy = pillarCopyFromStaticPage(page, fallback);
+      const remoteIcon = String(page.icon || copy.icon || "").trim();
+      return {
+        ...fallback,
+        title: copy.title || fallback.title,
+        headTitle: copy.headTitle || fallback.headTitle,
+        description: copy.description || fallback.description,
+        html: copy.html || "",
+        icon: remoteIcon || fallback.icon,
+      };
+    }).filter(Boolean)
+    : [];
 
   return (
     <section className="about-wellness about-page p-0 pt-3">
@@ -417,7 +421,12 @@ const AboutUsSection = () => {
             {pillars.map((item) => (
               <article className="pillar-card" key={item.slug}>
                 <div className="pillar-card__icon">
-                  <img src={item.icon} alt="" />
+                  <img
+                    src={item.icon}
+                    alt={item.title || ""}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
                 <div className="pillar-card__content">
                   <h3 className="pillar-card__title">{item.title}</h3>

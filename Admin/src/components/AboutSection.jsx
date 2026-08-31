@@ -7,6 +7,7 @@ import {
 } from "../api/legalPageApi.js";
 import { ABOUT_STATIC_PAGES } from "../data/aboutConfigData.js";
 import { RichTextEditor } from "./RichTextEditor.jsx";
+import { useMediaPicker } from "./useMediaPicker.jsx";
 
 function looksLikeHtml(value) {
   return /<[a-z][\s\S]*>/i.test(String(value || ""));
@@ -69,6 +70,7 @@ function parseLoadedSection(page, loaded) {
     return {
       ...emptySection(page),
       live: loaded.status !== "inactive",
+      icon: String(loaded.icon || "").trim(),
     };
   }
   const compiled = compileSectionBody(loaded, page.defaultTitle);
@@ -93,11 +95,13 @@ function parseLoadedSection(page, loaded) {
     defaultTitle: page.defaultTitle,
     defaultHeadline: page.defaultHeadline,
     hasHeadline: page.hasHeadline,
+    hasIcon: Boolean(page.hasIcon),
     fallbackBlocks: page.fallbackBlocks,
     title: title || page.defaultTitle,
     headline,
     live: loaded.status !== "inactive",
     body,
+    icon: String(loaded.icon || "").trim(),
   };
 }
 
@@ -108,6 +112,7 @@ function previewBlocksFromSections(sections) {
     shown: section.live,
     webVersion: 1,
     appVersion: 1,
+    icon: section.icon || "",
     versions: [
       {
         n: 1,
@@ -149,11 +154,13 @@ function emptySection(page) {
     defaultTitle: page.defaultTitle,
     defaultHeadline: page.defaultHeadline,
     hasHeadline: page.hasHeadline,
+    hasIcon: Boolean(page.hasIcon),
     fallbackBlocks: page.fallbackBlocks,
     title: page.defaultTitle,
     headline: page.defaultHeadline || "",
     live: true,
     body: compileSectionBody({ blocks: page.fallbackBlocks, title: page.defaultTitle }, page.defaultTitle),
+    icon: "",
   };
 }
 
@@ -200,6 +207,7 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
       headline: section.headline,
       live: section.live,
       body: section.body,
+      icon: section.icon || "",
     })),
   ), []);
 
@@ -247,6 +255,7 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
           title: section.title,
           status: section.live ? "active" : "inactive",
           blocks: saveBlocks(section),
+          ...(section.hasIcon ? { icon: section.icon || "" } : {}),
         })),
       );
       const next = current.map((section, index) => ({
@@ -277,13 +286,38 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
 
   function applyLocal(section, patch, successMessage) {
     const nextSection = { ...section, ...patch };
-    const next = sections.map((row) => (row.slug === section.slug ? nextSection : row));
+    const next = sectionsRef.current.map((row) => (row.slug === section.slug ? nextSection : row));
     setSections(next);
     syncPreview(next);
     syncLocalDirty(next);
     if (successMessage) onToast(successMessage);
     return true;
   }
+
+  const { openPicker, mediaPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose icon",
+    cropImages: true,
+    cropWidth: 391,
+    cropHeight: 180,
+    sizeHint: "Aspect 391 × 180 · exports at full image quality",
+    onFiles: (_file, slug, assets) => {
+      const url = String(assets?.[0]?.url || assets?.[0]?.file || "").trim();
+      if (!slug || !url) {
+        onToast("Could not attach icon");
+        return;
+      }
+      const section = sectionsRef.current.find((row) => row.slug === slug);
+      if (!section?.hasIcon) return;
+      const nextSection = { ...section, icon: url };
+      const next = sectionsRef.current.map((row) => (row.slug === slug ? nextSection : row));
+      setSections(next);
+      syncPreview(next);
+      syncLocalDirty(next);
+      onToast(`${section.label} icon attached`);
+    },
+    onError: (error) => onToast(error?.message || "Could not attach icon"),
+  });
 
   async function saveEdit(section) {
     const title = draft.title.trim() || section.defaultTitle;
@@ -313,6 +347,10 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
     );
   }
 
+  function clearIcon(section) {
+    applyLocal(section, { icon: "" }, `${section.label} icon removed`);
+  }
+
   const locked = loading;
 
   return (
@@ -322,7 +360,7 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
         subtitle={
           loading
             ? "Loading about sections…"
-            : "Title and description here are the same copy shown on irwellness.in/about-us. Toggle live to show or hide a block."
+            : "Title and description here are the same copy shown on irwellness.in/about-us. Upload icons for Vision, Mission and Goal. Toggle live to show or hide a block."
         }
       />
 
@@ -387,6 +425,45 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
                 </div>
               </div>
               <div className="ua-cfg-about-fields">
+                {section.hasIcon ? (
+                  <div className="ua-cfg-about-field ua-cfg-about-field--icon">
+                    <span>Icon</span>
+                    <div className="ua-cfg-about-icon">
+                      <div className={`ua-cfg-about-icon__thumb${section.icon ? " is-filled" : ""}`}>
+                        {section.icon ? (
+                          <img src={section.icon} alt="" />
+                        ) : (
+                          <span aria-hidden="true">▢</span>
+                        )}
+                      </div>
+                      <div className="ua-cfg-about-icon__meta">
+                        <strong>{section.icon ? "Uploaded" : "Not uploaded"}</strong>
+                        <span>Aspect 391 × 180 · keeps full upload quality</span>
+                      </div>
+                      <div className="ua-cfg-about-icon__actions">
+                        <button
+                          type="button"
+                          className={`ua-cfg-btn ua-cfg-btn--sm${section.icon ? " ua-cfg-btn--ghost" : " ua-cfg-btn--primary"}`}
+                          disabled={locked}
+                          onClick={() => openPicker(section.slug)}
+                        >
+                          {section.icon ? "Replace" : "Upload"}
+                        </button>
+                        {section.icon ? (
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label={`Remove ${section.label} icon`}
+                            disabled={locked}
+                            onClick={() => clearIcon(section)}
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <label className="ua-cfg-about-field">
                   <span>Title</span>
                   {isEditing ? (
@@ -439,6 +516,8 @@ export function AboutSection({ setBlocks, onToast, registerPublishHandler, onLoc
           );
         })}
       </div>
+
+      {mediaPickerModal}
     </div>
   );
 }

@@ -107,6 +107,7 @@ export function mapLegalPage(page = {}, fallbackBlocks = []) {
     slug: page.slug || "",
     title: String(page.title || "").trim(),
     status: page.status || "active",
+    icon: String(page.icon || "").trim(),
     blocks,
   };
 }
@@ -142,14 +143,16 @@ export async function getLegalPage(slug, fallbackBlocks = []) {
   }
 }
 
-export async function saveLegalPage(slug, { title, blocks, status = "active" }) {
+export async function saveLegalPage(slug, { title, blocks, status = "active", icon }) {
   try {
-    const { data } = await api.put(`${pagesBase()}/by-slug/${encodeURIComponent(slug)}`, {
+    const payload = {
       slug,
       title,
       blocks,
       status,
-    });
+    };
+    if (icon !== undefined) payload.icon = icon;
+    const { data } = await api.put(`${pagesBase()}/by-slug/${encodeURIComponent(slug)}`, payload);
     return mapLegalPage(data?.data || {}, blocks);
   } catch (error) {
     normalizeApiError(error);

@@ -189,7 +189,7 @@ export function ImageCropModal({
             </h3>
             <p className="ua-cfg-mv-upload-modal__sub">
               {cropWidth && cropHeight
-                ? `${label} · ${cropWidth}px × ${cropHeight}px`
+                ? `${label} · frame ${cropWidth}×${cropHeight} aspect · full resolution kept`
                 : `${label} · set the crop, ratio and zoom before it is attached`}
             </p>
           </div>

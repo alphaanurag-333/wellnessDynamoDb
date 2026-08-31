@@ -18,6 +18,7 @@ const {
   resolveLegalBlocks,
   slugCandidates,
 } = require("../utils/legalBlocks");
+const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
 
 const TABLE = "StaticPage";
 const STATUS = new Set(["active", "inactive"]);
@@ -35,6 +36,22 @@ function slugify(value) {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+/** Store icon as S3 key when possible; keep empty string to clear. */
+function normalizeIconField(value) {
+  if (value === undefined) return undefined;
+  if (value === null || String(value).trim() === "") return "";
+  const raw = String(value).trim();
+  const key = normalizeStoredMedia(raw);
+  return key || raw;
+}
+
+function resolveIconUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return resolvePublicUrl(raw) || raw;
 }
 
 function withLegacyId(row) {
@@ -80,6 +97,7 @@ function toAdminPagePayload(row, fallbackBlocks) {
     slug: resolved.slug,
     title: resolved.title,
     status: resolved.status,
+    icon: resolveIconUrl(resolved.icon),
     blocks: resolved.blocks,
     createdAt: resolved.createdAt,
     updatedAt: resolved.updatedAt,
@@ -94,6 +112,7 @@ function toPublicPagePayload(row, surface = "web") {
     title: resolved.title,
     slug: resolved.slug,
     content: compiled || String(resolved.content || "").trim(),
+    icon: resolveIconUrl(resolved.icon),
   };
 }
 
@@ -119,7 +138,7 @@ async function getPageById(id) {
   return withLegacyId(Item || null);
 }
 
-async function createPage({ title, content = "", status = "active", slug, blocks }) {
+async function createPage({ title, content = "", status = "active", slug, blocks, icon }) {
   const cleanTitle = String(title || "").trim();
   const now = new Date().toISOString();
   const cleanSlug = slugify(slug || cleanTitle);
@@ -127,6 +146,7 @@ async function createPage({ title, content = "", status = "active", slug, blocks
   const compiled = normalizedBlocks
     ? compileLegalBlocksToHtml(normalizedBlocks)
     : String(content || "").trim();
+  const normalizedIcon = normalizeIconField(icon);
 
   const existing = await getPageBySlug(cleanSlug);
   if (existing) {
@@ -145,6 +165,7 @@ async function createPage({ title, content = "", status = "active", slug, blocks
     updatedAt: now,
   };
   if (normalizedBlocks) item.blocks = normalizedBlocks;
+  if (normalizedIcon !== undefined) item.icon = normalizedIcon;
 
   await docClient.send(new PutCommand({
     TableName: TABLE,
@@ -170,6 +191,10 @@ async function updatePage(id, updates) {
     if (next.content === undefined) {
       next.content = compileLegalBlocksToHtml(next.blocks);
     }
+  }
+
+  if (next.icon !== undefined) {
+    next.icon = normalizeIconField(next.icon);
   }
 
   if (next.slug !== undefined) {
@@ -241,4 +266,5 @@ module.exports = {
   deletePage,
   slugify,
   normalizeStatus,
+  normalizeIconField,
 };

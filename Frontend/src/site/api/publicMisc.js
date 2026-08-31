@@ -342,6 +342,7 @@ export function pillarCopyFromStaticPage(page, fallback = {}) {
       headTitle: fallback.headTitle || "",
       description: fallback.description || "",
       html: fallback.html || "",
+      icon: fallback.icon || "",
     };
   }
 
@@ -350,6 +351,7 @@ export function pillarCopyFromStaticPage(page, fallback = {}) {
   const parts = splitHtmlAroundFirstHeading(html);
   let headTitle = parts.heading || "";
   let bodyHtml = parts.heading ? parts.intro : html;
+  const icon = String(page.icon || "").trim() || fallback.icon || "";
 
   if (headTitle && title && headTitle.toLowerCase() === title.toLowerCase()) {
     headTitle = "";
@@ -360,6 +362,7 @@ export function pillarCopyFromStaticPage(page, fallback = {}) {
     headTitle: headTitle || fallback.headTitle || "",
     html: bodyHtml || fallback.html || "",
     description: stripHtml(bodyHtml) || fallback.description || "",
+    icon,
   };
 }
 

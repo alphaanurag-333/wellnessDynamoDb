@@ -52,16 +52,19 @@ export async function cropImageToFile(imageSrc, { viewportWidth, viewportHeight,
   const sw = clamp(viewportWidth / layout.scale, 1, image.naturalWidth - sx);
   const sh = clamp(viewportHeight / layout.scale, 1, image.naturalHeight - sy);
 
-  let outW;
-  let outH;
-  if (outputWidth && outputHeight) {
-    outW = Math.max(1, Math.round(outputWidth));
-    outH = Math.max(1, Math.round(outputHeight));
-  } else {
-    const maxSide = 1200;
-    const outScale = Math.min(1, maxSide / Math.max(sw, sh));
-    outW = Math.max(1, Math.round(sw * outScale));
-    outH = Math.max(1, Math.round(sh * outScale));
+  // Keep the selected source pixels. Locked outputWidth/Height only define the
+  // crop aspect in the UI — forcing export down to that display size (e.g. 391×180)
+  // softens images on retina and wide cards. Cap only very large uploads.
+  const maxSide = 2400;
+  const outScale = Math.min(1, maxSide / Math.max(sw, sh));
+  let outW = Math.max(1, Math.round(sw * outScale));
+  let outH = Math.max(1, Math.round(sh * outScale));
+
+  // If the crop is smaller than the declared display size, keep source 1:1
+  // (do not upscale — that also looks soft). Aspect already matches the lock.
+  if (outputWidth && outputHeight && outW < outputWidth && outH < outputHeight) {
+    outW = Math.max(1, Math.round(sw));
+    outH = Math.max(1, Math.round(sh));
   }
 
   const canvas = document.createElement("canvas");
@@ -69,19 +72,22 @@ export async function cropImageToFile(imageSrc, { viewportWidth, viewportHeight,
   canvas.height = outH;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not crop image");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(image, sx, sy, sw, sh, 0, 0, outW, outH);
 
-  const outputMime = mimeType === "image/png" ? "image/png" : "image/jpeg";
+  const outputMime = mimeType === "image/png" || mimeType === "image/webp" ? mimeType : "image/jpeg";
   const blob = await new Promise((resolve, reject) => {
     canvas.toBlob(
       (result) => (result ? resolve(result) : reject(new Error("Crop failed"))),
       outputMime,
-      outputMime === "image/jpeg" ? 0.92 : undefined,
+      outputMime === "image/jpeg" ? 0.95 : undefined,
     );
   });
 
   const baseName = String(fileName || "logo").replace(/\.[^.]+$/, "");
-  const ext = outputMime === "image/png" ? "png" : "jpg";
+  const ext =
+    outputMime === "image/png" ? "png" : outputMime === "image/webp" ? "webp" : "jpg";
   return new File([blob], `${baseName}-cropped.${ext}`, {
     type: outputMime,
     lastModified: Date.now(),

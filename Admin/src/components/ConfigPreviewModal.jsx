@@ -2092,6 +2092,11 @@ function LegalBlocksPreview({
         <div className="ua-cfg-lb-preview">
           {shown.map((block) => (
             <div key={block.id}>
+              {block.icon ? (
+                <div className="ua-cfg-about-preview-icon">
+                  <img src={block.icon} alt="" />
+                </div>
+              ) : null}
               {block.id === "intro" ? null : <strong>{block.title}</strong>}
               <LegalPreviewCopy text={liveVersionText(block, surface === "app" ? "app" : "web")} />
             </div>

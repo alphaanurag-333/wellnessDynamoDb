@@ -9844,8 +9844,28 @@ flex-shrink: 0;
 }
 
 .about-page .pillar-card__icon {
-  height: 180px;
+  width: 100%;
+  aspect-ratio: 391 / 180;
+  height: auto;
+  max-height: none;
   margin-bottom: var(--space-4);
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+}
+
+.about-page .pillar-card__icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  image-rendering: auto;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.about-page .pillar-card:hover .pillar-card__icon {
+  transform: none;
 }
 
 .about-page .pillar-card__content {
@@ -10554,10 +10574,10 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
 .pillars__wrapper {
     gap: 20px;
   }
-.pillar-card__icon {
-    /* width: 48px;
-    height: 48px; */
-    margin-bottom: 26px;
+.about-page .pillar-card__icon {
+    aspect-ratio: 391 / 180;
+    height: auto;
+    margin-bottom: 16px;
   }
 .pillar-card__title {
     font-size: var(--font-size-h4);

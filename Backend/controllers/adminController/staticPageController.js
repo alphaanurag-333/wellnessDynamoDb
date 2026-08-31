@@ -10,6 +10,7 @@ const {
   deletePage,
   slugify,
   normalizeStatus,
+  normalizeIconField,
 } = require("../../models/staticPageModel");
 const { normalizeLegalBlocks } = require("../../utils/legalBlocks");
 
@@ -57,15 +58,22 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
   const content = req.body.content !== undefined
     ? String(req.body.content || "").trim()
     : undefined;
+  const icon = req.body.icon !== undefined
+    ? normalizeIconField(req.body.icon)
+    : undefined;
 
-  if (blocks === undefined && content === undefined) {
+  if (blocks === undefined && content === undefined && icon === undefined) {
     throw new AppError("blocks or content is required", 400);
-  }
-  if (blocks && !blocks.length && !content) {
-    throw new AppError("Add at least one section before saving", 400);
   }
 
   const existing = await getPageBySlugWithAliases(slug);
+  if (!existing && blocks === undefined && content === undefined) {
+    throw new AppError("blocks or content is required", 400);
+  }
+  if (blocks && !blocks.length && !content && icon === undefined) {
+    throw new AppError("Add at least one section before saving", 400);
+  }
+
   const nextTitle = title || existing?.title || slug.replace(/-/g, " ");
   if (nextTitle.length < 3) {
     throw new AppError("Title must be at least 3 characters", 400);
@@ -78,6 +86,7 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
         slug,
         status: status || "active",
         ...(blocks !== undefined ? { blocks } : { content: content || "" }),
+        ...(icon !== undefined ? { icon } : {}),
       });
       return res.status(201).json({
         status: true,
@@ -90,6 +99,7 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
     if (status !== undefined) updates.status = status;
     if (blocks !== undefined) updates.blocks = blocks;
     else if (content !== undefined) updates.content = content;
+    if (icon !== undefined) updates.icon = icon;
 
     const row = await updatePage(existing.id, updates);
     return res.status(200).json({
@@ -162,6 +172,10 @@ exports.updatePageController = asyncHandler(async (req, res) => {
 
   if (req.body.blocks !== undefined) {
     updates.blocks = normalizeLegalBlocks(req.body.blocks);
+  }
+
+  if (req.body.icon !== undefined) {
+    updates.icon = normalizeIconField(req.body.icon);
   }
 
   if (Object.keys(updates).length === 0) {

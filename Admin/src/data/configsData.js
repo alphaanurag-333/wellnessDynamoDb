@@ -120,9 +120,9 @@ export const CONFIG_GROUPS = {
       name: "App · Legal",
       items: [
         {
-          id: "app-dpa",
-          name: "Data processing agreement",
-          note: "App legal copy · Static Pages",
+          id: "app-terms-of-service",
+          name: "Terms of Service",
+          note: "Mobile app only · Static Pages",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -131,9 +131,42 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
         },
         {
-          id: "app-terms-of-service",
-          name: "Terms of Service",
+          id: "app-terms-conditions",
+          name: "Terms & Conditions",
           note: "Mobile app only · Static Pages",
+          owner: "Admin / Support",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "app-privacy-policy",
+          name: "Privacy Policy",
+          note: "Mobile app only · Static Pages",
+          owner: "Admin / Support",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "app-community-guidelines",
+          name: "Community Guidelines",
+          note: "Mobile app only · Static Pages",
+          owner: "Admin / Support",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "app-dpa",
+          name: "Data processing agreement",
+          note: "App legal copy · Static Pages",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -322,6 +355,47 @@ export const CONFIG_GROUPS = {
       ],
     },
     {
+      name: "App · Body, Mind & Soul",
+      items: [
+        {
+          id: "common-mental-wellbeing",
+          name: "Mental & Emotional Wellbeing",
+          note: "Private video & audio library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+        {
+          id: "common-wellness-yoga",
+          name: "Yoga",
+          note: "Private yoga library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+        {
+          id: "common-physical-exercise",
+          name: "Physical Exercise",
+          note: "Private exercise library · coaches pick what appears in a client app",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: ["Video", "Upload"],
+          toggleable: false,
+        },
+      ],
+    },
+    {
       name: "App · System",
       items: [
         {
@@ -411,6 +485,44 @@ export const CONFIG_GROUPS = {
           id: "web-fs-contact",
           name: "FS · Contact us",
           note: "Phone, email, support hours",
+          owner: "Admin / Support",
+          app: false,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+      ],
+    },
+    {
+      name: "Web · Legal",
+      items: [
+        {
+          id: "web-fs-tos",
+          name: "Terms & Conditions",
+          note: "Website only · Static Pages",
+          owner: "Admin / Support",
+          app: false,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "web-fs-privacy",
+          name: "Privacy Policy",
+          note: "Website only · Static Pages",
+          owner: "Admin / Support",
+          app: false,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "web-fs-guidelines",
+          name: "Community Guidelines",
+          note: "Website only · Static Pages",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -615,44 +727,6 @@ export const CONFIG_GROUPS = {
       ],
     },
     {
-      name: "Legal",
-      items: [
-        {
-          id: "common-terms-of-service",
-          name: "Terms & Conditions",
-          note: "Shared legal copy for website and app",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "common-privacy-policy",
-          name: "Privacy Policy",
-          note: "Shared legal copy for website and app",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "common-community-guidelines",
-          name: "Community Guidelines",
-          note: "Shared legal copy for website and app",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-      ],
-    },
-    {
       name: "Settings",
       items: [
         {
@@ -665,47 +739,6 @@ export const CONFIG_GROUPS = {
           live: true,
           on: true,
           tags: ["Text"],
-        },
-      ],
-    },
-    {
-      name: "Body, Mind & Soul",
-      items: [
-        {
-          id: "common-mental-wellbeing",
-          name: "Mental & Emotional Wellbeing",
-          note: "Private video & audio library · coaches pick what appears in a client app",
-          owner: "Admin",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Video", "Upload"],
-          toggleable: false,
-        },
-        {
-          id: "common-wellness-yoga",
-          name: "Yoga",
-          note: "Private yoga library · coaches pick what appears in a client app",
-          owner: "Admin",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Video", "Upload"],
-          toggleable: false,
-        },
-        {
-          id: "common-physical-exercise",
-          name: "Physical Exercise",
-          note: "Private exercise library · coaches pick what appears in a client app",
-          owner: "Admin",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Video", "Upload"],
-          toggleable: false,
         },
       ],
     },
@@ -750,40 +783,36 @@ export const CONFIG_GROUPS = {
   ],
 };
 
+/** @deprecated Former Common · Legal IDs — kept for direct URLs only. */
 export const COMMON_LEGAL_TOS_ID = "common-terms-of-service";
 export const COMMON_LEGAL_PRIVACY_ID = "common-privacy-policy";
 export const COMMON_LEGAL_GUIDELINES_ID = "common-community-guidelines";
 
-/** @deprecated Legacy config IDs — kept for direct URLs only. */
+/** @deprecated Legacy / common legal IDs — kept for direct URLs only. */
 export const LEGACY_LEGAL_CONFIG_IDS = new Set([
   "app-tos",
-  "app-privacy-policy",
-  "app-terms-conditions",
-  "app-community-guidelines",
-  "web-fs-privacy",
-  "web-fs-tos",
-  "web-fs-guidelines",
+  COMMON_LEGAL_TOS_ID,
+  COMMON_LEGAL_PRIVACY_ID,
+  COMMON_LEGAL_GUIDELINES_ID,
 ]);
 
 export function isLegalTosConfigId(configId) {
-  return configId === COMMON_LEGAL_TOS_ID
+  return configId === "web-fs-tos"
     || configId === "app-tos"
-    || configId === "web-fs-tos"
-    || configId === "app-terms-conditions";
+    || configId === COMMON_LEGAL_TOS_ID;
 }
 
 export function isLegalPrivacyConfigId(configId) {
-  return configId === COMMON_LEGAL_PRIVACY_ID
-    || configId === "web-fs-privacy"
-    || configId === "app-privacy-policy";
+  return configId === "web-fs-privacy"
+    || configId === COMMON_LEGAL_PRIVACY_ID;
 }
 
 export function isLegalGuidelinesConfigId(configId) {
-  return configId === COMMON_LEGAL_GUIDELINES_ID
-    || configId === "web-fs-guidelines"
-    || configId === "app-community-guidelines";
+  return configId === "web-fs-guidelines"
+    || configId === COMMON_LEGAL_GUIDELINES_ID;
 }
 
+/** Resolve catalog entry, including legacy common/web/app legal aliases. */
 export function findConfigItem(configId) {
   for (const [tab, groups] of Object.entries(CONFIG_GROUPS)) {
     for (const group of groups) {
@@ -793,6 +822,17 @@ export function findConfigItem(configId) {
       }
     }
   }
+
+  // Old Common · Legal URLs → website legal pages
+  const commonToWeb = {
+    [COMMON_LEGAL_TOS_ID]: "web-fs-tos",
+    [COMMON_LEGAL_PRIVACY_ID]: "web-fs-privacy",
+    [COMMON_LEGAL_GUIDELINES_ID]: "web-fs-guidelines",
+    "app-tos": "web-fs-tos",
+  };
+  const aliasId = commonToWeb[configId];
+  if (aliasId) return findConfigItem(aliasId);
+
   return null;
 }
 
