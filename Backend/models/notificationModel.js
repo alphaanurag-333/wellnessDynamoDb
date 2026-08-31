@@ -83,6 +83,9 @@ function isBroadcastNotification(item) {
   return BROADCAST_KINDS.has(kind) && isSupportedAudience(item.audienceType);
 }
 
+/** User inbox (list + unread count) only includes notifications from this window. */
+const USER_INBOX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 function isSentOnOrAfterUserJoined(notification, userCreatedAt) {
   const joinedAt = String(userCreatedAt || "").trim();
   if (!joinedAt) return true;
@@ -91,6 +94,14 @@ function isSentOnOrAfterUserJoined(notification, userCreatedAt) {
   if (!sentAt) return false;
 
   return sentAt >= joinedAt;
+}
+
+function isWithinUserInboxWindow(notification, now = new Date()) {
+  const sentAt = String(notification?.sentAt || notification?.createdAt || "").trim();
+  const sentMs = new Date(sentAt).getTime();
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  if (!Number.isFinite(sentMs) || !Number.isFinite(nowMs)) return false;
+  return nowMs - sentMs <= USER_INBOX_WINDOW_MS;
 }
 
 function isNotificationVisibleToUser(item, userId, userCreatedAt = null) {
@@ -445,7 +456,9 @@ async function listApplicableNotificationsForUser(userId) {
     isSentOnOrAfterUserJoined(item, userCreatedAt)
   );
 
-  const merged = [...applicableBroadcasts, ...targeted];
+  const merged = [...applicableBroadcasts, ...targeted].filter((item) =>
+    isWithinUserInboxWindow(item)
+  );
   merged.sort(sortBySentAtDesc);
   return merged;
 }

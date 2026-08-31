@@ -15,6 +15,7 @@ const { getUserById } = require("../../models/userModel");
 const {
   dispatchMonthlyChampionCommentNotification,
 } = require("../../services/notificationDispatchService");
+const { assertCommentEditable } = require("../../utils/commentEditWindow");
 
 function readPaging(query, defaultLimit = 50) {
   const page = Math.max(1, Number(query.page) || 1);
@@ -109,6 +110,7 @@ exports.updateMonthlyChampionCommentController = asyncHandler(async (req, res) =
   if (row.commenterUserId !== req.user.id) {
     throw new AppError("You can only edit your own comments", 403);
   }
+  assertCommentEditable(row.createdAt);
 
   let updated;
   try {

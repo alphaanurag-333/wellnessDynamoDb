@@ -66,11 +66,19 @@ export const PAYMENT_HISTORY = [
 ];
 
 export function formatRupee(value) {
-  return `Rs. ${Math.round(value).toLocaleString("en-IN")}`;
+  const n = Number(value);
+  const safe = Number.isFinite(n) ? n : 0;
+  const rounded = Math.round((safe + Number.EPSILON) * 10) / 10;
+  const fractionDigits = Number.isInteger(rounded) ? 0 : 1;
+  return `Rs. ${rounded.toLocaleString("en-IN", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: 1,
+  })}`;
 }
 
 export function discountedPrice(listed, discountPct) {
-  return Math.round(listed * (1 - discountPct / 100));
+  const n = Number(listed) * (1 - Number(discountPct) / 100);
+  return Math.round((n + Number.EPSILON) * 10) / 10;
 }
 
 export function programLabel(program) {
