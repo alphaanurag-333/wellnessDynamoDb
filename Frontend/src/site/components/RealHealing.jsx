@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchRealPeopleTestimonials } from "../api/publicMisc.js";
-import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
+import InlineReadMore from "./InlineReadMore.jsx";
 import { SiteLoader } from "./SiteLoader.jsx";
 
 function HealingStars({ rating }) {
@@ -78,9 +77,6 @@ function mapHealingTestimonial(row) {
 }
 
 function RealHealingCard({ item, expanded, onToggle }) {
-  const { ref: reviewRef, overflows } = useClampedOverflow(item.review, expanded);
-  const showToggle = expanded || overflows;
-
   return (
     <article className={`real-healing-card${expanded ? " real-healing-card--expanded" : ""}`}>
       <div className="real-healing-top">
@@ -88,30 +84,13 @@ function RealHealingCard({ item, expanded, onToggle }) {
         <span className="real-healing-tag">{item.category}</span>
       </div>
 
-      <p
-        ref={reviewRef}
-        className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}
-      >
-        &ldquo;{item.review}&rdquo;
-      </p>
-
-      {showToggle ? (
-        <button
-          type="button"
-          className="real-healing-more"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggle(item.id);
-          }}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
-        </button>
-      ) : (
-        <span className="real-healing-more real-healing-more--spacer" aria-hidden />
-      )}
+      <InlineReadMore
+        text={`\u201c${item.review}\u201d`}
+        expanded={expanded}
+        onToggle={() => onToggle(item.id)}
+        lines={2}
+        className="real-healing-review"
+      />
 
       <div className="real-healing-bottom">
         <div className="real-healing-profile">

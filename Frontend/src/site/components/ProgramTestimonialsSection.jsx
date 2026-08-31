@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchProgramTestimonials } from "../api/publicMisc.js";
 import { getProgramTestimonialMeta, programTestimonialTypeMatches } from "../constants/programTestimonials.js";
 import { SiteLoader } from "./SiteLoader.jsx";
+import InlineReadMore from "./InlineReadMore.jsx";
 
 function mapProgramTestimonial(row) {
   if (!row) return null;
@@ -25,9 +25,6 @@ function mapProgramTestimonial(row) {
 }
 
 function ProgramTestimonialCard({ item, expanded, onToggle }) {
-  const { ref: quoteRef, overflows } = useClampedOverflow(item.description, expanded);
-  const showToggle = overflows || expanded;
-
   return (
     <article className={`program-testimonial-card${expanded ? " program-testimonial-card--expanded" : ""}`}>
       <div className="program-testimonial-card__header">
@@ -44,24 +41,14 @@ function ProgramTestimonialCard({ item, expanded, onToggle }) {
         </div>
       </div>
 
-      <blockquote
-        ref={quoteRef}
-        className={`program-testimonial-card__quote${expanded ? " program-testimonial-card__quote--expanded" : ""}`}
-      >
-        <p>&ldquo;{item.description}&rdquo;</p>
-      </blockquote>
-
-      {showToggle ? (
-        <button
-          type="button"
-          className="program-testimonial-card__link"
-          onClick={() => onToggle(item.id)}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Read Less" : "Read More"}
-          {expanded ? <ArrowUpRight size={18} aria-hidden /> : <ArrowRight size={18} aria-hidden />}
-        </button>
-      ) : null}
+      <InlineReadMore
+        as="blockquote"
+        text={`\u201c${item.description}\u201d`}
+        expanded={expanded}
+        onToggle={() => onToggle(item.id)}
+        lines={5}
+        className="program-testimonial-card__quote"
+      />
     </article>
   );
 }

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { FaPlay } from "react-icons/fa";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
 import { SiteLoader } from "./SiteLoader.jsx";
+import InlineReadMore from "./InlineReadMore.jsx";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -120,7 +120,6 @@ function LeadershipNoteCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const { ref: descriptionRef, overflows } = useClampedOverflow(message, expanded);
 
   const paragraphs = messageParagraphs(message);
   const imageSrc = profileImage ? mediaUrl(profileImage) : "";
@@ -175,28 +174,13 @@ function LeadershipNoteCard({
       </div>
 
       <div className="leadership__content">
-        <div
-          ref={descriptionRef}
-          className={`leadership__description${expanded ? " expanded" : ""}`}
-        >
-          {paragraphs.map((paragraph, index) => (
-            <p key={index}>{paragraph}</p>
-          ))}
-        </div>
-
-        <div className="leadership__link-slot">
-          {overflows || expanded ? (
-            <button
-              type="button"
-              className="leadership__link"
-              onClick={toggleExpanded}
-              aria-expanded={expanded}
-            >
-              {expanded ? "Read Less" : "Read More"}
-              {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
-            </button>
-          ) : null}
-        </div>
+        <InlineReadMore
+          text={paragraphs.join(" ")}
+          expanded={expanded}
+          onToggle={toggleExpanded}
+          lines={5}
+          className="leadership__description"
+        />
       </div>
 
       {hasVideo ? (
