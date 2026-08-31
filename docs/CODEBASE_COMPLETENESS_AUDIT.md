@@ -13,7 +13,7 @@
 | Staff auth, roles, teams, referrals | **Mostly live** | Account-based auth + permission catalog |
 | User convert / assign / Heal onboarding APIs | **Live** | Admin UI mostly wired; some profile actions still soft |
 | Dashboard & revenue | **Partial** | Live stats exist; many cards fall back to fake numbers |
-| Client profile sections | **Mixed** | Food/BMS/IP/Health Progress live for UUID users; Gut Reset fully fake |
+| Client profile sections | **Mixed** | Food/BMS/IP/Health Progress live for UUID users; Load Preset fully fake |
 | Configs / Feature flags | **Partial** | Dropdowns live; several toggles only toast; flags UI unreachable |
 | Payments (Backend) | **Partial** | Client verify works; **no Razorpay webhook**; mock path in non-prod |
 | OTP / SMS / WhatsApp / Zoom | **Blocked for prod** | OTP logged only; WA/Zoom mock when credentials missing |
@@ -48,7 +48,7 @@ Details of completed work: [`FUNCTIONALITY_DONE.md`](./FUNCTIONALITY_DONE.md) (n
 | Support “Quick insights” | Always from `SUPPORT_QUICK_INSIGHTS` | Never live |
 | Revenue mock (~₹39.9L) | `revenueAnalytics.js` | Silent fake revenue if API fails |
 | Program progress modal seeds | `programProgressData.js` | Fake names/progress |
-| Gut Reset | `gutResetData.js` + `GutResetSection.jsx` | Entire section local-only |
+| Load Preset | `gutResetData.js` + `GutResetSection.jsx` | Entire section local-only |
 | Food / BMS / IP / Health Progress demos | `*Data.js` + sections when id is numeric | Mock charts/meals/reports |
 | Feature flags list | `featureFlagsData.js` | Local toggles only |
 | Commitment letter seed | `commitmentLettersData.js` + localStorage | Can show Figma/demo letters |
@@ -129,7 +129,7 @@ Details of completed work: [`FUNCTIONALITY_DONE.md`](./FUNCTIONALITY_DONE.md) (n
 ### Sprint A — Stop lying to operators
 1. Banner or hard-fail when dashboard/revenue fall back to mocks (no silent ₹ totals).  
 2. Remove or gate numeric mock user IDs behind `import.meta.env.DEV` only.  
-3. Gut Reset: either hide section or wire real API; remove “Triggered to app” toast-only path.  
+3. Load Preset: either hide section or wire real API; remove “Triggered to app” toast-only path.  
 4. Configs chips / Feature Flags: wire to AppConfig **or** remove from UI.
 
 ### Sprint B — Production plumbing

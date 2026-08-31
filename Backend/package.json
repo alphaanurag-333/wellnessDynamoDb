@@ -57,6 +57,7 @@
     "job:monthly-champions:run": "node --use-system-ca scripts/runMonthlyChampionJob.js",
     "seed:staff-accounts": "node --use-system-ca scripts/seedCleanStaffAccounts.js --confirm",
     "seed:test-users": "node --use-system-ca scripts/seedTestUsers.js --confirm",
+    "seed:wellness-journey-samples": "node --use-system-ca scripts/seedWellnessJourneySamples.js",
     "backfill:staff-referral-codes": "node --use-system-ca scripts/backfillStaffReferralCodes.js",
     "backfill:referral-user-assignments": "node --use-system-ca scripts/backfillReferralUserAssignments.js"
   },

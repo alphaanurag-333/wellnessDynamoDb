@@ -294,11 +294,37 @@ function formatDietaryPreference(value) {
   return titleCaseToken(value);
 }
 
-function formatWellnessJourney(value) {
-  if (Array.isArray(value)) {
-    return value.map((v) => titleCaseToken(v)).filter(Boolean).join(", ");
+function wellnessJourneyLabel(value) {
+  if (value == null) return "";
+  if (typeof value === "object") {
+    const candidate =
+      value.title ??
+      value.name ??
+      value.label ??
+      value.value ??
+      value.id ??
+      value._id;
+    return titleCaseToken(candidate);
   }
   return titleCaseToken(value);
+}
+
+function formatWellnessJourney(value) {
+  if (Array.isArray(value)) {
+    return value.map(wellnessJourneyLabel).filter(Boolean).join(", ");
+  }
+  return wellnessJourneyLabel(value);
+}
+
+function formatOnboardingFieldDisplay(field) {
+  if (!hasOnboardingValue(field.value)) return "";
+  if (typeof field.value === "boolean") return field.value ? "Yes" : "No";
+  if (field.key === "wellnessJourneyFor") return formatWellnessJourney(field.value);
+  if (field.key === "dietaryPreference") return formatDietaryPreference(field.value);
+  if (Array.isArray(field.value)) {
+    return field.value.map((entry) => String(entry ?? "").trim()).filter(Boolean).join(", ");
+  }
+  return String(field.value);
 }
 
 /** Paid-onboarding step keys stored on User.paidOnboardingStepStatus */
@@ -391,13 +417,7 @@ export function buildOnboardingAvailability(userRow) {
     return {
       ...field,
       available,
-      display: available
-        ? typeof field.value === "boolean"
-          ? field.value
-            ? "Yes"
-            : "No"
-          : String(field.value)
-        : "",
+      display: formatOnboardingFieldDisplay(field),
     };
   });
 
@@ -452,7 +472,7 @@ export function mapApiUserToRow(user, index = 0) {
     id,
     n: index + 1,
     name,
-    email: String(user?.email || "").trim(),
+    email: String(user?.email || user?.deletedEmail || "").trim(),
     phone,
     whatsapp: whatsapp || "",
     dob: formatDob(user?.dob),
@@ -517,6 +537,7 @@ export function mapApiUserToRow(user, index = 0) {
     updatedAt,
     lastActiveAt,
     lastReviewedAt,
+    deletedAt: user?.deletedAt || "",
     paidOnboardingCompleted: Boolean(user?.paidOnboardingCompleted),
     paidOnboardingStep: String(user?.paidOnboardingStep || "").trim(),
     paidOnboardingStepStatus,
@@ -526,6 +547,27 @@ export function mapApiUserToRow(user, index = 0) {
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
+  };
+}
+
+export function mapApiArchivedUserToRow(user, index = 0) {
+  const id = resolveUserId(user);
+  const tier = mapApiTierToUi(user?.userTier);
+  const deletedAt = user?.deletedAt || "";
+  const lastActiveAt = user?.lastActiveAt || "";
+  return {
+    id,
+    n: index + 1,
+    name: String(user?.name || "").trim() || "Unnamed",
+    email: String(user?.email || user?.deletedEmail || "").trim(),
+    phone: formatPhoneParts(user?.phoneCountryCode, user?.phone),
+    tier,
+    lastActive: formatLastActive(lastActiveAt),
+    lastActiveAt,
+    deletedAt,
+    deletedLabel: formatLongDate(deletedAt),
+    deletedAgo: formatRelativeDate(deletedAt),
+    joined: formatLongDate(user?.createdAt),
   };
 }
 
@@ -577,6 +619,31 @@ export async function fetchUsers({
     const users = Array.isArray(data.users) ? data.users : [];
     return {
       users: users.map((u, i) => mapApiUserToRow(u, i)),
+      pagination: data.pagination ?? { page, limit, total: users.length, pages: 1 },
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+/** Admin-only: soft-deleted clients with archive timestamps. */
+export async function fetchArchivedUsers({ page = 1, limit = 20, search } = {}) {
+  const q = new URLSearchParams();
+  q.set("page", String(page));
+  q.set("limit", String(limit));
+  if (search && String(search).trim()) q.set("search", String(search).trim());
+
+  try {
+    const { data } = await api.get(`/account/users/archived?${q}`, { headers: authHeader() });
+    if (!Array.isArray(data.users)) {
+      if (data.user) {
+        throw new Error("Archived users API is unavailable. Restart or deploy the latest backend.");
+      }
+      throw new Error("Unexpected archived users response");
+    }
+    const users = data.users;
+    return {
+      users: users.map((u, i) => mapApiArchivedUserToRow(u, i)),
       pagination: data.pagination ?? { page, limit, total: users.length, pages: 1 },
     };
   } catch (error) {

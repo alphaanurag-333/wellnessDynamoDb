@@ -10,6 +10,7 @@ const {
   updateUser,
   deleteUser,
   listUsers,
+  listArchivedUsers,
   listUsersByParentCoachId,
   isPresentablePicsEnabled,
 } = require("../../models/userModel");
@@ -90,6 +91,26 @@ exports.listUsersController = asyncHandler(async (req, res) => {
         subscriptionExpiryUserIds,
       });
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
+  return res.status(200).json({ status: true, users, pagination: data.pagination });
+});
+
+exports.listArchivedUsersController = asyncHandler(async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
+  const { search } = req.query;
+  const data = await listArchivedUsers({ page, limit, search });
+  const users = data.users.map((user) => ({
+    id: user.id,
+    name: user.name || null,
+    email: user.deletedEmail || user.email || null,
+    phoneCountryCode: user.phoneCountryCode || null,
+    phone: user.phone || null,
+    userTier: user.userTier || null,
+    clientCategory: user.clientCategory || null,
+    lastActiveAt: user.lastActiveAt || null,
+    deletedAt: user.deletedAt || null,
+    createdAt: user.createdAt || null,
+  }));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });
 

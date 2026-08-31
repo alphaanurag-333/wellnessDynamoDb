@@ -1,5 +1,5 @@
 /**
- * Migration 56: UserGutReset table for per-client gut reset plans.
+ * Migration 56: UserGutReset table for per-client Load Preset plans.
  */
 const { getTableDefinition } = require("../lib/tableSchemas");
 const { tableExists, createAllTables } = require("../lib/helpers");

@@ -9,6 +9,7 @@ const {
   createUserController,
   updateUserController,
   deleteUserController,
+  listArchivedUsersController,
 } = require("../../controllers/adminController/userController");
 const {
   convertUserToHealController,
@@ -66,6 +67,7 @@ const clientView = authorizeStaff("console.cl.view", {
 });
 
 router.get("/", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), listUsersController);
+router.get("/archived", protectAccount, requireAdmin, listArchivedUsersController);
 router.get("/:id/at-a-glance", protectAccount, clientView, getUserAtAGlanceController);
 router.get(
   "/:id/body-analytics",

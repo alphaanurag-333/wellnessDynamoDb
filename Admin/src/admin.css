@@ -2073,7 +2073,8 @@
 }
 
 .updated-admin .ua-users-toolbar .ua-users-export,
-.updated-admin .ua-users-toolbar .ua-btn-orange {
+.updated-admin .ua-users-toolbar .ua-btn-orange,
+.updated-admin .ua-users-toolbar .ua-users-archive {
   flex: 0 0 auto;
   height: 38px;
 }
@@ -6656,6 +6657,15 @@
   grid-template-columns: var(--ua-users-cols);
 }
 
+.updated-admin .ua-table--users-archived {
+  --ua-users-cols: 36px minmax(200px, 1.7fr) minmax(120px, 0.95fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) minmax(140px, 1fr);
+  grid-template-columns: var(--ua-users-cols);
+}
+
+.updated-admin .ua-table--users-archived.ua-table--users-readonly {
+  --ua-users-cols: 36px minmax(200px, 1.7fr) minmax(120px, 0.95fr) minmax(100px, 0.85fr) minmax(100px, 0.85fr) minmax(140px, 1fr);
+}
+
 .updated-admin .ua-table__row--readonly {
   cursor: default;
 }
@@ -6684,6 +6694,19 @@
 .updated-admin .ua-table--users.ua-table__head .ua-sort-btn {
   justify-content: flex-start;
   max-width: 100%;
+}
+
+.updated-admin .ua-table--users-archived.ua-table__head > :last-child,
+.updated-admin .ua-table--users-archived.ua-table__row > .ua-archived-users__deleted {
+  justify-content: flex-end;
+  justify-self: end;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.updated-admin .ua-table--users-archived.ua-table__head > :last-child .ua-sort-btn {
+  justify-content: flex-end;
+  margin-left: auto;
 }
 
 .updated-admin .ua-table--users > div:has(.ua-user-cell),
@@ -7427,6 +7450,119 @@
   padding: 22px;
   overflow: hidden;
   box-sizing: border-box;
+}
+
+.updated-admin .ua-dialog--wide {
+  max-width: 860px;
+}
+
+.updated-admin .ua-dialog__icon--archive {
+  background: #eef1fb;
+  color: #5e6ad2;
+}
+
+.updated-admin .ua-archived-users__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.updated-admin .ua-archived-users__head .ua-dialog__head {
+  margin-bottom: 0;
+}
+
+.updated-admin .ua-archived-users__close {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border: 1px solid #d5dce8;
+  border-radius: 8px;
+  background: #fff;
+  color: #5a6b85;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.updated-admin .ua-archived-users__intro {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.updated-admin .ua-archived-users__count {
+  font-weight: 650;
+  color: #16233f;
+}
+
+.updated-admin .ua-archived-users__search {
+  margin-bottom: 14px;
+}
+
+.updated-admin .ua-archived-users__table-wrap {
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.updated-admin .ua-archived-users__table-head,
+.updated-admin .ua-archived-users__row {
+  display: grid;
+  grid-template-columns: 42px minmax(120px, 1.1fr) minmax(140px, 1.2fr) minmax(110px, 0.9fr) 110px minmax(130px, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 11px 14px;
+}
+
+.updated-admin .ua-archived-users__table-head {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a97ad;
+  background: #f7f9fc;
+  border-bottom: 1px solid #e6ebf2;
+}
+
+.updated-admin .ua-archived-users__row {
+  font-size: 13px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.updated-admin .ua-archived-users__row:last-child {
+  border-bottom: none;
+}
+
+.updated-admin .ua-archived-users__name {
+  font-weight: 650;
+  color: #16233f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-archived-users__deleted {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  text-align: right;
+}
+
+.updated-admin .ua-archived-users__deleted-ago {
+  font-size: 11px;
+  color: #8a97ad;
+}
+
+.updated-admin .ua-archived-users__empty {
+  padding: 28px 16px;
+}
+
+.updated-admin .ua-archived-users .ua-users-pagination {
+  margin-top: 14px;
 }
 
 .updated-admin .ua-dialog__head {
@@ -33829,7 +33965,7 @@ scrollbar-width: thin;
 
 
 
-/* Gut reset */
+/* Load Preset */
 .updated-admin .ua-cp-gut {
   display: flex;
   flex-direction: column;

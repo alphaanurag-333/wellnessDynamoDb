@@ -31,7 +31,7 @@ function normalizePoints(points) {
     throw err;
   }
   if (points.length > MAX_POINTS) {
-    const err = new Error(`A gut reset plan cannot have more than ${MAX_POINTS} points`);
+    const err = new Error(`A Load Preset plan cannot have more than ${MAX_POINTS} points`);
     err.name = "ValidationError";
     throw err;
   }

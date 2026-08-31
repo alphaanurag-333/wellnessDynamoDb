@@ -14,7 +14,6 @@ export function AdminHeader({
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const isDashboard = pathname === UPDATED_ADMIN_PATHS.dashboard || pathname === "/";
-  const isUsersList = pathname === UPDATED_ADMIN_PATHS.users;
   const isUserDetail = /^\/users\/[^/]+$/.test(pathname);
   const { activeRole, account } = useViewAs();
   const storedProfile = useAppSelector(selectAdminProfile);
@@ -23,13 +22,9 @@ export function AdminHeader({
   const profileImage = profileAccount?.profileImage || null;
 
   function handleBack() {
-    // Client profile ↔ users list used to bounce via history. Use stable parents instead.
+    // Client profile → users list: stable parent avoids history bounce between the two.
     if (isUserDetail) {
       navigate(UPDATED_ADMIN_PATHS.users, { replace: true });
-      return;
-    }
-    if (isUsersList) {
-      navigate(UPDATED_ADMIN_PATHS.dashboard);
       return;
     }
     if (typeof window !== "undefined" && window.history.length > 1) {

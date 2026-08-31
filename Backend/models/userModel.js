@@ -34,6 +34,28 @@ function userMatchesListSearch(user, normalizedSearch) {
   );
 }
 
+function archivedUserMatchesSearch(user, normalizedSearch) {
+  const term = String(normalizedSearch || "").trim().toLowerCase();
+  if (!term) return true;
+  const digitTerm = term.replace(/\D/g, "");
+  const fields = [
+    user?.name,
+    user?.email,
+    user?.deletedEmail,
+    user?.phone,
+    user?.whatsappPhone,
+    user?.deletedPhoneKey,
+  ];
+  if (fields.some((field) => String(field || "").toLowerCase().includes(term))) {
+    return true;
+  }
+  if (digitTerm.length >= 4) {
+    const phoneFields = [user?.phone, user?.whatsappPhone, user?.deletedPhoneKey];
+    return phoneFields.some((field) => String(field || "").replace(/\D/g, "").includes(digitTerm));
+  }
+  return false;
+}
+
 /** GSI partition keys must be omitted when unset — DynamoDB rejects NULL index keys. */
 const SPARSE_GSI_ATTRIBUTES = new Set([
   "parentCoachId",
@@ -127,21 +149,61 @@ function normalizeMealTrackingMode(value, fallback = "macro") {
   return MEAL_TRACKING_MODES.has(next) ? next : fallback;
 }
 
+function extractWellnessJourneyToken(entry) {
+  if (entry == null) return "";
+  if (typeof entry === "string" || typeof entry === "number") {
+    return String(entry).trim();
+  }
+  if (typeof entry === "object") {
+    const candidate =
+      entry.title ??
+      entry.name ??
+      entry.label ??
+      entry.value ??
+      entry.id ??
+      entry._id;
+    return String(candidate ?? "").trim();
+  }
+  return String(entry).trim();
+}
+
 function normalizeWellnessJourneyFor(value) {
   if (value == null) return null;
   let raw = value;
   if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
     try {
-      const parsed = JSON.parse(raw);
-      raw = parsed;
+      raw = JSON.parse(trimmed);
     } catch {
-      raw = raw.split(",");
+      raw = trimmed.split(",").map((part) => part.trim()).filter(Boolean);
+    }
+  } else if (typeof raw === "object" && !Array.isArray(raw)) {
+    const keys = Object.keys(raw);
+    const isArrayLike = keys.length > 0 && keys.every((key) => /^\d+$/.test(key));
+    if (isArrayLike) {
+      raw = keys
+        .sort((a, b) => Number(a) - Number(b))
+        .map((key) => raw[key]);
+    } else {
+      const token = extractWellnessJourneyToken(raw);
+      return token ? [token] : null;
     }
   }
-  if (!Array.isArray(raw)) return null;
+  if (!Array.isArray(raw)) {
+    const token = extractWellnessJourneyToken(raw);
+    return token ? [token] : null;
+  }
+  const seen = new Set();
   const out = raw
-    .map((v) => String(v || "").trim())
-    .filter((v) => v.length > 0);
+    .map(extractWellnessJourneyToken)
+    .filter((token) => {
+      if (!token) return false;
+      const key = token.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   return out.length ? out : null;
 }
 
@@ -1510,6 +1572,36 @@ async function listUsers({
   };
 }
 
+async function listArchivedUsers({ page = 1, limit = 20, search } = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
+  const normalizedSearch = String(search || "").trim().toLowerCase();
+
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "deleted",
+    scanIndexForward: false,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+  });
+
+  let users = items
+    .map(withLegacyId)
+    .sort((a, b) => String(b.deletedAt || "").localeCompare(String(a.deletedAt || "")));
+
+  if (normalizedSearch) {
+    users = users.filter((row) => archivedUserMatchesSearch(row, normalizedSearch));
+  }
+
+  const paged = paginateItems(users, safePage, safeLimit, 200);
+  return {
+    users: paged.items,
+    pagination: paged.pagination,
+  };
+}
+
 module.exports = {
   TABLE,
   USER_ALLOWED_STATUS,
@@ -1563,5 +1655,6 @@ module.exports = {
   listUsersByAssignedCoachId,
   listPendingAssignmentUsers,
   listUsers,
+  listArchivedUsers,
   listUsersWithBirthdayOnDate,
 };

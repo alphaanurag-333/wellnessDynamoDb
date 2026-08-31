@@ -315,7 +315,7 @@ const REAL_PEOPLE = [
     name: "Banita Acharya",
     stars: 5,
     concernNeedles: ["gut"],
-    review: "Bloating after lunch is gone. Gut reset was slow, then sudden — reports cleaner than last year and I stopped fearing rice.",
+    review: "Bloating after lunch is gone. Load Preset was slow, then sudden — reports cleaner than last year and I stopped fearing rice.",
     photo: "doctor-3.png",
     status: "active",
     dataPoints: [
@@ -371,7 +371,7 @@ const VOICE_VIDEOS = [
     status: "active",
   },
   {
-    name: "Banita on the gut reset",
+    name: "Banita on the Load Preset",
     videoId: "O-6f5wQXSu8",
     status: "active",
   },
@@ -428,7 +428,7 @@ const PROGRAM_STORIES = [
   {
     name: "Banita Acharya",
     concernNeedles: ["gut"],
-    description: "Bloating after lunch gone. Gut reset took four months and a coach who did not panic at every flare.",
+    description: "Bloating after lunch gone. Load Preset took four months and a coach who did not panic at every flare.",
     photo: "doctor-3.png",
     status: "active",
   },
