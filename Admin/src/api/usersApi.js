@@ -432,6 +432,25 @@ export function buildOnboardingAvailability(userRow) {
   };
 }
 
+function programTypeAbbrev(programType) {
+  const t = String(programType || "").trim().toLowerCase();
+  if (t === "lifetime") return "LM";
+  if (t === "goal_based") return "GB";
+  if (t === "eagle") return "EAGLE";
+  return "";
+}
+
+function resolveProfileProgramDisplay(user, assignedProgram, tier) {
+  const purchased = Boolean(user?.programPurchased)
+    || String(assignedProgram?.status || "").toLowerCase() === "purchased";
+  const hasProgram = Boolean(assignedProgram) || purchased;
+  const programs = hasProgram ? 1 : 0;
+  const programType = String(assignedProgram?.programType || user?.purchasedProgramType || "").trim();
+  const typeAbbrev = programTypeAbbrev(programType);
+  const programLabel = programs > 0 && typeAbbrev ? typeAbbrev : tierLabel(tier);
+  return { programs, programLabel };
+}
+
 /** Map GET /account/users item → list + profile UI shape. Missing unique fields stay empty. */
 export function mapApiUserToRow(user, index = 0) {
   const id = resolveUserId(user);
@@ -470,6 +489,7 @@ export function mapApiUserToRow(user, index = 0) {
     : null;
   const assignedProgramTitle = String(assignedProgram?.title || "").trim();
   const assignedProgramStatus = String(assignedProgram?.status || "").trim().toLowerCase();
+  const { programs, programLabel } = resolveProfileProgramDisplay(user, assignedProgram, tier);
 
   return {
     id,
@@ -509,8 +529,8 @@ export function mapApiUserToRow(user, index = 0) {
     termsIp: resolveTermsIp(user),
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
-    programs: assignedProgram ? 1 : 0,
-    programLabel: assignedProgramTitle || tierLabel(tier) || "",
+    programs,
+    programLabel,
     assignedProgram,
     assignedProgramId: String(user?.assignedProgramId || assignedProgram?.id || "").trim(),
     assignedProgramTitle,
