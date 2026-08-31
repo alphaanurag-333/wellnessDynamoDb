@@ -1701,18 +1701,36 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
         });
       }
     } else if (roleKey === "support") {
-      // Additive merge for Support: pick up new baseline slugs/nav (e.g. contact-inquiries)
-      // without stripping custom grants already on the role.
+      // Keep Support aligned with the current baseline (additive for new slugs, drop removed defaults).
       const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.support);
-      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
-      const missingPerms = baselinePerms.filter((slug) => !currentPerms.includes(slug));
       const baselineNav = DEFAULT_NAV_SECTIONS.support || [];
+      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
       const currentNav = Array.isArray(role.navSections) ? role.navSections : [];
-      const missingNav = baselineNav.filter((id) => !currentNav.includes(id));
-      if (missingPerms.length || missingNav.length) {
+      const configSlugRe = /^console\.(ct|bn|cf|rp)\./;
+      const nextPerms = [
+        ...new Set([
+          ...currentPerms.filter((slug) => !configSlugRe.test(String(slug))),
+          ...baselinePerms,
+        ]),
+      ];
+      const nextNav = [
+        ...new Set([
+          ...currentNav.filter((id) => id !== "configs"),
+          ...baselineNav,
+        ]),
+      ];
+      const permsChanged =
+        nextPerms.length !== currentPerms.length
+        || nextPerms.some((slug) => !currentPerms.includes(slug))
+        || currentPerms.some((slug) => !nextPerms.includes(slug));
+      const navChanged =
+        nextNav.length !== currentNav.length
+        || nextNav.some((id) => !currentNav.includes(id))
+        || currentNav.some((id) => !nextNav.includes(id));
+      if (permsChanged || navChanged) {
         role = await updateRole(role.id, {
-          permissions: [...currentPerms, ...missingPerms],
-          navSections: [...currentNav, ...missingNav],
+          permissions: nextPerms,
+          navSections: nextNav,
         });
       }
     }

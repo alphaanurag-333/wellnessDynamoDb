@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { PageHeader, PillTabs } from "../components/shared.jsx";
 import { CONFIG_GROUPS, CONFIG_TABS } from "../data/configsData.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin") || document.body;
@@ -72,6 +73,7 @@ function ConfigComingSoonModal({ open, title, copy, onClose }) {
 
 export function ConfigsPage() {
   const navigate = useNavigate();
+  const { navSections } = useViewAs();
   const [comingSoonModal, setComingSoonModal] = useState(null);
   const [tab, setTab] = useState(() => {
     try {
@@ -104,6 +106,10 @@ export function ConfigsPage() {
       return;
     }
     navigate(`${UPDATED_ADMIN_PATHS.configs}/${item.id}`);
+  }
+
+  if (!navSections.has("configs")) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
   }
 
   return (

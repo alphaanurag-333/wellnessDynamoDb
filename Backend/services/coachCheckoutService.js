@@ -889,6 +889,36 @@ async function listCheckoutHistoryForUser(userId, now = Date.now()) {
     .filter(Boolean);
 }
 
+async function getCheckoutInvoiceShare(transactionId) {
+  const { getConsultancyTransactionById } = require("../models/consultancyTransactionModel");
+  const { toPublicTransactionWithInvoice } = require("../utils/consultancyInvoiceResponse");
+
+  const transaction = await getConsultancyTransactionById(transactionId);
+  if (!transaction) throw new AppError("Transaction not found", 404);
+
+  const type = String(transaction.productType || "").toLowerCase();
+  if (!CHECKOUT_HISTORY_TYPES.has(type)) throw new AppError("Invoice not found", 404);
+  if (String(transaction.paymentStatus || "").toLowerCase() !== "paid") {
+    throw new AppError("Invoice is only available for paid transactions", 404);
+  }
+
+  const pub = await toPublicTransactionWithInvoice(transaction);
+  const row = toCheckoutHistoryRow(pub);
+  const clientName = String(
+    pub.userSnapshot?.name || transaction.userSnapshot?.name || "",
+  ).trim();
+
+  return {
+    id: pub.id,
+    referenceNumber: pub.referenceNumber || null,
+    invoiceUrl: pub.invoiceUrl || null,
+    program: row?.program || "Wellness Program",
+    amount: Number(pub.totalAmount) || 0,
+    date: row?.date || formatCheckoutHistoryDate(pub.paidAt || pub.createdAt),
+    clientName: clientName || null,
+  };
+}
+
 module.exports = {
   parseDurationToHours,
   calculateOfferPricing,
@@ -904,6 +934,7 @@ module.exports = {
   toCheckoutHistoryRow,
   checkoutReminderBlockReason,
   listCheckoutHistoryForUser,
+  getCheckoutInvoiceShare,
   lookupClientByReferralCode,
   listCheckoutStaff,
   listRecentPwc,

@@ -40,7 +40,8 @@ function CollapseIcon({ collapsed }) {
 
 function ViewAsRolePicker({ collapsed }) {
   const navigate = useNavigate();
-  const { viewAs, setViewAs, activeRole, availableUiRoles } = useViewAs();
+  const { viewAs, setViewAs, activeRole, availableUiRoles, sessionUi, isSuperAdmin } = useViewAs();
+  const canPreviewRoles = isSuperAdmin || sessionUi === "admin";
   const [open, setOpen] = useState(false);
   const roles = availableUiRoles?.length ? availableUiRoles : VIEW_AS_ROLES;
   const staffTotal = roles.reduce((sum, role) => sum + (Number(role.live) || 0), 0);
@@ -60,7 +61,7 @@ function ViewAsRolePicker({ collapsed }) {
 
   const pickRole = async (role) => {
     setOpen(false);
-    if (!role.switchable) {
+    if (!role.switchable && !canPreviewRoles) {
       navigate(UPDATED_ADMIN_PATHS.access);
       return;
     }
@@ -133,7 +134,7 @@ function ViewAsRolePicker({ collapsed }) {
                     <span className="sidebar__viewas-option-name">{role.name}</span>
                     <span className="sidebar__viewas-option-meta">
                       {role.live} live
-                      {!role.switchable ? " · open in Access Control" : ""}
+                      {!role.switchable && !canPreviewRoles ? " · open in Access Control" : ""}
                     </span>
                   </span>
                   {active ? (
@@ -187,7 +188,10 @@ export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
 
   // A section appears as soon as Access Control grants any permission inside it.
   const visibleNav = useMemo(
-    () => NAV_ITEMS.filter((item) => navSections.has(item.id) || (item.visibleWith && navSections.has(item.visibleWith))),
+    () =>
+      NAV_ITEMS.filter(
+        (item) => navSections.has(item.id) || (item.visibleWith && navSections.has(item.visibleWith)),
+      ),
     [navSections],
   );
 

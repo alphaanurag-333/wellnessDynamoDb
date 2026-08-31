@@ -1320,7 +1320,7 @@ function PreviewActions({ item, onOpen, onPublish, showPreview, canPublish }) {
 export function ConfigDetailPage() {
   const { configId } = useParams();
   const { showToast: onToast } = useOutletContext();
-  const { can } = useViewAs();
+  const { can, navSections } = useViewAs();
   const found = useMemo(() => findConfigItem(configId), [configId]);
 
   const [hindiOn, setHindiOn] = useState(false);
@@ -1625,6 +1625,10 @@ export function ConfigDetailPage() {
     } catch (error) {
       onToast(error.message || "Could not publish coach checkout options");
     }
+  }
+
+  if (!navSections.has("configs")) {
+    return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
   }
 
   if (!found) {

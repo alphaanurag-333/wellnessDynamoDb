@@ -14,6 +14,7 @@ const {
   listCheckoutHistoryForUser,
   checkoutReminderBlockReason,
   triggerCoachCheckout,
+  getCheckoutInvoiceShare,
 } = require("../../services/coachCheckoutService");
 const {
   dispatchProgramCheckoutTriggeredNotification,
@@ -128,6 +129,22 @@ exports.getCoachCheckoutInvoiceController = asyncHandler(async (req, res) => {
   await assertStaffCanAccessUser(req, user);
 
   await sendConsultancyInvoicePdf(res, transaction);
+});
+
+exports.getCoachCheckoutInvoiceShareController = asyncHandler(async (req, res) => {
+  const transaction = await getConsultancyTransactionById(req.params.id);
+  if (!transaction) throw new AppError("Transaction not found", 404);
+
+  const user = await getUserById(transaction.userId);
+  if (!user || user.status === "deleted") throw new AppError("Client not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const share = await getCheckoutInvoiceShare(req.params.id);
+  return res.status(200).json({
+    status: true,
+    message: "Invoice share details fetched",
+    share,
+  });
 });
 
 exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
