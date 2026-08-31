@@ -27476,6 +27476,45 @@ scrollbar-width: thin;
   white-space: pre-wrap;
 }
 
+.updated-admin .ua-tm-profile-panel__code {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.updated-admin .ua-tm-profile-panel__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgb(94, 106, 210);
+  border-radius: 6px;
+  background: #fff;
+  color: rgb(94, 106, 210);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-tm-profile-panel__copy:hover {
+  background: rgb(94, 106, 210);
+  color: #fff;
+}
+
+.updated-admin .ua-tm-profile-panel__copy.is-copied,
+.updated-admin .ua-tm-profile-panel__copy.is-copied:hover {
+  border-color: #2f9e6a;
+  background: #eaf8f1;
+  color: #2f9e6a;
+}
+
 
 
 .updated-admin .ua-tm-section-head {
@@ -61988,6 +62027,10 @@ scrollbar-width: thin;
 
   .updated-admin .ua-tm-profile-panel__rows dd {
     text-align: left;
+  }
+
+  .updated-admin .ua-tm-profile-panel__code {
+    justify-content: flex-start;
   }
 
   .updated-admin .ua-tm-card {

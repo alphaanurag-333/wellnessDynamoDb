@@ -55,6 +55,26 @@ function approvalFromUiStatus(uiStatus) {
   return String(uiStatus || "").trim().toLowerCase() === "pending" ? "pending" : "approved";
 }
 
+async function copyText(value) {
+  const text = String(value || "").trim();
+  if (!text) return false;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function CopyReferralIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
 function TeamMemberPasswordEyeIcon({ off = false }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -593,6 +613,8 @@ export function TeamMemberPage() {
   const [totalSlots, setTotalSlots] = useState(TOTAL_PERM_SLOTS);
   const [contentBusyKey, setContentBusyKey] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [copiedReferral, setCopiedReferral] = useState(false);
+  const copiedReferralTimer = useRef(null);
   const catalogRef = useRef(PERM_CATALOG);
 
   const load = useCallback(async () => {
@@ -626,6 +648,8 @@ export function TeamMemberPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => () => clearTimeout(copiedReferralTimer.current), []);
 
   useEffect(() => {
     if (!member || searchParams.get("focus") !== "permissions") return;
@@ -676,6 +700,20 @@ export function TeamMemberPage() {
   }, [catalogRows]);
 
   const clientCards = useMemo(() => (member ? buildClientCards(member) : []), [member]);
+
+  async function handleCopyReferralCode() {
+    const code = String(member?.referralCode || "").trim();
+    if (!code) return;
+    const ok = await copyText(code);
+    if (!ok) {
+      onToast("Could not copy referral code");
+      return;
+    }
+    setCopiedReferral(true);
+    onToast("Referral code copied");
+    clearTimeout(copiedReferralTimer.current);
+    copiedReferralTimer.current = setTimeout(() => setCopiedReferral(false), 1800);
+  }
 
   async function handleSaveRole() {
     if (!member) return;
@@ -1171,7 +1209,27 @@ export function TeamMemberPage() {
                 <div><dt>Status:</dt><dd>{member.displayStatus || "—"}</dd></div>
                 <div><dt>Detail:</dt><dd>{member.meta || "—"}</dd></div>
                 <div><dt>Joined:</dt><dd>{formatProfileDate(member.joinedAt)}</dd></div>
-                <div><dt>Referral code:</dt><dd>{member.referralCode || "—"}</dd></div>
+                <div>
+                  <dt>Referral code:</dt>
+                  <dd>
+                    {member.referralCode ? (
+                      <span className="ua-tm-profile-panel__code">
+                        <button
+                          type="button"
+                          className={`ua-tm-profile-panel__copy${copiedReferral ? " is-copied" : ""}`}
+                          aria-label="Copy referral code"
+                          onClick={handleCopyReferralCode}
+                        >
+                          <CopyReferralIcon />
+                          {copiedReferral ? "Copied" : "Copy"}
+                        </button>
+                        <span>{member.referralCode}</span>
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
+                </div>
               </dl>
             </div>
           </div>
