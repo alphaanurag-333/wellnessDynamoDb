@@ -23,7 +23,10 @@ function mapApiTierToUi(userTier) {
 }
 
 function mapApiStatusToUi(status) {
-  return String(status || "").toLowerCase() === "active" ? "Active" : "Disabled";
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "deleted") return "Archived";
+  if (normalized === "active") return "Active";
+  return "Disabled";
 }
 
 export function mapUiStatusToApi(statusFilter) {
@@ -568,6 +571,8 @@ export function mapApiArchivedUserToRow(user, index = 0) {
     deletedLabel: formatLongDate(deletedAt),
     deletedAgo: formatRelativeDate(deletedAt),
     joined: formatLongDate(user?.createdAt),
+    rawStatus: "deleted",
+    status: "Archived",
   };
 }
 

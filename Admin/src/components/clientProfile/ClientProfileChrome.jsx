@@ -81,17 +81,20 @@ export function ClientProfileTopbar({
   onSave,
   onRefresh,
   refreshing = false,
+  readOnly = false,
+  backTo,
 }) {
   const navigate = useNavigate();
   const { can } = useViewAs();
-  const canEditPii = can("console.pii.edit");
+  const canEditPii = !readOnly && can("console.pii.edit");
+  const usersPath = backTo || UPDATED_ADMIN_PATHS.users;
 
   return (
     <header className="ua-cp-topbar">
       <button
         type="button"
         className="ua-cp-topbar__btn"
-        onClick={() => navigate(UPDATED_ADMIN_PATHS.users, { replace: true })}
+        onClick={() => navigate(usersPath, { replace: true })}
       >
         ← Users
       </button>
@@ -142,9 +145,10 @@ export function ClientProfileSidebar({
   compact = false,
   onUserUpdated,
   onToast,
+  readOnly = false,
 }) {
   const { can } = useViewAs();
-  const canEditPii = can("console.pii.edit");
+  const canEditPii = !readOnly && can("console.pii.edit");
   const tags = Array.isArray(user?.tags) ? user.tags : [];
   const visibleTags = showAllTags ? tags : tags.slice(0, 2);
   const extraTags = tags.length - 2;

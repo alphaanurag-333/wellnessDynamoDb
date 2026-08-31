@@ -22,14 +22,42 @@ import {
 const BMI_DESC =
   "Body Mass Index (BMI) is a simple index of weight-for-height that is commonly used to classify underweight, overweight, and obesity in adults.";
 
+const GAUGE = { cx: 100, cy: 100, r: 80, needleTipY: 22 };
+const ARC_SWEEP = Math.PI;
+
 const TIERS = [
-  { name: "Underweight", range: "< 18.5", color: "#60A5FA", max: 18.5 },
-  { name: "Normal", range: "18.5 - 22.9", color: "#22C55E", max: 23 },
-  { name: "Overweight", range: "23.0 - 29.9", color: "#FBBF24", max: 30 },
-  { name: "Obese I", range: "30.0 - 34.9", color: "#F97316", max: 35 },
-  { name: "Obese II", range: "35.0 - 39.9", color: "#EF4444", max: 40 },
-  { name: "Obese III", range: "≥ 40.0", color: "#B91C1C", max: Infinity },
+  { name: "Underweight", range: "< 18.5", color: "#60A5FA", min: 10, max: 18.5, weight: 42 },
+  { name: "Normal", range: "18.5 - 24.9", color: "#22C55E", min: 18.5, max: 25, weight: 42 },
+  { name: "Overweight", range: "25 - 29.9", color: "#FBBF24", min: 25, max: 30, weight: 42 },
+  { name: "Obese I", range: "30.0 - 34.9", color: "#F97316", min: 30, max: 35, weight: 28 },
+  { name: "Obese II", range: "35.0 - 39.9", color: "#EF4444", min: 35, max: 40, weight: 28 },
+  { name: "Obese III", range: "≥ 40.0", color: "#B91C1C", min: 40, max: 45, weight: 28 },
 ];
+
+const GAUGE_ARC_SEGMENTS = buildGaugeArcSegments();
+
+function buildGaugeArcSegments() {
+  const totalWeight = TIERS.reduce((sum, tier) => sum + tier.weight, 0);
+  let cursor = Math.PI;
+
+  return TIERS.map((tier) => {
+    const sweep = (tier.weight / totalWeight) * ARC_SWEEP;
+    const start = cursor;
+    const end = cursor + sweep;
+    cursor = end;
+    return { ...tier, d: describeGaugeArc(start, end) };
+  });
+}
+
+function describeGaugeArc(startAngle, endAngle) {
+  const { cx, cy, r } = GAUGE;
+  const x1 = cx + r * Math.cos(startAngle);
+  const y1 = cy + r * Math.sin(startAngle);
+  const x2 = cx + r * Math.cos(endAngle);
+  const y2 = cy + r * Math.sin(endAngle);
+  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+}
 
 function classifyBmi(value) {
   for (const tier of TIERS) {
@@ -38,9 +66,32 @@ function classifyBmi(value) {
   return TIERS[TIERS.length - 1];
 }
 
-function gaugeAngle(bmi) {
-  const clamped = Math.min(Math.max(Number(bmi) || 0, 10), 45);
-  return ((clamped - 10) / 35) * 180 - 90;
+function getGaugeArcAngle(bmi) {
+  const value = Math.min(Math.max(Number(bmi) || 0, TIERS[0].min), TIERS[TIERS.length - 1].max);
+  const totalWeight = TIERS.reduce((sum, tier) => sum + tier.weight, 0);
+  let cursor = Math.PI;
+
+  for (const tier of TIERS) {
+    const sweep = (tier.weight / totalWeight) * ARC_SWEEP;
+    if (value < tier.max) {
+      const ratio = (value - tier.min) / (tier.max - tier.min);
+      return cursor + ratio * sweep;
+    }
+    cursor += sweep;
+  }
+
+  return Math.PI + ARC_SWEEP;
+}
+
+function getNeedleRotation(bmi) {
+  const angle = getGaugeArcAngle(bmi);
+  const { cx, cy, r, needleTipY } = GAUGE;
+  const target = Math.atan2(
+    cy + r * Math.sin(angle) - cy,
+    cx + r * Math.cos(angle) - cx
+  );
+  const needleBase = Math.atan2(needleTipY - cy, 0);
+  return ((target - needleBase) * 180) / Math.PI;
 }
 
 export default function BmiCalculatorModal({ open, onClose }) {
@@ -58,6 +109,10 @@ export default function BmiCalculatorModal({ open, onClose }) {
   const [errors, setErrors] = useState({});
 
   const tier = useMemo(() => (bmi != null ? classifyBmi(bmi) : null), [bmi]);
+  const needleRotation = useMemo(
+    () => (bmi != null ? getNeedleRotation(bmi) : -90),
+    [bmi]
+  );
 
   const changeHeightUnit = (unit) => {
     if (unit === heightUnit) return;
@@ -213,23 +268,28 @@ export default function BmiCalculatorModal({ open, onClose }) {
               <p className="wp-result-label">Analysis Result</p>
               <div className="wp-bmi-gauge">
                 <svg viewBox="0 0 200 120" className="wp-bmi-gauge__svg">
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#60A5FA" strokeWidth="14" strokeDasharray="42 210" />
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#22C55E" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-42" />
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#FBBF24" strokeWidth="14" strokeDasharray="42 210" strokeDashoffset="-84" />
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#F97316" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-126" />
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#EF4444" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-154" />
-                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#B91C1C" strokeWidth="14" strokeDasharray="28 210" strokeDashoffset="-182" />
-                  <line
-                    x1="100"
-                    y1="100"
-                    x2="100"
-                    y2="35"
-                    stroke="#334155"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    transform={`rotate(${gaugeAngle(bmi)} 100 100)`}
-                  />
-                  <circle cx="100" cy="100" r="6" fill="#334155" />
+                  {GAUGE_ARC_SEGMENTS.map((segment) => (
+                    <path
+                      key={segment.name}
+                      d={segment.d}
+                      fill="none"
+                      stroke={segment.color}
+                      strokeWidth="14"
+                      strokeLinecap="butt"
+                    />
+                  ))}
+                  <g transform={`rotate(${needleRotation} ${GAUGE.cx} ${GAUGE.cy})`}>
+                    <line
+                      x1={GAUGE.cx}
+                      y1={GAUGE.cy}
+                      x2={GAUGE.cx}
+                      y2={GAUGE.needleTipY}
+                      stroke="#334155"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+                    <circle cx={GAUGE.cx} cy={GAUGE.cy} r="6" fill="#334155" />
+                  </g>
                 </svg>
                 <p className="wp-bmi-gauge__value" style={{ color: tier?.color }}>
                   BMI = {bmi}

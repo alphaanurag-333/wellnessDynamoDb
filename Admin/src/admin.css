@@ -6670,6 +6670,30 @@
   cursor: default;
 }
 
+.updated-admin .ua-table__row--readonly.ua-table__row--clickable {
+  cursor: pointer;
+}
+
+.updated-admin .ua-table__row--readonly.ua-table__row--clickable:hover {
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cp-archived-banner {
+  flex: 0 0 auto;
+  padding: 10px 22px;
+  background: #fff8ec;
+  border-bottom: 1px solid #f3dfc2;
+  color: #8a5a12;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.updated-admin .ua-cp-drawer--archived .ua-cp-topbar__title::after {
+  content: " · Archived";
+  color: #8a97ac;
+  font-weight: 600;
+}
+
 .updated-admin .ua-table--users.ua-table__head {
   padding: 11px 16px 11px 20px;
   column-gap: 12px;

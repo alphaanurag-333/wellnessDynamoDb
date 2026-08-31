@@ -857,9 +857,13 @@ export function UsersPage() {
     }
   };
 
-  const openUser = (user) => {
+  const openUser = (user, { archived = false } = {}) => {
     const id = userOverrideKey(user);
-    if (id) navigate(UPDATED_ADMIN_PATHS.userDetail(id));
+    if (!id) return;
+    const path = archived
+      ? `${UPDATED_ADMIN_PATHS.userDetail(id)}?archived=1`
+      : UPDATED_ADMIN_PATHS.userDetail(id);
+    navigate(path);
   };
 
   const confirmDelete = async () => {
@@ -1152,7 +1156,17 @@ export function UsersPage() {
               return (
                 <div
                   key={rowKey}
-                  className="ua-table ua-table--users ua-table--users-archived ua-table--users-readonly ua-table__row ua-table__row--readonly"
+                  className="ua-table ua-table--users ua-table--users-archived ua-table--users-readonly ua-table__row ua-table__row--readonly ua-table__row--clickable"
+                  onClick={() => openUser(u, { archived: true })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openUser(u, { archived: true });
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  title="View archived profile (read-only)"
                 >
                   <div className="ua-table__muted ua-users-index">{u.n}</div>
                   <div className="ua-user-cell">

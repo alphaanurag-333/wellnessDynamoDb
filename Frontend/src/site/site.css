@@ -7523,6 +7523,20 @@ background-image: url("../site/images/birthday-card-bg.png");
   display: block;
 }
 
+.champion-avatar__initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+  background: linear-gradient(145deg, #fff8ef 0%, #fdebd2 100%);
+  text-transform: uppercase;
+}
+
 .champion-info,
 .birthday-info {
   flex: 1;
