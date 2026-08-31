@@ -7,6 +7,7 @@ import { FoodSection } from "./FoodSection.jsx";
 import { BmsSection } from "./BmsSection.jsx";
 import { NutritionsSection } from "./NutritionsSection.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientProfileArchived } from "./ClientProfileArchivedContext.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
 import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
 import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
@@ -111,9 +112,10 @@ function DosageBadge({ label, tone }) {
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
   const { can, isAdminView } = useViewAs();
-  const canEditPii = can("console.pii.edit");
+  const archived = useClientProfileArchived();
+  const canEditPii = !archived && can("console.pii.edit");
   // Direct tier conversion is admin-only (matches User Management + API).
-  const canChangeTier = Boolean(isAdminView);
+  const canChangeTier = !archived && Boolean(isAdminView);
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);

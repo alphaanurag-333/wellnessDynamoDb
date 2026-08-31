@@ -9,6 +9,10 @@ import { fetchUser } from "../api/usersApi.js";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { ClientProfileSidebar, ClientProfileTopbar } from "../components/clientProfile/ClientProfileChrome.jsx";
 import { ClientProfileSectionGate } from "../components/clientProfile/ClientProfileSectionGate.jsx";
+import {
+  ClientProfileArchivedContext,
+  isArchivedClientUser,
+} from "../components/clientProfile/ClientProfileArchivedContext.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
   filterClientProfileMenu,
@@ -301,9 +305,12 @@ export function UserDetailPage() {
     sectionHistory.current.length > 0 ||
     section !== profileDefinition.defaultSection;
 
+  const isArchivedProfile = isArchivedClientUser(user);
+
   return (
+    <ClientProfileArchivedContext.Provider value={isArchivedProfile}>
     <div
-      className={`ua-cp-drawer${menuHidden ? " ua-cp-drawer--menu-hidden" : ""}`}
+      className={`ua-cp-drawer${menuHidden ? " ua-cp-drawer--menu-hidden" : ""}${isArchivedProfile ? " ua-cp-drawer--archived" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label="Client profile"
@@ -314,7 +321,14 @@ export function UserDetailPage() {
         onSave={() => onToast("Profile saved")}
         refreshing={refreshing}
         onRefresh={refreshProfile}
+        readOnly={isArchivedProfile}
+        backTo={isArchivedProfile ? `${UPDATED_ADMIN_PATHS.users}?tab=archived` : UPDATED_ADMIN_PATHS.users}
       />
+      {isArchivedProfile ? (
+        <div className="ua-cp-archived-banner" role="status">
+          Archived client — view only. Editing and actions are disabled.
+        </div>
+      ) : null}
       {loadError ? (
         <p className="ua-page-head__sub" style={{ padding: "8px 16px", color: "#b42318" }}>{loadError}</p>
       ) : null}
@@ -332,6 +346,7 @@ export function UserDetailPage() {
             setUser(profileFromListUser(updatedRow, userId));
           }}
           onToast={onToast}
+          readOnly={isArchivedProfile}
         />
         <div className="ua-cp-main" data-drawer-scroll="1">
           <div className="ua-cp-main__inner">
@@ -360,5 +375,6 @@ export function UserDetailPage() {
         </div>
       </div>
     </div>
+    </ClientProfileArchivedContext.Provider>
   );
 }

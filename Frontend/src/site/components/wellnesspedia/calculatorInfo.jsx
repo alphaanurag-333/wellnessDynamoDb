@@ -1,7 +1,7 @@
 export const BMI_INFO_TIERS = [
   { name: "Underweight", range: "< 18.5", color: "#3B82F6", bg: "#DBEAFE" },
-  { name: "Normal", range: "18.5 – 22.9", color: "#16A34A", bg: "#DCFCE7" },
-  { name: "Overweight", range: "23.0 – 29.9", color: "#CA8A04", bg: "#FEF9C3" },
+  { name: "Normal", range: "18.5 – 24.9", color: "#16A34A", bg: "#DCFCE7" },
+  { name: "Overweight", range: "25 – 29.9", color: "#CA8A04", bg: "#FEF9C3" },
   { name: "Obese I", range: "30.0 – 34.9", color: "#EA580C", bg: "#FFEDD5" },
   { name: "Obese II", range: "35.0 – 39.9", color: "#DC2626", bg: "#FED7AA" },
   { name: "Obese III", range: "≥ 40.0", color: "#B91C1C", bg: "#FECACA" },

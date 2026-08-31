@@ -3,7 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import "swiper/css";
-import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
+import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
 
 function useChampionOverflow(text, expanded) {
@@ -63,6 +63,11 @@ function championSubtitle(row) {
   return parts.join(" ") || "Monthly wellness champion";
 }
 
+function championInitial(name) {
+  const trimmed = String(name || "").trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
 function mapChampion(row) {
   if (!row) return null;
 
@@ -77,7 +82,8 @@ function mapChampion(row) {
     name,
     title: "Champion Of The Month",
     subtitle: championSubtitle(row),
-    avatar: profileImage ? mediaUrl(profileImage) : DEFAULT_IMAGE_SRC,
+    avatar: profileImage ? mediaUrl(profileImage) : "",
+    initial: championInitial(name),
     averageScore: row.averageScore,
   };
 }
@@ -85,6 +91,8 @@ function mapChampion(row) {
 function ChampionCard({ item, expanded, onToggle }) {
   const { ref: textRef, overflows } = useChampionOverflow(item.subtitle, expanded);
   const showToggle = overflows || expanded;
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(item.avatar) && !imageFailed;
 
   return (
     <article className={`champion-card${expanded ? " champion-card--expanded" : ""}`}>
@@ -92,12 +100,21 @@ function ChampionCard({ item, expanded, onToggle }) {
 
       <div className="champion-user">
         <div className="champion-avatar">
-          <img
-            src={item.avatar || DEFAULT_IMAGE_SRC}
-            alt={item.name}
-            loading="lazy"
-            onError={handleMediaImageError}
-          />
+          {showImage ? (
+            <img
+              src={item.avatar}
+              alt={item.name}
+              loading="lazy"
+              onError={(event) => {
+                handleMediaImageError(event);
+                setImageFailed(true);
+              }}
+            />
+          ) : (
+            <span className="champion-avatar__initial" aria-hidden="true">
+              {item.initial}
+            </span>
+          )}
         </div>
 
         <div className="champion-info">

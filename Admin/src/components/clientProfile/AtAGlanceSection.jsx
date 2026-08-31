@@ -23,6 +23,7 @@ import {
 } from "../../api/onboardingApi.js";
 import { ClientRemindModal } from "./ClientRemindModal.jsx";
 import { ChampionCelebrationOverlay } from "./ChampionCelebrationOverlay.jsx";
+import { useClientProfileArchived } from "./ClientProfileArchivedContext.jsx";
 import { ReviewHistoryModal } from "./ReviewHistoryModal.jsx";
 import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
@@ -1376,9 +1377,10 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
 
 export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const { can, isAdminView } = useViewAs();
-  const canEditClient = isAdminView || can("console.cl.edit");
-  const canCalEdit = isAdminView || can("console.cal.edit") || can("console.cal.create");
-  const canRemindClient = canEditClient || canCalEdit || can("console.diet.edit");
+  const archived = useClientProfileArchived();
+  const canEditClient = !archived && (isAdminView || can("console.cl.edit"));
+  const canCalEdit = !archived && (isAdminView || can("console.cal.edit") || can("console.cal.create"));
+  const canRemindClient = !archived && (canEditClient || canCalEdit || can("console.diet.edit"));
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);

@@ -1,4 +1,5 @@
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientProfileArchived } from "./ClientProfileArchivedContext.jsx";
 import {
   clientSectionLabel,
   resolveClientSectionPermissions,
@@ -31,5 +32,17 @@ export function ClientProfileSectionGate({ section, label, children }) {
 /** Hook for section-level read/write permission flags inside profile panels. */
 export function useClientSectionPermissions(sectionId) {
   const { can } = useViewAs();
-  return resolveClientSectionPermissions(can, sectionId);
+  const archived = useClientProfileArchived();
+  const perms = resolveClientSectionPermissions(can, sectionId);
+  if (!archived) return perms;
+  return {
+    ...perms,
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+    canUpload: false,
+    canExport: false,
+    canToggle: false,
+    canWrite: false,
+  };
 }
