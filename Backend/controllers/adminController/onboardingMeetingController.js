@@ -175,6 +175,10 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     );
   }
 
+  if (new Date(chosen.startAt).getTime() <= Date.now()) {
+    throw new AppError("Requested time must be in the future", 400);
+  }
+
   const startAt = chosen.startAt;
   const endAt = chosen.endAt;
   const durationMinutes = durationFromRange(startAt, endAt, meeting.durationMinutes);

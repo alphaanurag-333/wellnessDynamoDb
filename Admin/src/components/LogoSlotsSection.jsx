@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { getAppLogos, saveAppLogo } from "../api/logoApi.js";
 import {
+  APK_LOGO_CROP_HEIGHT,
+  APK_LOGO_CROP_WIDTH,
   createDefaultLogoSlots,
   LOGO_MAX_SIZE_MB,
   validateLogoFile,
@@ -8,14 +10,24 @@ import {
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 
+function isApkLogoField(field) {
+  return field === "apk_logo_light" || field === "apk_logo_dark";
+}
+
 function originalAspectCss(slot) {
   if (slot?.field === "favicon") return "1 / 1";
+  if (isApkLogoField(slot?.field)) return `${APK_LOGO_CROP_WIDTH} / ${APK_LOGO_CROP_HEIGHT}`;
   return "240 / 64";
 }
 
 function originalAspectNumber(slot) {
   if (slot?.field === "favicon") return 1;
+  if (isApkLogoField(slot?.field)) return APK_LOGO_CROP_WIDTH / APK_LOGO_CROP_HEIGHT;
   return 240 / 64;
+}
+
+function apkThumbStyle() {
+  return { width: 72, height: Math.round(72 * (APK_LOGO_CROP_HEIGHT / APK_LOGO_CROP_WIDTH)) };
 }
 
 function Panel({ title, subtitle, children }) {
@@ -46,7 +58,12 @@ function LogoSlotCard({ slot, busy, onPick }) {
         {slot.uploaded ? (
           <>
             {slot.url ? (
-              <img className="ua-cfg-lg-slot__thumb-img" src={slot.url} alt={slot.title} />
+              <img
+                className="ua-cfg-lg-slot__thumb-img"
+                src={slot.url}
+                alt={slot.title}
+                style={isApkLogoField(slot.field) ? apkThumbStyle() : undefined}
+              />
             ) : (
               <span className="ua-cfg-lg-slot__thumb" aria-hidden="true">IR</span>
             )}
@@ -127,6 +144,7 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
   const { openPicker, mediaPickerModal } = useMediaPicker({
     accept: "image",
     title: "Choose logo",
+    cropImages: false,
     onFiles: (file, slot) => {
       if (file && slot) pickFile(slot, file);
     },
@@ -160,7 +178,7 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
         subtitle={
           loading
             ? "Loading logos…"
-            : `Website, admin, and favicon logos from App Config. Images only, max ${LOGO_MAX_SIZE_MB} MB.`
+            : `Website, admin, favicon, and APK logos (light & dark) from App Config. Images only, max ${LOGO_MAX_SIZE_MB} MB.`
         }
       >
         {loading ? (
@@ -187,6 +205,8 @@ export function LogoSlotsSection({ slots, setSlots, onToast }) {
         busy={Boolean(busyId)}
         originalAspectCss={originalAspectCss(pending?.slot)}
         originalAspectNumber={originalAspectNumber(pending?.slot)}
+        cropWidth={isApkLogoField(pending?.slot?.field) ? APK_LOGO_CROP_WIDTH : undefined}
+        cropHeight={isApkLogoField(pending?.slot?.field) ? APK_LOGO_CROP_HEIGHT : undefined}
         onClose={closePending}
         onConfirm={confirmUpload}
       />

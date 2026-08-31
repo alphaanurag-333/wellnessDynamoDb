@@ -624,7 +624,7 @@ export function ScheduleMeetingModal({
       setSlotError("Past slots were removed — offer a future time");
       return;
     }
-    const prior = slotsFromMeeting(existingMeeting);
+    const prior = slotsFromMeeting(existingMeeting).filter((s) => new Date(s.startAt).getTime() > now);
     const merged = [...prior];
     for (const slot of futureSlots) {
       if (!merged.some((s) => s.key === slot.key || (s.startAt === slot.startAt && s.endAt === slot.endAt))) {

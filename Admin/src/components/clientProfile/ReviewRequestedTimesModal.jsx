@@ -30,6 +30,11 @@ function weekdayLabel(startIso) {
   return start.toLocaleString("en-GB", { weekday: "short" });
 }
 
+function isPastSlot(startIso) {
+  const start = new Date(startIso);
+  return Number.isNaN(start.getTime()) || start.getTime() <= Date.now();
+}
+
 /**
  * Coach picks one of the client's requested alternate times.
  */
@@ -99,6 +104,7 @@ export function ReviewRequestedTimesModal({
             {slots.map((slot, index) => {
               const label = formatSlotLabel(slot.startAt, slot.endAt) || slot.id;
               const day = weekdayLabel(slot.startAt);
+              const past = isPastSlot(slot.startAt);
               return (
                 <div key={slot.id || index} className="ua-cp-review-times-modal__row">
                   <div className="ua-cp-review-times-modal__copy">
@@ -106,11 +112,14 @@ export function ReviewRequestedTimesModal({
                       <span className="ua-cp-review-times-modal__day">{day}</span>
                     ) : null}
                     <strong>{label}</strong>
+                    {past ? (
+                      <span className="ua-cp-review-times-modal__hint">Past time — cannot accept</span>
+                    ) : null}
                   </div>
                   <button
                     type="button"
                     className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
-                    disabled={busy}
+                    disabled={busy || past}
                     onClick={() => onAccept?.(slot)}
                   >
                     Accept

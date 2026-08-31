@@ -66,6 +66,11 @@ function normalizeSlots(rawSlots) {
       err.name = "ValidationError";
       throw err;
     }
+    if (new Date(startAt).getTime() <= Date.now()) {
+      const err = new Error(`slots[${index}].startAt must be in the future`);
+      err.name = "ValidationError";
+      throw err;
+    }
     return {
       id: String(slot.id || uuidv4()),
       startAt,

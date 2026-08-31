@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import QRCode from "qrcode";
 import { useSelector } from "react-redux";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
-import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
+import { selectApkLogoLightUrl, selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import apkScreenshot from "../images/apk.png";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
@@ -48,7 +48,9 @@ function QrCard({ dataUrl, target, label, hint }) {
 export function AppDownloadModal({ open, onClose }) {
   const { appName, mobileApp } = useSiteConfig();
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
+  const apkLogoUrl = useSelector(selectApkLogoLightUrl);
   const logoSrc = brandLogoUrl || defaultLogo;
+  const apkScreenshotSrc = apkLogoUrl || apkScreenshot;
   const [iosQrDataUrl, setIosQrDataUrl] = useState("");
   const [playQrDataUrl, setPlayQrDataUrl] = useState("");
 
@@ -121,7 +123,7 @@ export function AppDownloadModal({ open, onClose }) {
             <div className="app-dl-modal__phone-frame">
               <img
                 className="app-dl-modal__screenshot"
-                src={apkScreenshot}
+                src={apkScreenshotSrc}
                 alt={`${appName} mobile app preview`}
               />
             </div>

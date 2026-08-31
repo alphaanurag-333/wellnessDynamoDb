@@ -47,7 +47,7 @@ exports.createHealthDisorderController = asyncHandler(async (req, res) => {
   const title = String(req.body.title || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const type = normalizeType(req.body.type || "acute");
+  const type = req.body.type !== undefined ? normalizeType(req.body.type) : "";
   const symptoms = parseSymptomsInput(req.body.symptoms);
 
   if (!title) throw new AppError("title is required", 400);
@@ -55,9 +55,6 @@ exports.createHealthDisorderController = asyncHandler(async (req, res) => {
   if (!symptoms.length) throw new AppError("symptoms is required (non-empty array)", 400);
   if (!["active", "inactive"].includes(status)) {
     throw new AppError("status must be active or inactive", 400);
-  }
-  if (!["acute", "chronic"].includes(type)) {
-    throw new AppError("type must be acute or chronic", 400);
   }
 
   const webVisible =
@@ -104,11 +101,7 @@ exports.updateHealthDisorderController = asyncHandler(async (req, res) => {
     updates.symptoms = symptoms;
   }
   if (req.body.type !== undefined) {
-    const type = normalizeType(req.body.type);
-    if (!["acute", "chronic"].includes(type)) {
-      throw new AppError("type must be acute or chronic", 400);
-    }
-    updates.type = type;
+    updates.type = normalizeType(req.body.type);
   }
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").trim().toLowerCase();

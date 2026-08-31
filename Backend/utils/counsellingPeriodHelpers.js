@@ -108,6 +108,10 @@ function enrichOffer(offer) {
   };
 }
 
+function todayYmdIst() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date());
+}
+
 function normalizePeriodOffers(rawOffers) {
   if (!Array.isArray(rawOffers) || !rawOffers.length) {
     const err = new Error("At least one availability offer is required");
@@ -126,6 +130,12 @@ function normalizePeriodOffers(rawOffers) {
     }
     if (!period) {
       const err = new Error(`offers[${index}].period is invalid`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    const today = todayYmdIst();
+    if (date < today) {
+      const err = new Error(`offers[${index}].date cannot be in the past`);
       err.name = "ValidationError";
       throw err;
     }

@@ -16,16 +16,15 @@ const { normalizeVisibleFlag, visibilityFilterParts } = require("./wellnessCoach
 
 const TABLE = "HealthDisorder";
 const STATUS = new Set(["active", "inactive"]);
-const TYPES = new Set(["acute", "chronic"]);
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
   return STATUS.has(next) ? next : fallback;
 }
 
-function normalizeType(value, fallback = "acute") {
-  const next = String(value || fallback).toLowerCase().trim();
-  return TYPES.has(next) ? next : fallback;
+function normalizeType(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
 }
 
 function normalizeSymptoms(value) {
@@ -61,7 +60,7 @@ async function createHealthDisorder({
   title,
   description,
   symptoms = [],
-  type = "acute",
+  type = "",
   status = "active",
   webVisible = true,
   appVisible = true,
@@ -158,7 +157,7 @@ async function listHealthDisorders({
   const exprNames = { ...searchFilter.exprNames };
   const exprValues = { ...searchFilter.exprValues };
 
-  if (normalizedType && TYPES.has(normalizedType)) {
+  if (normalizedType) {
     exprNames["#type"] = "type";
     exprValues[":type"] = normalizedType;
     filterExpression = appendFilter(filterExpression, "#type = :type");
@@ -174,7 +173,7 @@ async function listHealthDisorders({
     filterExpression = appendFilter(filterExpression, part.expression);
   }
 
-  const hasTypeFilter = Boolean(normalizedType && TYPES.has(normalizedType));
+  const hasTypeFilter = Boolean(normalizedType);
   const hasSearch = Boolean(searchFilter.search);
   const hasVisibilityFilter = wantWebVisible !== undefined || wantAppVisible !== undefined;
 

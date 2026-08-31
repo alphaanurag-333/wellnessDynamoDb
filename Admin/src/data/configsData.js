@@ -505,7 +505,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-logo",
           name: "Logo edit",
-          note: "Website, admin, and favicon from App Config",
+          note: "Website, admin, favicon, and APK logos (light & dark) from App Config",
           owner: "Admin / Support",
           app: false,
           web: true,

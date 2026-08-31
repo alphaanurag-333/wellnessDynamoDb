@@ -22,17 +22,21 @@ function normalizeSymptoms(value) {
   return [];
 }
 
+function normalizeTypeField(value) {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+}
+
 export function mapHealthDisorder(row) {
   if (!row) return null;
   const id = row.id || row._id;
   if (!id) return null;
-  const type = String(row.type || "acute").toLowerCase() === "chronic" ? "chronic" : "acute";
   return {
     id: String(id),
     title: String(row.title || "").trim(),
     description: String(row.description || "").trim(),
     symptoms: normalizeSymptoms(row.symptoms),
-    type,
+    type: normalizeTypeField(row.type),
     order: Number.isFinite(Number(row.order)) ? Number(row.order) : 0,
     status: row.status === "inactive" ? "inactive" : "active",
     webVisible: row.webVisible !== false,
@@ -72,7 +76,7 @@ export async function adminCreateHealthDisorder(token, fields) {
     title: String(fields.title || "").trim(),
     description: String(fields.description || "").trim(),
     symptoms: normalizeSymptoms(fields.symptoms),
-    type: String(fields.type || "acute").toLowerCase() === "chronic" ? "chronic" : "acute",
+    type: normalizeTypeField(fields.type),
     status: fields.status === "inactive" || fields.on === false ? "inactive" : "active",
     webVisible: fields.webVisible !== false,
     appVisible: fields.appVisible !== false,
@@ -93,7 +97,7 @@ export async function adminUpdateHealthDisorder(token, id, fields) {
   if (fields.description !== undefined) payload.description = String(fields.description || "").trim();
   if (fields.symptoms !== undefined) payload.symptoms = normalizeSymptoms(fields.symptoms);
   if (fields.type !== undefined) {
-    payload.type = String(fields.type || "acute").toLowerCase() === "chronic" ? "chronic" : "acute";
+    payload.type = normalizeTypeField(fields.type);
   }
   if (fields.order !== undefined) payload.order = fields.order;
   if (fields.status !== undefined) {

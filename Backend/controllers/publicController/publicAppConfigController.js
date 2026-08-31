@@ -39,6 +39,8 @@ function toPublicClientAppConfig(doc) {
     referral_discount: config.referral_discount ?? "",
     consultancy_amount: config.consultancy_amount ?? "",
     favicon: config.favicon ?? "",
+    apk_logo_light: config.apk_logo_light ?? config.apk_logo ?? "",
+    apk_logo_dark: config.apk_logo_dark ?? "",
     commitment_letter_template: config.commitment_letter_template ?? "",
     commitment_letter_text: config.commitment_letter_text ?? "",
     commitment_letter_version: config.commitment_letter_version ?? 1,

@@ -3,14 +3,17 @@ import defaultLogo from "../../assets/logo/defaultlogo.png";
 import dummyAppImage from "../images/apk.png";
 import {
   selectAppDisplayName,
+  selectApkLogoLightUrl,
   selectLoginBrandLogoUrl,
 } from "../../store/appConfigSelectors.js";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
 
 export default function AppHeroSection() {
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
+  const apkLogoUrl = useSelector(selectApkLogoLightUrl);
   const appName = useSelector(selectAppDisplayName) || "India Redefining Wellness";
   const logoSrc = brandLogoUrl || defaultLogo;
+  const appPreviewSrc = apkLogoUrl || dummyAppImage;
 
   return (
     <section className="app-hero" aria-labelledby="app-hero-title">
@@ -49,7 +52,7 @@ export default function AppHeroSection() {
         <div className="app-hero__visual">
           <img
             className="app-hero__image"
-            src={dummyAppImage}
+            src={appPreviewSrc}
             alt="India Redefining Wellness app preview"
           />
         </div>

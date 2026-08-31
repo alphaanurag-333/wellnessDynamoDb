@@ -6,6 +6,7 @@ import {
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { todayIsoDate } from "../../utils/adminDateLimits.js";
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -112,6 +113,10 @@ export function CounsellingSection({ user, onToast }) {
       onToast?.("Pick a date and at least one period");
       return;
     }
+    if (isPastOfferDate(offerDate)) {
+      onToast?.("Choose today or a future date");
+      return;
+    }
     const next = [...pendingOffers];
     for (const period of offerPeriods) {
       const key = `${offerDate}#${period}`;
@@ -131,6 +136,10 @@ export function CounsellingSection({ user, onToast }) {
         : [];
     if (!offers.length) {
       onToast?.("Add at least one date and period");
+      return;
+    }
+    if (offers.some((row) => isPastOfferDate(row.date))) {
+      onToast?.("Choose today or a future date");
       return;
     }
     setBusy(true);
@@ -159,6 +168,10 @@ export function CounsellingSection({ user, onToast }) {
       return;
     }
     const scheduledAt = `${selectedOffer.date}T${fixedTime}:00+05:30`;
+    if (new Date(scheduledAt).getTime() <= Date.now()) {
+      onToast?.("Choose a start time in the future");
+      return;
+    }
     setBusy(true);
     try {
       const track = await confirmHealConsultancyTime(userId, activeTrack.id, {
@@ -191,6 +204,11 @@ export function CounsellingSection({ user, onToast }) {
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
   const showShareBlock = canManage && (activeTrack?.status === "requested" || activeTrack?.status === "periods_offered");
+  const minOfferDate = todayIsoDate();
+
+  function isPastOfferDate(date) {
+    return Boolean(date) && date < minOfferDate;
+  }
 
   return (
     <div className="ua-cp-section ua-cp-counselling">
@@ -226,7 +244,20 @@ export function CounsellingSection({ user, onToast }) {
               <div className="ua-cp-counselling__row ua-cp-counselling__row--single">
                 <label>
                   <span className="ua-cp-counselling__field-label">Date</span>
-                  <input type="date" data-allow-future="true" value={offerDate} onChange={(e) => setOfferDate(e.target.value)} />
+                  <input
+                    type="date"
+                    data-allow-future="true"
+                    min={minOfferDate}
+                    value={offerDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (isPastOfferDate(next)) {
+                        onToast?.("Choose today or a future date");
+                        return;
+                      }
+                      setOfferDate(next);
+                    }}
+                  />
                 </label>
               </div>
               <p className="ua-cp-counselling__periods-label">Period windows</p>

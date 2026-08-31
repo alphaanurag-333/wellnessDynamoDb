@@ -7,22 +7,17 @@ import {
 } from "../api/healthDisorderApi.js";
 import { moveConfigListItem } from "../utils/configReorder.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
-import { CfgSelect, ListPagination } from "./shared.jsx";
+import { ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import "./healthDisordersConfig.css";
 
 const PAGE_SIZE = 10;
 
-const TYPE_OPTIONS = [
-  { value: "acute", label: "Acute" },
-  { value: "chronic", label: "Chronic" },
-];
-
 const EMPTY_DRAFT = {
   title: "",
   description: "",
   symptoms: [""],
-  type: "acute",
+  type: "",
 };
 
 function Panel({ title, subtitle, actions, children }) {
@@ -46,8 +41,14 @@ function cleanSymptoms(list) {
     .filter(Boolean);
 }
 
-function typeLabel(value) {
-  return TYPE_OPTIONS.find((row) => row.value === value)?.label || "Acute";
+function typeDisplay(value) {
+  return String(value || "").trim();
+}
+
+function typeFlagClass(value) {
+  const key = typeDisplay(value).toLowerCase();
+  if (key === "acute" || key === "chronic") return `ua-cfg-hd-flag--${key}`;
+  return "ua-cfg-hd-flag--custom";
 }
 
 function SymptomsEditor({ value, disabled, onChange }) {
@@ -183,7 +184,7 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
       title: item.title,
       description: item.description,
       symptoms: [...(item.symptoms || [])],
-      type: item.type || "acute",
+      type: item.type || "",
     });
     setEditingId(item.id);
     updateLocalItem(item.id, {
@@ -226,7 +227,7 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
         title,
         description,
         symptoms,
-        type: entry.type || "acute",
+        type: typeDisplay(entry.type),
       });
       setItems((list) => list.map((row) => (row.id === entry.id ? saved : row)));
       setEditingId(null);
@@ -261,7 +262,7 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
         title,
         description,
         symptoms,
-        type: draft.type,
+        type: typeDisplay(draft.type),
         status: "active",
       });
       setDraft(EMPTY_DRAFT);
@@ -415,15 +416,16 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                 />
               </label>
               <label className="ua-cfg-rc-field">
-                <span>Type</span>
-                <CfgSelect
-                  className="ua-cfg-hd-type"
-                  options={TYPE_OPTIONS}
+                <span>Type (optional)</span>
+                <input
+                  className="ua-cfg-vh-input"
+                  placeholder="e.g. Chronic, Acute, Metabolic"
                   value={draft.type}
                   disabled={locked}
-                  onChange={(value) => setDraft((prev) => ({ ...prev, type: value }))}
-                  ariaLabel="Disorder type"
-                  placeholder="Type"
+                  onChange={(event) => setDraft((prev) => ({
+                    ...prev,
+                    type: event.target.value,
+                  }))}
                 />
               </label>
               <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
@@ -498,15 +500,15 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                               />
                             </label>
                             <label className="ua-cfg-rc-field">
-                              <span>Type</span>
-                              <CfgSelect
-                                className="ua-cfg-hd-type"
-                                options={TYPE_OPTIONS}
-                                value={entry.type || "acute"}
+                              <span>Type (optional)</span>
+                              <input
+                                className="ua-cfg-vh-input"
+                                placeholder="e.g. Chronic, Acute, Metabolic"
+                                value={entry.type || ""}
                                 disabled={locked}
-                                onChange={(value) => updateLocalItem(entry.id, { type: value })}
-                                ariaLabel="Disorder type"
-                                placeholder="Type"
+                                onChange={(event) => updateLocalItem(entry.id, {
+                                  type: event.target.value,
+                                })}
                               />
                             </label>
                             <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
@@ -535,9 +537,11 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                           <>
                             <div className="ua-cfg-hd-item__title-row">
                               <strong>{entry.title}</strong>
-                              <span className={`ua-cfg-rc-pill ua-cfg-hd-flag ua-cfg-hd-flag--${entry.type}`}>
-                                {typeLabel(entry.type)}
-                              </span>
+                              {typeDisplay(entry.type) ? (
+                                <span className={`ua-cfg-rc-pill ua-cfg-hd-flag ${typeFlagClass(entry.type)}`}>
+                                  {typeDisplay(entry.type)}
+                                </span>
+                              ) : null}
                             </div>
                             <p>{entry.description || "No description yet."}</p>
                             <div className="ua-cfg-hd-symptoms">

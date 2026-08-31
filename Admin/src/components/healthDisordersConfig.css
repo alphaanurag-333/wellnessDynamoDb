@@ -103,6 +103,11 @@
   flex: 0 0 auto;
 }
 
+.updated-admin .ua-cfg-hd .ua-cfg-hd-flag--custom {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
   grid-column: 1 / -1;
   grid-row: 2;

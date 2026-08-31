@@ -20,7 +20,7 @@ const {
 } = require("../../models/appConfigModel");
 
 const S3_FOLDER = "appconfig";
-const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon"];
+const LOGO_FIELDS = ["admin_logo", "user_logo", "favicon", "apk_logo_light", "apk_logo_dark"];
 const TEMPLATE_FIELDS = ["commitment_letter_template"];
 const BODY_MEASUREMENT_GUIDE_VIDEO_FIELD = "body_measurement_guide_video";
 const BODY_MEASUREMENT_INFO_IMAGE_FIELD_SET = new Set(BODY_MEASUREMENT_INFO_IMAGE_FIELDS);
@@ -539,6 +539,8 @@ exports.createAppConfigController = asyncHandler(async (req, res) => {
     admin_logo: (await s3KeyFromUploadedFile(req, "admin_logo")) ?? "",
     user_logo: (await s3KeyFromUploadedFile(req, "user_logo")) ?? "",
     favicon: (await s3KeyFromUploadedFile(req, "favicon")) ?? "",
+    apk_logo_light: (await s3KeyFromUploadedFile(req, "apk_logo_light")) ?? "",
+    apk_logo_dark: (await s3KeyFromUploadedFile(req, "apk_logo_dark")) ?? "",
     commitment_letter_template:
       (await s3KeyFromUploadedFile(req, "commitment_letter_template")) ?? "",
   };

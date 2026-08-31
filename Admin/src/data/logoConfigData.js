@@ -1,3 +1,7 @@
+export const APK_LOGO_CROP_WIDTH = 324;
+export const APK_LOGO_CROP_HEIGHT = 270;
+export const APK_LOGO_SIZE_LABEL = `${APK_LOGO_CROP_WIDTH} × ${APK_LOGO_CROP_HEIGHT}`;
+
 export const LOGO_APP_CONFIG_FIELDS = [
   {
     id: "user_logo",
@@ -20,6 +24,20 @@ export const LOGO_APP_CONFIG_FIELDS = [
     note: "Browser tab",
     size: "64 × 64",
   },
+  {
+    id: "apk_logo_light",
+    field: "apk_logo_light",
+    title: "APK logo (light)",
+    note: "Phone preview on light backgrounds — hero & download modal",
+    size: APK_LOGO_SIZE_LABEL,
+  },
+  {
+    id: "apk_logo_dark",
+    field: "apk_logo_dark",
+    title: "APK logo (dark)",
+    note: "Phone preview on dark backgrounds",
+    size: APK_LOGO_SIZE_LABEL,
+  },
 ];
 
 export const LOGO_MAX_SIZE_MB = 25;
@@ -35,7 +53,9 @@ export function createDefaultLogoSlots() {
 
 export function mapLogoSlotsFromConfig(config) {
   return LOGO_APP_CONFIG_FIELDS.map((field) => {
-    const url = String(config?.[field.field] || "").trim();
+    const url = field.field === "apk_logo_light"
+      ? String(config?.apk_logo_light || config?.apk_logo || "").trim()
+      : String(config?.[field.field] || "").trim();
     return {
       ...field,
       url,

@@ -210,6 +210,9 @@ exports.confirmCoachHealConsultancyTimeController = asyncHandler(async (req, res
   }
 
   const { scheduledAt, durationMinutes } = parseConfirmTimeBody(req.body || {});
+  if (new Date(scheduledAt).getTime() <= Date.now()) {
+    throw new AppError("scheduledAt must be in the future", 400);
+  }
   if (!isScheduledAtInWindow(scheduledAt, track.selectedDate, track.selectedPeriod, durationMinutes)) {
     throw new AppError("scheduledAt must fall within the selected time period", 400);
   }

@@ -22,6 +22,17 @@ export function selectLoginBrandLogoUrl(state) {
   return mediaUrl(path);
 }
 
+export function selectApkLogoLightUrl(state) {
+  const data = selectAppConfigData(state);
+  const path = data?.apk_logo_light || data?.apk_logo || "";
+  return mediaUrl(path);
+}
+
+export function selectApkLogoDarkUrl(state) {
+  const path = selectAppConfigData(state)?.apk_logo_dark || "";
+  return mediaUrl(path);
+}
+
 export function selectAppFooterText(state) {
   const text = selectAppConfigData(state)?.app_footer_text;
   return typeof text === "string" ? text.trim() : "";
