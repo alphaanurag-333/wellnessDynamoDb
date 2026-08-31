@@ -1,8 +1,8 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
-const { resolvePublicUrl } = require("../utils/s3");
+const { resolvePublicUrl, deleteStoredMedia } = require("../utils/s3");
 const { toNumberOrNull, WEIGHT_KG_MAX } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressWeight";
@@ -69,11 +69,44 @@ function toPublicWeightLog(item) {
   };
 }
 
+async function clearWeightLogPhoto(userId, logId) {
+  const item = await getWeightLogById(logId);
+  if (!item || String(item.userId) !== String(userId)) {
+    const err = new Error("Weight log not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (!item.weightPicKey) {
+    const err = new Error("This weight entry has no photo");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const picKey = item.weightPicKey;
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: logId },
+      UpdateExpression: "SET weightPicKey = :nullVal, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":nullVal": null,
+        ":updatedAt": now,
+      },
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  await deleteStoredMedia(picKey);
+  return Attributes;
+}
+
 module.exports = {
   TABLE,
   buildWeightItem,
   createWeightLog,
   getWeightLogById,
   listWeightLogsByUser,
+  clearWeightLogPhoto,
   toPublicWeightLog,
 };

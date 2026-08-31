@@ -3,6 +3,7 @@ import {
   APP_COMMUNITY_GUIDELINES_BLOCKS,
   APP_PRIVACY_POLICY_BLOCKS,
   APP_TERMS_CONDITIONS_BLOCKS,
+  APP_TERMS_OF_SERVICE_BLOCKS,
 } from "../data/configDetailData.js";
 
 function AppLegalPageSection({
@@ -39,6 +40,18 @@ export function AppPrivacyPolicySection(props) {
       defaultTitle="Privacy Policy"
       noun="privacy section"
       fallbackBlocks={APP_PRIVACY_POLICY_BLOCKS}
+      {...props}
+    />
+  );
+}
+
+export function AppTermsOfServiceSection(props) {
+  return (
+    <AppLegalPageSection
+      slug="app-terms-of-service"
+      defaultTitle="Terms of Service"
+      noun="terms of service section"
+      fallbackBlocks={APP_TERMS_OF_SERVICE_BLOCKS}
       {...props}
     />
   );

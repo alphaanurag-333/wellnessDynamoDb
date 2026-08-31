@@ -105,6 +105,17 @@ export async function createCoachWeightLog(userId, payload = {}) {
   }
 }
 
+export async function deleteCoachWeightPhoto(userId, logId) {
+  try {
+    const { data } = await api.delete(
+      `${healUserPath(userId, "/health-progress/weight")}/${encodeURIComponent(logId)}/photo`,
+    );
+    return data?.log || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchGlucoseLogs(userId) {
   return fetchLogs(userId, "/health-progress/glucose");
 }

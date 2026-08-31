@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createCoachWeightLog,
+  deleteCoachWeightPhoto,
   fetchBloodPressureLogs,
   fetchConditionLogs,
   fetchGlucoseLogs,
@@ -381,14 +382,62 @@ function TrackerSectionHeader({ tracker }) {
   );
 }
 
-function WeightPhotoCard({ photo }) {
+function ConfirmModal({ open, title, body, confirmLabel, busy, onClose, onConfirm }) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape" && !busy) onClose();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [busy, open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={busy ? undefined : onClose} role="presentation">
+      <div className="ua-cp-modal ua-cp-reflect-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="hp-photo-delete-title">
+        <p className="ua-cp-reflect-modal__eyebrow ua-cp-reflect-modal__eyebrow--danger">Permanent</p>
+        <h3 id="hp-photo-delete-title" className="ua-cp-reflect-modal__title">{title}</h3>
+        {body ? <p className="ua-cp-reflect-modal__body">{body}</p> : null}
+        <div className="ua-cp-reflect-modal__foot">
+          <button type="button" className="ua-cp-btn ua-cp-btn--outline" disabled={busy} onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-reflect-modal__confirm--danger"
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeightPhotoCard({ photo, canDelete, deleting, onDelete }) {
   const openPhoto = () => {
     if (photo.url && photo.url !== "mock") window.open(photo.url, "_blank", "noopener,noreferrer");
   };
 
   return (
     <div className="ua-cp-hptrack-weight-photo-card">
-      <div className="ua-cp-hptrack-weight-photo-card__media">
+      {canDelete && photo.url && photo.url !== "mock" ? (
+        <button
+          type="button"
+          className="ua-cp-hptrack-weight-photo-card__remove"
+          disabled={deleting}
+          aria-label={`Delete photo from ${photo.date}`}
+          onClick={() => onDelete?.(photo)}
+        >
+          ×
+        </button>
+      ) : null}
+      <div
+        className={`ua-cp-hptrack-weight-photo-card__media${
+          photo.url && photo.url !== "mock" ? " ua-cp-hptrack-weight-photo-card__media--photo" : ""
+        }`}
+      >
         {photo.url && photo.url !== "mock" ? (
           <img className="ua-cp-hptrack-weight-photo-card__img" src={photo.url} alt={`${photo.weight} kg`} />
         ) : (
@@ -413,7 +462,7 @@ function WeightPhotoCard({ photo }) {
   );
 }
 
-function WeightPhotoHistoryModal({ open, photos, onClose }) {
+function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, onDelete, onClose }) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -436,7 +485,13 @@ function WeightPhotoHistoryModal({ open, photos, onClose }) {
         </div>
         <div className="ua-cp-hptrack-weight-history-modal__grid">
           {photos.length ? photos.map((photo) => (
-            <WeightPhotoCard key={photo.id} photo={photo} />
+            <WeightPhotoCard
+              key={photo.id}
+              photo={photo}
+              canDelete={canDelete}
+              deleting={deletingId === photo.id}
+              onDelete={onDelete}
+            />
           )) : <EmptyLogs label="weight photos" />}
         </div>
       </div>
@@ -536,6 +591,8 @@ function ConditionHistoryModal({ open, condition, photos, onClose }) {
 function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
   const [range, setRange] = useState("all");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [pendingPhotoDelete, setPendingPhotoDelete] = useState(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState("");
   const [recordedDate, setRecordedDate] = useState(todayIsoDate);
   const [weightValue, setWeightValue] = useState("");
   const [weightUnit, setWeightUnit] = useState("lbs");
@@ -636,6 +693,22 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
       const next = sanitizeWeightInput(prev, nextUnit);
       return next.endsWith(".") ? next.slice(0, -1) : next;
     });
+  }
+
+  async function confirmDeletePhoto() {
+    const photo = pendingPhotoDelete;
+    if (!photo?.id || isMock) return;
+    setDeletingPhotoId(photo.id);
+    try {
+      await deleteCoachWeightPhoto(userId, photo.id);
+      onToast?.("Weight photo deleted");
+      setPendingPhotoDelete(null);
+      await onWeightAdded?.();
+    } catch (err) {
+      onToast?.(err.message || "Could not delete weight photo");
+    } finally {
+      setDeletingPhotoId("");
+    }
   }
 
   async function submitWeight(event) {
@@ -824,7 +897,23 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
       <WeightPhotoHistoryModal
         open={historyOpen}
         photos={photos}
-        onClose={() => setHistoryOpen(false)}
+        canDelete={!isMock}
+        deletingId={deletingPhotoId}
+        onDelete={setPendingPhotoDelete}
+        onClose={() => {
+          if (deletingPhotoId) return;
+          setHistoryOpen(false);
+        }}
+      />
+
+      <ConfirmModal
+        open={Boolean(pendingPhotoDelete)}
+        title={pendingPhotoDelete ? `Delete photo from ${pendingPhotoDelete.date}?` : "Delete photo?"}
+        body="The photo will be removed from this weight entry. The weight reading itself stays in the history."
+        confirmLabel={deletingPhotoId ? "Deleting…" : "Yes, delete it"}
+        busy={Boolean(deletingPhotoId)}
+        onClose={() => !deletingPhotoId && setPendingPhotoDelete(null)}
+        onConfirm={confirmDeletePhoto}
       />
 
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--orange">

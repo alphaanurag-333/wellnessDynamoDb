@@ -1,5 +1,10 @@
 import api, { normalizeApiError } from "../api.js";
 import { liveVersionText } from "../data/privacyConfigData.js";
+import {
+  COMMON_LEGAL_GUIDELINES_ID,
+  COMMON_LEGAL_PRIVACY_ID,
+  COMMON_LEGAL_TOS_ID,
+} from "../data/configsData.js";
 
 function pagesBase() {
   return "/admin/misc/pages";
@@ -108,11 +113,15 @@ export function mapLegalPage(page = {}, fallbackBlocks = []) {
 
 /** Config detail IDs → static page slug(s) published together. */
 export const CONFIG_LEGAL_PUBLISH_SLUGS = {
+  [COMMON_LEGAL_TOS_ID]: ["terms-and-conditions"],
+  [COMMON_LEGAL_PRIVACY_ID]: ["privacy-policy"],
+  [COMMON_LEGAL_GUIDELINES_ID]: ["community-guideline"],
   "app-tos": ["terms-and-conditions"],
   "web-fs-tos": ["terms-and-conditions"],
   "web-fs-privacy": ["privacy-policy"],
   "web-fs-guidelines": ["community-guideline"],
   "app-dpa": ["app-dpa"],
+  "app-terms-of-service": ["app-terms-of-service"],
   "app-privacy-policy": ["app-privacy-policy"],
   "app-terms-conditions": ["app-terms-conditions"],
   "app-community-guidelines": ["app-community-guidelines"],

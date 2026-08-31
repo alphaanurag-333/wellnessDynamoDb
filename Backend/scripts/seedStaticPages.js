@@ -281,6 +281,22 @@ const STATIC_PAGES = [
     `.trim(),
   },
   {
+    title: "Terms of Service",
+    slug: "app-terms-of-service",
+    status: "active",
+    content: `
+      <p>These Terms of Service describe how you may access and use the ${COMPANY_NAME} mobile application and the coaching services made available through it. By creating an account or continuing to use the app, you agree to these terms.</p>
+      <h2>Key points</h2>
+      <ul>
+        <li>You receive a personal, non-transferable licence to use the app for your wellness program.</li>
+        <li>Coaching, content, and tracking tools support general wellness and do not replace emergency or specialist medical care.</li>
+        <li>Fees, renewals, and cancellations follow the plan shown at purchase and any in-app billing notices.</li>
+        <li>We may update features or these terms; continued use after notice means you accept the revised terms.</li>
+      </ul>
+      <p>Contact: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
+    `.trim(),
+  },
+  {
     title: "Terms & Conditions",
     slug: "app-terms-conditions",
     status: "active",
@@ -412,6 +428,7 @@ async function upsertPage(row) {
     "privacy-policy",
     "community-guideline",
     "app-dpa",
+    "app-terms-of-service",
     "app-privacy-policy",
     "app-terms-conditions",
     "app-community-guidelines",

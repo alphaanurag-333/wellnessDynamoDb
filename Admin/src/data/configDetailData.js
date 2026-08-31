@@ -269,6 +269,17 @@ export const APP_PRIVACY_POLICY_CONTENT = {
   ],
 };
 
+export const APP_TERMS_OF_SERVICE_CONTENT = {
+  intro:
+    "These Terms of Service describe how you may access and use the IR Wellness mobile application and the coaching services made available through it.",
+  bullets: [
+    "You receive a personal, non-transferable licence to use the app for your wellness program.",
+    "Coaching, content, and tracking tools support general wellness and do not replace emergency or specialist medical care.",
+    "Fees, renewals, and cancellations follow the plan shown at purchase and any in-app billing notices.",
+    "We may update features or these terms; continued use after notice means you accept the revised terms.",
+  ],
+};
+
 export const APP_TERMS_CONDITIONS_CONTENT = {
   intro:
     "These Terms & Conditions govern your use of the IR Wellness mobile app. By creating an account or continuing to use the app, you agree to these terms.",
@@ -335,6 +346,14 @@ export const APP_PRIVACY_POLICY_BLOCKS = legalCopyToBlocks(
   APP_PRIVACY_POLICY_CONTENT.intro,
   "Key points",
   APP_PRIVACY_POLICY_CONTENT.bullets
+);
+
+export const APP_TERMS_OF_SERVICE_BLOCKS = legalCopyToBlocks(
+  "intro",
+  "Overview",
+  APP_TERMS_OF_SERVICE_CONTENT.intro,
+  "Key points",
+  APP_TERMS_OF_SERVICE_CONTENT.bullets
 );
 
 export const APP_TERMS_CONDITIONS_BLOCKS = legalCopyToBlocks(

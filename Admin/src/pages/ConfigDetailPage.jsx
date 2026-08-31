@@ -8,11 +8,12 @@ import {
   AboutSection,
   AiEnableSection,
   AppContentSection,
-  AppCommunityGuidelinesMobileSection,
   AppComplianceSection,
+  AppCommunityGuidelinesMobileSection,
   AppPrivacyPolicySection,
   AppSubscriptionFySection,
   AppTermsConditionsSection,
+  AppTermsOfServiceSection,
   BannerSection,
   ChallengesSection,
   CommitmentLetterSection,
@@ -103,9 +104,10 @@ import {
   APP_DPA_BLOCKS,
   APP_PRIVACY_POLICY_BLOCKS,
   APP_TERMS_CONDITIONS_BLOCKS,
+  APP_TERMS_OF_SERVICE_BLOCKS,
   APP_COMMUNITY_GUIDELINES_BLOCKS,
 } from "../data/configDetailData.js";
-import { configPermissionPrefix, findConfigItem, getConfigStateLabel } from "../data/configsData.js";
+import { configPermissionPrefix, findConfigItem, getConfigStateLabel, isLegalGuidelinesConfigId, isLegalPrivacyConfigId, isLegalTosConfigId } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
 import {
   getCoachCheckoutOptions,
@@ -1281,16 +1283,13 @@ const PUBLISH_CONFIGS = new Set([
   "app-program",
   "app-subscriptions",
   "app-consultancy-amount",
-  "app-tos",
+  "common-terms-of-service",
+  "common-privacy-policy",
+  "common-community-guidelines",
   "app-dpa",
-  "app-privacy-policy",
-  "app-terms-conditions",
-  "app-community-guidelines",
+  "app-terms-of-service",
   "app-compliance",
   "web-fs-social",
-  "web-fs-privacy",
-  "web-fs-tos",
-  "web-fs-guidelines",
   "web-fs-contact",
   "web-fs-text",
   "common-about",
@@ -1330,7 +1329,7 @@ export function ConfigDetailPage() {
     message: "Hi, I need help with the IR Wellness app.",
   });
   const [faqItems, setFaqItems] = useState([]);
-  const [faqEditor, setFaqEditor] = useState({ appOn: true, webOn: true });
+  const [faqEditor, setFaqEditor] = useState({ appOn: true, webOn: false });
   const [hdItems, setHdItems] = useState([]);
   const [hdEditor, setHdEditor] = useState({ appOn: true, webOn: true });
   const [programRows, setProgramRows] = useState([]);
@@ -1357,6 +1356,7 @@ export function ConfigDetailPage() {
   });
   const [gateways, setGateways] = useState(createDefaultGateways);
   const [dpaBlocks, setDpaBlocks] = useState(APP_DPA_BLOCKS);
+  const [appTermsOfServiceBlocks, setAppTermsOfServiceBlocks] = useState(APP_TERMS_OF_SERVICE_BLOCKS);
   const [appPrivacyBlocks, setAppPrivacyBlocks] = useState(APP_PRIVACY_POLICY_BLOCKS);
   const [appTermsBlocks, setAppTermsBlocks] = useState(APP_TERMS_CONDITIONS_BLOCKS);
   const [appGuidelinesBlocks, setAppGuidelinesBlocks] = useState(APP_COMMUNITY_GUIDELINES_BLOCKS);
@@ -1552,17 +1552,19 @@ export function ConfigDetailPage() {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
           setConsultancySettings(saved);
-        } else if (current.id === "app-tos" || current.id === "web-fs-tos") {
+        } else if (isLegalTosConfigId(current.id)) {
           const page = Array.isArray(saved)
             ? saved.find((row) => row.slug === "terms-and-conditions")
             : saved;
           if (page?.blocks?.length) setTosBlocks(page.blocks);
-        } else if (current.id === "web-fs-privacy" && saved?.blocks?.length) {
+        } else if (isLegalPrivacyConfigId(current.id) && saved?.blocks?.length) {
           setPrivacyBlocks(saved.blocks);
-        } else if (current.id === "web-fs-guidelines" && saved?.blocks?.length) {
+        } else if (isLegalGuidelinesConfigId(current.id) && saved?.blocks?.length) {
           setGuidelineBlocks(saved.blocks);
         } else if (current.id === "app-dpa" && saved?.blocks?.length) {
           setDpaBlocks(saved.blocks);
+        } else if (current.id === "app-terms-of-service" && saved?.blocks?.length) {
+          setAppTermsOfServiceBlocks(saved.blocks);
         } else if (current.id === "app-privacy-policy" && saved?.blocks?.length) {
           setAppPrivacyBlocks(saved.blocks);
         } else if (current.id === "app-terms-conditions" && saved?.blocks?.length) {
@@ -1654,12 +1656,20 @@ export function ConfigDetailPage() {
           ? activeGateway?.name ?? false
           : item.id === "app-dpa"
             ? dpaBlocks.some((entry) => entry.shown)
+          : item.id === "app-terms-of-service"
+            ? appTermsOfServiceBlocks.some((entry) => entry.shown)
           : item.id === "app-privacy-policy"
             ? appPrivacyBlocks.some((entry) => entry.shown)
           : item.id === "app-terms-conditions"
             ? appTermsBlocks.some((entry) => entry.shown)
           : item.id === "app-community-guidelines"
             ? appGuidelinesBlocks.some((entry) => entry.shown)
+          : isLegalPrivacyConfigId(item.id)
+            ? privacyBlocks.some((entry) => entry.shown)
+          : isLegalTosConfigId(item.id)
+            ? tosBlocks.some((entry) => entry.shown)
+          : isLegalGuidelinesConfigId(item.id)
+            ? guidelineBlocks.some((entry) => entry.shown)
           : item.id === "app-compliance"
             ? Boolean(complianceSettings?.enabled)
           : item.id === "app-measurement-video"
@@ -1667,7 +1677,7 @@ export function ConfigDetailPage() {
           : item.id === "app-onboarding-video"
             ? onboardingCoaches.some((entry) => entry.live)
         : item.id === "app-faq"
-          ? (faqEditor.appOn || faqEditor.webOn) && faqItems.some((entry) => entry.shown)
+          ? faqEditor.appOn && faqItems.some((entry) => entry.shown)
           : item.id === "app-medical-questionnaire"
             ? medicalQuestions.some((entry) => entry.shown)
             : item.id === "app-health-progress"
@@ -1712,11 +1722,11 @@ export function ConfigDetailPage() {
                   )
               : item.id === "web-fs-social"
                 ? socialLinks.some((entry) => String(entry.url || "").trim())
-              : item.id === "web-fs-privacy"
+              : isLegalPrivacyConfigId(item.id)
                 ? privacyBlocks.some((entry) => entry.shown)
-              : item.id === "web-fs-tos" || item.id === "app-tos"
+              : isLegalTosConfigId(item.id)
                 ? tosBlocks.some((entry) => entry.shown)
-              : item.id === "web-fs-guidelines"
+              : isLegalGuidelinesConfigId(item.id)
                 ? guidelineBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-contact"
                 ? contactDetails.some((entry) => entry.live)
@@ -1941,6 +1951,17 @@ export function ConfigDetailPage() {
             onLocalChange={handleLegalLocalChange}
           />
         );
+      case "common-privacy-policy":
+      case "web-fs-privacy":
+        return (
+          <PrivacyPolicySection
+            blocks={privacyBlocks}
+            setBlocks={setPrivacyBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
       case "app-privacy-policy":
         return (
           <AppPrivacyPolicySection
@@ -1951,11 +1972,44 @@ export function ConfigDetailPage() {
             onLocalChange={handleLegalLocalChange}
           />
         );
+      case "common-terms-of-service":
+      case "app-tos":
+      case "web-fs-tos":
+        return (
+          <TermsAndConditionsSection
+            blocks={tosBlocks}
+            setBlocks={setTosBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-terms-of-service":
+        return (
+          <AppTermsOfServiceSection
+            blocks={appTermsOfServiceBlocks}
+            setBlocks={setAppTermsOfServiceBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
       case "app-terms-conditions":
         return (
           <AppTermsConditionsSection
             blocks={appTermsBlocks}
             setBlocks={setAppTermsBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "common-community-guidelines":
+      case "web-fs-guidelines":
+        return (
+          <CommunityGuidelinesSection
+            blocks={guidelineBlocks}
+            setBlocks={setGuidelineBlocks}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
@@ -2154,37 +2208,6 @@ export function ConfigDetailPage() {
             setLinks={setSocialLinks}
             onToast={onToast}
             persistToAppConfig
-            registerPublishHandler={registerLegalPublishHandler}
-            onLocalChange={handleLegalLocalChange}
-          />
-        );
-      case "web-fs-privacy":
-        return (
-          <PrivacyPolicySection
-            blocks={privacyBlocks}
-            setBlocks={setPrivacyBlocks}
-            onToast={onToast}
-            registerPublishHandler={registerLegalPublishHandler}
-            onLocalChange={handleLegalLocalChange}
-          />
-        );
-      case "app-tos":
-      case "web-fs-tos":
-        return (
-          <TermsAndConditionsSection
-            blocks={tosBlocks}
-            setBlocks={setTosBlocks}
-            onToast={onToast}
-            registerPublishHandler={registerLegalPublishHandler}
-            onLocalChange={handleLegalLocalChange}
-          />
-        );
-      case "web-fs-guidelines":
-        return (
-          <CommunityGuidelinesSection
-            blocks={guidelineBlocks}
-            setBlocks={setGuidelineBlocks}
-            onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
           />
@@ -2459,6 +2482,7 @@ export function ConfigDetailPage() {
           gateways,
           activeGateway,
           dpaBlocks,
+          appTermsOfServiceBlocks,
           appPrivacyBlocks,
           appTermsBlocks,
           appGuidelinesBlocks,

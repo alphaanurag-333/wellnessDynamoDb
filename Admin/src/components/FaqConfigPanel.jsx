@@ -6,10 +6,12 @@ import {
   adminReorderFaqs,
   adminUpdateFaq,
 } from "../api/faqApi.js";
-import { adminUpdateSectionSurfaceConfig } from "../api/sectionSurfaceConfigApi.js";
+import { adminUpdateSectionSurfaceConfig, adminEnsureSectionSurfaceConfig } from "../api/sectionSurfaceConfigApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
-import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
 import "./faqConfig.css";
+
+const FAQ_APP_ONLY_SURFACE = { appOn: true, webOn: false };
+const FAQ_APP_ONLY_VISIBILITY = { appVisible: true, webVisible: false };
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
@@ -29,7 +31,6 @@ function Panel({ title, subtitle, actions, children, className = "" }) {
 function FaqItemControls({
   item,
   onToggleShown,
-  onToggleSurface,
   onEdit,
   onSave,
   onMoveUp,
@@ -41,32 +42,6 @@ function FaqItemControls({
   return (
     <div className="ua-cfg-faq__controls">
       <div className="ua-cfg-faq__surfaces">
-        <div className="ua-cfg-faq__live">
-          <span className={`ua-cfg-faq__shown${item.webVisible ? " is-on" : ""}`}>WEB</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${item.webVisible ? " ua-toggle--on" : ""}`}
-            aria-pressed={item.webVisible}
-            aria-label={item.webVisible ? "Hide on web" : "Show on web"}
-            disabled={busy}
-            onClick={() => onToggleSurface("webVisible")}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
-        <div className="ua-cfg-faq__live">
-          <span className={`ua-cfg-faq__shown${item.appVisible ? " is-on" : ""}`}>APP</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${item.appVisible ? " ua-toggle--on" : ""}`}
-            aria-pressed={item.appVisible}
-            aria-label={item.appVisible ? "Hide on app" : "Show on app"}
-            disabled={busy}
-            onClick={() => onToggleSurface("appVisible")}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
         <div className="ua-cfg-faq__live">
           <span className={`ua-cfg-faq__shown${item.shown ? " is-on" : ""}`}>
             {item.shown ? "SHOWN" : "HIDDEN"}
@@ -147,37 +122,11 @@ function FaqNewQuestionForm({ draft, onChange, onClose, onSubmit, inputRef, busy
       <textarea
         className="ua-cfg-faq-new__answer"
         value={asCopyString(draft.answer)}
-        placeholder="Answer shown on app and web..."
+        placeholder="Answer shown in the app..."
         rows={5}
         disabled={busy}
         onChange={(event) => onChange({ ...draft, answer: event.target.value })}
       />
-      <div className="ua-cfg-bn-surfaces ua-cfg-faq-new__surfaces">
-        <div className={`paddingmanage ua-cfg-bn-surface ua-cfg-bn-surface--web${draft.webVisible ? " is-on" : ""}`}>
-          <span>Web {draft.webVisible ? "Visible" : "Hidden"}</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${draft.webVisible ? " ua-toggle--on" : ""}`}
-            aria-pressed={draft.webVisible}
-            disabled={busy}
-            onClick={() => onChange({ ...draft, webVisible: !draft.webVisible })}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
-        <div className={`paddingmanage ua-cfg-bn-surface ua-cfg-bn-surface--app${draft.appVisible ? " is-on" : ""}`}>
-          <span>App {draft.appVisible ? "Visible" : "Hidden"}</span>
-          <button
-            type="button"
-            className={`ua-toggle ua-toggle--sm${draft.appVisible ? " ua-toggle--on" : ""}`}
-            aria-pressed={draft.appVisible}
-            disabled={busy}
-            onClick={() => onChange({ ...draft, appVisible: !draft.appVisible })}
-          >
-            <span className="ua-toggle__knob" />
-          </button>
-        </div>
-      </div>
       <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={onSubmit}>
         {busy ? "Adding…" : "Add question"}
       </button>
@@ -213,8 +162,6 @@ function snapshotFaqs(list = []) {
       question: String(entry.question || ""),
       answer: String(entry.answer || ""),
       shown: entry.shown !== false,
-      webVisible: entry.webVisible !== false,
-      appVisible: entry.appVisible !== false,
     })),
   );
 }
@@ -226,15 +173,24 @@ function snapshotSurface(value) {
   });
 }
 
+function normalizeFaqSurface(config) {
+  return {
+    appOn: config?.appOn !== false,
+    webOn: false,
+  };
+}
+
 function faqChanged(original, entry) {
   if (!original) return true;
   return (
     String(original.question || "") !== String(entry.question || "")
     || String(original.answer || "") !== String(entry.answer || "")
     || (original.shown !== false) !== (entry.shown !== false)
-    || (original.webVisible !== false) !== (entry.webVisible !== false)
-    || (original.appVisible !== false) !== (entry.appVisible !== false)
   );
+}
+
+function withAppOnlyVisibility(entry) {
+  return { ...entry, ...FAQ_APP_ONLY_VISIBILITY };
 }
 
 export function FaqConfigPanel({
@@ -247,14 +203,16 @@ export function FaqConfigPanel({
   onLocalChange,
 }) {
   const deferPublish = Boolean(registerPublishHandler);
+  const sectionOn = editor?.appOn !== false;
   const shownCount = items.filter((item) => item.shown).length;
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [surfaceBusy, setSurfaceBusy] = useState(false);
   const [hasLocalChanges, setHasLocalChanges] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({ question: "", answer: "" });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newDraft, setNewDraft] = useState({ question: "", answer: "", webVisible: true, appVisible: true });
+  const [newDraft, setNewDraft] = useState({ question: "", answer: "" });
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const addFormRef = useRef(null);
@@ -266,7 +224,7 @@ export function FaqConfigPanel({
   const showAddFormRef = useRef(showAddForm);
   const newDraftRef = useRef(newDraft);
   const savedFaqsRef = useRef("[]");
-  const savedSurfaceRef = useRef(snapshotSurface({ appOn: true, webOn: true }));
+  const savedSurfaceRef = useRef(snapshotSurface({ appOn: true, webOn: false }));
   const persistRef = useRef(null);
 
   useEffect(() => {
@@ -293,12 +251,18 @@ export function FaqConfigPanel({
     setLoading(true);
     try {
       const { faqs } = await adminListFaqs(null, { limit: 200 });
-      setItems(faqs);
-      savedFaqsRef.current = snapshotFaqs(faqs);
-      setHasLocalChanges(snapshotSurface(editorRef.current) !== savedSurfaceRef.current);
-      onLocalChange?.({
-        hasLocalChanges: snapshotSurface(editorRef.current) !== savedSurfaceRef.current,
-      });
+      const config = await adminEnsureSectionSurfaceConfig(null, "faq");
+      const nextEditor = normalizeFaqSurface(config);
+      if (config?.webOn !== false) {
+        await adminUpdateSectionSurfaceConfig(null, "faq", nextEditor);
+      }
+      setEditor?.((prev) => ({ ...(prev || {}), ...nextEditor }));
+      const normalized = faqs.map(withAppOnlyVisibility);
+      setItems(normalized);
+      savedFaqsRef.current = snapshotFaqs(normalized);
+      savedSurfaceRef.current = snapshotSurface(nextEditor);
+      setHasLocalChanges(false);
+      onLocalChange?.({ hasLocalChanges: false });
     } catch (error) {
       onToast(error?.message || "Failed to load FAQs");
       setItems([]);
@@ -306,7 +270,7 @@ export function FaqConfigPanel({
     } finally {
       setLoading(false);
     }
-  }, [onLocalChange, onToast, setItems]);
+  }, [onLocalChange, onToast, setEditor, setItems]);
 
   useEffect(() => {
     loadFaqs();
@@ -334,7 +298,7 @@ export function FaqConfigPanel({
 
   function closeAddForm() {
     setShowAddForm(false);
-    setNewDraft({ question: "", answer: "", webVisible: true, appVisible: true });
+    setNewDraft({ question: "", answer: "" });
   }
 
   function openAddForm() {
@@ -362,6 +326,28 @@ export function FaqConfigPanel({
     syncDirty();
   }, [deferPublish, editor, editingId, items, newDraft, showAddForm]);
 
+  async function toggleSectionShown() {
+    if (surfaceBusy || busy) return;
+    const nextEditor = normalizeFaqSurface({ appOn: !sectionOn });
+    setEditor?.((prev) => ({ ...(prev || {}), ...nextEditor }));
+    if (deferPublish) {
+      syncDirty(itemsRef.current, nextEditor);
+      onToast(nextEditor.appOn ? "FAQ section shown — publish to go live" : "FAQ section hidden — publish to go live");
+      return;
+    }
+    setSurfaceBusy(true);
+    try {
+      await adminUpdateSectionSurfaceConfig(null, "faq", nextEditor);
+      setEditor?.((prev) => ({ ...(prev || {}), ...nextEditor }));
+      onToast(nextEditor.appOn ? "FAQ section shown in app" : "FAQ section hidden in app");
+    } catch (error) {
+      setEditor?.((prev) => ({ ...(prev || {}), ...normalizeFaqSurface({ appOn: sectionOn }) }));
+      onToast(error?.message || "Could not update FAQ section visibility");
+    } finally {
+      setSurfaceBusy(false);
+    }
+  }
+
   function commitOpenForms(sourceItems) {
     let nextItems = [...sourceItems];
     const openEditId = editingIdRef.current;
@@ -384,16 +370,14 @@ export function FaqConfigPanel({
         }
         nextItems = [
           ...nextItems,
-          {
+          withAppOnlyVisibility({
             id: newLocalFaqId(),
             question,
             answer,
             shown: true,
             status: "active",
-            webVisible: newDraftRef.current.webVisible !== false,
-            appVisible: newDraftRef.current.appVisible !== false,
             sortOrder: nextItems.length + 1,
-          },
+          }),
         ];
       }
     }
@@ -401,10 +385,7 @@ export function FaqConfigPanel({
   }
 
   async function persistFaqs() {
-    const nextEditor = {
-      appOn: editorRef.current?.appOn !== false,
-      webOn: editorRef.current?.webOn !== false,
-    };
+    const nextEditor = normalizeFaqSurface(editorRef.current);
     const nextItems = commitOpenForms(itemsRef.current);
     setBusy(true);
     try {
@@ -427,10 +408,9 @@ export function FaqConfigPanel({
             question: entry.question,
             answer: entry.answer,
             shown: entry.shown !== false,
-            webVisible: entry.webVisible !== false,
-            appVisible: entry.appVisible !== false,
+            ...FAQ_APP_ONLY_VISIBILITY,
           });
-          published.push(created);
+          published.push(withAppOnlyVisibility(created));
           continue;
         }
         const original = originalById.get(entry.id);
@@ -439,19 +419,18 @@ export function FaqConfigPanel({
             question: entry.question,
             answer: entry.answer,
             shown: entry.shown !== false,
-            webVisible: entry.webVisible !== false,
-            appVisible: entry.appVisible !== false,
+            ...FAQ_APP_ONLY_VISIBILITY,
           });
-          published.push({ ...entry, ...updated });
+          published.push(withAppOnlyVisibility({ ...entry, ...updated }));
         } else {
-          published.push(entry);
+          published.push(withAppOnlyVisibility(entry));
         }
       }
       const orderedIds = published.map((entry) => entry.id);
       const reordered = orderedIds.length ? await adminReorderFaqs(null, orderedIds) : [];
-      const finalItems = reordered.length ? reordered : published;
+      const finalItems = reordered.length ? reordered.map(withAppOnlyVisibility) : published;
       setItems(finalItems);
-      setEditor((prev) => ({ ...(prev || {}), ...nextEditor }));
+      setEditor?.((prev) => ({ ...(prev || {}), ...nextEditor }));
       cancelEdit();
       closeAddForm();
       markSaved(finalItems, nextEditor);
@@ -519,16 +498,14 @@ export function FaqConfigPanel({
     if (deferPublish) {
       const nextItems = [
         ...itemsRef.current,
-        {
+        withAppOnlyVisibility({
           id: newLocalFaqId(),
           question,
           answer,
           shown: true,
           status: "active",
-          webVisible: newDraft.webVisible !== false,
-          appVisible: newDraft.appVisible !== false,
           sortOrder: itemsRef.current.length + 1,
-        },
+        }),
       ];
       setItems(nextItems);
       closeAddForm();
@@ -542,10 +519,9 @@ export function FaqConfigPanel({
         question,
         answer,
         shown: true,
-        webVisible: newDraft.webVisible !== false,
-        appVisible: newDraft.appVisible !== false,
+        ...FAQ_APP_ONLY_VISIBILITY,
       });
-      setItems((prev) => [...prev, created]);
+      setItems((prev) => [...prev, withAppOnlyVisibility(created)]);
       closeAddForm();
       onToast("Question added");
     } catch (error) {
@@ -582,33 +558,6 @@ export function FaqConfigPanel({
         ),
       );
       onToast(error?.message || "Failed to update visibility");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function toggleSurface(item, field) {
-    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
-    const nextValue = !item[field];
-    const nextItems = itemsRef.current.map((entry) => (
-      entry.id === item.id ? { ...entry, [field]: nextValue } : entry
-    ));
-    setItems(nextItems);
-    if (deferPublish) {
-      syncDirty(nextItems);
-      onToast(`${field === "webVisible" ? "Web" : "App"} ${nextValue ? "visible" : "hidden"} — publish to go live`);
-      return;
-    }
-    setBusy(true);
-    try {
-      const updated = await adminUpdateFaq(null, item.id, { [field]: nextValue });
-      setItems((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, ...updated } : entry)));
-      onToast(`${field === "webVisible" ? "Web" : "App"} ${nextValue ? "visible" : "hidden"}`);
-    } catch (error) {
-      setItems((prev) =>
-        prev.map((entry) => (entry.id === item.id ? { ...entry, [field]: item[field] } : entry)),
-      );
-      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
     } finally {
       setBusy(false);
     }
@@ -692,16 +641,26 @@ export function FaqConfigPanel({
 
   return (
     <div className="ua-faq-config">
-      <SectionSurfacePanel
-        sectionId="faq"
-        editor={editor}
-        setEditor={setEditor}
-        onToast={onToast}
-        persistImmediately={!deferPublish}
-        onLoaded={(next) => {
-          savedSurfaceRef.current = snapshotSurface(next);
-          syncDirty(itemsRef.current, next);
-        }}
+      <Panel
+        title="FAQ in app"
+        subtitle="Hide the entire FAQ section in the mobile app without deleting your questions."
+        actions={(
+          <div className="ua-cfg-faq__live ua-cfg-faq__live--global">
+            <span className={`ua-cfg-faq__shown${sectionOn ? " is-on" : ""}`}>
+              {sectionOn ? "SHOWN" : "HIDDEN"}
+            </span>
+            <button
+              type="button"
+              className={`ua-toggle ua-toggle--sm${sectionOn ? " ua-toggle--on" : ""}`}
+              aria-pressed={sectionOn}
+              aria-label={sectionOn ? "Hide FAQ section in app" : "Show FAQ section in app"}
+              disabled={loading || busy || surfaceBusy}
+              onClick={toggleSectionShown}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+          </div>
+        )}
       />
       {deferPublish && hasLocalChanges ? (
         <p className="ua-cfg-panel__sub ua-cfg-panel__sub--warn">
@@ -715,8 +674,8 @@ export function FaqConfigPanel({
         loading
           ? "Loading FAQs…"
           : deferPublish
-            ? `Edits stay local until you publish · Drag to reorder · ${shownCount} of ${items.length} shown`
-            : `Drag to reorder · ${shownCount} of ${items.length} shown`
+            ? `App only · edits stay local until you publish · Drag to reorder · ${shownCount} of ${items.length} shown`
+            : `App only · drag to reorder · ${shownCount} of ${items.length} shown`
       }
       actions={(
         <button
@@ -827,7 +786,6 @@ export function FaqConfigPanel({
                   isEditing={isEditing}
                   busy={busy}
                   onToggleShown={() => toggleShown(item)}
-                  onToggleSurface={(field) => toggleSurface(item, field)}
                   onEdit={() => startEdit(item)}
                   onSave={() => saveEdit(item.id)}
                   onMoveUp={() => moveItem(item.id, -1)}

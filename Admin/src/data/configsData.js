@@ -37,10 +37,10 @@ export const CONFIG_GROUPS = {
         {
           id: "app-faq",
           name: "FAQ",
-          note: "Question and answer list",
+          note: "Question and answer list · app only",
           owner: "Admin / Support",
           app: true,
-          web: true,
+          web: false,
           live: true,
           on: true,
           tags: ["Text"],
@@ -120,18 +120,6 @@ export const CONFIG_GROUPS = {
       name: "App · Legal",
       items: [
         {
-          id: "app-tos",
-          name: "Terms of service",
-          note: "Same content as FS · Terms of service · website & app",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-          sharedWith: "web-fs-tos",
-        },
-        {
           id: "app-dpa",
           name: "Data processing agreement",
           note: "App legal copy · Static Pages",
@@ -143,30 +131,8 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
         },
         {
-          id: "app-privacy-policy",
-          name: "Privacy Policy",
-          note: "Mobile app only · Static Pages",
-          owner: "Admin / Support",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "app-terms-conditions",
-          name: "Terms & Conditions",
-          note: "Mobile app only · Static Pages",
-          owner: "Admin / Support",
-          app: true,
-          web: false,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "app-community-guidelines",
-          name: "Community Guidelines",
+          id: "app-terms-of-service",
+          name: "Terms of Service",
           note: "Mobile app only · Static Pages",
           owner: "Admin / Support",
           app: true,
@@ -442,39 +408,6 @@ export const CONFIG_GROUPS = {
           tags: ["Text"],
         },
         {
-          id: "web-fs-privacy",
-          name: "FS · Privacy policy",
-          note: "Legal copy",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "web-fs-tos",
-          name: "FS · Terms of service",
-          note: "Website & app legal copy · shared with App · Terms of service",
-          owner: "Admin / Support",
-          app: true,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
-          id: "web-fs-guidelines",
-          name: "FS · Community guidelines",
-          note: "Community rules",
-          owner: "Admin / Support",
-          app: false,
-          web: true,
-          live: true,
-          on: true,
-          tags: ["Text"],
-        },
-        {
           id: "web-fs-contact",
           name: "FS · Contact us",
           note: "Phone, email, support hours",
@@ -682,6 +615,44 @@ export const CONFIG_GROUPS = {
       ],
     },
     {
+      name: "Legal",
+      items: [
+        {
+          id: "common-terms-of-service",
+          name: "Terms & Conditions",
+          note: "Shared legal copy for website and app",
+          owner: "Admin / Support",
+          app: true,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "common-privacy-policy",
+          name: "Privacy Policy",
+          note: "Shared legal copy for website and app",
+          owner: "Admin / Support",
+          app: true,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+        {
+          id: "common-community-guidelines",
+          name: "Community Guidelines",
+          note: "Shared legal copy for website and app",
+          owner: "Admin / Support",
+          app: true,
+          web: true,
+          live: true,
+          on: true,
+          tags: ["Text"],
+        },
+      ],
+    },
+    {
       name: "Settings",
       items: [
         {
@@ -778,6 +749,40 @@ export const CONFIG_GROUPS = {
     },
   ],
 };
+
+export const COMMON_LEGAL_TOS_ID = "common-terms-of-service";
+export const COMMON_LEGAL_PRIVACY_ID = "common-privacy-policy";
+export const COMMON_LEGAL_GUIDELINES_ID = "common-community-guidelines";
+
+/** @deprecated Legacy config IDs — kept for direct URLs only. */
+export const LEGACY_LEGAL_CONFIG_IDS = new Set([
+  "app-tos",
+  "app-privacy-policy",
+  "app-terms-conditions",
+  "app-community-guidelines",
+  "web-fs-privacy",
+  "web-fs-tos",
+  "web-fs-guidelines",
+]);
+
+export function isLegalTosConfigId(configId) {
+  return configId === COMMON_LEGAL_TOS_ID
+    || configId === "app-tos"
+    || configId === "web-fs-tos"
+    || configId === "app-terms-conditions";
+}
+
+export function isLegalPrivacyConfigId(configId) {
+  return configId === COMMON_LEGAL_PRIVACY_ID
+    || configId === "web-fs-privacy"
+    || configId === "app-privacy-policy";
+}
+
+export function isLegalGuidelinesConfigId(configId) {
+  return configId === COMMON_LEGAL_GUIDELINES_ID
+    || configId === "web-fs-guidelines"
+    || configId === "app-community-guidelines";
+}
 
 export function findConfigItem(configId) {
   for (const [tab, groups] of Object.entries(CONFIG_GROUPS)) {

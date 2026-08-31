@@ -20,6 +20,7 @@ const {
 const {
   createWeightLog,
   listWeightLogsByUser,
+  clearWeightLogPhoto,
   toPublicWeightLog,
 } = require("../../models/healthProgressWeightModel");
 const {
@@ -125,6 +126,26 @@ exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
   return res.status(201).json({
     status: true,
     message: "Weight entry saved",
+    log: toPublicWeightLog(log),
+  });
+});
+
+exports.deleteCoachWeightPhotoController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  const logId = String(req.params.logId || "").trim();
+  if (!logId) throw new AppError("logId is required", 400);
+
+  let log;
+  try {
+    log = await clearWeightLogPhoto(userId, logId);
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
+    handleValidationError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Weight photo deleted",
     log: toPublicWeightLog(log),
   });
 });

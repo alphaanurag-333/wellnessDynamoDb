@@ -116,9 +116,7 @@ function surfaceSubtitle(surfaces, activeId, item) {
     return "Common asset · renders on both surfaces · 16:9";
   }
   if (item?.id === "app-faq") {
-    if (item.app && item.web) return "Toggle App / Web · accordion preview";
-    if (item.app && !item.web) return "App only · FAQ list";
-    if (item.web && !item.app) return "Web only · FAQ list";
+    return "App only · FAQ list";
   }
   if (item?.id === "common-client-review") {
     return "Common asset · renders on both surfaces · 3:4";
@@ -2126,14 +2124,11 @@ function renderPreviewBody(item, surface, previewState) {
       );
     case "app-faq": {
       const faqEditor = previewState.faqEditor ?? {};
-      const sectionEnabled = surface === "app"
-        ? faqEditor.appOn !== false
-        : faqEditor.webOn !== false;
       return (
         <FaqPreview
           items={previewState.faqItems ?? []}
-          surface={surface}
-          sectionEnabled={sectionEnabled}
+          surface="app"
+          sectionEnabled={faqEditor.appOn !== false}
         />
       );
     }
@@ -2181,11 +2176,29 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-terms-of-service":
+      return (
+        <LegalTextPreview
+          title="Terms of Service"
+          blocks={previewState.appTermsOfServiceBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-privacy-policy":
       return (
         <LegalTextPreview
           title="Privacy Policy"
           blocks={previewState.appPrivacyBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
+    case "common-privacy-policy":
+    case "web-fs-privacy":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.privacyBlocks ?? []}
           surface={surface}
           item={item}
         />
@@ -2199,6 +2212,19 @@ function renderPreviewBody(item, surface, previewState) {
           item={item}
         />
       );
+    case "app-tos":
+    case "web-fs-tos":
+    case "common-terms-of-service":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.tosBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Terms and Conditions"
+          url="irwellness.in/terms-and-conditions"
+          empty="No terms sections are shown yet."
+        />
+      );
     case "app-community-guidelines":
       return (
         <LegalTextPreview
@@ -2206,6 +2232,18 @@ function renderPreviewBody(item, surface, previewState) {
           blocks={previewState.appGuidelinesBlocks ?? []}
           surface={surface}
           item={item}
+        />
+      );
+    case "web-fs-guidelines":
+    case "common-community-guidelines":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.guidelineBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Community Guidelines"
+          url="irwellness.in/community-guideline"
+          empty="No guidelines are shown yet."
         />
       );
     case "app-compliance": {
@@ -2375,37 +2413,6 @@ function renderPreviewBody(item, surface, previewState) {
           links={previewState.socialLinks ?? []}
           surface={surface}
           item={item}
-        />
-      );
-    case "web-fs-privacy":
-      return (
-        <LegalBlocksPreview
-          blocks={previewState.privacyBlocks ?? []}
-          surface={surface}
-          item={item}
-        />
-      );
-    case "app-tos":
-    case "web-fs-tos":
-      return (
-        <LegalBlocksPreview
-          blocks={previewState.tosBlocks ?? []}
-          surface={surface}
-          item={item}
-          title="Terms and Conditions"
-          url="irwellness.in/terms-and-conditions"
-          empty="No terms sections are shown yet."
-        />
-      );
-    case "web-fs-guidelines":
-      return (
-        <LegalBlocksPreview
-          blocks={previewState.guidelineBlocks ?? []}
-          surface={surface}
-          item={item}
-          title="Community Guidelines"
-          url="irwellness.in/community-guideline"
-          empty="No guidelines are shown yet."
         />
       );
     case "web-fs-contact":

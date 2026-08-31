@@ -102,6 +102,7 @@ const {
   updateCoachHealthProgressSettingsController,
   listCoachWeightLogsController,
   createCoachWeightLogController,
+  deleteCoachWeightPhotoController,
   listCoachGlucoseLogsController,
   listCoachBloodPressureLogsController,
   listCoachMenstrualCycleLogsController,
@@ -335,6 +336,7 @@ router.get("/:userId/health-progress-settings", hp, getCoachHealthProgressSettin
 router.patch("/:userId/health-progress-settings", hpWrite, updateCoachHealthProgressSettingsController);
 router.get("/:userId/health-progress/weight", hp, listCoachWeightLogsController);
 router.post("/:userId/health-progress/weight", hpWrite, optionalHealthProgressWeightPicFile, createCoachWeightLogController);
+router.delete("/:userId/health-progress/weight/:logId/photo", hpWrite, deleteCoachWeightPhotoController);
 router.get("/:userId/health-progress/glucose", hp, listCoachGlucoseLogsController);
 router.get("/:userId/health-progress/blood-pressure", hp, listCoachBloodPressureLogsController);
 router.get("/:userId/health-progress/menstrual-cycle", hp, listCoachMenstrualCycleLogsController);

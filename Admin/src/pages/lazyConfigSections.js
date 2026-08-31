@@ -73,6 +73,10 @@ export const AppPrivacyPolicySection = named(
   () => import("../components/AppMobileLegalSections.jsx"),
   "AppPrivacyPolicySection",
 );
+export const AppTermsOfServiceSection = named(
+  () => import("../components/AppMobileLegalSections.jsx"),
+  "AppTermsOfServiceSection",
+);
 export const AppTermsConditionsSection = named(
   () => import("../components/AppMobileLegalSections.jsx"),
   "AppTermsConditionsSection",
