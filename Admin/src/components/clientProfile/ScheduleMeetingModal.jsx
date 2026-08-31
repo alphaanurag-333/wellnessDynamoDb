@@ -1,29 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { DURATION_OPTIONS, HOLD_OPTIONS } from "../../data/launchData.js";
+import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
+import {
+  formatDateKey,
+  formatShortDate,
+  isBeforeCalendarDay,
+  isSameCalendarDay,
+  startOfDay,
+} from "./meetingDateUtils.js";
 
-const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const WEEKDAY_FROM_SUN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const CAL_DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-const DEMO_TODAY = new Date();
+export { MiniCalendar } from "./MiniCalendar.jsx";
+export { MeetingDateSelector } from "./MeetingDateSelector.jsx";
 
-function startOfDay(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function isSameCalendarDay(a, b) {
-  return a && b
-    && a.getDate() === b.getDate()
-    && a.getMonth() === b.getMonth()
-    && a.getFullYear() === b.getFullYear();
-}
-
-function isBeforeCalendarDay(date, minDate) {
-  if (!date || !minDate) return false;
-  return startOfDay(date).getTime() < startOfDay(minDate).getTime();
+function padTimePart(n) {
+  return String(n).padStart(2, "0");
 }
 
 function combineDateAndTime(date, time24) {
@@ -33,6 +24,18 @@ function combineDateAndTime(date, time24) {
   const next = new Date(date);
   next.setHours(h, m, 0, 0);
   return next;
+}
+
+/** Build start/end instants; rolls end to the next calendar day when it crosses midnight. */
+function buildSlotTimes(date, fromTime, toTime) {
+  const startAt = combineDateAndTime(date, fromTime);
+  if (!startAt || !toTime) return null;
+  const endAt = combineDateAndTime(date, toTime);
+  if (!endAt) return null;
+  if (endAt.getTime() <= startAt.getTime()) {
+    endAt.setDate(endAt.getDate() + 1);
+  }
+  return { startAt, endAt };
 }
 
 /** Next 5-minute mark at least `minAheadMin` minutes from now (clock uses 5-min steps). */
@@ -52,56 +55,12 @@ function getModalRoot() {
     || document.querySelector(".updated-admin");
 }
 
-function getCalendarRoot() {
-  return document.querySelector(".updated-admin") || document.body;
-}
-
-function placeCalendarPopover(anchor) {
-  const rect = anchor.getBoundingClientRect();
-  const width = Math.min(280, Math.max(240, window.innerWidth - 16));
-  const height = 328;
-  let left = rect.right - width;
-  if (left < 8) left = 8;
-  if (left + width > window.innerWidth - 8) {
-    left = Math.max(8, window.innerWidth - width - 8);
-  }
-  let top = rect.bottom + 8;
-  if (top + height > window.innerHeight - 8) {
-    const above = rect.top - height - 8;
-    top = above >= 8 ? above : Math.max(8, window.innerHeight - height - 8);
-  }
-  return { top, left, width };
-}
-
 function formatSlotEnd(fromTime, durationMin) {
   const [h, m] = fromTime.split(":").map(Number);
   const total = h * 60 + m + durationMin;
   const endH = Math.floor(total / 60) % 24;
   const endM = total % 60;
   return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-}
-
-function formatDdMmYyyy(date) {
-  const d = String(date.getDate()).padStart(2, "0");
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  return `${d}-${m}-${date.getFullYear()}`;
-}
-
-function formatDateLabel(date) {
-  const day = WEEKDAY_FROM_SUN[date.getDay()];
-  return `${day} · ${String(date.getDate()).padStart(2, "0")} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function formatShortDate(date) {
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTH_LABELS[date.getMonth()].toUpperCase()}`;
-}
-
-function padTimePart(n) {
-  return String(n).padStart(2, "0");
-}
-
-function formatDateKey(date) {
-  return `${date.getFullYear()}-${padTimePart(date.getMonth() + 1)}-${padTimePart(date.getDate())}`;
 }
 
 function dateKeyFromSlot(slot) {
@@ -191,15 +150,6 @@ const CLOCK_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="9" />
     <path d="M12 7v5l3 2" />
-  </svg>
-);
-
-const CALENDAR_ICON = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3 5h18v16H3z" />
-    <path d="M3 10h18" />
-    <path d="M8 3v4" />
-    <path d="M16 3v4" />
   </svg>
 );
 
@@ -310,97 +260,6 @@ function AnalogClockPicker({ target, initialTime, onCancel, onSet }) {
   );
 }
 
-export function MiniCalendar({ value, onChange, onClear, onToday, minDate = null, className = "", style, calendarRef }) {
-  const [viewMonth, setViewMonth] = useState(value.getMonth());
-  const [viewYear, setViewYear] = useState(value.getFullYear());
-  const minDay = minDate ? startOfDay(minDate) : null;
-  const minMonthStart = minDay ? new Date(minDay.getFullYear(), minDay.getMonth(), 1) : null;
-  const viewMonthStart = new Date(viewYear, viewMonth, 1);
-  const canGoPrev = !minMonthStart || viewMonthStart.getTime() > minMonthStart.getTime();
-
-  const cells = useMemo(() => {
-    const first = new Date(viewYear, viewMonth, 1);
-    const startPad = (first.getDay() + 6) % 7;
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
-    const items = [];
-    for (let i = startPad; i > 0; i -= 1) {
-      items.push({ date: new Date(viewYear, viewMonth - 1, prevMonthDays - i + 1), outside: true });
-    }
-    for (let day = 1; day <= daysInMonth; day += 1) {
-      items.push({ date: new Date(viewYear, viewMonth, day), outside: false });
-    }
-    let nextDay = 1;
-    while (items.length % 7 !== 0) {
-      items.push({ date: new Date(viewYear, viewMonth + 1, nextDay), outside: true });
-      nextDay += 1;
-    }
-    return items;
-  }, [viewMonth, viewYear]);
-
-  function shiftMonth(delta) {
-    const next = new Date(viewYear, viewMonth + delta, 1);
-    if (delta < 0 && minMonthStart && next.getTime() < minMonthStart.getTime()) return;
-    setViewMonth(next.getMonth());
-    setViewYear(next.getFullYear());
-  }
-
-  function pickDate(date) {
-    if (isBeforeCalendarDay(date, minDay)) return;
-    onChange(date);
-  }
-
-  return (
-    <div
-      ref={calendarRef}
-      className={`ua-cp-launch-modal__calendar${className ? ` ${className}` : ""}`}
-      style={style}
-      role="dialog"
-      aria-label="Pick a date"
-    >
-      <div className="ua-cp-launch-modal__calendar-head">
-        <button
-          type="button"
-          className="ua-cp-launch-modal__calendar-nav"
-          onClick={() => shiftMonth(-1)}
-          disabled={!canGoPrev}
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <span>{MONTH_FULL[viewMonth]}, {viewYear}</span>
-        <button type="button" className="ua-cp-launch-modal__calendar-nav" onClick={() => shiftMonth(1)} aria-label="Next month">›</button>
-      </div>
-      <div className="ua-cp-launch-modal__calendar-grid">
-        {CAL_DOW.map((label) => (
-          <span key={label} className="ua-cp-launch-modal__calendar-dow">{label}</span>
-        ))}
-        {cells.map((cell, index) => {
-          const { date, outside } = cell;
-          const selected = isSameCalendarDay(date, value);
-          const today = isSameCalendarDay(date, DEMO_TODAY);
-          const disabled = isBeforeCalendarDay(date, minDay);
-          return (
-            <button
-              key={`${date.toISOString()}-${index}`}
-              type="button"
-              disabled={disabled}
-              className={`ua-cp-launch-modal__calendar-day${selected ? " ua-cp-launch-modal__calendar-day--selected" : ""}${today ? " ua-cp-launch-modal__calendar-day--today" : ""}${outside ? " ua-cp-launch-modal__calendar-day--outside" : ""}${disabled ? " ua-cp-launch-modal__calendar-day--disabled" : ""}`}
-              onClick={() => pickDate(date)}
-            >
-              {date.getDate()}
-            </button>
-          );
-        })}
-      </div>
-      <div className="ua-cp-launch-modal__calendar-foot">
-        <button type="button" onClick={onClear}>Clear</button>
-        <button type="button" onClick={onToday}>Today</button>
-      </div>
-    </div>
-  );
-}
-
 export function ScheduleMeetingModal({
   user,
   title,
@@ -410,32 +269,7 @@ export function ScheduleMeetingModal({
   onClose,
   onSend,
 }) {
-  const laterWrapRef = useRef(null);
-  const calendarRef = useRef(null);
-  const [calendarPos, setCalendarPos] = useState(null);
-  const upcomingDates = useMemo(() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return Array.from({ length: 5 }, (_, index) => {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-      return {
-        id: `d${index}`,
-        day: WEEKDAY_FROM_SUN[date.getDay()].toUpperCase(),
-        date,
-        dateLabel: String(date.getDate()).padStart(2, "0"),
-      };
-    });
-  }, []);
-
-  const [dateMode, setDateMode] = useState("preset");
-  const [selectedPreset, setSelectedPreset] = useState("d0");
-  const [laterDate, setLaterDate] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const [laterOpen, setLaterOpen] = useState(false);
+  const [activeDate, setActiveDate] = useState(() => startOfDay(new Date()));
   const [duration, setDuration] = useState(
     Number(existingMeeting?.durationMinutes) || defaultDuration,
   );
@@ -450,6 +284,8 @@ export function ScheduleMeetingModal({
   const slotsByDate = useMemo(() => groupSlotsByDate(slots), [slots]);
   const firstName = String(user?.name || "client").split(" ")[0];
   const todayStart = useMemo(() => startOfDay(new Date()), []);
+  const slotsDayLabel = formatShortDate(activeDate);
+  const canAddSlot = Boolean(buildSlotFromForm());
 
   useEffect(() => {
     if (existingMeeting?.coachNote) setNote(existingMeeting.coachNote);
@@ -457,22 +293,6 @@ export function ScheduleMeetingModal({
       setDuration(Number(existingMeeting.durationMinutes));
     }
   }, [existingMeeting]);
-
-  const preset = useMemo(
-    () => upcomingDates.find((d) => d.id === selectedPreset) || upcomingDates[0],
-    [selectedPreset, upcomingDates],
-  );
-
-  const activeDate = dateMode === "preset" ? preset.date : laterDate;
-
-  const dateLabel = formatDateLabel(activeDate);
-  const slotsDayLabel = formatShortDate(activeDate);
-  const draftStartAt = fromTime ? combineDateAndTime(activeDate, fromTime) : null;
-  const canAddSlot = Boolean(
-    draftStartAt
-    && draftStartAt.getTime() > Date.now()
-    && !isBeforeCalendarDay(activeDate, todayStart),
-  );
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -485,65 +305,13 @@ export function ScheduleMeetingModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose, clockFor]);
 
-  useEffect(() => {
-    function onPointerDown(event) {
-      if (laterWrapRef.current?.contains(event.target)) return;
-      if (calendarRef.current?.contains(event.target)) return;
-      setLaterOpen(false);
-    }
-    if (laterOpen) document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [laterOpen]);
-
-  useEffect(() => {
-    if (!laterOpen) {
-      setCalendarPos(null);
-      return undefined;
-    }
-    function updatePos() {
-      const anchor = laterWrapRef.current;
-      if (!anchor) return;
-      setCalendarPos(placeCalendarPopover(anchor));
-    }
-    updatePos();
-    window.addEventListener("resize", updatePos);
-    document.addEventListener("scroll", updatePos, true);
-    return () => {
-      window.removeEventListener("resize", updatePos);
-      document.removeEventListener("scroll", updatePos, true);
-    };
-  }, [laterOpen]);
-
-  function selectPreset(id) {
-    setDateMode("preset");
-    setSelectedPreset(id);
-    setLaterOpen(false);
-    setSlotError("");
-  }
-
-  function selectLaterDate(date) {
-    if (isBeforeCalendarDay(date, todayStart)) {
-      setSlotError("Choose today or a future date");
-      return;
-    }
-    setDateMode("later");
-    setLaterDate(startOfDay(date));
-    setLaterOpen(false);
-    setSlotError("");
-  }
-
   function buildSlotFromForm() {
     if (!fromTime) return null;
     const end = toTime || formatSlotEnd(fromTime, duration);
-    const [startH, startM] = fromTime.split(":").map(Number);
-    const [endH, endM] = end.split(":").map(Number);
-    if (![startH, startM, endH, endM].every(Number.isFinite)) return null;
     if (isBeforeCalendarDay(activeDate, todayStart)) return null;
-    const startAt = new Date(activeDate);
-    startAt.setHours(startH, startM, 0, 0);
-    const endAt = new Date(activeDate);
-    endAt.setHours(endH, endM, 0, 0);
-    if (endAt.getTime() <= startAt.getTime()) return null;
+    const times = buildSlotTimes(activeDate, fromTime, end);
+    if (!times) return null;
+    const { startAt, endAt } = times;
     if (startAt.getTime() <= Date.now()) return null;
     const slotKey = `${startAt.toISOString()}-${endAt.toISOString()}`;
     return {
@@ -598,9 +366,9 @@ export function ScheduleMeetingModal({
       setToTime(formatSlotEnd(time24, duration));
       setSlotError("");
     } else {
-      const endAt = combineDateAndTime(activeDate, time24);
       const startAt = combineDateAndTime(activeDate, fromTime);
-      if (startAt && endAt && endAt.getTime() <= startAt.getTime()) {
+      const times = buildSlotTimes(activeDate, fromTime, time24);
+      if (startAt && times && times.endAt.getTime() <= startAt.getTime()) {
         setSlotError("End time must be after start time");
         setClockFor(null);
         return;
@@ -653,39 +421,15 @@ export function ScheduleMeetingModal({
 
         <div className="ua-cp-launch-modal__body">
           <div className="ua-cp-launch-modal__section">
-            <div className="ua-cp-launch-modal__row-label">
-              <span className="ua-cp-launch-modal__row-label-main">Date</span>
-              <span className="ua-cp-launch-modal__row-label-meta">{dateLabel}</span>
-            </div>
-            <div className="ua-cp-launch-modal__dates">
-              {upcomingDates.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  className={`ua-cp-launch-modal__date${dateMode === "preset" && selectedPreset === d.id ? " ua-cp-launch-modal__date--active" : ""}`}
-                  onClick={() => selectPreset(d.id)}
-                >
-                  <span>{d.day}</span>
-                  <strong>{d.dateLabel}</strong>
-                </button>
-              ))}
-              <div className="ua-cp-launch-modal__later-wrap" ref={laterWrapRef}>
-                <button
-                  type="button"
-                  className={`ua-cp-launch-modal__later${dateMode === "later" ? " ua-cp-launch-modal__later--active" : ""}${laterOpen ? " ua-cp-launch-modal__later--open" : ""}`}
-                  onClick={() => {
-                    setDateMode("later");
-                    setLaterOpen((open) => !open);
-                  }}
-                >
-                  <span className="ua-cp-launch-modal__later-copy">
-                    <span className="ua-cp-launch-modal__later-label">Later</span>
-                    <span className="ua-cp-launch-modal__later-date" style={{color:"rgb(94, 106, 210)"}}>{formatDdMmYyyy(laterDate)}</span>
-                  </span>
-                  <span className="ua-cp-launch-modal__later-icon">{CALENDAR_ICON}</span>
-                </button>
-              </div>
-            </div>
+            <MeetingDateSelector
+              value={activeDate}
+              onChange={(date) => {
+                setActiveDate(date);
+                setSlotError("");
+              }}
+              minDate={todayStart}
+              onInvalidDate={setSlotError}
+            />
           </div>
 
           <div className="ua-cp-launch-modal__section">
@@ -835,30 +579,6 @@ export function ScheduleMeetingModal({
   );
 
   const root = getModalRoot();
-  const calendarRoot = getCalendarRoot();
-  const calendar = laterOpen && calendarPos
-    ? createPortal(
-      <MiniCalendar
-        calendarRef={calendarRef}
-        className="ua-cp-launch-modal__calendar--popover"
-        style={{ top: calendarPos.top, left: calendarPos.left, width: calendarPos.width }}
-        value={laterDate}
-        minDate={todayStart}
-        onChange={selectLaterDate}
-        onClear={() => {
-          setLaterOpen(false);
-          selectPreset("d0");
-        }}
-        onToday={() => selectLaterDate(new Date())}
-      />,
-      calendarRoot,
-    )
-    : null;
 
-  return (
-    <>
-      {root ? createPortal(modal, root) : modal}
-      {calendar}
-    </>
-  );
+  return root ? createPortal(modal, root) : modal;
 }

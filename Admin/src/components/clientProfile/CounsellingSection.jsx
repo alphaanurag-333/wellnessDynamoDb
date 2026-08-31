@@ -8,7 +8,13 @@ import {
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-import { todayIsoDate } from "../../utils/adminDateLimits.js";
+import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
+import {
+  formatDateKey,
+  isBeforeCalendarDay,
+  parseDateKey,
+  startOfDay,
+} from "./meetingDateUtils.js";
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -258,10 +264,16 @@ export function CounsellingSection({ user, onToast }) {
       activeTrack?.status === "periods_offered" ||
       activeTrack?.status === "time_requested");
   const requestedSlots = activeTrack?.requestedSlots || [];
-  const minOfferDate = todayIsoDate();
+  const minOfferDate = useMemo(() => startOfDay(new Date()), []);
+  const selectedOfferDate = useMemo(
+    () => parseDateKey(offerDate) || minOfferDate,
+    [offerDate, minOfferDate],
+  );
 
   function isPastOfferDate(date) {
-    return Boolean(date) && date < minOfferDate;
+    if (!date) return false;
+    const value = typeof date === "string" ? parseDateKey(date) : startOfDay(date);
+    return value ? isBeforeCalendarDay(value, minOfferDate) : false;
   }
 
   return (
@@ -296,23 +308,12 @@ export function CounsellingSection({ user, onToast }) {
             <div className="ua-cp-counselling__block">
               <h3>Share availability</h3>
               <div className="ua-cp-counselling__row ua-cp-counselling__row--single">
-                <label>
-                  <span className="ua-cp-counselling__field-label">Date</span>
-                  <input
-                    type="date"
-                    data-allow-future="true"
-                    min={minOfferDate}
-                    value={offerDate}
-                    onChange={(e) => {
-                      const next = e.target.value;
-                      if (isPastOfferDate(next)) {
-                        onToast?.("Choose today or a future date");
-                        return;
-                      }
-                      setOfferDate(next);
-                    }}
-                  />
-                </label>
+                <MeetingDateSelector
+                  value={selectedOfferDate}
+                  onChange={(date) => setOfferDate(formatDateKey(date))}
+                  minDate={minOfferDate}
+                  onInvalidDate={(message) => onToast?.(message)}
+                />
               </div>
               <p className="ua-cp-counselling__periods-label">Period windows</p>
               <div className="ua-cp-counselling__chips">
