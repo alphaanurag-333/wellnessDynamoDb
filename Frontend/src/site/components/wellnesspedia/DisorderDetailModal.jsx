@@ -17,7 +17,7 @@ export default function DisorderDetailModal({ open, onClose, item }) {
         className="wp-disorder-modal__shell"
         style={{ "--disorder-accent": item.accent || "#F97316" }}
       >
-        <div className="wp-disorder-modal__accent" aria-hidden />
+        {/* <div className="wp-disorder-modal__accent" aria-hidden /> */}
 
         <div className="wp-disorder-modal__content">
           <header className="wp-disorder-modal__header">
@@ -32,7 +32,7 @@ export default function DisorderDetailModal({ open, onClose, item }) {
           {item.description ? (
             <section className="wp-disorder-modal__section" aria-label="Overview">
               <p className="wp-disorder-modal__label">Overview</p>
-              <p className="wp-disorder-modal__desc">{item.description}</p>
+              <p className="wp-disorder-modal__desc" style={{textAlign: "justify"}}>{item.description}</p>
             </section>
           ) : null}
 

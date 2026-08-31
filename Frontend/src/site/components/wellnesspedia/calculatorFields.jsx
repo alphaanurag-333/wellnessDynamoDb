@@ -134,6 +134,7 @@ export function HeightField({
             type="text"
             inputMode="decimal"
             autoComplete="off"
+            placeholder="--"
             maxLength={lengthForMax(300, { decimals: 1 })}
             value={heightCm}
             aria-invalid={Boolean(error)}
@@ -159,6 +160,7 @@ export function HeightField({
             type="text"
             inputMode="numeric"
             autoComplete="off"
+            placeholder="ft"
             maxLength={1}
             value={feet}
             aria-invalid={Boolean(error)}
@@ -175,6 +177,7 @@ export function HeightField({
             type="text"
             inputMode="numeric"
             autoComplete="off"
+            placeholder="in"
             maxLength={2}
             value={inch}
             aria-invalid={Boolean(error)}
@@ -216,6 +219,7 @@ export function WeightField({ weightUnit, onUnitChange, weight, onWeight, error 
           type="text"
           inputMode="decimal"
           autoComplete="off"
+          placeholder="--"
           maxLength={lengthForMax(max, { decimals: 1 })}
           value={weight}
           aria-invalid={Boolean(error)}
