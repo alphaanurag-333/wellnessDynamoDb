@@ -14,6 +14,7 @@ import { TeamRosterModal } from "./TeamRosterModal.jsx";
 import { PaymentsModal } from "./PaymentsModal.jsx";
 import { DashboardChallengesCard } from "./DashboardChallengesCard.jsx";
 import { StatIcon } from "./DashboardIcons.jsx";
+import "./dashboardLayout.css";
 import {
   A1C_METRICS,
   APP_CLIENT_STATS,
@@ -1627,7 +1628,7 @@ export function AdminDashboard({
 
   if (loading) {
     return (
-      <main ref={pageRef} className="content ua-page-enter">
+      <main ref={pageRef} className="content ua-page-enter ua-dash-page">
         {renderDashboardHead(false)}
         <BrandLoader variant="page" label="Loading dashboard…" />
       </main>
@@ -1636,7 +1637,7 @@ export function AdminDashboard({
 
   if (loadError) {
     return (
-      <main ref={pageRef} className="content ua-page-enter">
+      <main ref={pageRef} className="content ua-page-enter ua-dash-page">
         {renderDashboardHead(false)}
         <div className="ua-users-empty">
           <div className="ua-users-empty__title">Couldn’t load dashboard</div>
@@ -1648,7 +1649,7 @@ export function AdminDashboard({
   }
 
   return (
-    <main ref={pageRef} className={`content ua-page-enter${refreshing ? " ua-dash-page--refreshing" : ""}`}>
+    <main ref={pageRef} className={`content ua-page-enter ua-dash-page${refreshing ? " ua-dash-page--refreshing" : ""}`}>
       {renderDashboardHead(true)}
 
       {canViewRevenue && revenueUnavailable ? (

@@ -5914,7 +5914,7 @@
 }
 
 .updated-admin .revenue-card__value {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -11687,11 +11687,11 @@
 }
 
 .updated-admin .ua-cp-glance-block {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-glance-block.ua-cp-health-band {
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-metabolic-row {
@@ -12063,7 +12063,7 @@
   border: 1px solid #eef1f6;
   border-radius: 14px;
   overflow: hidden;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
   cursor: pointer;
   font: inherit;
@@ -14529,7 +14529,7 @@
 }
 
 .updated-admin .ua-cp-medical__head {
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-medical__title {
@@ -14566,7 +14566,7 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  padding: 14px 15px;
+  padding: 10px 15px;
   background: #f7f9fc;
   border: 1px solid #eef1f6;
   border-radius: 11px;
@@ -16209,11 +16209,11 @@
 }
 
 .updated-admin .ua-cp-ba-block {
-  margin-bottom: 22px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-ba-block--photos {
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-ba-block__head {
@@ -57737,7 +57737,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .revenue-cards {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 
   .updated-admin .charts-grid {
@@ -67233,7 +67233,7 @@ scrollbar-width: thin;
 
   .updated-admin .ua-table--users.ua-table__head,
   .updated-admin .ua-table-card--users .ua-table__row {
-    padding: 10px 12px 10px 14px;
+    padding: 10px 12px 10px 0px;
   }
 
   .updated-admin .ua-table--users > div {
