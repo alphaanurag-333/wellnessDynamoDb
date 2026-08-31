@@ -33,13 +33,12 @@ const methodologyData = [
   },
 ];
 
-function MethodologyCard({ item }) {
-  const [expanded, setExpanded] = useState(false);
+function MethodologyCard({ item, expanded, onToggle }) {
   const { ref: descRef, overflows } = useClampedOverflow(item.description, expanded);
-  const showToggle = expanded || overflows;
+  const showToggle = overflows || expanded;
 
   return (
-    <div className={`methodology-card${expanded ? " methodology-card--expanded" : ""}`}>
+    <article className={`methodology-card${expanded ? " methodology-card--expanded" : ""}`}>
       <div className="methodology-card__image">
         <img src={item.image} alt={item.title} />
       </div>
@@ -57,23 +56,31 @@ function MethodologyCard({ item }) {
           <button
             type="button"
             className="methodology-card__more"
-            onClick={() => setExpanded((open) => !open)}
+            onClick={() => onToggle(item.id)}
             aria-expanded={expanded}
           >
             {expanded ? "Read Less" : "Read More"}
             {expanded ? <ArrowUpRight size={16} aria-hidden /> : <ArrowRight size={16} aria-hidden />}
           </button>
-        ) : null}
+        ) : (
+          <span className="methodology-card__more methodology-card__more--spacer" aria-hidden />
+        )}
 
         <BookConsultationButton className="methodology-card__cta">
           Book a consultation
         </BookConsultationButton>
       </div>
-    </div>
+    </article>
   );
 }
 
 export default function Methodology() {
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <section className="methodology">
       <div className="site-container">
@@ -88,7 +95,12 @@ export default function Methodology() {
 
         <div className="methodology__cards">
           {methodologyData.map((item) => (
-            <MethodologyCard key={item.id} item={item} />
+            <MethodologyCard
+              key={item.id}
+              item={item}
+              expanded={expandedId === item.id}
+              onToggle={toggleExpanded}
+            />
           ))}
         </div>
       </div>
