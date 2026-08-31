@@ -561,6 +561,48 @@ function buildClientCards(member) {
   ];
 }
 
+/** Map a Clients & team card to the users/teams URL it should open. */
+function clientCardHref(cardKey, member, { awcRoleId } = {}) {
+  const coachId = String(member?.id || "").trim();
+  const isWc =
+    member?.primaryRoleKey === "wc" ||
+    member?.accountRoleKey === "wellness_coach";
+
+  if (cardKey === "awc") {
+    if (!isWc) return UPDATED_ADMIN_PATHS.teams;
+    const params = new URLSearchParams();
+    params.set("role", awcRoleId || "awc");
+    params.set("parent", coachId);
+    return `${UPDATED_ADMIN_PATHS.teams}?${params}`;
+  }
+
+  const params = new URLSearchParams();
+  if (coachId && isWc) params.set("coach", coachId);
+
+  switch (cardKey) {
+    case "seek":
+      params.set("tier", "Seek");
+      break;
+    case "heal":
+      params.set("tier", "Seek to Heal");
+      break;
+    case "pwc":
+      params.set("tier", "Consultancy");
+      break;
+    case "maintenance":
+      params.set("tier", "Maintenance");
+      break;
+    case "other":
+      params.set("tab", "team");
+      break;
+    default:
+      break;
+  }
+
+  const qs = params.toString();
+  return `${UPDATED_ADMIN_PATHS.users}${qs ? `?${qs}` : ""}`;
+}
+
 export function TeamMemberPage() {
   const { memberId } = useParams();
   const [searchParams] = useSearchParams();
@@ -676,6 +718,13 @@ export function TeamMemberPage() {
   }, [catalogRows]);
 
   const clientCards = useMemo(() => (member ? buildClientCards(member) : []), [member]);
+  const awcRoleId = useMemo(() => {
+    const role = teamRoles.find((r) => {
+      const base = resolveBaseUiRoleKey(r, teamRoles) || r.roleKey;
+      return base === "awc" || r.roleKey === "awc";
+    });
+    return role?.id || "awc";
+  }, [teamRoles]);
 
   async function handleSaveRole() {
     if (!member) return;
@@ -1193,9 +1242,7 @@ export function TeamMemberPage() {
                 key={card.key}
                 type="button"
                 className={`ua-tm-stat ua-tm-stat--${card.tone}`}
-                onClick={() =>
-                  navigate(`${UPDATED_ADMIN_PATHS.users}?coach=${encodeURIComponent(member.id)}`)
-                }
+                onClick={() => navigate(clientCardHref(card.key, member, { awcRoleId }))}
               >
                 <div className="ua-tm-stat__label" style={{color:"black"}}>{card.label}</div>
                 <div className="ua-tm-stat__value">

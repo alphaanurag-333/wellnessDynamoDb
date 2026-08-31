@@ -33,6 +33,19 @@ export async function fetchUserStepsTracking(userId, range) {
   return fetchTracking(userId, "/steps-tracking", range);
 }
 
+export async function updateUserStepsGoal(userId, goalSteps) {
+  try {
+    const { data } = await api.patch(
+      healUserPath(userId, "/steps-tracking/goal"),
+      { goalSteps: Number(goalSteps) },
+      { headers: authHeader() },
+    );
+    return data.data || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserHeartRateTracking(userId, range) {
   return fetchTracking(userId, "/heart-rate-tracking", range);
 }

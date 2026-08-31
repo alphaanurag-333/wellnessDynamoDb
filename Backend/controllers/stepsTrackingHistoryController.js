@@ -1,7 +1,7 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
-const { getUserStepsHistory } = require("../models/stepsTrackingModel");
+const { getUserStepsHistory, upsertSettings } = require("../models/stepsTrackingModel");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
@@ -62,6 +62,32 @@ exports.getStaffHealUserStepsTrackingController = asyncHandler(async (req, res) 
     message: "Steps tracking history fetched",
     user: toHistoryUser(enriched),
     data,
+  });
+});
+
+exports.updateStaffHealUserStepsGoalController = asyncHandler(async (req, res) => {
+  const userId = req.params.id || req.params.userId;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const goalSteps = req.body?.goalSteps ?? req.body?.goal_steps;
+  if (goalSteps == null || goalSteps === "") {
+    throw new AppError("goalSteps is required", 400);
+  }
+
+  let settings;
+  try {
+    settings = await upsertSettings(userId, { goalSteps });
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily steps goal updated",
+    data: { settings },
   });
 });
 
