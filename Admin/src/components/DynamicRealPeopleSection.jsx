@@ -33,6 +33,15 @@ const RP_CROP_WIDTH = 400;
 const RP_CROP_HEIGHT = 400;
 const RP_CROP_RATIO = "1:1";
 
+function sortRealPeopleByOrder(rows) {
+  return [...(rows || [])].sort((a, b) => {
+    const orderA = Number.isFinite(Number(a?.order)) ? Number(a.order) : 9999;
+    const orderB = Number.isFinite(Number(b?.order)) ? Number(b.order) : 9999;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime();
+  });
+}
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -165,14 +174,14 @@ function RealPeopleViewModal({ entry, concernLabel, onClose, onEdit }) {
             <span className="ua-cfg-cr-stars__empty">{"★★★★★".slice(Math.max(1, Math.min(5, entry.stars || 5)))}</span>
           </p>
           {asCopyString(entry.review) ? <p className="ua-cfg-rc-view__copy">{asCopyString(entry.review)}</p> : null}
-          <dl className="ua-cfg-rc-view__meta">
+          {/* <dl className="ua-cfg-rc-view__meta">
             {points.map((row) => (
               <div key={row.id || row.field}>
                 <dt>{asCopyString(row.label) || row.field}</dt>
                 <dd>{asCopyString(row.value)}</dd>
               </div>
             ))}
-          </dl>
+          </dl> */}
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
@@ -233,7 +242,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
         search: query || undefined,
         healthConcernId: concernFilter || undefined,
       });
-      const next = result.items || [];
+      const next = sortRealPeopleByOrder(result.items || []);
       setItems(next);
       setPagination({
         page: Number(result.pagination?.page) || nextPage,
@@ -357,7 +366,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
     }
     setBusy(true);
     try {
-      await adminCreateRealPeopleTestimonial(null, {
+      const created = await adminCreateRealPeopleTestimonial(null, {
         name,
         review,
         stars: draft.stars,
@@ -372,6 +381,9 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
       });
       setCreating(false);
       setPage(1);
+      if (created) {
+        setItems((prev) => sortRealPeopleByOrder([created, ...prev.filter((row) => row.id !== created.id)]));
+      }
       onToast("Real people testimonial added");
       await loadItems(1);
     } catch (error) {

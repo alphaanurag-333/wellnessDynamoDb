@@ -113,6 +113,54 @@ function sanitizeUpdateField(key, value) {
   return value;
 }
 
+async function listRealPeopleOrderRows() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusOrderIndex",
+    partitionKeyName: "status",
+    sortKeyName: "order",
+    scanIndexForward: true,
+    page: 1,
+    limit: 200,
+    maxLimit: 200,
+    sortFn: sortByOrderAsc,
+  });
+  return items || [];
+}
+
+/** Lowest `order` first. New items take 0; if 0 is taken, everyone else shifts down. */
+async function nextTopRealPeopleOrder() {
+  const rows = await listRealPeopleOrderRows();
+  if (!rows.length) return 0;
+
+  const minOrder = rows.reduce((min, row) => {
+    const n = normalizeOrder(row.order, 0);
+    return n < min ? n : min;
+  }, Number.POSITIVE_INFINITY);
+
+  if (minOrder > 0) return 0;
+
+  const now = new Date().toISOString();
+  await Promise.all(
+    rows.map((row) =>
+      docClient.send(
+        new UpdateCommand({
+          TableName: TABLE,
+          Key: { id: row.id },
+          UpdateExpression: "SET #order = :order, updatedAt = :updatedAt",
+          ExpressionAttributeNames: { "#order": "order" },
+          ExpressionAttributeValues: {
+            ":order": normalizeOrder(row.order, 0) + 10,
+            ":updatedAt": now,
+          },
+          ConditionExpression: "attribute_exists(id)",
+        })
+      )
+    )
+  );
+  return 0;
+}
+
 async function createRealPeopleTestimonial({
   name,
   stars,
@@ -126,11 +174,16 @@ async function createRealPeopleTestimonial({
   status = "active",
   webVisible = true,
   appVisible = true,
-  order = 0,
+  order,
 }) {
   const now = new Date().toISOString();
   const imageKey = normalizeProfileImageField(profileImage ?? profile_image);
   if (!imageKey) throw new Error("profileImage is required");
+
+  const resolvedOrder =
+    order === undefined || order === null || order === ""
+      ? await nextTopRealPeopleOrder()
+      : normalizeOrder(order);
 
   const item = {
     id: uuidv4(),
@@ -143,7 +196,7 @@ async function createRealPeopleTestimonial({
     status: normalizeStatus(status, "active"),
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
-    order: normalizeOrder(order),
+    order: resolvedOrder,
     createdAt: now,
     updatedAt: now,
   };
