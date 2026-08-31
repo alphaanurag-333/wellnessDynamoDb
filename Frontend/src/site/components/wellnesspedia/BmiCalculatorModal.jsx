@@ -168,16 +168,17 @@ export default function BmiCalculatorModal({ open, onClose }) {
       {view === "form" ? (
         <div className="wp-calc-form">
           <div className="wp-calc-form__grid">
+          <GenderField
+              value={gender}
+              onChange={bindField(setGender, setErrors, "gender")}
+              error={errors.gender}
+            />
             <AgeField
               value={age}
               onChange={bindField(setAge, setErrors, "age")}
               error={errors.age}
             />
-            <GenderField
-              value={gender}
-              onChange={bindField(setGender, setErrors, "gender")}
-              error={errors.gender}
-            />
+          
             <HeightField
               heightUnit={heightUnit}
               onUnitChange={changeHeightUnit}

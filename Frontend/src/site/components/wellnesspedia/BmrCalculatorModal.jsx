@@ -138,15 +138,16 @@ export default function BmrCalculatorModal({ open, onClose }) {
       {view === "form" ? (
         <div className="wp-calc-form">
           <div className="wp-calc-form__grid">
-            <AgeField
-              value={age}
-              onChange={bindField(setAge, setErrors, "age")}
-              error={errors.age}
-            />
+           
             <GenderField
               value={gender}
               onChange={bindField(setGender, setErrors, "gender")}
               error={errors.gender}
+            />
+             <AgeField
+              value={age}
+              onChange={bindField(setAge, setErrors, "age")}
+              error={errors.age}
             />
             <HeightField
               heightUnit={heightUnit}
