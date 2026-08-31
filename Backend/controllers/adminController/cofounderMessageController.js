@@ -9,6 +9,7 @@ const {
   readProfileImageKey,
   parseProfileImageFromBody,
 } = require("../../utils/mediaFieldAliases");
+const { isImageMime } = require("../../utils/mediaUploadLimits");
 const {
   createCofounderMessageShell,
   getCofounderMessage,
@@ -49,6 +50,7 @@ function buildCreateUpdates(req) {
     type,
     ytLink: type === "link" ? String(req.body.ytLink || "").trim() : "",
     video: "",
+    thumbnail: "",
   };
 }
 
@@ -104,6 +106,31 @@ async function applyVideoFields(req, current, updates) {
   }
 }
 
+async function applyThumbnailUpload(req, current, updates) {
+  if (req.body.thumbnail !== undefined) {
+    updates.thumbnail = parseMediaKeyFromBody(req.body.thumbnail, "thumbnail") ?? "";
+  }
+
+  const file = req.files?.thumbnailFile?.[0];
+  if (file?.mimetype && !isImageMime(file.mimetype)) {
+    throw new AppError("thumbnailFile must be an image", 400);
+  }
+
+  const uploadedThumb = await uploadMulterField(req, "thumbnailFile", S3_FOLDER);
+  if (uploadedThumb) {
+    if (current?.thumbnail) await deleteStoredMedia(current.thumbnail);
+    updates.thumbnail = uploadedThumb;
+  }
+
+  if (
+    updates.thumbnail !== undefined &&
+    !updates.thumbnail &&
+    current?.thumbnail
+  ) {
+    await deleteStoredMedia(current.thumbnail);
+  }
+}
+
 function validateVideoFields(updates, current) {
   const nextType = updates.type ?? current?.type ?? "none";
   if (nextType === "none") return;
@@ -150,6 +177,7 @@ exports.createCofounderMessageController = asyncHandler(async (req, res) => {
   const updates = { ...base, profileImage: "" };
   const uploadedProfile = await applyProfileUpload(req, null, updates);
   await applyVideoFields(req, null, updates);
+  await applyThumbnailUpload(req, null, updates);
 
   if (!uploadedProfile) throw new AppError("profileImage is required", 400);
   validateProfile(updates, null);
@@ -196,6 +224,7 @@ exports.updateCofounderMessageController = asyncHandler(async (req, res) => {
 
   await applyProfileUpload(req, current, updates);
   await applyVideoFields(req, current, updates);
+  await applyThumbnailUpload(req, current, updates);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);

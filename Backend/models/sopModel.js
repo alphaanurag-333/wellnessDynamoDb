@@ -82,6 +82,8 @@ function toPublicSop(item) {
   const contentType = normalizeContentType(item.contentType || (steps.length ? "text" : "text"));
   const fileKey = item.fileKey || null;
   const fileUrl = fileKey ? resolvePublicUrl(fileKey) : null;
+  const thumbnailKey = item.thumbnailKey || null;
+  const thumbnailUrl = thumbnailKey ? resolvePublicUrl(thumbnailKey) : null;
   return {
     ...item,
     contentType,
@@ -91,6 +93,8 @@ function toPublicSop(item) {
     fileKey,
     fileUrl: fileUrl || null,
     fileName: item.fileName || null,
+    thumbnailKey,
+    thumbnailUrl: thumbnailUrl || null,
     linkUrl: item.linkUrl || null,
   };
 }
@@ -103,6 +107,7 @@ async function createSop({
   steps = [],
   fileKey = null,
   fileName = null,
+  thumbnailKey = null,
   linkUrl = null,
   author = "Admin desk",
   status = "active",
@@ -118,6 +123,10 @@ async function createSop({
     steps: type === "text" ? normalizeSteps(steps) : [],
     fileKey: fileKey ? normalizeNullableMediaField(fileKey, "fileKey") : null,
     fileName: fileName ? String(fileName).trim() || null : null,
+    thumbnailKey:
+      type === "video" && thumbnailKey
+        ? normalizeNullableMediaField(thumbnailKey, "thumbnailKey")
+        : null,
     linkUrl: type === "video" ? normalizeLinkUrl(linkUrl) : null,
     author: String(author || "Admin desk").trim() || "Admin desk",
     status: normalizeStatus(status),
@@ -164,6 +173,11 @@ async function updateSop(id, updates) {
   }
   if (patch.fileName !== undefined) {
     patch.fileName = patch.fileName ? String(patch.fileName).trim() || null : null;
+  }
+  if (patch.thumbnailKey !== undefined) {
+    patch.thumbnailKey = patch.thumbnailKey
+      ? normalizeNullableMediaField(patch.thumbnailKey, "thumbnailKey")
+      : null;
   }
 
   const entries = Object.entries(patch).filter(([, value]) => value !== undefined);

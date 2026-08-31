@@ -362,6 +362,7 @@ const AboutUsSection = () => {
   const cofounderVideoType = cofounderMessage?.type || "none";
   const cofounderYtLink = cofounderMessage?.ytLink || "";
   const cofounderVideo = cofounderMessage?.video || "";
+  const cofounderThumbnail = cofounderMessage?.thumbnail || "";
   const showCofounderMessage = Boolean(cofounderName && cofounderBody);
 
   const marqueeItems = [...items, ...items, ...items, ...items];
@@ -462,6 +463,7 @@ const AboutUsSection = () => {
         videoType={cofounderVideoType}
         ytLink={cofounderYtLink}
         video={cofounderVideo}
+        thumbnail={cofounderThumbnail}
       />
       ) : null}
 

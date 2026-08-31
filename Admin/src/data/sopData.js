@@ -30,6 +30,7 @@ export const SOP_STEP_MAX_COUNT = 20;
 export const SOP_STEP_MAX_LEN = 240;
 export const SOP_STEPS_TEXT_MAX_LEN = SOP_STEP_MAX_COUNT * (SOP_STEP_MAX_LEN + 1);
 export const SOP_FILE_MAX_BYTES = 100 * 1024 * 1024;
+export const SOP_COVER_MAX_BYTES = 25 * 1024 * 1024;
 
 export const SOP_CATEGORY_STYLES = {
   onboarding: { bg: "#e8eefc", color: "#3d5bb5", border: "#c9d6f5" },
@@ -293,6 +294,18 @@ export function validateSopFile(contentType, file, { required = true, hasExistin
     return "Upload an MP4, WebM, or MOV video.";
   }
   return "";
+}
+
+export function validateSopCoverFile(file, { required = false, hasExisting = false } = {}) {
+  if (!file) {
+    if (required && !hasExisting) return "Add a cover image for this video.";
+    return "";
+  }
+  if (file.size > SOP_COVER_MAX_BYTES) return "Cover image must be 25 MB or smaller.";
+  const name = String(file.name || "").toLowerCase();
+  const mime = String(file.type || "").toLowerCase();
+  if (mime.startsWith("image/") || /\.(jpe?g|png|gif|webp)$/.test(name)) return "";
+  return "Upload a JPEG, PNG, GIF, or WebP cover image.";
 }
 
 export function validateSopLinkUrl(url, { required = false } = {}) {

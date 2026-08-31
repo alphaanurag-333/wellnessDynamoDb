@@ -4854,6 +4854,58 @@ color: var(--primary);
   max-height: none;
 }
 
+.leadership__video-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  background: #111;
+  text-align: inherit;
+  font: inherit;
+}
+
+.leadership__video-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.leadership__video-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 40px;
+  background: #ff0000;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  transition: transform var(--transition);
+}
+
+.leadership__video-cover:hover .leadership__video-play,
+.leadership__video-cover:focus-visible .leadership__video-play {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.leadership__video-cover:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
 /* Card with video: header row, text, then video full width */
 .leadership__card--with-video {
   gap: var(--space-4);

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { mediaUrl } from "../../media.js";
+import { FaPlay } from "react-icons/fa";
+import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
 import { SiteLoader } from "./SiteLoader.jsx";
@@ -17,28 +18,86 @@ function messageParagraphs(text) {
     .filter(Boolean);
 }
 
-function LeadershipVideo({ videoType = "none", ytLink = "", video = "", className = "" }) {
+function withYoutubeAutoplay(embedUrl) {
+  try {
+    const parsed = new URL(embedUrl);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+  }
+}
+
+function LeadershipVideo({ videoType = "none", ytLink = "", video = "", thumbnail = "", className = "" }) {
   const type = videoType === "video" ? "video" : videoType === "link" ? "link" : "none";
+  const poster = thumbnail ? mediaUrl(thumbnail) : "";
+  const videoRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+  }, [videoType, ytLink, video, thumbnail]);
+
+  useEffect(() => {
+    if (!playing || type !== "video") return undefined;
+    const el = videoRef.current;
+    if (!el) return undefined;
+    const playPromise = el.play?.();
+    if (playPromise?.catch) playPromise.catch(() => {});
+    return undefined;
+  }, [playing, type]);
+
+  const wrapClass = `leadership__video${
+    type === "link" ? " leadership__video--embed" : " leadership__video--upload"
+  }${className ? ` ${className}` : ""}`;
+
+  const cover = poster && !playing ? (
+    <button
+      type="button"
+      className="leadership__video-cover"
+      onClick={() => setPlaying(true)}
+      aria-label="Play video"
+    >
+      <img src={poster} alt="" onError={handleMediaImageError} />
+      <span className="leadership__video-play" aria-hidden>
+        <FaPlay />
+      </span>
+    </button>
+  ) : null;
 
   if (type === "link") {
     const embedUrl = youtubeEmbedUrl(ytLink);
     if (!embedUrl) return null;
     return (
-      <div className={`leadership__video leadership__video--embed${className ? ` ${className}` : ""}`}>
-        <iframe
-          src={embedUrl}
-          title="Co-founder message video"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+      <div className={wrapClass}>
+        {cover}
+        {playing || !poster ? (
+          <iframe
+            src={playing && poster ? withYoutubeAutoplay(embedUrl) : embedUrl}
+            title="Co-founder message video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : null}
       </div>
     );
   }
 
   if (type === "video" && video) {
     return (
-      <div className={`leadership__video leadership__video--upload${className ? ` ${className}` : ""}`}>
-        <video src={mediaUrl(video)} controls playsInline preload="metadata" />
+      <div className={wrapClass}>
+        {cover}
+        {playing || !poster ? (
+          <video
+            ref={videoRef}
+            src={mediaUrl(video)}
+            poster={poster || undefined}
+            controls
+            playsInline
+            autoPlay={playing}
+            preload={poster ? "none" : "metadata"}
+          />
+        ) : null}
       </div>
     );
   }
@@ -55,6 +114,7 @@ function LeadershipNoteCard({
   videoType = "none",
   ytLink = "",
   video = "",
+  thumbnail = "",
   onExpandChange,
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -152,7 +212,12 @@ function LeadershipNoteCard({
 
       {hasVideo ? (
         <div className="leadership__video-wrap">
-          <LeadershipVideo videoType={videoType} ytLink={ytLink} video={video} />
+          <LeadershipVideo
+            videoType={videoType}
+            ytLink={ytLink}
+            video={video}
+            thumbnail={thumbnail || profileImage}
+          />
         </div>
       ) : null}
     </div>
@@ -169,6 +234,7 @@ export function LeadershipMessageSection({
   videoType = "none",
   ytLink = "",
   video = "",
+  thumbnail = "",
   className = "",
 }) {
   return (
@@ -183,6 +249,7 @@ export function LeadershipMessageSection({
           videoType={videoType}
           ytLink={ytLink}
           video={video}
+          thumbnail={thumbnail}
         />
       </div>
     </section>

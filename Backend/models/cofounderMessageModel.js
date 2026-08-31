@@ -8,7 +8,7 @@ const {
 } = require("../utils/mediaFieldAliases");
 
 const COFOUNDER_MESSAGE_ID = "cofounder-message";
-const MEDIA_FIELDS = ["profileImage", "video"];
+const MEDIA_FIELDS = ["profileImage", "video", "thumbnail"];
 const TABLE = "CofounderMessage";
 const STATUS = new Set(["active", "inactive"]);
 const VIDEO_TYPE = new Set(["none", "link", "video"]);
@@ -30,14 +30,19 @@ function withLegacyId(item) {
 
 function toPublicCofounderMessage(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
-  return row ? resolveMediaFields(row, MEDIA_FIELDS) : null;
+  if (!row) return null;
+  const resolved = resolveMediaFields(row, MEDIA_FIELDS);
+  return {
+    ...resolved,
+    thumbnail: resolved.thumbnail || "",
+  };
 }
 
 function sanitizeUpdateField(key, value) {
   const field = normalizeUpdateFieldName(key);
   if (field === "status") return normalizeStatus(value);
   if (field === "type") return normalizeVideoType(value);
-  if (field === "profileImage" || field === "video") {
+  if (field === "profileImage" || field === "video" || field === "thumbnail") {
     if (value == null || String(value).trim() === "") return "";
     return normalizeMediaField(value, field);
   }
@@ -55,6 +60,7 @@ async function createCofounderMessageShell() {
     type: "none",
     ytLink: "",
     video: "",
+    thumbnail: "",
     status: "active",
     createdAt: now,
     updatedAt: now,

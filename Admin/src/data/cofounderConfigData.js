@@ -15,6 +15,7 @@ export const COFOUNDER_EDITOR = {
   type: "none",
   live: false,
   profileImage: "",
+  thumbnail: "",
 };
 
 export const COFOUNDER_PHOTOS = [];

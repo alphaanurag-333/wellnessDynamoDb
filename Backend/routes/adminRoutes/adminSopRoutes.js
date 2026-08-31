@@ -2,7 +2,7 @@ const express = require("express");
 
 const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
-const { optionalAdminFile } = require("../../middleware/authMultipart");
+const { optionalSopFiles } = require("../../middleware/authMultipart");
 const {
   listSopsController,
   getSopByIdController,
@@ -20,14 +20,14 @@ router.post(
   "/",
   protectAccount,
   authorizeStaff("console.sop.create", { admin: "sops.edit" }),
-  optionalAdminFile,
+  optionalSopFiles,
   createSopController
 );
 router.patch(
   "/:id",
   protectAccount,
   authorizeStaff("console.sop.edit", { admin: "sops.edit" }),
-  optionalAdminFile,
+  optionalSopFiles,
   updateSopController
 );
 router.delete(

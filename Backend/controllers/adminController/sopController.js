@@ -24,7 +24,9 @@ const {
   uploadFileFromRequest,
   deleteStoredMedia,
   parseMediaKeyFromBody,
+  uploadMulterField,
 } = require("../../utils/s3");
+const { isImageMime } = require("../../utils/mediaUploadLimits");
 
 const S3_FOLDER = "sops";
 const TITLE_MIN_LEN = 3;
@@ -107,6 +109,18 @@ function resolveAuthor(req) {
 function pickUploadedFile(req) {
   if (req?.file) return req.file;
   return req?.files?.file?.[0] || null;
+}
+
+function pickThumbnailFile(req) {
+  return req?.files?.thumbnailFile?.[0] || null;
+}
+
+function assertCoverImage(file) {
+  if (!file) return;
+  const mime = String(file.mimetype || "").toLowerCase();
+  const name = String(file.originalname || "").toLowerCase();
+  if (isImageMime(mime) || /\.(jpe?g|png|gif|webp)$/.test(name)) return;
+  throw new AppError("Upload a JPEG, PNG, GIF, or WebP cover image", 400);
 }
 
 function assertFileForContentType(contentType, file) {
@@ -251,6 +265,14 @@ exports.createSopController = asyncHandler(async (req, res) => {
     fileName = String(file.originalname || "").trim() || null;
   }
 
+  let thumbnailKey = null;
+  const coverFile = pickThumbnailFile(req);
+  if (contentType === "video" && coverFile) {
+    assertCoverImage(coverFile);
+    thumbnailKey = await uploadMulterField(req, "thumbnailFile", S3_FOLDER);
+    if (!thumbnailKey) throw new AppError("Failed to upload cover image", 500);
+  }
+
   const sop = await createSop({
     title,
     category,
@@ -259,6 +281,7 @@ exports.createSopController = asyncHandler(async (req, res) => {
     steps: contentType === "text" ? steps : [],
     fileKey: contentType === "text" ? null : fileKey,
     fileName: contentType === "text" ? null : fileName,
+    thumbnailKey: contentType === "video" ? thumbnailKey : null,
     linkUrl: contentType === "video" && !fileKey ? linkUrl || null : null,
     author,
     status,
@@ -279,6 +302,7 @@ exports.updateSopController = asyncHandler(async (req, res) => {
 
   const updates = {};
   const file = pickUploadedFile(req);
+  const coverFile = pickThumbnailFile(req);
 
   if (req.body.title !== undefined) {
     const title = String(req.body.title).trim();
@@ -330,9 +354,13 @@ exports.updateSopController = asyncHandler(async (req, res) => {
     updates.fileKey = null;
     updates.fileName = null;
     updates.linkUrl = null;
+    updates.thumbnailKey = null;
+    if (current.thumbnailKey) await deleteStoredMedia(current.thumbnailKey);
   } else if (nextContentType === "word" || nextContentType === "pdf") {
     updates.steps = [];
     updates.linkUrl = null;
+    updates.thumbnailKey = null;
+    if (current.thumbnailKey) await deleteStoredMedia(current.thumbnailKey);
     if (file) {
       const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
       if (!uploadedKey) throw new AppError("Failed to upload file", 500);
@@ -360,6 +388,15 @@ exports.updateSopController = asyncHandler(async (req, res) => {
         updates.fileKey = null;
         updates.fileName = null;
       }
+    }
+    if (coverFile) {
+      assertCoverImage(coverFile);
+      const uploadedThumb = await uploadMulterField(req, "thumbnailFile", S3_FOLDER);
+      if (!uploadedThumb) throw new AppError("Failed to upload cover image", 500);
+      if (current.thumbnailKey && current.thumbnailKey !== uploadedThumb) {
+        await deleteStoredMedia(current.thumbnailKey);
+      }
+      updates.thumbnailKey = uploadedThumb;
     }
   }
 
@@ -409,6 +446,7 @@ exports.deleteSopController = asyncHandler(async (req, res) => {
   const current = await getSopById(req.params.id);
   if (!current) throw new AppError("SOP not found", 404);
   if (current.fileKey) await deleteStoredMedia(current.fileKey);
+  if (current.thumbnailKey) await deleteStoredMedia(current.thumbnailKey);
 
   try {
     await deleteSop(req.params.id);

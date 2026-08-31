@@ -43,6 +43,7 @@ function buildSopFormData(fields = {}) {
   if (fields.author !== undefined) form.append("author", String(fields.author ?? "").trim());
   if (fields.status !== undefined) form.append("status", String(fields.status || "active"));
   if (fields.file instanceof File) form.append("file", fields.file);
+  if (fields.thumbnailFile instanceof File) form.append("thumbnailFile", fields.thumbnailFile);
   return form;
 }
 
@@ -95,7 +96,7 @@ export async function adminGetSopById(token, id) {
 
 export async function adminCreateSop(token, fields) {
   try {
-    const hasFile = fields?.file instanceof File;
+    const hasFile = fields?.file instanceof File || fields?.thumbnailFile instanceof File;
     const body = hasFile ? buildSopFormData(fields) : buildSopJson(fields);
     // Express JSON body parsers don't auto-parse nested JSON arrays in multipart;
     // for multipart we send steps as JSON string and backend normalizeSteps handles strings.
@@ -114,7 +115,7 @@ export async function adminCreateSop(token, fields) {
 
 export async function adminUpdateSop(token, id, fields) {
   try {
-    const hasFile = fields?.file instanceof File;
+    const hasFile = fields?.file instanceof File || fields?.thumbnailFile instanceof File;
     const body = hasFile ? buildSopFormData(fields) : buildSopJson(fields);
     const { data } = await api.patch(`${sopBase()}/${encodeURIComponent(id)}`, body, {
       headers: authHeader(token),

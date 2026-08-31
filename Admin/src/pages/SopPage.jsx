@@ -36,6 +36,7 @@ import {
   validateSopAudienceRole,
   validateSopContentType,
   validateSopFile,
+  validateSopCoverFile,
   validateSopLinkUrl,
   validateSopSteps,
   validateSopTitle,
@@ -121,6 +122,7 @@ function SopMediaView({ sop }) {
 
   if (type === "video") {
     const embed = sopVideoEmbedUrl(sop.linkUrl);
+    const poster = sop.thumbnailUrl || undefined;
     if (embed) {
       return (
         <div className="ua-sop-media">
@@ -133,7 +135,7 @@ function SopMediaView({ sop }) {
     if (sop.fileUrl) {
       return (
         <div className="ua-sop-media">
-          <video className="ua-sop-media__player" src={sop.fileUrl} controls />
+          <video className="ua-sop-media__player" src={sop.fileUrl} poster={poster} controls />
           <a className="ua-sop-media__link" href={sop.fileUrl} target="_blank" rel="noreferrer">
             Open {sop.fileName || "video"}
           </a>
@@ -148,6 +150,7 @@ function SopMediaView({ sop }) {
 
 function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit }) {
   const fileRef = useRef(null);
+  const coverRef = useRef(null);
   const audienceOptions = useMemo(() => buildSopAudienceOptions(accessRoles), [accessRoles]);
   const [form, setForm] = useState(() => ({
     title: initial?.title || "",
@@ -158,11 +161,18 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
     linkUrl: initial?.linkUrl || "",
   }));
   const [file, setFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(initial?.thumbnailUrl || "");
   const [errors, setErrors] = useState({});
 
   const stepCount = filledSopSteps(form.steps).length;
   const canAddStep = form.steps.length < SOP_STEP_MAX_COUNT;
   const hasExistingFile = Boolean(initial?.fileUrl || initial?.fileKey);
+  const hasExistingCover = Boolean(initial?.thumbnailUrl || initial?.thumbnailKey);
+
+  useEffect(() => () => {
+    if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
 
   function updateStep(index, value) {
     setForm((f) => ({
@@ -231,6 +241,11 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
       } else if (!(mode === "edit" && (hasExistingFile || initial?.linkUrl) && form.contentType === initial?.contentType)) {
         next.file = "Upload a video or paste a YouTube / Vimeo link.";
       }
+      const coverErr = validateSopCoverFile(coverFile, {
+        required: false,
+        hasExisting: mode === "edit" && hasExistingCover && form.contentType === initial?.contentType,
+      });
+      if (coverErr) next.cover = coverErr;
     }
 
     setErrors(next);
@@ -249,6 +264,7 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
       steps: form.contentType === "text" ? filledSopSteps(form.steps) : [],
       linkUrl: form.contentType === "video" && !file ? form.linkUrl.trim() : "",
       file: file || undefined,
+      thumbnailFile: form.contentType === "video" ? coverFile || undefined : undefined,
     });
   }
 
@@ -266,6 +282,21 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
       setForm((f) => ({ ...f, linkUrl: "" }));
       clearError("linkUrl");
     }
+  }
+
+  function onPickCover(event) {
+    const next = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!next) return;
+    const coverErr = validateSopCoverFile(next);
+    if (coverErr) {
+      setErrors((prev) => ({ ...prev, cover: coverErr }));
+      return;
+    }
+    if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    setCoverFile(next);
+    setCoverPreview(URL.createObjectURL(next));
+    clearError("cover");
   }
 
   return (
@@ -354,8 +385,12 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
                 onChange={(value) => {
                   setForm((f) => ({ ...f, contentType: value, linkUrl: value === "video" ? f.linkUrl : "" }));
                   setFile(null);
+                  setCoverFile(null);
+                  if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+                  setCoverPreview(value === "video" ? (initial?.thumbnailUrl || "") : "");
                   clearError("contentType");
                   clearError("file");
+                  clearError("cover");
                   clearError("linkUrl");
                   clearError("steps");
                 }}
@@ -456,10 +491,10 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
             </div>
           ) : null}
 
-          {form.contentType === "word" || form.contentType === "pdf" || form.contentType === "video" ? (
+          {form.contentType === "word" || form.contentType === "pdf" ? (
             <div className="ua-sop-field">
               <span className="ua-sop-field__label">
-                {form.contentType === "video" ? "Video file" : form.contentType === "pdf" ? "PDF file *" : "Word file *"}
+                {form.contentType === "pdf" ? "PDF file *" : "Word file *"}
               </span>
               <input
                 ref={fileRef}
@@ -484,36 +519,94 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
               </div>
               {errors.file ? <span className="ua-sop-field__error">{errors.file}</span> : (
                 <span className="ua-sop-field__hint">
-                  {form.contentType === "video"
-                    ? "MP4 / WebM / MOV · max 100 MB — or use a link below"
-                    : form.contentType === "pdf"
-                      ? "PDF · max 100 MB"
-                      : "DOC / DOCX · max 100 MB"}
+                  {form.contentType === "pdf" ? "PDF · max 100 MB" : "DOC / DOCX · max 100 MB"}
                 </span>
               )}
             </div>
           ) : null}
 
           {form.contentType === "video" ? (
-            <label className="ua-sop-field">
-              <span className="ua-sop-field__label">YouTube / Vimeo link</span>
+            <div className="ua-sop-media-block">
               <input
-                className={`ua-sop-field__input${errors.linkUrl ? " is-invalid" : ""}`}
-                value={form.linkUrl}
-                placeholder="https://youtube.com/watch?v=… or vimeo.com/…"
-                disabled={Boolean(file)}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, linkUrl: e.target.value }));
-                  clearError("linkUrl");
-                  clearError("file");
-                }}
+                ref={fileRef}
+                type="file"
+                accept={acceptForContentType("video")}
+                hidden
+                onChange={onPickFile}
               />
-              {errors.linkUrl ? <span className="ua-sop-field__error">{errors.linkUrl}</span> : (
-                <span className="ua-sop-field__hint">
-                  {file ? "Clear the uploaded file to use a link instead" : "Optional if you upload a local video"}
-                </span>
-              )}
-            </label>
+              <input
+                ref={coverRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+                hidden
+                onChange={onPickCover}
+              />
+              <div className="ua-sop-media-block__grid">
+                <div className="ua-sop-cover-pick">
+                  <span className="ua-sop-field__label">Cover image</span>
+                  <button
+                    type="button"
+                    className={`ua-sop-cover-pick__frame${coverPreview ? " is-on" : ""}`}
+                    disabled={saving}
+                    aria-label={coverFile || hasExistingCover ? "Replace cover image" : "Upload cover image"}
+                    onClick={() => coverRef.current?.click()}
+                  >
+                    {coverPreview ? (
+                      <img src={coverPreview} alt="" />
+                    ) : (
+                      <>
+                        <span aria-hidden="true">📷</span>
+                        <em>Upload cover</em>
+                      </>
+                    )}
+                  </button>
+                  {errors.cover ? (
+                    <span className="ua-sop-field__error">{errors.cover}</span>
+                  ) : (
+                    <p className="ua-sop-cover-pick__hint">JPEG / PNG · 16:9</p>
+                  )}
+                </div>
+                <div className="ua-sop-field">
+                  <span className="ua-sop-field__label">Video file</span>
+                  <div className="ua-sop-upload-row">
+                    <button
+                      type="button"
+                      className="ua-sop-upload-btn"
+                      disabled={saving}
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      {file || (hasExistingFile && form.contentType === initial?.contentType) ? "Replace video" : "Upload video"}
+                    </button>
+                    <span className="ua-sop-upload-name">
+                      {file?.name
+                        || (hasExistingFile && form.contentType === initial?.contentType ? initial?.fileName || "Current video attached" : "No video selected")}
+                    </span>
+                  </div>
+                  {errors.file ? <span className="ua-sop-field__error">{errors.file}</span> : (
+                    <span className="ua-sop-field__hint">MP4 / WebM / MOV · max 100 MB — or paste a link</span>
+                  )}
+                  <label className="ua-sop-field ua-sop-media-block__link">
+                    <span className="ua-sop-field__label">YouTube / Vimeo link</span>
+                    <input
+                      className={`ua-sop-field__input${errors.linkUrl ? " is-invalid" : ""}`}
+                      value={form.linkUrl}
+                      placeholder="https://youtube.com/watch?v=…"
+                      disabled={Boolean(file)}
+                      onChange={(e) => {
+                        setForm((f) => ({ ...f, linkUrl: e.target.value }));
+                        clearError("linkUrl");
+                        clearError("file");
+                      }}
+                    />
+                    {errors.linkUrl ? <span className="ua-sop-field__error">{errors.linkUrl}</span> : (
+                      <span className="ua-sop-field__hint">
+                        {file ? "Clear the uploaded file to use a link instead" : "Optional if you upload a local video"}
+                      </span>
+                    )}
+                  </label>
+                </div>
+              </div>
+            </div>
           ) : null}
         </div>
 
@@ -681,6 +774,9 @@ export function SopPage() {
               <article key={sop.id} className={`ua-sop-card${open ? " ua-sop-card--open" : ""}`}>
                 <div className="ua-sop-card__row">
                   <div className="ua-sop-card__main">
+                    {type === "video" && sop.thumbnailUrl ? (
+                      <img className="ua-sop-card__thumb" src={sop.thumbnailUrl} alt="" />
+                    ) : null}
                     <div className="ua-sop-card__badges">
                       <CategoryBadge category={sop.category} />
                       <AudienceRoleBadge audienceRole={sop.audienceRole} accessRoles={accessRoles} />

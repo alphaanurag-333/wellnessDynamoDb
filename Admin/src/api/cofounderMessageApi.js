@@ -19,6 +19,7 @@ export function mapCofounderMessage(row) {
     type: normalizedType,
     ytLink: String(row.ytLink || "").trim(),
     video: row.video || "",
+    thumbnail: row.thumbnail || "",
     live: row.status !== "inactive",
     status: row.status === "inactive" ? "inactive" : "active",
     createdAt: row.createdAt,
@@ -41,6 +42,7 @@ export function editorFromCofounder(row, fallback = {}) {
       type: "none",
       live: false,
       profileImage: "",
+      thumbnail: "",
     };
   }
   const hasVideo = mapped.type === "video" && Boolean(mapped.video);
@@ -59,6 +61,7 @@ export function editorFromCofounder(row, fallback = {}) {
     live: mapped.live,
     profileImage: mapped.profileImage,
     video: mapped.video,
+    thumbnail: mapped.thumbnail,
     updatedAt: mapped.updatedAt,
   };
 }
@@ -101,6 +104,7 @@ export async function adminCreateCofounderMessage(token, fields, files = {}) {
     appendFields(form, fields);
     if (files.profileImage instanceof File) form.append("profileImage", files.profileImage);
     if (files.videoFile instanceof File) form.append("videoFile", files.videoFile);
+    if (files.thumbnailFile instanceof File) form.append("thumbnailFile", files.thumbnailFile);
     const { data } = await api.post(BASE, form, { headers });
     return mapCofounderMessage(data.data);
   } catch (error) {
@@ -111,13 +115,17 @@ export async function adminCreateCofounderMessage(token, fields, files = {}) {
 export async function adminUpdateCofounderMessage(token, fields = {}, files = {}) {
   const headers = authHeader(tokenOrStored(token));
   try {
-    const hasFiles = files.profileImage instanceof File || files.videoFile instanceof File;
+    const hasFiles =
+      files.profileImage instanceof File ||
+      files.videoFile instanceof File ||
+      files.thumbnailFile instanceof File;
     let payload = jsonFields(fields);
     if (hasFiles) {
       payload = new FormData();
       appendFields(payload, fields);
       if (files.profileImage instanceof File) payload.append("profileImage", files.profileImage);
       if (files.videoFile instanceof File) payload.append("videoFile", files.videoFile);
+      if (files.thumbnailFile instanceof File) payload.append("thumbnailFile", files.thumbnailFile);
     }
     const { data } = await api.patch(BASE, payload, { headers });
     return mapCofounderMessage(data.data);

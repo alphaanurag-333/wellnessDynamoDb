@@ -21,6 +21,10 @@ const EMPTY_DRAFT = {
 const CF_CROP_WIDTH = 400;
 const CF_CROP_HEIGHT = 400;
 const CF_CROP_RATIO = "1:1";
+const CF_COVER_WIDTH = 840;
+const CF_COVER_HEIGHT = 480;
+const CF_COVER_RATIO = "16:9";
+const CF_COVER_SIZE_LABEL = "Cover: 840×480";
 
 const VIDEO_TYPE_OPTIONS = [
   { value: "none", label: "No video" },
@@ -76,6 +80,35 @@ function PortraitPicker({ previewUrl, disabled, onPick, onRemove }) {
   );
 }
 
+function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
+  const filled = Boolean(previewUrl);
+
+  return (
+    <div className="ua-cfg-cf-cover-wrap">
+      <button
+        type="button"
+        className={`ua-cfg-cf-cover-frame${filled ? " is-on" : ""}`}
+        disabled={disabled}
+        aria-label={filled ? "Replace cover image" : "Upload cover image"}
+        onClick={() => onPick?.()}
+      >
+        {filled ? (
+          <img src={previewUrl} alt="" />
+        ) : (
+          <>
+            <span aria-hidden="true">📷</span>
+            <em>Upload cover</em>
+          </>
+        )}
+        {filled ? <span className="ua-cfg-cf-cover-frame__replace">Replace</span> : null}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover image" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
+    </div>
+  );
+}
+
 export function DynamicCofounderSection({ record, setRecord, onToast }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -85,6 +118,8 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
   const [imagePreview, setImagePreview] = useState("");
   const [videoFile, setVideoFile] = useState(null);
   const [videoName, setVideoName] = useState("");
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState("");
   const [cropPending, setCropPending] = useState(null);
 
   const { openPicker: openImagePicker, mediaPickerModal: imagePickerModal } = useMediaPicker({
@@ -95,6 +130,17 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     cropHeight: CF_CROP_HEIGHT,
     showFrameworks: false,
     onFiles: (file) => openCrop(file),
+    onError: (error) => onToast?.(error?.message || "Could not attach media"),
+  });
+
+  const { openPicker: openCoverPicker, mediaPickerModal: coverPickerModal } = useMediaPicker({
+    accept: "image",
+    title: "Choose cover image",
+    cropImages: false,
+    cropWidth: CF_COVER_WIDTH,
+    cropHeight: CF_COVER_HEIGHT,
+    showFrameworks: false,
+    onFiles: (file) => openCrop(file, "cover"),
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
   });
 
@@ -141,6 +187,8 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
       setImageFile(null);
       setVideoFile(null);
       setVideoName("");
+      setCoverFile(null);
+      setCoverPreview(next?.thumbnail || "");
     } catch (error) {
       setRecord(null);
       setExists(false);
@@ -160,12 +208,18 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
   }, [imagePreview]);
 
   useEffect(() => () => {
+    if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+  }, [coverPreview]);
+
+  useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
   }, [cropPending?.previewUrl]);
 
   const mapped = useMemo(() => mapRow(record), [record]);
   const photo = imagePreview || mapped?.profileImage || "";
+  const cover = coverPreview || mapped?.thumbnail || "";
   const embed = youtubeEmbedUrl(draft.ytLink);
+  const cropIsCover = cropPending?.kind === "cover";
   const dirty = mapped ? (
     draft.name !== mapped.name
     || draft.message !== (mapped.description || "")
@@ -173,6 +227,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     || draft.ytLink !== (mapped.videoLink || "")
     || imageFile instanceof File
     || videoFile instanceof File
+    || coverFile instanceof File
   ) : (
     Boolean(draft.name.trim())
     || Boolean(draft.message.trim())
@@ -180,6 +235,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     || Boolean(draft.ytLink.trim())
     || imageFile instanceof File
     || videoFile instanceof File
+    || coverFile instanceof File
   );
 
   function closeCrop() {
@@ -187,13 +243,13 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     setCropPending(null);
   }
 
-  function openCrop(file) {
+  function openCrop(file, kind = "portrait") {
     if (!String(file.type || "").startsWith("image/")) {
       onToast("Choose an image file");
       return;
     }
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
-    setCropPending({ file, previewUrl: URL.createObjectURL(file) });
+    setCropPending({ kind, file, previewUrl: URL.createObjectURL(file) });
   }
 
   function clearDraftPhoto() {
@@ -202,13 +258,27 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     setImagePreview(mapped?.profileImage || "");
   }
 
+  function clearDraftCover() {
+    if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    setCoverFile(null);
+    setCoverPreview(mapped?.thumbnail || "");
+  }
+
   async function confirmCrop(croppedFile, cropError) {
     if (cropError) {
       onToast(cropError.message || "Failed to crop image");
       return;
     }
     if (!croppedFile) return;
+    const kind = cropPending?.kind || "portrait";
     closeCrop();
+    if (kind === "cover") {
+      if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+      setCoverFile(croppedFile);
+      setCoverPreview(URL.createObjectURL(croppedFile));
+      onToast("Cover cropped — save to publish");
+      return;
+    }
     if (imagePreview?.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
     setImageFile(croppedFile);
     setImagePreview(URL.createObjectURL(croppedFile));
@@ -250,6 +320,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
     const files = {};
     if (imageFile instanceof File) files.profileImage = imageFile;
     if (videoFile instanceof File) files.videoFile = videoFile;
+    if (coverFile instanceof File) files.thumbnailFile = coverFile;
 
     setBusy(true);
     try {
@@ -262,7 +333,9 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
       setImageFile(null);
       setVideoFile(null);
       setVideoName("");
+      setCoverFile(null);
       if (saved?.profileImage) setImagePreview(saved.profileImage);
+      setCoverPreview(saved?.thumbnail || "");
       onToast("Co-founder message saved");
       return saved;
     } catch (error) {
@@ -348,61 +421,72 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
           </div>
         </Panel>
 
-        <Panel title="Video" subtitle="Optional welcome video — YouTube link or uploaded file.">
+        <Panel title="Video" subtitle="Optional welcome video — YouTube link or uploaded file, plus a cover image.">
           <div className="ua-cfg-cf-video-box">
-            <div className="ua-cfg-cf-video-fields is-split">
-              <div className="ua-cfg-cf-video-field">
-                <label className="ua-cfg-cf-label">Video type</label>
-                <CfgSelect
-                  className="ua-cfg-cf-select"
-                  options={VIDEO_TYPE_OPTIONS}
-                  value={draft.type}
-                  disabled={loading || busy}
-                  ariaLabel="Video type"
-                  onChange={(value) => setDraft((prev) => ({
-                    ...prev,
-                    type: value,
-                    ytLink: value === "link" ? prev.ytLink : "",
-                  }))}
-                />
-              </div>
-              {draft.type === "link" ? (
-                <div className="ua-cfg-cf-video-field">
-                  <label className="ua-cfg-cf-label" htmlFor="cf-yt">YouTube link</label>
-                  <input
-                    id="cf-yt"
-                    type="url"
-                    className="ua-cfg-vh-input ua-cfg-cf-input"
-                    placeholder="https://youtube.com/watch?v=…"
-                    value={draft.ytLink}
-                    disabled={loading || busy}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
-                  />
-                </div>
-              ) : null}
-              {draft.type === "video" ? (
-                <div className="ua-cfg-cf-video-field ua-cfg-cf-video-field--attach">
-                  <label className="ua-cfg-cf-label" aria-hidden="true">&nbsp;</label>
-                  <div className="ua-cfg-cf-video-row">
-                    <span className="ua-cfg-vh-thumb" aria-hidden="true">▶</span>
-                    <strong>{videoName || (mapped?.video ? "Current video attached" : "No video yet")}</strong>
-                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => openVideoPicker()}>
-                      {mapped?.video || videoFile ? "Replace video" : "Upload video"}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+            <div className="ua-cfg-cf-video-field">
+              <label className="ua-cfg-cf-label">Video type</label>
+              <CfgSelect
+                className="ua-cfg-cf-select"
+                options={VIDEO_TYPE_OPTIONS}
+                value={draft.type}
+                disabled={loading || busy}
+                ariaLabel="Video type"
+                onChange={(value) => setDraft((prev) => ({
+                  ...prev,
+                  type: value,
+                  ytLink: value === "link" ? prev.ytLink : "",
+                }))}
+              />
             </div>
 
-            {draft.type === "link" && embed ? (
-              <div className="ua-cfg-cf-video-preview">
-                <iframe title="Co-founder video preview" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-              </div>
-            ) : null}
-
-            {draft.type === "video" && mapped?.video && !videoFile ? (
-              <div className="ua-cfg-cf-video-preview">
-                <video className="ua-cfg-rc-view__player" src={mapped.video} controls preload="metadata" />
+            {draft.type !== "none" ? (
+              <div className="ua-cfg-cf-media">
+                <div className="ua-cfg-cf-media__cover">
+                  <span className="ua-cfg-cf-label">Cover image</span>
+                  <CoverDrop
+                    previewUrl={cover}
+                    disabled={loading || busy}
+                    onPick={() => openCoverPicker()}
+                    onRemove={coverFile instanceof File ? clearDraftCover : null}
+                  />
+                  <p className="ua-cfg-cf-hint">{CF_COVER_SIZE_LABEL} · 16:9</p>
+                </div>
+                <div className="ua-cfg-cf-media__source">
+                  {draft.type === "link" ? (
+                    <div className="ua-cfg-cf-video-field">
+                      <label className="ua-cfg-cf-label" htmlFor="cf-yt">YouTube link</label>
+                      <input
+                        id="cf-yt"
+                        type="url"
+                        className="ua-cfg-vh-input ua-cfg-cf-input"
+                        placeholder="https://youtube.com/watch?v=…"
+                        value={draft.ytLink}
+                        disabled={loading || busy}
+                        onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
+                      />
+                    </div>
+                  ) : (
+                    <div className="ua-cfg-cf-video-field">
+                      <span className="ua-cfg-cf-label">Video file</span>
+                      <div className="ua-cfg-cf-video-row">
+                        <strong>{videoName || (mapped?.video ? "Video attached" : "No video yet")}</strong>
+                        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => openVideoPicker()}>
+                          {mapped?.video || videoFile ? "Replace video" : "Upload video"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {draft.type === "link" && embed ? (
+                  <div className="ua-cfg-cf-video-preview">
+                    <iframe title="Co-founder video preview" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  </div>
+                ) : null}
+                {draft.type === "video" && mapped?.video && !videoFile ? (
+                  <div className="ua-cfg-cf-video-preview">
+                    <video className="ua-cfg-rc-view__player" src={mapped.video} poster={cover || undefined} controls preload="metadata" />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -422,21 +506,22 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
 
       <ImageCropModal
         open={Boolean(cropPending)}
-        label="co-founder portrait"
+        label={cropIsCover ? "video cover" : "co-founder portrait"}
         file={cropPending?.file}
         previewUrl={cropPending?.previewUrl || ""}
         busy={busy}
-        defaultRatio={CF_CROP_RATIO}
-        originalAspectCss={`${CF_CROP_WIDTH} / ${CF_CROP_HEIGHT}`}
-        originalAspectNumber={CF_CROP_WIDTH / CF_CROP_HEIGHT}
-        cropWidth={CF_CROP_WIDTH}
-        cropHeight={CF_CROP_HEIGHT}
+        defaultRatio={cropIsCover ? CF_COVER_RATIO : CF_CROP_RATIO}
+        originalAspectCss={cropIsCover ? `${CF_COVER_WIDTH} / ${CF_COVER_HEIGHT}` : `${CF_CROP_WIDTH} / ${CF_CROP_HEIGHT}`}
+        originalAspectNumber={cropIsCover ? CF_COVER_WIDTH / CF_COVER_HEIGHT : CF_CROP_WIDTH / CF_CROP_HEIGHT}
+        cropWidth={cropIsCover ? CF_COVER_WIDTH : CF_CROP_WIDTH}
+        cropHeight={cropIsCover ? CF_COVER_HEIGHT : CF_CROP_HEIGHT}
         backdropClassName="ua-cfg-cf-crop-modal"
         onClose={closeCrop}
         onConfirm={confirmCrop}
       />
 
       {imagePickerModal}
+      {coverPickerModal}
       {videoPickerModal}
     </div>
   );
