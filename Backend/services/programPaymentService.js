@@ -12,10 +12,12 @@ const {
   toPublicTransaction,
 } = require("../models/consultancyTransactionModel");
 const {
+  createUserProgram,
   getPurchasableProgramForUser,
   getActiveProgramForUser,
   updateUserProgram,
   getUserProgramById,
+  normalizeCoachType,
 } = require("../models/userProgramModel");
 const {
   createCashfreeOrder,
@@ -273,6 +275,71 @@ async function findUserProgramForTransaction(user, transaction) {
   );
 }
 
+async function ensureUserProgramFromTransaction(user, transaction, paidAt) {
+  const existing = await findUserProgramForTransaction(user, transaction);
+  if (existing) return existing;
+
+  const snap = transaction?.userSnapshot || {};
+  const catalogItemId = String(snap.catalogItemId || "").trim();
+  const title = String(snap.catalogItemName || "").trim();
+  if (!catalogItemId && !title) return null;
+
+  const coachId = String(
+    transaction?.parentCoachId || transaction?.meetingAssigneeId || user?.parentCoachId || "",
+  ).trim();
+  if (!coachId) return null;
+
+  const programType = await resolvePurchasedProgramType(user, transaction);
+  const coachType = normalizeCoachType(
+    transaction?.meetingAssigneeType,
+    transaction?.meetingAssigneeType === "assistant_wellness_coach"
+      ? "assistant_wellness_coach"
+      : "wellness_coach",
+  );
+
+  return createUserProgram({
+    userId: user.id,
+    coachId,
+    coachType,
+    catalogProgramId: catalogItemId || title.toLowerCase().replace(/\s+/g, "-"),
+    title: title || "Wellness Program",
+    programType,
+    description: "",
+    price: Number(snap.catalogAmount) || Number(transaction?.totalAmount) || 0,
+    currency: String(transaction?.currency || "INR").toUpperCase(),
+    enabled: true,
+    status: "purchased",
+    purchasedAt: paidAt,
+    transactionId: transaction?.id || null,
+  });
+}
+
+async function backfillPurchasedProgramRecord(user) {
+  if (!user?.programPurchased || user?.assignedProgramId) return null;
+
+  const result = await listTransactionsByUserId(user.id, {
+    page: 1,
+    limit: 20,
+    paymentStatus: "paid",
+    productType: "program",
+  });
+  const transaction =
+    (result.items || []).find((row) => String(row.paymentStatus || "").toLowerCase() === "paid") ||
+    null;
+  if (!transaction) return null;
+
+  const paidAt = transaction.paidAt || transaction.updatedAt || new Date().toISOString();
+  const userProgram = await ensureUserProgramFromTransaction(user, transaction, paidAt);
+  if (!userProgram) return null;
+
+  await updateUser(user.id, {
+    assignedProgramId: userProgram.id,
+    programEnabled: true,
+  });
+
+  return userProgram;
+}
+
 async function resolvePurchasedProgramType(user, transaction) {
   const snapshotType = String(
     transaction?.userSnapshot?.catalogProgramType || ""
@@ -307,7 +374,10 @@ async function resolvePurchasedProgramType(user, transaction) {
 }
 
 async function applyPaidProgramEntitlements(user, transaction, paidAt) {
-  const userProgram = await findUserProgramForTransaction(user, transaction);
+  let userProgram = await findUserProgramForTransaction(user, transaction);
+  if (!userProgram) {
+    userProgram = await ensureUserProgramFromTransaction(user, transaction, paidAt);
+  }
   if (userProgram) {
     await updateUserProgram(userProgram.id, {
       status: "purchased",
@@ -505,4 +575,5 @@ module.exports = {
   finalizePaidProgramTransaction,
   programPurchaseNeedsFinalization,
   userProgramLookupIds,
+  backfillPurchasedProgramRecord,
 };

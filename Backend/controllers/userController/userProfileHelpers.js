@@ -31,6 +31,7 @@ const {
   getWellnessCoachByIdResolved,
   getAssistantWellnessCoachByIdResolved,
 } = require("../../services/accountResolver");
+const { backfillPurchasedProgramRecord } = require("../../services/programPaymentService");
 const { toPublicIntroVideo } = require("../../utils/coachContent");
 const {
   listSubscriptionsByUserId,
@@ -276,6 +277,19 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
         : null;
     } catch (err) {
       console.error("[enrichUser] assigned program lookup failed", err.message);
+      pub.assignedProgram = null;
+    }
+  } else if (pub.programPurchased) {
+    try {
+      const backfilled = await backfillPurchasedProgramRecord(source);
+      if (backfilled) {
+        pub.assignedProgramId = backfilled.id;
+        pub.assignedProgram = toPublicUserProgram(backfilled);
+      } else {
+        pub.assignedProgram = null;
+      }
+    } catch (err) {
+      console.error("[enrichUser] purchased program backfill failed", err.message);
       pub.assignedProgram = null;
     }
   } else {
