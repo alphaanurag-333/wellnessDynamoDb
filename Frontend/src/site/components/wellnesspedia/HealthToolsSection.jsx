@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Activity, Flame, Percent, HeartPulse } from "lucide-react";
+import bmiIcon from "../../../assets/svgicon/bmi.svg";
+import bmrIcon from "../../../assets/svgicon/bmr.svg";
+import bodyFatIcon from "../../../assets/svgicon/bodyFat.svg";
+import visceralFatIcon from "../../../assets/svgicon/visceralFat.svg";
 import BmiCalculatorModal from "./BmiCalculatorModal.jsx";
 import BmrCalculatorModal from "./BmrCalculatorModal.jsx";
 import BodyFatCalculatorModal from "./BodyFatCalculatorModal.jsx";
@@ -9,25 +12,25 @@ const TOOLS = [
   {
     id: "bmi",
     title: "BMI Calculator",
-    icon: Activity,
+    icon: bmiIcon,
     tone: "orange",
   },
   {
     id: "bmr",
     title: "BMR Calculator",
-    icon: Flame,
+    icon: bmrIcon,
     tone: "purple",
   },
   {
     id: "bodyfat",
     title: "Body Fat %",
-    icon: Percent,
+    icon: bodyFatIcon,
     tone: "pink",
   },
   {
     id: "visceral",
     title: "Visceral Fat",
-    icon: HeartPulse,
+    icon: visceralFatIcon,
     tone: "yellow",
   },
 ];
@@ -43,9 +46,7 @@ export default function HealthToolsSection() {
         </div>
 
         <div className="wp-tools-grid">
-          {TOOLS.map((tool) => {
-            const Icon = tool.icon;
-            return (
+          {TOOLS.map((tool) => (
               <button
                 key={tool.id}
                 type="button"
@@ -53,12 +54,11 @@ export default function HealthToolsSection() {
                 onClick={() => setActive(tool.id)}
               >
                 <span className="wp-tool-card__icon" aria-hidden>
-                  <Icon size={28} strokeWidth={1.75} />
+                  <img src={tool.icon} alt="" width={40} height={40} />
                 </span>
                 <span className="wp-tool-card__title">{tool.title}</span>
               </button>
-            );
-          })}
+          ))}
         </div>
       </div>
 

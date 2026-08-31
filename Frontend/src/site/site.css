@@ -5023,16 +5023,20 @@ font-weight: var(--fw-regular);
 
 .pillars__wrapper {
   width: 100%;
-display: flex;
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
-gap: 28px;
+  gap: 28px;
 }
 
 /* SINGLE CARD */
 
 .pillar-card {
   width: 33.333%;
+  height: auto;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   position: relative;
@@ -5090,6 +5094,9 @@ transition: var(--transition);
 .pillar-card__content {
   margin: 0 20px 20px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .pillar-card__title {
@@ -5103,18 +5110,30 @@ line-height: var(--line-height-heading);
 
 .pillar-card__description {
   margin-top: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 color: var(--text-body);
 font-size: var(--font-size-body);
-line-height: var(--line-height-body);
+line-height: 1.5 !important;
 font-weight: var(--fw-regular);
   text-align: justify;
+  overflow-wrap: break-word;
 }
 
 .pillar-card__description.is-clamped {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  overflow: hidden !important;
+  max-height: 4.5em !important;
+}
+
+.pillar-card__description.is-expanded {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  overflow: visible !important;
+  max-height: none !important;
 }
 
 .pillar-card__description.is-clamped p {
@@ -5122,13 +5141,16 @@ font-weight: var(--fw-regular);
 }
 
 .pillar-card__more {
-  display: flex;
+  margin: 6px 0 0;
+  margin-left: auto;
+  padding: 0;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  align-self: flex-end;
   gap: 6px;
-  width: 100%;
-  margin: 6px 0 0;
-  padding: 0;
+  width: auto;
+  flex-shrink: 0;
   background: transparent;
   border: none;
   outline: none;
@@ -9936,6 +9958,9 @@ flex-shrink: 0;
 .about-page .pillar-card__content {
   margin: 0 var(--space-5) var(--space-5);
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .about-page .pillar-card__head-title {
@@ -12972,9 +12997,11 @@ bottom: -18px;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-4);
+    align-items: start;
   }
 .about-page .pillar-card {
     width: 100%;
+    align-self: start;
   }
 .about-page .aboutFaq__wrapper {
     flex-direction: column;
@@ -13866,6 +13893,13 @@ bottom: -18px;
   background: rgba(255, 255, 255, 0.75);
   display: grid;
   place-items: center;
+}
+
+.wellnesspedia-page .wp-tool-card__icon img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
 }
 
 .wellnesspedia-page .wp-tool-card__title {
