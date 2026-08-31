@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
@@ -6,8 +7,6 @@ import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.
 import { fetchProgramTestimonials } from "../api/publicMisc.js";
 import { getProgramTestimonialMeta, programTestimonialTypeMatches } from "../constants/programTestimonials.js";
 import { SiteLoader } from "./SiteLoader.jsx";
-
-const READ_MORE_MIN_CHARS = 140;
 
 function mapProgramTestimonial(row) {
   if (!row) return null;
@@ -26,7 +25,8 @@ function mapProgramTestimonial(row) {
 }
 
 function ProgramTestimonialCard({ item, expanded, onToggle }) {
-  const showToggle = item.description.length > READ_MORE_MIN_CHARS;
+  const { ref: quoteRef, overflows } = useClampedOverflow(item.description, expanded);
+  const showToggle = overflows || expanded;
 
   return (
     <article className={`program-testimonial-card${expanded ? " program-testimonial-card--expanded" : ""}`}>
@@ -45,6 +45,7 @@ function ProgramTestimonialCard({ item, expanded, onToggle }) {
       </div>
 
       <blockquote
+        ref={quoteRef}
         className={`program-testimonial-card__quote${expanded ? " program-testimonial-card__quote--expanded" : ""}`}
       >
         <p>&ldquo;{item.description}&rdquo;</p>

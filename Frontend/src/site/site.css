@@ -2599,8 +2599,10 @@ h5.pillar-card__head-title {
 .methodology-card__content p.methodology-card__desc {
   margin: 8px 0 0;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 0 0 auto;
   color: var(--text-body);
   font-family: var(--font-family-base);
   font-size: var(--font-size-body);
@@ -2609,11 +2611,14 @@ h5.pillar-card__head-title {
   text-align: justify;
   overflow-wrap: break-word;
   word-break: normal;
+  hyphens: none;
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
   -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
   overflow: hidden !important;
-  max-height: 4.5em !important;
+  text-overflow: ellipsis;
+  max-height: calc(1.5em * 3 + 4px) !important;
 }
 
 .methodology-card__content p.methodology-card__desc--expanded {
@@ -2928,14 +2933,18 @@ color: #008228;
 
 .success-card__review {
   margin: 0;
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .success-card__review p {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
   font-size: var(--font-size-body);
-  line-height: var(--line-height-body);
+  line-height: 1.5;
   color: var(--text-heading);
   word-break: normal;
   overflow-wrap: break-word;
@@ -2943,8 +2952,11 @@ color: #008228;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
+  text-overflow: ellipsis;
   text-align: justify;
+  max-height: calc(1.5em * 3 + 4px);
 }
 
 .success-card__review-text--expanded {
@@ -4774,14 +4786,21 @@ color: var(--primary);
 .leadership__description {
   margin: 0;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
   color: var(--text-body);
   font-size: var(--font-size-body);
   line-height: var(--line-height-body);
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
+  line-clamp: 5;
   overflow: hidden;
-  min-width: 0;
+  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .leadership__description p {
@@ -5013,8 +5032,11 @@ color: var(--primary);
 
 .leadership__link {
   margin: var(--space-1) 0 0;
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  align-self: flex-end;
   gap: 8px;
   background: transparent;
   border: none;
@@ -5028,6 +5050,7 @@ color: var(--primary);
   transition: var(--transition);
   padding: 0;
   min-height: 0;
+  width: auto;
 }
 
 .leadership__link svg {
@@ -5163,22 +5186,28 @@ line-height: var(--line-height-heading);
 .pillar-card__description {
   margin-top: 8px;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 0 0 auto;
 color: var(--text-body);
 font-size: var(--font-size-body);
 line-height: 1.5 !important;
 font-weight: var(--fw-regular);
   text-align: justify;
   overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .pillar-card__description.is-clamped {
   display: -webkit-box !important;
   -webkit-box-orient: vertical !important;
   -webkit-line-clamp: 3 !important;
+  line-clamp: 3 !important;
   overflow: hidden !important;
-  max-height: 4.5em !important;
+  text-overflow: ellipsis;
+  max-height: calc(1.5em * 3 + 4px) !important;
 }
 
 .pillar-card__description.is-expanded {
@@ -5192,6 +5221,10 @@ font-weight: var(--fw-regular);
   display: contents;
 }
 
+.pillar-card__description.static-page-content {
+  padding: 0;
+}
+
 .pillar-card__more {
   margin: 6px 0 0;
   margin-left: auto;
@@ -5202,6 +5235,7 @@ font-weight: var(--fw-regular);
   align-self: flex-end;
   gap: 6px;
   width: auto;
+  flex: 0 0 auto;
   flex-shrink: 0;
   background: transparent;
   border: none;
@@ -7011,10 +7045,19 @@ box-shadow: var(--shadow-sm);
 
 .program-testimonial-card__quote {
   margin: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
+  line-clamp: 5;
+  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .program-testimonial-card__quote p {
@@ -7023,6 +7066,8 @@ box-shadow: var(--shadow-sm);
   font-size: 15px;
   line-height: 1.7;
   text-align: justify;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .program-testimonial-card__quote--expanded {
@@ -7033,10 +7078,14 @@ box-shadow: var(--shadow-sm);
 
 .program-testimonial-card__link {
   margin-top: 8px;
+  margin-left: auto;
   padding: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  align-self: flex-end;
   gap: 8px;
+  width: auto;
   background: transparent;
   border: none;
   outline: none;
@@ -7392,7 +7441,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 
 .monthly-champions .champion-info h4,
 .monthly-champions .fonrside {
-  font-size: 0.88rem !important;
+  font-size: 1rem !important;
   font-weight: 600;
   line-height: 1.25;
 }
@@ -7492,8 +7541,13 @@ background-image: url("../site/images/birthday-card-bg.png");
 
 .monthly-champions .champion-info p.champion-info__text {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   min-height: 0;
+  flex: 0 0 auto;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .monthly-champions .champion-info p.champion-info__text--clamped {
@@ -7505,7 +7559,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   text-overflow: ellipsis;
   min-height: 0 !important;
   line-height: 1.45 !important;
-  max-height: calc(1.45em * 2) !important;
+  max-height: calc(1.45em * 2 + 4px) !important;
 }
 
 .monthly-champions .champion-info p.champion-info__text:not(.champion-info__text--clamped) {
@@ -7568,7 +7622,8 @@ background-image: url("../site/images/birthday-card-bg.png");
   margin-bottom: 0;
   text-align: left;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .champion-info__text--clamped {
@@ -7827,15 +7882,21 @@ background-image: url("../site/images/birthday-card-bg.png");
   font-size: 0.92rem;
   line-height: 1.7;
   font-style: italic;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   text-align: justify;
   margin: 0;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  line-clamp: 2;
+  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: none;
 }
 
 .real-healing-review--expanded {
@@ -12148,6 +12209,42 @@ font-size: 0.62rem;
   .static-page-content{
     padding: 0 15px;
   }
+  .pillar-card .static-page-content,
+  .pillar-card__description.static-page-content {
+    padding: 0;
+  }
+  .pillar-card__content {
+    margin: 0 16px 18px;
+  }
+  .pillar-card__description,
+  .about-page .pillar-card__description,
+  .about-page .pillar-card__description p,
+  .methodology-card__content p.methodology-card__desc,
+  .real-healing-review,
+  .monthly-champions .champion-info p.champion-info__text,
+  .success-card__review p,
+  .program-testimonial-card__quote,
+  .program-testimonial-card__quote p,
+  .leadership__description,
+  .leadership__description p {
+    text-align: start !important;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+  }
+  .pillar-card__content {
+    margin: 0 16px 18px;
+  }
+  .pillar-card__more,
+  .methodology-card__more,
+  .real-healing-more,
+  .monthly-champions .champion-info__more,
+  .success-card__more,
+  .program-testimonial-card__link,
+  .leadership__link {
+    margin-left: auto;
+    align-self: flex-end;
+  }
 .static-page-title{
     font-size: var(--font-size-h3);
   }
@@ -13401,7 +13498,7 @@ bottom: -18px;
   }
   .monthly-champions .champion-info h4,
   .monthly-champions .fonrside {
-    font-size: 0.8rem !important;
+    font-size: 1rem !important;
   }
   .monthly-champions .champion-info p,
   .champion-info p {
@@ -13547,6 +13644,28 @@ bottom: -18px;
     right: 15px;
     bottom: 20px;
     font-size: 13px;
+  }
+
+  .pillar-card__description,
+  .about-page .pillar-card__description,
+  .about-page .pillar-card__description p,
+  .methodology-card__content p.methodology-card__desc,
+  .real-healing-review,
+  .monthly-champions .champion-info p.champion-info__text,
+  .success-card__review p,
+  .program-testimonial-card__quote,
+  .program-testimonial-card__quote p,
+  .leadership__description,
+  .leadership__description p {
+    text-align: start !important;
+    word-break: normal;
+    overflow-wrap: break-word;
+    hyphens: none;
+  }
+
+  .pillar-card .static-page-content,
+  .pillar-card__description.static-page-content {
+    padding: 0;
   }
 }
 /* ============================================================
@@ -14074,12 +14193,13 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-disorder-card__more {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  align-self: flex-end;
   gap: 6px;
-  width: 100%;
-  margin: auto 0 0;
+  width: auto;
+  margin: auto 0 0 auto;
   padding-top: 0.85rem;
   border: none;
   outline: none;

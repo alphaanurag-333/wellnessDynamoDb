@@ -15,19 +15,17 @@ export function useClampedOverflow(text, expanded) {
     const measure = () => {
       // Keep last known overflow while expanded so "Read Less" stays visible.
       if (expanded) return;
-
-      // Force layout with clamp applied, then compare full vs visible height.
-      const next = el.scrollHeight > el.clientHeight + 2;
-      setOverflows(next);
+      setOverflows(el.scrollHeight - el.clientHeight > 2);
     };
 
     measure();
-
+    const frame = window.requestAnimationFrame(measure);
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     ro?.observe(el);
     window.addEventListener("resize", measure);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       ro?.disconnect();
       window.removeEventListener("resize", measure);
     };

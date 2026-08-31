@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
@@ -119,8 +120,7 @@ function LeadershipNoteCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [needsToggle, setNeedsToggle] = useState(false);
-  const descriptionRef = useRef(null);
+  const { ref: descriptionRef, overflows } = useClampedOverflow(message, expanded);
 
   const paragraphs = messageParagraphs(message);
   const imageSrc = profileImage ? mediaUrl(profileImage) : "";
@@ -134,22 +134,6 @@ function LeadershipNoteCard({
     setImageError(false);
     setExpanded(false);
   }, [imageSrc, message]);
-
-  useEffect(() => {
-    const el = descriptionRef.current;
-    if (!el || expanded) return undefined;
-
-    const measure = () => setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
-    measure();
-
-    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    observer?.observe(el);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [message, expanded]);
 
   if (!name || paragraphs.length === 0) return null;
 
@@ -201,8 +185,13 @@ function LeadershipNoteCard({
         </div>
 
         <div className="leadership__link-slot">
-          {needsToggle || expanded ? (
-            <button type="button" className="leadership__link" onClick={toggleExpanded}>
+          {overflows || expanded ? (
+            <button
+              type="button"
+              className="leadership__link"
+              onClick={toggleExpanded}
+              aria-expanded={expanded}
+            >
               {expanded ? "Read Less" : "Read More"}
               {expanded ? <ArrowUpRight size={18} /> : <ArrowRight size={18} />}
             </button>

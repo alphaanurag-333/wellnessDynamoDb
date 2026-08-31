@@ -1,39 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
-
-function useChampionOverflow(text, expanded) {
-  const ref = useRef(null);
-  const [overflows, setOverflows] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return undefined;
-
-    const measure = () => {
-      if (expanded) return;
-      setOverflows(el.scrollHeight - el.clientHeight > 2);
-    };
-
-    measure();
-    const frame = window.requestAnimationFrame(measure);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [text, expanded]);
-
-  return { ref, overflows };
-}
+import { useClampedOverflow } from "../hooks/useClampedOverflow.js";
 
 function formatMonthLabel(monthYear) {
   const raw = String(monthYear || "").trim();
@@ -83,7 +55,7 @@ function mapChampion(row) {
 }
 
 function ChampionCard({ item, expanded, onToggle }) {
-  const { ref: textRef, overflows } = useChampionOverflow(item.subtitle, expanded);
+  const { ref: textRef, overflows } = useClampedOverflow(item.subtitle, expanded);
   const showToggle = overflows || expanded;
 
   return (
