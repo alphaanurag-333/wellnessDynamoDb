@@ -1,10 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchMonthlyChampions } from "../api/publicMisc.js";
+
+function useChampionOverflow(text, expanded) {
+  const ref = useRef(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+
+    const measure = () => {
+      if (expanded) return;
+      setOverflows(el.scrollHeight - el.clientHeight > 2);
+    };
+
+    measure();
+    const frame = window.requestAnimationFrame(measure);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [text, expanded]);
+
+  return { ref, overflows };
+}
 
 function formatMonthLabel(monthYear) {
   const raw = String(monthYear || "").trim();
@@ -17,21 +46,21 @@ function formatMonthLabel(monthYear) {
 }
 
 function championSubtitle(row) {
+  const monthLabel = formatMonthLabel(row.monthYear);
   const message = String(row.message || "").trim();
   if (message) return message;
 
   const parts = [];
+  if (monthLabel) parts.push(`Champion of ${monthLabel}!`);
   const score = Number(row.averageScore);
   if (Number.isFinite(score) && score > 0) {
-    parts.push(`Avg. reflection score: ${score}%`);
+    parts.push(`Average daily reflection score: ${score}%.`);
   }
-
   const days = Number(row.daysSubmitted);
   if (Number.isFinite(days) && days > 0) {
     parts.push(`${days} days submitted`);
   }
-
-  return parts.join(" · ") || "Monthly wellness champion";
+  return parts.join(" ") || "Monthly wellness champion";
 }
 
 function mapChampion(row) {
@@ -50,33 +79,12 @@ function mapChampion(row) {
     subtitle: championSubtitle(row),
     avatar: profileImage ? mediaUrl(profileImage) : DEFAULT_IMAGE_SRC,
     averageScore: row.averageScore,
-    monthLabel: formatMonthLabel(row.monthYear),
   };
 }
 
 function ChampionCard({ item, expanded, onToggle }) {
-  const [needsToggle, setNeedsToggle] = useState(false);
-  const textRef = useRef(null);
-
-  useEffect(() => {
-    const el = textRef.current;
-    if (!el || expanded) return undefined;
-
-    const measure = () => {
-      setNeedsToggle(el.scrollHeight > el.clientHeight + 1);
-    };
-
-    measure();
-    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    observer?.observe(el);
-    window.addEventListener("resize", measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [item.subtitle, expanded]);
-
-  const showToggle = needsToggle || expanded;
+  const { ref: textRef, overflows } = useChampionOverflow(item.subtitle, expanded);
+  const showToggle = overflows || expanded;
 
   return (
     <article className={`champion-card${expanded ? " champion-card--expanded" : ""}`}>
@@ -94,17 +102,27 @@ function ChampionCard({ item, expanded, onToggle }) {
 
         <div className="champion-info">
           <h4 className="text-start fonrside">{item.name}</h4>
-          <p
-            ref={textRef}
-            className={expanded ? "champion-info__text" : "champion-info__text champion-info__text--clamped"}
-          >
-            {item.subtitle}
-          </p>
+          {item.subtitle ? (
+            <p
+              ref={textRef}
+              className={
+                expanded
+                  ? "champion-info__text"
+                  : "champion-info__text champion-info__text--clamped"
+              }
+            >
+              {item.subtitle}
+            </p>
+          ) : null}
           {showToggle ? (
             <button
               type="button"
               className="champion-info__more"
-              onClick={() => onToggle(item.id)}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onToggle(item.id);
+              }}
               aria-expanded={expanded}
             >
               {expanded ? "Read Less" : "Read More"}
@@ -118,8 +136,17 @@ function ChampionCard({ item, expanded, onToggle }) {
 }
 
 export default function ChampionSlider() {
+  const swiperRef = useRef(null);
   const [items, setItems] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback((id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const handleSlideChange = useCallback(() => {
+    setExpandedId(null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,16 +172,32 @@ export default function ChampionSlider() {
     };
   }, []);
 
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+
+    requestAnimationFrame(() => {
+      if (swiper.el) {
+        swiper.el.style.height = expandedId ? "auto" : "";
+      }
+      if (swiper.wrapperEl) {
+        swiper.wrapperEl.style.height = expandedId ? "auto" : "";
+      }
+      swiper.updateAutoHeight?.(0);
+      swiper.update?.();
+    });
+
+    if (!swiper.autoplay) return;
+    if (expandedId) swiper.autoplay.stop();
+    else if (!swiper.autoplay.running) swiper.autoplay.start();
+  }, [expandedId]);
+
   if (items === null || items.length === 0) {
     return null;
   }
 
   const enableLoop = items.length > 1;
   const count = items.length;
-
-  const toggleExpanded = (id) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
 
   return (
     <section className="champion-section monthly-champions paddingmanage pt-3 pb-3" aria-label="Monthly champions">
@@ -174,14 +217,21 @@ export default function ChampionSlider() {
           centeredSlides={count === 1}
           centerInsufficientSlides
           loop={enableLoop}
+          autoHeight
+          watchOverflow
           autoplay={
             enableLoop
               ? {
                   delay: 2500,
-                  disableOnInteraction: false,
+                  disableOnInteraction: true,
+                  pauseOnMouseEnter: true,
                 }
               : false
           }
+          onSwiper={(swiper) => {
+            swiperRef.current = swiper;
+          }}
+          onSlideChange={handleSlideChange}
           breakpoints={{
             0: {
               slidesPerView: 1,
