@@ -1553,7 +1553,7 @@ export function AdminDashboard({
     };
   }, []);
 
-  const exportButton = canExport ? (
+  const exportButton = isAdminDash && canExport ? (
     <button
       type="button"
       className={`btn btn--outline ua-dash-export${exporting ? " ua-dash-export--busy" : ""}`}
@@ -1567,7 +1567,7 @@ export function AdminDashboard({
     </button>
   ) : null;
 
-  const reportButton = (
+  const reportButton = isAdminDash ? (
     <button
       type="button"
       className="btn btn--outline ua-dash-export ua-dash-report"
@@ -1584,7 +1584,7 @@ export function AdminDashboard({
       </svg>
       Report Generation
     </button>
-  );
+  ) : null;
 
   function renderDashboardHead(showUpdated = false) {
     return (

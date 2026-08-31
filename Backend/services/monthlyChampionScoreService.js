@@ -53,7 +53,7 @@ function compareChampionRows(a, b) {
 
 /**
  * Groups submitted DRF day logs by user for the month.
- * totalScore = sum of daily DRF scores (0–100 each). Gut Reset days are skipped.
+ * totalScore = sum of daily DRF scores (0–100 each). Load Preset days are skipped.
  * Sorted by totalScore desc (no ranks assigned yet).
  */
 async function computeUserAveragesForMonth(monthYear) {

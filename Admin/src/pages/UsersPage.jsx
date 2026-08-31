@@ -25,6 +25,7 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
   assignUserCoach,
   deleteUser,
+  fetchArchivedUsers,
   fetchScopedUsers,
   fetchUser,
   fetchUsers,
@@ -50,7 +51,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: "Disabled", label: "Disabled" },
 ];
 
-const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0 };
+const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0, archived: 0 };
 const USER_NAME_MAX_CHARS = 40;
 
 function truncateUserName(name, max = USER_NAME_MAX_CHARS) {
@@ -153,6 +154,11 @@ function userSubline(user) {
   return user.email || "—";
 }
 
+function deletedAtMs(iso) {
+  const d = new Date(iso || "");
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 const PAGE_SIZE = 20;
 const EXPORT_PAGE_SIZE = 200;
 
@@ -239,12 +245,14 @@ export function UsersPage() {
   const canExport = can("console.cl.export");
   // Direct tier conversion on this page is admin-only (API enforces the same).
   const canChangeTier = Boolean(isAdminView);
+  // Disable / re-enable client accounts is admin-only (WC and other staff must not see this).
+  const canDisable = Boolean(isAdminView);
   // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
   const canAssignCoaches =
     viewAs === "admin" && dataScope === "all" && can("console.ra.edit") && canEdit;
   const canReassignAwc = canAssignCoaches;
   const canReassignWc = canAssignCoaches;
-  const showRowActions = canEdit || canDelete;
+  const showRowActions = canDisable || canDelete;
   const isReadOnly = !canEdit && !canDelete && !canCreate;
   // Roles scoped to their own roster read through the hierarchy-aware endpoint.
   // WC and AWC always use the scoped endpoint — even when an admin previews those roles.
@@ -281,6 +289,7 @@ export function UsersPage() {
   const [tabCounts, setTabCounts] = useState(EMPTY_TAB_COUNTS);
 
   const typeTab = searchParams.get("tab") || "all";
+  const isArchivedTab = isAdminView && typeTab === "archived";
   const tierFilter = searchParams.get("tier") || "";
   const coachFilter = searchParams.get("coach") || "";
   const subscriptionExpiryParam = Number(searchParams.get("subscriptionExpiry"));
@@ -290,6 +299,15 @@ export function UsersPage() {
       : null;
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+
+  useEffect(() => {
+    if (typeTab === "archived" && !isAdminView) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("tab");
+      next.delete("page");
+      setSearchParams(next, { replace: true });
+    }
+  }, [isAdminView, searchParams, setSearchParams, typeTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -347,6 +365,13 @@ export function UsersPage() {
   }, [baseListQuery, typeTab]);
 
   const loadUsersPage = useCallback(async (page, limit) => {
+    if (isArchivedTab) {
+      return fetchArchivedUsers({
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+      });
+    }
     const params = { ...listQuery, page, limit };
     return useScopedUsers
       ? fetchScopedUsers({
@@ -357,7 +382,7 @@ export function UsersPage() {
           subscriptionExpiryDays: params.subscriptionExpiryDays,
         })
       : fetchUsers(params);
-  }, [listQuery, useScopedUsers]);
+  }, [debouncedSearch, isArchivedTab, listQuery, useScopedUsers]);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,10 +446,15 @@ export function UsersPage() {
           return 0;
         }
       };
-      const [individual, team, app] = await Promise.all([
+      const [individual, team, app, archived] = await Promise.all([
         fetchCount("individual"),
         fetchCount("team"),
         fetchCount("app"),
+        isAdminView
+          ? fetchArchivedUsers({ page: 1, limit: 1, search: baseListQuery.search })
+              .then((result) => Number(result?.pagination?.total) || 0)
+              .catch(() => 0)
+          : Promise.resolve(0),
       ]);
       if (!cancelled) {
         setTabCounts({
@@ -432,6 +462,7 @@ export function UsersPage() {
           individual,
           team,
           app,
+          archived,
         });
       }
     }
@@ -439,12 +470,19 @@ export function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [baseListQuery, reloadNonce, useScopedUsers]);
+  }, [baseListQuery, isAdminView, reloadNonce, useScopedUsers]);
 
   useEffect(() => {
-    if (typeTab === "all") return;
+    if (typeTab === "all" || typeTab === "archived") return;
     setTabCounts((prev) => (
       prev[typeTab] === pagination.total ? prev : { ...prev, [typeTab]: pagination.total }
+    ));
+  }, [pagination.total, typeTab]);
+
+  useEffect(() => {
+    if (typeTab !== "archived") return;
+    setTabCounts((prev) => (
+      prev.archived === pagination.total ? prev : { ...prev, archived: pagination.total }
     ));
   }, [pagination.total, typeTab]);
 
@@ -496,15 +534,15 @@ export function UsersPage() {
     [disabledUsers, tierOverrides],
   );
 
-  const basePool = useMemo(
-    () => users.filter((u) => !deletedUsers.includes(userOverrideKey(u))),
-    [deletedUsers, users],
-  );
+  const basePool = useMemo(() => {
+    if (isArchivedTab) return users;
+    return users.filter((u) => !deletedUsers.includes(userOverrideKey(u)));
+  }, [deletedUsers, isArchivedTab, users]);
 
-  const enrichedPool = useMemo(
-    () => basePool.map((u) => enrichUser(u, overrideState)),
-    [basePool, overrideState],
-  );
+  const enrichedPool = useMemo(() => {
+    if (isArchivedTab) return basePool;
+    return basePool.map((u) => enrichUser(u, overrideState));
+  }, [basePool, isArchivedTab, overrideState]);
 
   const wcSelectOptions = useMemo(() => {
     const byId = new Map();
@@ -556,8 +594,8 @@ export function UsersPage() {
     return Array.from(byId.values());
   }, [enrichedPool, teamMembers]);
 
-  const typeTabs = useMemo(
-    () => USER_TYPE_TAB_DEFS.map((def) => {
+  const typeTabs = useMemo(() => {
+    const tabs = USER_TYPE_TAB_DEFS.map((def) => {
       const id = def.id || "all";
       const count = id === "all"
         ? (tabCounts.all || (typeTab === "all" ? pagination.total : 0))
@@ -567,25 +605,38 @@ export function UsersPage() {
         label: def.label,
         count,
       };
-    }),
-    [pagination.total, tabCounts, typeTab],
-  );
+    });
+    if (isAdminView) {
+      tabs.push({
+        id: "archived",
+        label: "Archived",
+        count: tabCounts.archived ?? (typeTab === "archived" ? pagination.total : 0),
+      });
+    }
+    return tabs;
+  }, [isAdminView, pagination.total, tabCounts, typeTab]);
 
   const pageRows = useMemo(() => {
     let list = enrichedPool;
     if (sort) {
       const dir = sort.dir === "desc" ? -1 : 1;
-      list = [...list].sort((a, b) => (
-        sort.key === "name"
-          ? dir * String(a.name || "").localeCompare(String(b.name || ""))
-          : dir * (lastActiveMinutes(a.lastActive) - lastActiveMinutes(b.lastActive))
-      ));
+      list = [...list].sort((a, b) => {
+        if (sort.key === "name") {
+          return dir * String(a.name || "").localeCompare(String(b.name || ""));
+        }
+        if (sort.key === "archived") {
+          return dir * (deletedAtMs(a.deletedAt) - deletedAtMs(b.deletedAt));
+        }
+        return dir * (lastActiveMinutes(a.lastActive) - lastActiveMinutes(b.lastActive));
+      });
     }
     return list;
   }, [enrichedPool, sort]);
 
   const listTotal = pagination.total;
-  const headerCount = Number(tabCounts[typeTab]) || listTotal;
+  const headerCount = isArchivedTab
+    ? listTotal
+    : (Number(tabCounts[typeTab]) || listTotal);
   const totalPages = Math.max(1, pagination.pages || 1);
   const safePage = currentPage;
 
@@ -765,6 +816,7 @@ export function UsersPage() {
   };
 
   const askDisable = async (user) => {
+    if (!canDisable) return;
     if (user.off) {
       const key = userOverrideKey(user);
       if (!key) return;
@@ -787,7 +839,7 @@ export function UsersPage() {
   };
 
   const confirmDisable = async () => {
-    if (!disableTarget) return;
+    if (!canDisable || !disableTarget) return;
     const key = userOverrideKey(disableTarget);
     setActionBusy(true);
     try {
@@ -921,7 +973,8 @@ export function UsersPage() {
           layout="split"
           meta={(
             <>
-              <span className="page-head__count">{loading ? "…" : headerCount}</span>&nbsp;clients ·{" "}
+              <span className="page-head__count">{loading ? "…" : headerCount}</span>&nbsp;
+              {isArchivedTab ? "archived · " : "clients · "}
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
@@ -945,6 +998,7 @@ export function UsersPage() {
                 value={tierFilter}
                 options={TIER_OPTIONS}
                 onChange={setTierFilter}
+                disabled={isArchivedTab}
               />
               <CfgSelect
                 className="ua-users-filter"
@@ -955,13 +1009,14 @@ export function UsersPage() {
                   setStatusFilter(value);
                   goToFirstPage();
                 }}
+                disabled={isArchivedTab}
               />
               {canExport ? (
                 <button
                   type="button"
                   className="btn btn--outline ua-users-export"
                   onClick={exportCsv}
-                  disabled={exporting || loading}
+                  disabled={exporting || loading || isArchivedTab}
                 >
                   <ExportIcon /> {exporting ? "Exporting…" : "Export CSV"}
                 </button>
@@ -1024,8 +1079,8 @@ export function UsersPage() {
       ) : null}
 
       <TableScroll>
-        <div className="ua-table-card ua-table-card--users">
-          <div className={`ua-table ua-table--users${showRowActions ? "" : " ua-table--users-readonly"} ua-table__head`}>
+        <div className={`ua-table-card ua-table-card--users${isArchivedTab ? " ua-table-card--users-archived" : ""}`}>
+          <div className={`ua-table ua-table--users${isArchivedTab ? " ua-table--users-archived" : ""}${showRowActions && !isArchivedTab ? "" : " ua-table--users-readonly"} ua-table__head`}>
             <div>#</div>
             <div>
               <SortButton
@@ -1035,30 +1090,107 @@ export function UsersPage() {
                 onClick={() => toggleSort("name")}
               />
             </div>
-            <div className="ua-users-tier-head">Tier</div>
-            <div>Wellness coach</div>
-            <div>Assistant WC</div>
-            <div>
-              <SortButton
-                label="Last active"
-                active={sort?.key === "active"}
-                direction={sort?.dir}
-                onClick={() => toggleSort("active")}
-              />
-            </div>
-            <div>Status</div>
-            {showRowActions ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
+            {isArchivedTab ? (
+              <>
+                <div>Phone</div>
+                <div className="ua-users-tier-head">Tier</div>
+                <div>
+                  <SortButton
+                    label="Last active"
+                    active={sort?.key === "active"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("active")}
+                  />
+                </div>
+                <div>
+                  <SortButton
+                    label="Archived"
+                    active={sort?.key === "archived"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("archived")}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ua-users-tier-head">Tier</div>
+                <div>Wellness coach</div>
+                <div>Assistant WC</div>
+                <div>
+                  <SortButton
+                    label="Last active"
+                    active={sort?.key === "active"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("active")}
+                  />
+                </div>
+                <div>Status</div>
+                {showRowActions ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
+              </>
+            )}
           </div>
 
           {loading ? (
-            <BrandLoader variant="page" label="Loading clients…" />
+            <BrandLoader variant="page" label={isArchivedTab ? "Loading archived users…" : "Loading clients…"} />
           ) : rows.length === 0 ? (
             <div className="ua-users-empty">
               <div className="ua-users-empty__icon"><UsersEmptyIcon /></div>
-              <div className="ua-users-empty__title">No clients found</div>
-              <p className="ua-users-empty__sub">No records match your filters. Try clearing the search or filters.</p>
-              <button type="button" className="btn btn--outline" onClick={clearFilters}>Clear filters</button>
+              <div className="ua-users-empty__title">{isArchivedTab ? "No archived clients" : "No clients found"}</div>
+              <p className="ua-users-empty__sub">
+                {isArchivedTab
+                  ? "Deleted clients appear here with their archive date."
+                  : "No records match your filters. Try clearing the search or filters."}
+              </p>
+              {!isArchivedTab ? (
+                <button type="button" className="btn btn--outline" onClick={clearFilters}>Clear filters</button>
+              ) : null}
             </div>
+          ) : isArchivedTab ? (
+            rows.map((u, i) => {
+              const tier = tierStyle(u.tier);
+              const rowKey = userOverrideKey(u) || u.name;
+              return (
+                <div
+                  key={rowKey}
+                  className="ua-table ua-table--users ua-table--users-archived ua-table--users-readonly ua-table__row ua-table__row--readonly"
+                >
+                  <div className="ua-table__muted ua-users-index">{u.n}</div>
+                  <div className="ua-user-cell">
+                    <UserListAvatar
+                      name={u.name}
+                      profileImage={u.profileImage}
+                      colorIndex={i}
+                    />
+                    <div className="ua-user-cell__meta">
+                      <div className="ua-user-cell__name" title={u.name || undefined}>
+                        {truncateUserName(u.name)}
+                      </div>
+                      <div className="ua-user-cell__sub">
+                        <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ua-table__muted" data-label="Phone">{u.phone || "—"}</div>
+                  <div className="ua-users-tier" data-label="Tier">
+                    <span
+                      className="ua-tier"
+                      style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
+                    >
+                      {tierLabel(u.tier)}
+                    </span>
+                  </div>
+                  <div className="ua-table__muted ua-users-last-active" data-label="Last active">
+                    {u.lastActive || "—"}
+                  </div>
+                  <div className="ua-archived-users__deleted" data-label="Archived">
+                    <span title={u.deletedLabel || undefined}>{u.deletedLabel || "—"}</span>
+                    {u.deletedAgo ? (
+                      <span className="ua-archived-users__deleted-ago">{u.deletedAgo}</span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
           ) : (
             rows.map((u, i) => {
               const tier = tierStyle(u.tier);
@@ -1175,7 +1307,7 @@ export function UsersPage() {
                   </div>
                   {showRowActions ? (
                     <div className="ua-users-row-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
-                      {canEdit ? (
+                      {canDisable ? (
                         <button
                           type="button"
                           className={`ua-users-row-actions__disable${u.off ? " ua-users-row-actions__disable--on" : ""}`}

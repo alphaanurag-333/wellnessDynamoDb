@@ -7,6 +7,7 @@ const {
   listRecentPwcController,
   listCoachCheckoutHistoryController,
   getCoachCheckoutInvoiceController,
+  getCoachCheckoutInvoiceShareController,
   remindCoachCheckoutController,
   triggerCoachCheckoutController,
 } = require("../../controllers/adminController/coachCheckoutController");
@@ -28,6 +29,7 @@ router.post(
   remindCoachCheckoutController
 );
 router.get("/transactions/:id/invoice", getCoachCheckoutInvoiceController);
+router.get("/transactions/:id/share", getCoachCheckoutInvoiceShareController);
 router.post(
   "/trigger",
   authorizeStaff("console.pg.edit", {

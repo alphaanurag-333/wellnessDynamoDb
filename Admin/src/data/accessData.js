@@ -66,7 +66,7 @@ export const DEFAULT_VIEWS = {
   wc: ["dashboard", "users", "teams", "calendar", "pending", "sop", "referral-tree"],
   awc: ["dashboard", "users", "teams", "calendar", "pending", "sop"],
   trainee: ["dashboard", "users", "pending", "sop"],
-  support: ["dashboard", "pending", "configs", "contact-inquiries"],
+  support: ["dashboard", "pending", "contact-inquiries"],
 };
 
 /** Role id → parent role id (null = standalone) */
@@ -123,9 +123,6 @@ export const DEFAULT_GRANTS = {
   support: {
     dash: ["view"],
     pt: ["view"],
-    ct: ["view", "create", "upload", "delete"],
-    bn: ["view", "create", "edit", "toggle"],
-    cf: ["view", "edit"],
     ci: ["view", "edit", "delete"],
   },
 };

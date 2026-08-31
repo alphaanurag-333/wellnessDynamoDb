@@ -218,8 +218,10 @@ export function ViewAsProvider({ children }) {
 
   const setViewAs = useCallback(
     async (roleId) => {
-      const roleMeta = liveMenuRoles.find((r) => r.id === roleId);
-      if (roleMeta && roleMeta.switchable === false) {
+      const roleMeta = liveMenuRoles.find((r) => r.id === roleId)
+        || staticViewAsMenuRoles().find((r) => r.id === roleId);
+      const canPreview = accountIsAdminRole(auth?.account);
+      if (roleMeta && roleMeta.switchable === false && !canPreview) {
         setViewAsLocal(roleId);
         return { redirectedToAccess: true };
       }
@@ -229,9 +231,12 @@ export function ViewAsProvider({ children }) {
         return { localOnly: true };
       }
 
-      // Super Admin: UI preview only — never switch JWT away from admin,
-      // otherwise Access/Teams admin APIs return Forbidden.
-      if (accountIsSuperAdmin(auth.account)) {
+      const activeUi = auth?.account
+        ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi || null
+        : null;
+
+      // Admin accounts preview other personas without switching JWT — keeps admin APIs available.
+      if (accountIsSuperAdmin(auth.account) || (canPreview && activeUi === "admin")) {
         setViewAsLocal(roleId);
         return { previewOnly: true };
       }
@@ -305,9 +310,13 @@ export function ViewAsProvider({ children }) {
     if (viewAs === "admin") setViewAsLocal(sessionUi);
   }, [isSuperAdmin, sessionUi, setViewAsLocal, viewAs]);
 
+  /** Admin (or Super Admin) previewing another role via View-as — not the signed-in JWT role. */
+  const isPreviewingRole = Boolean(sessionUi && viewAs && sessionUi !== viewAs);
+
   /** Signed-in Admin (or Super Admin) looking at the Admin console — full section access. */
   const isAdminView = viewAs === "admin" && (isSuperAdmin || sessionUi === "admin");
   const hasFullAccess = isSuperAdmin && viewAs === "admin";
+  const canPreviewRoles = accountIsAdminRole(auth?.account);
 
   /**
    * Live grants for the console. Admin view always gets every catalog slug.
@@ -316,12 +325,13 @@ export function ViewAsProvider({ children }) {
    */
   const permissions = useMemo(() => {
     if (isAdminView) return [...ALL_CONSOLE_PERMISSIONS];
-    if (!sessionUi || sessionUi === viewAs) return sessionPermissions(auth?.account);
+    if (!isPreviewingRole) return sessionPermissions(auth?.account);
     if (Array.isArray(activeRole?.permissions) && activeRole.permissions.length) {
       return activeRole.permissions;
     }
-    return baselinePermissionsForRole(viewAs);
-  }, [activeRole, auth?.account, isAdminView, sessionUi, viewAs]);
+    const persona = activeRole?.persona || viewAs;
+    return baselinePermissionsForRole(persona);
+  }, [activeRole, auth?.account, isAdminView, isPreviewingRole, viewAs]);
 
   const can = useCallback(
     (slug) => (isAdminView ? Boolean(slug) : hasConsolePermission(permissions, slug)),
@@ -338,11 +348,18 @@ export function ViewAsProvider({ children }) {
   const viewAsPersona = activeRole?.persona || viewAs;
 
   /** "all" | "team" | "assigned" — how wide the role's client roster is. */
-  const dataScope = isAdminView
-    ? "all"
-    : (!activeRole?.system && sessionUi && sessionUi !== viewAs && activeRole?.dataScope)
-      ? String(activeRole.dataScope).toLowerCase()
-      : String(auth?.account?.dataScope || "").toLowerCase() || baselineDataScopeForRole(sessionUi);
+  const dataScope = useMemo(() => {
+    if (isAdminView) return "all";
+    if (isPreviewingRole) {
+      return String(
+        activeRole?.dataScope || baselineDataScopeForRole(activeRole?.persona || viewAs),
+      ).toLowerCase();
+    }
+    return (
+      String(auth?.account?.dataScope || "").toLowerCase()
+      || baselineDataScopeForRole(sessionUi || viewAs)
+    );
+  }, [activeRole, auth?.account, isAdminView, isPreviewingRole, sessionUi, viewAs]);
 
   const value = useMemo(
     () => ({

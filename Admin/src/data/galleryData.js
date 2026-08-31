@@ -118,7 +118,7 @@ export const GALLERY_MEDIA = [
   },
   {
     id: "gm-9",
-    title: "Banita Acharya — gut reset",
+    title: "Banita Acharya — Load Preset",
     owner: "Rohan Das",
     date: "16 Jul 2026",
     size: "1.8 MB",

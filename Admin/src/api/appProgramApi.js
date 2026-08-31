@@ -225,21 +225,62 @@ function filenameFromDisposition(header) {
   return plain?.[1] || "invoice.pdf";
 }
 
+async function fetchCoachCheckoutInvoiceBlob(transactionId) {
+  const { data, headers } = await api.get(
+    `/account/coach-checkout/transactions/${encodeURIComponent(transactionId)}/invoice`,
+    { responseType: "blob" },
+  );
+  const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+  if (blob.type && blob.type.includes("application/json")) {
+    const parsed = JSON.parse(await blob.text());
+    throw new Error(parsed.message || "Could not load invoice");
+  }
+  return {
+    blob,
+    filename: filenameFromDisposition(headers?.["content-disposition"]),
+  };
+}
+
+export async function fetchCoachCheckoutInvoiceShare(transactionId) {
+  try {
+    const { data } = await api.get(
+      `/account/coach-checkout/transactions/${encodeURIComponent(transactionId)}/share`,
+    );
+    return data?.share || null;
+  } catch (error) {
+    if (error?.response?.status === 404) return null;
+    normalizeApiError(error);
+  }
+}
+
+export async function previewCoachCheckoutInvoice(transactionId) {
+  try {
+    const { blob } = await fetchCoachCheckoutInvoiceBlob(transactionId);
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    const blob = error?.response?.data;
+    if (blob instanceof Blob) {
+      let message = "Could not load invoice";
+      try {
+        const parsed = JSON.parse(await blob.text());
+        if (parsed?.message) message = parsed.message;
+      } catch {
+        // keep fallback
+      }
+      throw new Error(message);
+    }
+    if (error instanceof Error && !error.response) throw error;
+    normalizeApiError(error);
+  }
+}
+
 export async function downloadCoachCheckoutInvoice(transactionId) {
   try {
-    const { data, headers } = await api.get(
-      `/account/coach-checkout/transactions/${encodeURIComponent(transactionId)}/invoice`,
-      { responseType: "blob" },
-    );
-    const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
-    if (blob.type && blob.type.includes("application/json")) {
-      const parsed = JSON.parse(await blob.text());
-      throw new Error(parsed.message || "Could not download invoice");
-    }
+    const { blob, filename } = await fetchCoachCheckoutInvoiceBlob(transactionId);
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = filenameFromDisposition(headers?.["content-disposition"]);
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     link.remove();

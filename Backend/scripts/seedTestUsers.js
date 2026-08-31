@@ -125,6 +125,8 @@ const TEST_USERS = [
     concernTitle: "Diabetes Reversal",
     gender: "female",
     city: "Mumbai",
+    dietaryPreference: "vegetarian",
+    wellnessJourneyFor: ["diabetes_reversal"],
   },
   {
     name: "Rohan Fat Loss",
@@ -133,6 +135,8 @@ const TEST_USERS = [
     concernTitle: "Fat Loss",
     gender: "male",
     city: "Pune",
+    dietaryPreference: "non_vegetarian",
+    wellnessJourneyFor: ["fat_loss"],
   },
   {
     name: "Meera Thyroid",
@@ -141,6 +145,9 @@ const TEST_USERS = [
     concernTitle: "Thyroid Care",
     gender: "female",
     city: "Bengaluru",
+    dietaryPreference: "eggetarian",
+    // Multi-select: comma-style strings (common app payload)
+    wellnessJourneyFor: ["thyroid", "hypertension"],
   },
   {
     name: "Kavya PCOD",
@@ -149,6 +156,12 @@ const TEST_USERS = [
     concernTitle: "PCOD / PCOS",
     gender: "female",
     city: "Hyderabad",
+    dietaryPreference: "vegetarian",
+    // Multi-select: object entries (health picker payload)
+    wellnessJourneyFor: [
+      { title: "PCOD / PCOS" },
+      { title: "Fat Loss" },
+    ],
   },
   {
     name: "Arjun Hypertension",
@@ -157,6 +170,8 @@ const TEST_USERS = [
     concernTitle: "Hypertension",
     gender: "male",
     city: "Delhi",
+    dietaryPreference: "jain",
+    wellnessJourneyFor: ["hypertension", "diabetes_reversal", "fat_loss"],
   },
   {
     name: "Sneha Everyday",
@@ -165,6 +180,19 @@ const TEST_USERS = [
     concernTitle: "Everyday Wellness",
     gender: "female",
     city: "Chennai",
+    dietaryPreference: "vegan",
+    wellnessJourneyFor: ["everyday_wellness"],
+  },
+  {
+    name: "Priya Multi Health",
+    email: "test.multi@irwellness.local",
+    phone: "9100000008",
+    concernTitle: "Diabetes Reversal",
+    gender: "female",
+    city: "Jaipur",
+    dietaryPreference: "vegetarian",
+    // Primary case for WC panel: several wellness journey labels
+    wellnessJourneyFor: ["Diabetes", "Thyroid", "Hypertension"],
   },
   {
     name: "Seek Tester",
@@ -175,6 +203,8 @@ const TEST_USERS = [
     city: "Ahmedabad",
     userTier: "seek",
     skipProgram: true,
+    dietaryPreference: "vegetarian",
+    wellnessJourneyFor: ["fat_loss", "everyday_wellness"],
   },
 ];
 
@@ -350,6 +380,8 @@ async function seedUser(row, concernMap, coach, passwordHash) {
     energyExchangeEnabled: isHeal,
     programEnabled: false,
     programPurchased: false,
+    dietaryPreference: row.dietaryPreference || null,
+    wellnessJourneyFor: row.wellnessJourneyFor || null,
   });
 
   if (row.skipProgram || !isHeal) {
@@ -447,17 +479,18 @@ async function run() {
   }
 
   console.log("\n=== DONE ===");
-  console.log("| Name               | Email                            | Concern            | Profile expect |");
-  console.log("|--------------------|----------------------------------|--------------------|--------------|");
-  console.log("| Aisha Diabetes     | test.diabetes@irwellness.local   | Diabetes Reversal  | full         |");
-  console.log("| Rohan Fat Loss     | test.fatloss@irwellness.local    | Fat Loss           | full         |");
-  console.log("| Meera Thyroid      | test.thyroid@irwellness.local    | Thyroid Care       | full         |");
-  console.log("| Kavya PCOD         | test.pcod@irwellness.local       | PCOD / PCOS        | full         |");
-  console.log("| Arjun Hypertension | test.hypertension@irwellness.local | Hypertension     | full         |");
-  console.log("| Sneha Everyday     | test.everyday@irwellness.local   | Everyday Wellness  | full         |");
-  console.log("| Seek Tester        | test.seek@irwellness.local       | Fat Loss (SEEK)    | full         |");
+  console.log("| Name               | Email                              | Wellness journey for (WC panel)     |");
+  console.log("|--------------------|------------------------------------|-------------------------------------|");
+  console.log("| Aisha Diabetes     | test.diabetes@irwellness.local     | Diabetes Reversal                   |");
+  console.log("| Rohan Fat Loss     | test.fatloss@irwellness.local      | Fat Loss                            |");
+  console.log("| Meera Thyroid      | test.thyroid@irwellness.local      | Thyroid, Hypertension               |");
+  console.log("| Kavya PCOD         | test.pcod@irwellness.local         | PCOD / PCOS, Fat Loss               |");
+  console.log("| Arjun Hypertension | test.hypertension@irwellness.local | Hypertension, Diabetes Reversal, Fat Loss |");
+  console.log("| Sneha Everyday     | test.everyday@irwellness.local     | Everyday Wellness                   |");
+  console.log("| Priya Multi Health | test.multi@irwellness.local        | Diabetes, Thyroid, Hypertension     |");
+  console.log("| Seek Tester        | test.seek@irwellness.local         | Fat Loss, Everyday Wellness         |");
   console.log(`\nPassword for all: ${DEFAULT_PASSWORD}`);
-  console.log("Admin profile: all program clients get the full menu.");
+  console.log("Admin → Users → open client → Personal Details → Wellness journey for");
 }
 
 run().catch((err) => {

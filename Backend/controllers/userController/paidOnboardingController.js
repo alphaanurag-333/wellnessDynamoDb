@@ -247,9 +247,17 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
     }
     extraUpdates.dietaryPreference = dp;
   }
-  if (body.wellnessJourneyFor !== undefined || body.wellness_journey_for !== undefined) {
+  if (
+    body.wellnessJourneyFor !== undefined ||
+    body.wellness_journey_for !== undefined ||
+    body.wellnessJourney !== undefined ||
+    body.wellness_journey !== undefined
+  ) {
     extraUpdates.wellnessJourneyFor = normalizeWellnessJourneyFor(
-      body.wellnessJourneyFor ?? body.wellness_journey_for
+      body.wellnessJourneyFor ??
+        body.wellness_journey_for ??
+        body.wellnessJourney ??
+        body.wellness_journey
     );
   }
 

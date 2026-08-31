@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   downloadCoachCheckoutInvoice,
+  fetchCoachCheckoutInvoiceShare,
   getCoachCheckoutOptions,
   listCoachCheckoutHistory,
+  previewCoachCheckoutInvoice,
   remindCoachCheckout,
   triggerCoachCheckout,
 } from "../../api/appProgramApi.js";
@@ -134,21 +136,196 @@ function FieldSelect({ label, value, options, open, disabled, onToggle, onSelect
   );
 }
 
+function shareMessage(share, row) {
+  const ref = share?.referenceNumber || row?.detail?.split(" · ").pop() || "";
+  const amount = formatRupee(share?.amount ?? row?.amount ?? 0);
+  const program = share?.program || row?.program || "Program payment";
+  const parts = [`${program} — ${amount} (paid)`];
+  if (ref) parts.push(`Ref: ${ref}`);
+  if (share?.invoiceUrl) parts.push(share.invoiceUrl);
+  return parts.join("\n");
+}
+
+function shareFromRow(row) {
+  const referenceNumber = String(row?.detail || "")
+    .split(" · ")
+    .map((part) => part.trim())
+    .find((part) => part && !/^(cashfree|upi|card|net banking|paid)$/i.test(part)) || null;
+  return {
+    id: row.id,
+    referenceNumber,
+    invoiceUrl: null,
+    program: row.program,
+    amount: row.amount,
+    date: row.date,
+    clientName: null,
+  };
+}
+
+function InvoiceViewShareModal({ open, row, onClose, onToast }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [share, setShare] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [busyAction, setBusyAction] = useState("");
+
+  useEffect(() => {
+    if (!open || !row?.id) return undefined;
+
+    let active = true;
+    let objectUrl = "";
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      setShare(shareFromRow(row));
+      setPreviewUrl("");
+      try {
+        const preview = await previewCoachCheckoutInvoice(row.id);
+        if (!active) {
+          URL.revokeObjectURL(preview);
+          return;
+        }
+        objectUrl = preview;
+        setPreviewUrl(preview);
+        const shareResult = await fetchCoachCheckoutInvoiceShare(row.id);
+        if (active) setShare(shareResult || shareFromRow(row));
+      } catch (err) {
+        if (!active) return;
+        setError(err.message || "Could not load invoice");
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [open, row]);
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape" && !busyAction) onClose();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose, busyAction]);
+
+  if (!open || !row) return null;
+
+  async function runAction(action) {
+    setBusyAction(action);
+    try {
+      if (action === "download") {
+        await downloadCoachCheckoutInvoice(row.id);
+        onToast?.("Invoice download started");
+        return;
+      }
+      const text = shareMessage(share, row);
+      if (action === "copy") {
+        const copyValue = share?.invoiceUrl || text;
+        await navigator.clipboard.writeText(copyValue);
+        onToast?.(share?.invoiceUrl ? "Invoice link copied" : "Invoice details copied");
+        return;
+      }
+      if (action === "share") {
+        const payload = {
+          title: `${row.program} invoice`,
+          text,
+          url: share?.invoiceUrl || undefined,
+        };
+        if (navigator.share) {
+          await navigator.share(payload);
+          onToast?.("Share opened");
+        } else {
+          await navigator.clipboard.writeText(text);
+          onToast?.("Invoice details copied — paste to share");
+        }
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        onToast?.(err.message || "Could not complete that action");
+      }
+    } finally {
+      setBusyAction("");
+    }
+  }
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={busyAction ? undefined : onClose} role="presentation">
+      <div
+        className="ua-cp-ex-share-modal"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="exchange-share-title"
+      >
+        <div className="ua-cp-ex-share-modal__head">
+          <div>
+            <p className="ua-cp-ex-share-modal__eyebrow">Paid invoice</p>
+            <h3 id="exchange-share-title" className="ua-cp-ex-share-modal__title">{row.program}</h3>
+            <p className="ua-cp-ex-share-modal__meta">
+              {row.date}
+              {share?.referenceNumber ? ` · ${share.referenceNumber}` : ""}
+              {" · "}
+              {formatRupee(share?.amount ?? row.amount)}
+            </p>
+          </div>
+          <button type="button" className="ua-cp-ex-share-modal__close" aria-label="Close" onClick={onClose} disabled={Boolean(busyAction)}>
+            ×
+          </button>
+        </div>
+
+        <div className="ua-cp-ex-share-modal__preview">
+          {loading ? (
+            <p className="ua-cp-ex-share-modal__status">Loading invoice…</p>
+          ) : error ? (
+            <p className="ua-cp-ex-share-modal__status ua-cp-ex-share-modal__status--error">{error}</p>
+          ) : previewUrl ? (
+            <iframe title={`Invoice for ${row.program}`} className="ua-cp-ex-share-modal__pdf" src={previewUrl} />
+          ) : (
+            <p className="ua-cp-ex-share-modal__status">Invoice preview unavailable.</p>
+          )}
+        </div>
+
+        <div className="ua-cp-ex-share-modal__foot">
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+            onClick={() => runAction("download")}
+            disabled={loading || Boolean(error) || Boolean(busyAction)}
+          >
+            {busyAction === "download" ? "Downloading…" : "Download PDF"}
+          </button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+            onClick={() => runAction("copy")}
+            disabled={loading || Boolean(error) || Boolean(busyAction)}
+          >
+            {busyAction === "copy" ? "Copying…" : share?.invoiceUrl ? "Copy link" : "Copy details"}
+          </button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+            onClick={() => runAction("share")}
+            disabled={loading || Boolean(error) || Boolean(busyAction)}
+          >
+            {busyAction === "share" ? "Sharing…" : "Share"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PaymentRow({ row, onToast }) {
   const awaiting = row.status === "awaiting";
   const [busy, setBusy] = useState(false);
-
-  async function handleInvoice() {
-    setBusy(true);
-    try {
-      await downloadCoachCheckoutInvoice(row.id);
-      onToast?.("Invoice download started");
-    } catch (error) {
-      onToast?.(error.message || "Could not download invoice");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [shareOpen, setShareOpen] = useState(false);
 
   async function handleRemind() {
     setBusy(true);
@@ -163,6 +340,7 @@ function PaymentRow({ row, onToast }) {
   }
 
   return (
+    <>
     <div className="ua-cp-ex-pay">
       <div className="ua-cp-ex-pay__main">
         <div className="ua-cp-ex-pay__title-row">
@@ -194,12 +372,24 @@ function PaymentRow({ row, onToast }) {
             {busy ? "Sending…" : "Remind"}
           </button>
         ) : (
-          <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-ex-pay__btn ua-cp-btn--sm" onClick={handleInvoice} disabled={busy}>
-            {busy ? "Downloading…" : "📄 Invoice"}
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--outline ua-cp-ex-pay__btn ua-cp-ex-pay__btn--share ua-cp-btn--sm"
+            onClick={() => setShareOpen(true)}
+            disabled={busy}
+          >
+            View &amp; share
           </button>
         )}
       </div>
     </div>
+    <InvoiceViewShareModal
+      open={shareOpen}
+      row={row}
+      onClose={() => setShareOpen(false)}
+      onToast={onToast}
+    />
+    </>
   );
 }
 
@@ -534,7 +724,7 @@ export function ExchangeSection({ user, onToast }) {
         <div className="ua-cp-ex-history__head">
           <div>
             <strong className="ua-cp-ex-history__title">Program payment history</strong>
-            <p>Newest first. Invoices are available for settled payments.</p>
+            <p>Newest first. View &amp; share opens the invoice for settled payments.</p>
           </div>
           <span className="ua-cp-ex-history__summary">
             {historyLoading ? "Loading…" : historyError ? "—" : summary.label}
