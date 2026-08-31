@@ -43509,6 +43509,15 @@ scrollbar-width: thin;
   border-top: 1px solid #eef0f4;
 }
 
+.updated-admin .ua-cfg-gl .ua-cfg-mv-gallery__grid.is-loading {
+  opacity: 0.55;
+}
+
+.updated-admin .ua-cfg-gl .ua-cfg-mv-gallery__grid + .ua-users-pagination,
+.updated-admin .ua-cfg-gl .ua-cfg-gl-section__empty + .ua-users-pagination {
+  margin: 16px 0 0;
+}
+
 .updated-admin .ua-cfg-gl-videos {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -43540,7 +43549,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-gl-video__preview {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   background: #0f172a;
 }
@@ -43606,7 +43615,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-gl-image__thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -43873,7 +43882,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-gl-card__thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 

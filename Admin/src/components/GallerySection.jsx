@@ -6,12 +6,28 @@ import {
   adminRestoreMediaAssetVersion,
   adminUpdateMediaAsset,
   downloadMediaAsset,
-  galleryOwnersFromAssets,
 } from "../api/mediaAssetApi.js";
-import { galleryCategoryClass, galleryVersionLabel } from "../data/galleryData.js";
+import { GALLERY_PAGE_SIZE, galleryCategoryClass, galleryVersionLabel } from "../data/galleryData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { MediaTypeIcon } from "./GalleryMediaIcons.jsx";
 import { MediaPickerModal } from "./MediaPickerModal.jsx";
+import { ListPagination } from "./shared.jsx";
+
+const EMPTY_PAGINATION = {
+  page: 1,
+  limit: GALLERY_PAGE_SIZE,
+  total: 0,
+  pages: 1,
+};
+
+function requestType(activeTab, typeFilter) {
+  if (activeTab === "image" || activeTab === "video" || activeTab === "audio") return activeTab;
+  return typeFilter === "all" ? undefined : typeFilter;
+}
+
+function requestStatus(activeTab) {
+  return activeTab === "live" ? "active" : undefined;
+}
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -168,6 +184,7 @@ function MediaThumb({ entry }) {
 export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
   const [activeTab, setActiveTab] = useState("all");
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
   const [owner, setOwner] = useState("All owners");
   const [typeFilter, setTypeFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -180,69 +197,103 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
   const [historyBusy, setHistoryBusy] = useState(false);
   const [downloadingId, setDownloadingId] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(EMPTY_PAGINATION);
+  const [knownOwners, setKnownOwners] = useState(() => new Set(["Admin"]));
+  const [videoPreviews, setVideoPreviews] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
 
-  const owners = useMemo(() => galleryOwnersFromAssets(media), [media]);
+  const owners = useMemo(
+    () => ["All owners", ...Array.from(knownOwners).sort((a, b) => a.localeCompare(b))],
+    [knownOwners],
+  );
 
-  const loadMedia = useCallback(async () => {
+  const loadPreviews = useCallback(async () => {
+    try {
+      const [videos, images] = await Promise.all([
+        adminListMediaAssets(null, { page: 1, limit: 8, type: "video" }),
+        adminListMediaAssets(null, { page: 1, limit: 8, type: "image" }),
+      ]);
+      setVideoPreviews(videos.items || []);
+      setImagePreviews(images.items || []);
+    } catch {
+      /* keep last previews */
+    }
+  }, []);
+
+  const loadMedia = useCallback(async (pageOverride) => {
+    const nextPage = pageOverride ?? page;
     setLoading(true);
     try {
-      const { items } = await adminListMediaAssets(null, {
-        page: 1,
-        limit: 200,
-        search: search.trim() || undefined,
+      const result = await adminListMediaAssets(null, {
+        page: nextPage,
+        limit: GALLERY_PAGE_SIZE,
+        search: query || undefined,
         owner: owner === "All owners" ? undefined : owner,
-        type: typeFilter === "all" ? undefined : typeFilter,
+        type: requestType(activeTab, typeFilter),
+        status: requestStatus(activeTab),
         from: fromDate || undefined,
         to: toDate || undefined,
       });
+      const items = result.items || [];
       setMedia(items);
+      setPagination({
+        page: Number(result.pagination?.page) || nextPage,
+        limit: Number(result.pagination?.limit) || GALLERY_PAGE_SIZE,
+        total: Number(result.pagination?.total) || items.length,
+        pages: Number(result.pagination?.pages) || 1,
+      });
+      setKnownOwners((prev) => {
+        const next = new Set(prev);
+        for (const item of items) {
+          if (item.owner) next.add(item.owner);
+        }
+        return next;
+      });
       onLiveChange?.(items.some((entry) => entry.live));
     } catch (err) {
+      setMedia([]);
+      setPagination(EMPTY_PAGINATION);
       onToast?.(err?.message || "Failed to load gallery");
     } finally {
       setLoading(false);
     }
-  }, [search, owner, typeFilter, fromDate, toDate, setMedia, onToast, onLiveChange]);
+  }, [page, query, owner, typeFilter, fromDate, toDate, activeTab, setMedia, onToast, onLiveChange]);
 
   useEffect(() => {
-    const timer = setTimeout(loadMedia, 200);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(() => setQuery(search.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, owner, typeFilter, fromDate, toDate, activeTab]);
+
+  useEffect(() => {
+    loadMedia();
   }, [loadMedia]);
 
-  const tabs = useMemo(() => {
-    const counts = {
-      all: media.length,
-      image: media.filter((entry) => entry.type === "image").length,
-      video: media.filter((entry) => entry.type === "video").length,
-      audio: media.filter((entry) => entry.type === "audio").length,
-      live: media.filter((entry) => entry.live).length,
-    };
-    return [
-      { id: "all", label: "All assets", count: counts.all },
-      { id: "image", label: "Images", count: counts.image },
-      { id: "video", label: "Videos", count: counts.video },
-      { id: "audio", label: "Audio", count: counts.audio },
-      { id: "live", label: "Live", count: counts.live },
-    ];
-  }, [media]);
+  useEffect(() => {
+    loadPreviews();
+  }, [loadPreviews]);
 
-  const filtered = useMemo(() => {
-    return media.filter((entry) => {
-      if (activeTab === "live") return entry.live;
-      if (activeTab === "image" || activeTab === "video" || activeTab === "audio") {
-        return entry.type === activeTab;
-      }
-      return true;
-    });
-  }, [media, activeTab]);
+  useEffect(() => {
+    if (!loading && page > pagination.pages) setPage(pagination.pages);
+  }, [loading, page, pagination.pages]);
 
-  const videoPreviews = useMemo(
-    () => media.filter((entry) => entry.type === "video").slice(0, 8),
-    [media]
-  );
-  const imagePreviews = useMemo(
-    () => media.filter((entry) => entry.type === "image").slice(0, 8),
-    [media]
+  useEffect(() => {
+    setSelected([]);
+  }, [activeTab, query, owner, typeFilter, fromDate, toDate]);
+
+  const tabs = useMemo(
+    () => [
+      { id: "all", label: "All assets" },
+      { id: "image", label: "Images" },
+      { id: "video", label: "Videos" },
+      { id: "audio", label: "Audio" },
+      { id: "live", label: "Live" },
+    ],
+    [],
   );
 
   async function openHistory(entry) {
@@ -316,9 +367,13 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
     setBusyId(id);
     try {
       const updated = await adminUpdateMediaAsset(null, id, { live: !entry.live });
-      const next = media.map((item) => (item.id === id ? updated : item));
-      setMedia(next);
-      onLiveChange?.(next.some((item) => item.live));
+      if (activeTab === "live") {
+        await loadMedia();
+      } else {
+        const next = media.map((item) => (item.id === id ? updated : item));
+        setMedia(next);
+        onLiveChange?.(next.some((item) => item.live));
+      }
       onToast?.(updated.live ? "Asset marked live" : "Asset unmarked");
     } catch (err) {
       onToast?.(err?.message || "Failed to update live status");
@@ -363,14 +418,18 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
       for (const id of ids) {
         await adminDeleteMediaAsset(null, id);
       }
-      const next = media.filter((entry) => !ids.includes(entry.id));
-      setMedia(next);
-      setSelected((prev) => prev.filter((id) => !ids.includes(id)));
-      onLiveChange?.(next.some((entry) => entry.live));
+      const remaining = Math.max(0, pagination.total - ids.length);
+      const lastPage = Math.max(1, Math.ceil(remaining / GALLERY_PAGE_SIZE));
+      const nextPage = Math.min(page, lastPage);
+      setPage(nextPage);
+      setSelected([]);
       onToast?.(single ? "Asset deleted" : "Deleted selected items");
+      await loadMedia(nextPage);
+      await loadPreviews();
     } catch (err) {
       onToast?.(err?.message || (single ? "Failed to delete asset" : "Failed to delete some assets"));
       await loadMedia();
+      await loadPreviews();
     } finally {
       setBusyId("");
     }
@@ -402,7 +461,8 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
               className={`ua-cfg-gl-tabs__tab${activeTab === tab.id ? " is-active" : ""}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              {tab.label} · {tab.count.toLocaleString("en-IN")}
+              {tab.label}
+              {tab.id === activeTab ? ` · ${pagination.total.toLocaleString("en-IN")}` : ""}
             </button>
           ))}
         </div>
@@ -524,7 +584,13 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
           </div>
 
           <div className="ua-cfg-mv-gallery__bar">
-            <span>{loading ? "Loading…" : `${filtered.length} of ${media.length} items`}</span>
+            <span>
+              {loading
+                ? "Loading…"
+                : pagination.total
+                  ? `${pagination.total.toLocaleString("en-IN")} total`
+                  : "No items"}
+            </span>
             {selected.length ? (
               <div className="ua-cfg-mv-gallery__selection">
                 <span>{selected.length} selected</span>
@@ -547,8 +613,8 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
             ) : null}
           </div>
 
-          <div className="ua-cfg-mv-gallery__grid">
-            {filtered.map((entry) => {
+          <div className={`ua-cfg-mv-gallery__grid${loading ? " is-loading" : ""}`}>
+            {media.map((entry) => {
               const isSelected = selected.includes(entry.id);
               return (
                 <article key={entry.id} className={`ua-cfg-gl-card${isSelected ? " is-selected" : ""}`}>
@@ -616,10 +682,26 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                 </article>
               );
             })}
-            {!loading && !filtered.length ? (
-              <p className="ua-cfg-gl-section__empty">No media assets yet. Upload to get started.</p>
+            {!loading && !media.length ? (
+              <p className="ua-cfg-gl-section__empty">
+                {query || owner !== "All owners" || typeFilter !== "all" || fromDate || toDate || activeTab !== "all"
+                  ? "No media assets match your filters."
+                  : "No media assets yet. Upload to get started."}
+              </p>
             ) : null}
           </div>
+
+          <ListPagination
+            page={pagination.page}
+            pages={pagination.pages}
+            total={pagination.total}
+            pageSize={GALLERY_PAGE_SIZE}
+            onPageChange={(nextPage) => {
+              setSelected([]);
+              setPage(nextPage);
+            }}
+            label="Gallery pagination"
+          />
         </div>
       </Panel>
 
@@ -639,16 +721,11 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
         title="Upload or choose media"
         onConfirm={(assets) => {
           const ids = assets.map((asset) => asset.id);
-          setMedia((prev) => {
-            const map = new Map(prev.map((entry) => [entry.id, entry]));
-            for (const asset of assets) map.set(asset.id, asset);
-            const next = Array.from(map.values());
-            onLiveChange?.(next.some((entry) => entry.live));
-            return next;
-          });
           setSelected(ids);
+          setPage(1);
           onToast?.(`${assets.length} asset${assets.length === 1 ? "" : "s"} ready`);
-          loadMedia();
+          loadMedia(1);
+          loadPreviews();
         }}
       />
 

@@ -1,3 +1,5 @@
+export const GALLERY_PAGE_SIZE = 52;
+
 export const GALLERY_TABS = [
   { id: "client", label: "Client uploads", count: 1284 },
   { id: "banners", label: "Banners & common", count: 96 },
