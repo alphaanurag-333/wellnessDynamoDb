@@ -27,7 +27,7 @@
   --font-size-h6: 1rem;
   --font-size-body: 1rem;
   --font-size-lg: 1.125rem;
-  --font-size-small: 0.875rem;
+  --font-size-small: 0.890rem;
   --font-size-xs: 0.75rem;
 
   --line-height-heading: 1.25;
@@ -13783,14 +13783,14 @@ bottom: -18px;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
   text-align: left;
   border: 1px solid #eceff3;
   border-radius: 14px;
   background: #fff;
   overflow: hidden;
-  padding: 0;
+  padding: 10px;
   cursor: pointer;
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
@@ -13802,17 +13802,19 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-recipe-card__media {
   position: relative;
-  aspect-ratio: 16 / 10;
-  background: #f1f5f9;
+  aspect-ratio: 16 / 9;
+  background: #fff;
   overflow: hidden;
   flex-shrink: 0;
+  border-radius: 12px;
 }
 
 .wellnesspedia-page .wp-recipe-card__media img,
 .wellnesspedia-page .wp-recipe-card__placeholder {
   width: 100%;
   height: 100%;
-   object-fit: contain; 
+  object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -13831,13 +13833,8 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-recipe-card__body {
-  margin: 10px var(--space-5) var(--space-5);
+  margin: 10px 2px 0;
   min-width: 0;
-  /* display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  padding: 0.65rem 0.8rem 0.75rem;
-  min-height: 5.5rem; */
 }
 
 .wellnesspedia-page .wp-recipe-card__title-row {
@@ -13944,7 +13941,7 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-yoga-card__media {
   position: relative;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   border-radius: 12px;
   overflow: hidden;
   background: #e2e8f0;
@@ -13954,7 +13951,8 @@ bottom: -18px;
 .wellnesspedia-page .wp-yoga-card__placeholder {
   width: 100%;
   height: 100%;
-  object-fit: contain; 
+  object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -15480,9 +15478,10 @@ bottom: -18px;
 .wp-media-modal__media {
   position: relative;
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  max-height: min(46vh, 360px);
   background: #000;
   overflow: hidden;
   isolation: isolate;
@@ -15491,11 +15490,27 @@ bottom: -18px;
 
 .wp-media-modal.is-playing .wp-media-modal__media {
   aspect-ratio: 16 / 9;
-  max-height: min(50vh, 400px);
 }
 
-.wp-media-modal__media img,
-.wp-media-modal__placeholder,
+.wp-media-modal__media img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(46vh, 360px);
+  object-fit: contain;
+  object-position: center;
+  border: 0;
+}
+
+.wp-media-modal__placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: min(46vh, 360px);
+  background: #1e293b;
+}
+
 .wp-media-modal__player {
   position: absolute;
   inset: 0;
@@ -15503,15 +15518,7 @@ bottom: -18px;
   height: 100%;
   border: 0;
   display: block;
-}
-
-.wp-media-modal__media img,
-.wp-media-modal__placeholder {
   object-fit: contain;
-}
-
-.wp-media-modal__player {
-  object-fit: cover;
   background: #000;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -15605,14 +15612,13 @@ bottom: -18px;
     margin: auto;
   }
 
-  .wp-media-modal__media {
-    aspect-ratio: 16 / 11;
+  .wp-media-modal__media img,
+  .wp-media-modal__placeholder {
     max-height: 38vh;
   }
 
   .wp-media-modal.is-playing .wp-media-modal__media {
     aspect-ratio: 16 / 9;
-    max-height: 42vh;
   }
 
   .wp-media-modal__play {
@@ -15651,7 +15657,8 @@ bottom: -18px;
     width: min(600px, calc(100% - 2.5rem));
   }
 
-  .wp-media-modal__media {
+  .wp-media-modal__media img,
+  .wp-media-modal__placeholder {
     max-height: min(48vh, 380px);
   }
 
@@ -15705,8 +15712,7 @@ bottom: -18px;
   }
 
   .wellnesspedia-page .wp-recipe-card__body {
-    /* padding: 0.55rem 0.7rem 0.65rem; */
-    margin: 10px var(--space-5) var(--space-5);
+    margin: 8px 2px 0;
     min-width: 0;
   }
 
