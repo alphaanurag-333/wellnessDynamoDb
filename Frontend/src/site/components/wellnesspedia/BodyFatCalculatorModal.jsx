@@ -19,6 +19,7 @@ import {
   WeightField,
   MeasureField,
   bindField,
+  bindGenderSwitch,
 } from "./calculatorFields.jsx";
 
 const BODY_FAT_DESC =
@@ -54,7 +55,7 @@ function bodyFatCategory(pct, gender, age) {
 
 export default function BodyFatCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState("male");
   const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
@@ -94,7 +95,7 @@ export default function BodyFatCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
-    setGender("");
+    setGender("male");
     setAge("");
     setHeightUnit("cm");
     setWeightUnit("kg");
@@ -218,7 +219,16 @@ export default function BodyFatCalculatorModal({ open, onClose }) {
           
             <GenderField
               value={gender}
-              onChange={bindField(setGender, setErrors, "gender")}
+              onChange={bindGenderSwitch(gender, setGender, setErrors, () => {
+                setAge("");
+                setHeightCm("");
+                setFeet("");
+                setInch("");
+                setWeight("");
+                setNeck("");
+                setWaist("");
+                setHip("");
+              })}
               error={errors.gender}
             />
               <AgeField

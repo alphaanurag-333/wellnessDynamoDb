@@ -17,6 +17,7 @@ import {
   HeightField,
   WeightField,
   bindField,
+  bindGenderSwitch,
 } from "./calculatorFields.jsx";
 
 const BMR_DESC =
@@ -33,7 +34,7 @@ const ACTIVITY = [
 
 export default function BmrCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState("male");
   const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
@@ -68,7 +69,7 @@ export default function BmrCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
-    setGender("");
+    setGender("male");
     setAge("");
     setHeightUnit("cm");
     setWeightUnit("kg");
@@ -141,7 +142,13 @@ export default function BmrCalculatorModal({ open, onClose }) {
            
             <GenderField
               value={gender}
-              onChange={bindField(setGender, setErrors, "gender")}
+              onChange={bindGenderSwitch(gender, setGender, setErrors, () => {
+                setAge("");
+                setHeightCm("");
+                setFeet("");
+                setInch("");
+                setWeight("");
+              })}
               error={errors.gender}
             />
              <AgeField

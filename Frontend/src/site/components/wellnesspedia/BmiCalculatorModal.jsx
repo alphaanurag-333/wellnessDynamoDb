@@ -17,6 +17,7 @@ import {
   HeightField,
   WeightField,
   bindField,
+  bindGenderSwitch,
 } from "./calculatorFields.jsx";
 
 const BMI_DESC =
@@ -96,7 +97,7 @@ function getNeedleRotation(bmi) {
 
 export default function BmiCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState("male");
   const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
@@ -147,7 +148,7 @@ export default function BmiCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
-    setGender("");
+    setGender("male");
     setAge("");
     setHeightUnit("cm");
     setWeightUnit("kg");
@@ -225,7 +226,14 @@ export default function BmiCalculatorModal({ open, onClose }) {
           <div className="wp-calc-form__grid">
           <GenderField
               value={gender}
-              onChange={bindField(setGender, setErrors, "gender")}
+              onChange={bindGenderSwitch(gender, setGender, setErrors, () => {
+                setAge("");
+                setHeightCm("");
+                setFeet("");
+                setInch("");
+                setWeightKg("");
+                setWeightLb("");
+              })}
               error={errors.gender}
             />
             <AgeField

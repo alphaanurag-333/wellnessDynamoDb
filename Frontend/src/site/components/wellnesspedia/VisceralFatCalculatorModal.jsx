@@ -17,6 +17,7 @@ import {
   HeightField,
   MeasureField,
   bindField,
+  bindGenderSwitch,
 } from "./calculatorFields.jsx";
 
 const VISCERAL_DESC =
@@ -38,7 +39,7 @@ const VISCERAL_RISK = [
 
 export default function VisceralFatCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("");
+  const [gender, setGender] = useState("male");
   const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [waistUnit, setWaistUnit] = useState("cm");
@@ -66,7 +67,7 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
-    setGender("");
+    setGender("male");
     setAge("");
     setHeightUnit("cm");
     setWaistUnit("cm");
@@ -146,7 +147,13 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
            
             <GenderField
               value={gender}
-              onChange={bindField(setGender, setErrors, "gender")}
+              onChange={bindGenderSwitch(gender, setGender, setErrors, () => {
+                setAge("");
+                setHeightCm("");
+                setFeet("");
+                setInch("");
+                setWaist("");
+              })}
               error={errors.gender}
             />
              <AgeField

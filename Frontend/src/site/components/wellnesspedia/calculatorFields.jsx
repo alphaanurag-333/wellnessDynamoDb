@@ -21,6 +21,16 @@ export function bindField(setter, setErrors, key) {
   };
 }
 
+/** Switch Male/Female: keep the new gender, wipe the other calculator inputs. */
+export function bindGenderSwitch(current, setGender, setErrors, clearInputs) {
+  return (next) => {
+    if (!next || next === current) return;
+    setGender(next);
+    clearInputs?.();
+    setErrors({});
+  };
+}
+
 function lengthForMax(max, { decimals = 0 } = {}) {
   const whole = String(Math.trunc(Number(max) || 0)).length;
   return decimals > 0 ? whole + 1 + decimals : whole;
