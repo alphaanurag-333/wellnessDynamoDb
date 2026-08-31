@@ -201,14 +201,22 @@ export function SiteFooter() {
               </div>
             ) : null}
 
-            {contact.email ? (
-              <div className="site-footer__contact-row">
-                <span className="site-footer__contact-icon" aria-hidden="true">
-                  <Mail size={16} />
-                </span>
-                <a href={`mailto:${contact.email}`} className="border-bottom">{contact.email}</a>
-              </div>
-            ) : null}
+{contact?.email && (
+  <div className="site-footer__contact-row">
+    <span className="site-footer__contact-icon" aria-hidden="true">
+      <Mail size={16} />
+    </span>
+
+    <a
+      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contact.email)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="border-bottom"
+    >
+      {contact?.email}
+    </a>
+  </div>
+)}
             {(contact.details || [])
               .filter((row) => !/phone|mobile|email|mail|whatsapp|tel/i.test(row.label))
               .map((row) => (
