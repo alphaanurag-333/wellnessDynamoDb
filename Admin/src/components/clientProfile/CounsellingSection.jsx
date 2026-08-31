@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  acceptHealConsultancyRequest,
   confirmHealConsultancyTime,
   fetchHealConsultancyTracks,
   offerHealConsultancyPeriods,
+  rejectHealConsultancyRequest,
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
@@ -19,6 +21,7 @@ const STATUS_LABEL = {
   requested: "Requested",
   periods_offered: "Periods offered",
   period_selected: "Period selected",
+  time_requested: "Time requested",
   scheduled: "Scheduled",
   completed: "Completed",
   follow_up_needed: "Follow-up needed",
@@ -78,6 +81,7 @@ export function CounsellingSection({ user, onToast }) {
   const [coachNotes, setCoachNotes] = useState("");
   const [fixedTime, setFixedTime] = useState("18:00");
   const [durationMinutes, setDurationMinutes] = useState(45);
+  const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
 
   async function load() {
     if (!userId) return;
@@ -87,6 +91,8 @@ export function CounsellingSection({ user, onToast }) {
       setTracks(data.tracks || []);
       setActiveTrack(data.activeTrack || null);
       setCoachNotes(data.activeTrack?.coachNotes || "");
+      const slots = data.activeTrack?.requestedSlots || [];
+      setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
     } catch (error) {
       onToast?.(error.message || "Could not load counselling sessions");
     } finally {
@@ -188,6 +194,49 @@ export function CounsellingSection({ user, onToast }) {
     }
   }
 
+  async function acceptRequestedTime() {
+    if (!activeTrack) return;
+    const slots = activeTrack.requestedSlots || [];
+    if (!slots.length) {
+      onToast?.("No requested times on this session");
+      return;
+    }
+    const requestedSlotId =
+      selectedRequestedSlotId || (slots.length === 1 ? slots[0].id : "");
+    if (!requestedSlotId) {
+      onToast?.("Select which requested time to accept");
+      return;
+    }
+    setBusy(true);
+    try {
+      const track = await acceptHealConsultancyRequest(userId, activeTrack.id, {
+        requestedSlotId,
+      });
+      setActiveTrack(track);
+      onToast?.("Requested time accepted");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not accept time request");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rejectRequestedTime() {
+    if (!activeTrack) return;
+    setBusy(true);
+    try {
+      const track = await rejectHealConsultancyRequest(userId, activeTrack.id);
+      setActiveTrack(track);
+      onToast?.("Time request rejected — periods remain available");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not reject time request");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function patchStatus(status) {
     if (!activeTrack) return;
     setBusy(true);
@@ -203,7 +252,12 @@ export function CounsellingSection({ user, onToast }) {
   }
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
-  const showShareBlock = canManage && (activeTrack?.status === "requested" || activeTrack?.status === "periods_offered");
+  const showShareBlock =
+    canManage &&
+    (activeTrack?.status === "requested" ||
+      activeTrack?.status === "periods_offered" ||
+      activeTrack?.status === "time_requested");
+  const requestedSlots = activeTrack?.requestedSlots || [];
   const minOfferDate = todayIsoDate();
 
   function isPastOfferDate(date) {
@@ -215,7 +269,7 @@ export function CounsellingSection({ user, onToast }) {
       <header className="ua-cp-counselling__head">
         <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
         <p className="ua-cp-placeholder__sub">
-          Client requests a session, you share date and period windows, they pick one, then you confirm a fixed time.
+          Client requests a session, you share date and period windows, they pick one or request another time, then you confirm.
         </p>
       </header>
 
@@ -317,7 +371,59 @@ export function CounsellingSection({ user, onToast }) {
           ) : null}
 
           {activeTrack.status === "periods_offered" ? (
-            <p className="ua-cp-counselling__wait">Waiting for the client to pick a period.</p>
+            <p className="ua-cp-counselling__wait">Waiting for the client to pick a period or request another time.</p>
+          ) : null}
+
+          {canManage && activeTrack.status === "time_requested" ? (
+            <div className="ua-cp-counselling__block">
+              <h3>Client requested times</h3>
+              <p className="ua-cp-counselling__muted">
+                Accept one of the times below, reject to keep existing period offers, or share new availability above.
+              </p>
+              {!requestedSlots.length ? (
+                <p className="ua-cp-counselling__muted">No requested slots found.</p>
+              ) : (
+                <ul className="ua-cp-counselling__list">
+                  {requestedSlots.map((slot) => {
+                    const selected = selectedRequestedSlotId === slot.id;
+                    return (
+                      <li key={slot.id}>
+                        <label className="ua-cp-counselling__radio-row">
+                          <input
+                            type="radio"
+                            name="requestedSlot"
+                            checked={selected}
+                            onChange={() => setSelectedRequestedSlotId(slot.id)}
+                          />
+                          <span>
+                            {formatWhen(slot.startAt)}
+                            {slot.endAt ? ` – ${formatWhen(slot.endAt)}` : ""}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="ua-cp-counselling__actions">
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--green"
+                  onClick={acceptRequestedTime}
+                  disabled={busy || !requestedSlots.length}
+                >
+                  {busy ? "Accepting…" : "Accept & confirm meeting"}
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline"
+                  onClick={rejectRequestedTime}
+                  disabled={busy}
+                >
+                  Reject request
+                </button>
+              </div>
+            </div>
           ) : null}
 
           {canEdit && activeTrack.status === "period_selected" && selectedOffer ? (
@@ -351,7 +457,7 @@ export function CounsellingSection({ user, onToast }) {
               </div>
               <div className="ua-cp-counselling__cta">
                 <button type="button" className="ua-cp-btn ua-cp-btn--green" onClick={confirmTime} disabled={busy}>
-                  {busy ? "Confirming…" : "Confirm time & create Zoom"}
+                  {busy ? "Confirming…" : "Confirm time & create meeting"}
                 </button>
               </div>
             </div>
@@ -363,7 +469,7 @@ export function CounsellingSection({ user, onToast }) {
               <p className="ua-cp-counselling__scheduled-time">{formatWhen(activeTrack.scheduledAt)}</p>
               {activeTrack.zoomJoinUrl || activeTrack.meetingLink ? (
                 <a className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" href={activeTrack.zoomStartUrl || activeTrack.zoomJoinUrl || activeTrack.meetingLink} target="_blank" rel="noreferrer">
-                  Open Zoom
+                  Open meeting
                 </a>
               ) : null}
               {canEdit || canDelete ? (

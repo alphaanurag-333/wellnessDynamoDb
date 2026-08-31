@@ -3,6 +3,10 @@ const { PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require("@aws-s
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { enrichOffer, listPeriodCatalog } = require("../utils/counsellingPeriodHelpers");
+const {
+  resolveRequestedSlots,
+  mirrorRequestedSlots,
+} = require("../utils/requestedSlotsHelpers");
 
 const TABLE = "UserHealConsultancyTrack";
 
@@ -10,13 +14,19 @@ const TRACK_STATUSES = new Set([
   "requested",
   "periods_offered",
   "period_selected",
+  "time_requested",
   "scheduled",
   "completed",
   "follow_up_needed",
   "cancelled",
 ]);
 
-const ACTIVE_TRACK_STATUSES = new Set(["requested", "periods_offered", "period_selected"]);
+const ACTIVE_TRACK_STATUSES = new Set([
+  "requested",
+  "periods_offered",
+  "period_selected",
+  "time_requested",
+]);
 
 const MAX_CONCERN_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
@@ -61,11 +71,15 @@ function normalizePeriodOffersField(value) {
 function toPublicHealConsultancyTrack(item) {
   if (!item) return null;
   const periodOffers = normalizePeriodOffersField(item.periodOffers);
+  const requested = resolveRequestedSlots(item);
   return {
     ...item,
     _id: item.id,
     periodOffers,
     periodCatalog: listPeriodCatalog(),
+    requestedSlots: requested,
+    requestedStartAt: item.requestedStartAt || requested[0]?.startAt || null,
+    requestedEndAt: item.requestedEndAt || requested[0]?.endAt || null,
   };
 }
 
@@ -99,6 +113,9 @@ function buildHealConsultancyTrackItem(input, { id, now }) {
     selectedOfferId: input.selectedOfferId ? String(input.selectedOfferId) : null,
     selectedPeriod: input.selectedPeriod ? String(input.selectedPeriod) : null,
     selectedDate: input.selectedDate ? String(input.selectedDate) : null,
+    ...mirrorRequestedSlots(
+      Array.isArray(input.requestedSlots) ? input.requestedSlots : [],
+    ),
     zoomMeetingId: input.zoomMeetingId ? String(input.zoomMeetingId) : null,
     zoomJoinUrl: input.zoomJoinUrl ? String(input.zoomJoinUrl) : null,
     zoomStartUrl: input.zoomStartUrl ? String(input.zoomStartUrl) : null,
@@ -272,4 +289,6 @@ module.exports = {
   findActiveHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   deleteHealConsultancyTrack,
+  resolveRequestedSlots,
+  mirrorRequestedSlots,
 };

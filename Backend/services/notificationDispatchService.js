@@ -52,6 +52,7 @@ const FCM_TYPE_BY_KIND = {
   counselling_requested: "counselling_requested_notification",
   counselling_periods_offered: "counselling_periods_offered_notification",
   counselling_period_selected: "counselling_period_selected_notification",
+  counselling_time_requested: "counselling_time_requested_notification",
   counselling_scheduled: "counselling_scheduled_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
@@ -949,6 +950,17 @@ async function dispatchCounsellingPeriodSelectedCoachNotification({ user, trackI
   });
 }
 
+async function dispatchCounsellingTimeRequestedCoachNotification({ user, trackId }) {
+  const userName = String(user?.name || "A client").trim() || "A client";
+  return dispatchCounsellingCoachPush({
+    user,
+    title: "Time requested",
+    body: `${userName} requested another time for counselling.`,
+    kind: "counselling_time_requested",
+    trackId,
+  });
+}
+
 async function dispatchCounsellingPeriodsOfferedNotification({ userId, trackId }) {
   const notification = await createTargetedNotification({
     userId,
@@ -981,6 +993,10 @@ function dispatchCounsellingRequestedCoachNotificationAsync(payload) {
 
 function dispatchCounsellingPeriodSelectedCoachNotificationAsync(payload) {
   runPushSafely(dispatchCounsellingPeriodSelectedCoachNotification(payload));
+}
+
+function dispatchCounsellingTimeRequestedCoachNotificationAsync(payload) {
+  runPushSafely(dispatchCounsellingTimeRequestedCoachNotification(payload));
 }
 
 function dispatchCounsellingPeriodsOfferedNotificationAsync(payload) {
@@ -1039,6 +1055,8 @@ module.exports = {
   dispatchCounsellingRequestedCoachNotificationAsync,
   dispatchCounsellingPeriodSelectedCoachNotification,
   dispatchCounsellingPeriodSelectedCoachNotificationAsync,
+  dispatchCounsellingTimeRequestedCoachNotification,
+  dispatchCounsellingTimeRequestedCoachNotificationAsync,
   dispatchCounsellingPeriodsOfferedNotification,
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotification,

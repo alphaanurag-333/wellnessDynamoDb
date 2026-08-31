@@ -49,6 +49,7 @@ const KIND = new Set([
   "counselling_requested",
   "counselling_periods_offered",
   "counselling_period_selected",
+  "counselling_time_requested",
   "counselling_scheduled",
   "program_checkout_triggered",
   "program_assigned",

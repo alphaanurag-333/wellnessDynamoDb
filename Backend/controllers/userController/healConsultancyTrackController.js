@@ -6,7 +6,9 @@ const {
   findActiveHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   toUserFacingHealConsultancyTrack,
+  mirrorRequestedSlots,
 } = require("../../models/userHealConsultancyTrackModel");
+const { normalizeRequestedSlots } = require("../../utils/requestedSlotsHelpers");
 const {
   readPagination,
   parseCreateBody,
@@ -18,6 +20,7 @@ const {
 const {
   dispatchCounsellingRequestedCoachNotificationAsync,
   dispatchCounsellingPeriodSelectedCoachNotificationAsync,
+  dispatchCounsellingTimeRequestedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
 exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) => {
@@ -102,6 +105,7 @@ exports.selectMyHealConsultancyPeriodController = asyncHandler(async (req, res) 
       selectedOfferId: offer.id,
       selectedPeriod: offer.period,
       selectedDate: offer.date,
+      ...mirrorRequestedSlots([]),
     });
   } catch (err) {
     handleValidationError(err);
@@ -115,6 +119,53 @@ exports.selectMyHealConsultancyPeriodController = asyncHandler(async (req, res) 
   return res.status(200).json({
     status: true,
     message: "Time period selected",
+    data: { track: toUserFacingHealConsultancyTrack(updated) },
+  });
+});
+
+exports.requestMyHealConsultancyTimeController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const trackId = String(req.params.trackId || "").trim();
+  if (!trackId) throw new AppError("trackId is required", 400);
+
+  const track = await loadTrackForUser(trackId, userId);
+  if (track.status !== "periods_offered" && track.status !== "time_requested") {
+    throw new AppError("This request is not open for a time request", 400);
+  }
+
+  let requestedSlots;
+  try {
+    requestedSlots = normalizeRequestedSlots(req.body?.slots || req.body?.requestedSlots, {
+      startAt: req.body?.startAt || req.body?.requestedStartAt,
+      endAt: req.body?.endAt || req.body?.requestedEndAt,
+    });
+  } catch (err) {
+    throw new AppError(err.message, 400);
+  }
+
+  let updated;
+  try {
+    updated = await updateHealConsultancyTrack(trackId, {
+      status: "time_requested",
+      ...mirrorRequestedSlots(requestedSlots),
+      selectedOfferId: null,
+      selectedPeriod: null,
+      selectedDate: null,
+    });
+  } catch (err) {
+    handleValidationError(err);
+  }
+
+  dispatchCounsellingTimeRequestedCoachNotificationAsync({
+    user: req.currentUser,
+    trackId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Time request sent to your coach",
     data: { track: toUserFacingHealConsultancyTrack(updated) },
   });
 });

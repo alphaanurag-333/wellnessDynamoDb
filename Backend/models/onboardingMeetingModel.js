@@ -3,6 +3,14 @@ const { PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { SCHEDULE_STEP_KEYS } = require("../utils/paidOnboardingHelpers");
+const {
+  MAX_REQUESTED_SLOTS,
+  parseIsoDate,
+  normalizeSlots,
+  normalizeRequestedSlots,
+  resolveRequestedSlots,
+  mirrorRequestedSlots,
+} = require("../utils/requestedSlotsHelpers");
 
 const TABLE = "OnboardingMeeting";
 
@@ -34,91 +42,6 @@ function normalizeStatus(value, fallback = "slots_offered") {
   return MEETING_STATUSES.has(next) ? next : null;
 }
 
-function parseIsoDate(value, fieldName) {
-  if (value == null || value === "") return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    const err = new Error(`${fieldName} must be a valid date`);
-    err.name = "ValidationError";
-    throw err;
-  }
-  return date.toISOString();
-}
-
-const MAX_REQUESTED_SLOTS = 4;
-
-function normalizeSlots(rawSlots) {
-  if (!Array.isArray(rawSlots) || !rawSlots.length) {
-    const err = new Error("At least one slot is required");
-    err.name = "ValidationError";
-    throw err;
-  }
-  return rawSlots.map((slot, index) => {
-    const startAt = parseIsoDate(slot.startAt || slot.start_at, `slots[${index}].startAt`);
-    const endAt = parseIsoDate(slot.endAt || slot.end_at, `slots[${index}].endAt`);
-    if (!startAt || !endAt) {
-      const err = new Error(`slots[${index}] requires startAt and endAt`);
-      err.name = "ValidationError";
-      throw err;
-    }
-    if (new Date(endAt).getTime() <= new Date(startAt).getTime()) {
-      const err = new Error(`slots[${index}] endAt must be after startAt`);
-      err.name = "ValidationError";
-      throw err;
-    }
-    if (new Date(startAt).getTime() <= Date.now()) {
-      const err = new Error(`slots[${index}].startAt must be in the future`);
-      err.name = "ValidationError";
-      throw err;
-    }
-    return {
-      id: String(slot.id || uuidv4()),
-      startAt,
-      endAt,
-    };
-  });
-}
-
-/**
- * Normalize user-proposed alternate times (1–4).
- * Accepts `slots` array, or legacy single `{ startAt, endAt }` / body fields.
- */
-function normalizeRequestedSlots(raw, { startAt, endAt } = {}) {
-  let list = Array.isArray(raw) ? raw : null;
-  if (!list || !list.length) {
-    if (startAt && endAt) {
-      list = [{ startAt, endAt }];
-    } else {
-      const err = new Error("At least one requested time slot is required");
-      err.name = "ValidationError";
-      throw err;
-    }
-  }
-  if (list.length > MAX_REQUESTED_SLOTS) {
-    const err = new Error(`At most ${MAX_REQUESTED_SLOTS} requested time slots are allowed`);
-    err.name = "ValidationError";
-    throw err;
-  }
-  return normalizeSlots(list);
-}
-
-function resolveRequestedSlots(meeting) {
-  if (!meeting) return [];
-  if (Array.isArray(meeting.requestedSlots) && meeting.requestedSlots.length) {
-    return meeting.requestedSlots;
-  }
-  if (meeting.requestedStartAt && meeting.requestedEndAt) {
-    return [
-      {
-        id: "legacy",
-        startAt: meeting.requestedStartAt,
-        endAt: meeting.requestedEndAt,
-      },
-    ];
-  }
-  return [];
-}
-
 /**
  * Confirmed meeting time: preferred selected slot, else explicit confirmed range,
  * else first slot (legacy coach-offer fallback).
@@ -138,16 +61,6 @@ function resolveConfirmedSlot(meeting) {
     };
   }
   return slots[0] || null;
-}
-
-function mirrorRequestedSlots(requestedSlots) {
-  const slots = Array.isArray(requestedSlots) ? requestedSlots : [];
-  const first = slots[0] || null;
-  return {
-    requestedSlots: slots,
-    requestedStartAt: first?.startAt || null,
-    requestedEndAt: first?.endAt || null,
-  };
 }
 
 function holdExpiresAtFrom(hold, now = Date.now()) {
