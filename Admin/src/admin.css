@@ -27882,6 +27882,76 @@ scrollbar-width: thin;
   color: #2b8f5b;
 }
 
+.updated-admin .ua-cp-bms-steps-goal {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #f0faf4;
+  border: 1px solid #d9f0e3;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0f9e75;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__input {
+  width: 88px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16233f;
+  box-shadow: 0 0 0 1px #c5e8d6;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__unit {
+  font-size: 12px;
+  font-weight: 650;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__set {
+  border: none;
+  background: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f9e75;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px #c5e8d6;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__set:hover {
+  background: #e7f6ee;
+}
+
+.updated-admin .ua-cp-bms-steps-goal__cancel {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7a90;
+  cursor: pointer;
+}
+
 .updated-admin .ua-cp-bms-zone-pill strong {
   color: #d64545;
 }

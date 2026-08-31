@@ -19,6 +19,7 @@ import {
   fetchUserSleepTracking,
   fetchUserStepsTracking,
   updateUserBmsTracking,
+  updateUserStepsGoal,
 } from "../../api/bmsTrackingApi.js";
 import { fetchUser } from "../../api/usersApi.js";
 import {
@@ -134,7 +135,66 @@ function StepsIcon() {
   );
 }
 
-function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
+function StepsGoalBar({
+  goal,
+  editing,
+  draftGoal,
+  onStartEdit,
+  onCancel,
+  onSave,
+  onDraftChange,
+  canEdit,
+  saving,
+}) {
+  return (
+    <div className="ua-cp-bms-steps-goal">
+      {editing ? (
+        <>
+          <span className="ua-cp-bms-steps-goal__label">Goal</span>
+          <input
+            type="number"
+            className="ua-cp-bms-steps-goal__input"
+            value={draftGoal}
+            min={100}
+            max={50000}
+            step={100}
+            disabled={saving}
+            onChange={(e) => onDraftChange(Number(e.target.value) || 100)}
+          />
+          <span className="ua-cp-bms-steps-goal__unit">steps / day</span>
+          <button type="button" className="ua-cp-bms-steps-goal__cancel" disabled={saving} onClick={onCancel}>Cancel</button>
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" disabled={saving} onClick={onSave}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="ua-cp-bms-steps-goal__label">Goal</span>
+          <strong className="ua-cp-bms-steps-goal__value">{Number(goal).toLocaleString()} steps / day</strong>
+          {canEdit ? (
+            <button type="button" className="ua-cp-bms-steps-goal__set" onClick={onStartEdit}>Set target</button>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function StepsPanel({
+  chart,
+  historyRange,
+  onRangeChange,
+  loading,
+  stepsGoal,
+  stepsGoalEditing,
+  stepsGoalDraft,
+  onStartEditGoal,
+  onCancelGoal,
+  onSaveGoal,
+  onDraftGoalChange,
+  canEdit,
+  saving,
+}) {
   const max = Math.max(...(chart.days.map((d) => d.value)), chart.goal, 1);
   if (loading) return <p className="ua-cp-bms-library-hint">Loading step tracking…</p>;
 
@@ -142,10 +202,17 @@ function StepsPanel({ chart, historyRange, onRangeChange, loading }) {
     <>
       <div className="ua-cp-bms-toolbar">
         <FoodWaterHistoryPicker range={historyRange} onRangeChange={onRangeChange} tone="teal" />
-        <div className="ua-cp-bms-goal-pill">
-          <span className="ua-cp-bms-goal-pill__label" style={{color:"rgb(15, 158, 117)"}}>Goal</span>
-          <strong style={{color:"rgb(22, 35, 63)"}}>{chart.goal.toLocaleString()} steps / day</strong>
-        </div>
+        <StepsGoalBar
+          goal={stepsGoal}
+          editing={stepsGoalEditing}
+          draftGoal={stepsGoalDraft}
+          onStartEdit={onStartEditGoal}
+          onCancel={onCancelGoal}
+          onSave={onSaveGoal}
+          onDraftChange={onDraftGoalChange}
+          canEdit={canEdit}
+          saving={saving}
+        />
       </div>
       <MetricChartCard
         icon={<StepsIcon />}
@@ -479,6 +546,9 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [clientCanSetSleep] = useState(true);
   const [stepsHistory, setStepsHistory] = useState(null);
   const [stepsGoal, setStepsGoal] = useState(BMS_GOALS.steps);
+  const [stepsGoalEditing, setStepsGoalEditing] = useState(false);
+  const [stepsGoalDraft, setStepsGoalDraft] = useState(BMS_GOALS.steps);
+  const [stepsGoalSaving, setStepsGoalSaving] = useState(false);
   const [heartHistory, setHeartHistory] = useState(null);
   const [sleepHistory, setSleepHistory] = useState(null);
   const [sleepToday, setSleepToday] = useState(null);
@@ -503,6 +573,9 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   useEffect(() => {
     setHistoryRange(defaultBmsRange(today));
     setStepsHistory(null);
+    setStepsGoal(BMS_GOALS.steps);
+    setStepsGoalDraft(BMS_GOALS.steps);
+    setStepsGoalEditing(false);
     setHeartHistory(null);
     setSleepHistory(null);
     setSleepToday(null);
@@ -556,7 +629,10 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
         if (tab === "steps") {
           setStepsHistory(history);
           const goal = Number(data?.settings?.goalSteps);
-          if (Number.isFinite(goal) && goal > 0) setStepsGoal(goal);
+          if (Number.isFinite(goal) && goal > 0) {
+            setStepsGoal(goal);
+            setStepsGoalDraft(goal);
+          }
         } else if (tab === "heart") {
           setHeartHistory(history);
         } else {
@@ -744,6 +820,31 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     onToast("Sleep target updated");
   }
 
+  async function saveStepsGoal() {
+    const nextGoal = Math.min(50000, Math.max(100, Number(stepsGoalDraft) || 100));
+    if (!live) {
+      setStepsGoal(nextGoal);
+      setStepsGoalDraft(nextGoal);
+      setStepsGoalEditing(false);
+      onToast("Steps goal updated");
+      return;
+    }
+    if (stepsGoalSaving) return;
+    setStepsGoalSaving(true);
+    try {
+      const result = await updateUserStepsGoal(userId, nextGoal);
+      const saved = Number(result?.settings?.goalSteps ?? nextGoal);
+      setStepsGoal(saved);
+      setStepsGoalDraft(saved);
+      setStepsGoalEditing(false);
+      onToast("Daily steps goal updated");
+    } catch (error) {
+      onToast(error?.message || "Failed to update steps goal");
+    } finally {
+      setStepsGoalSaving(false);
+    }
+  }
+
   const mentalFilters = [
     { id: "all", label: "All" },
     { id: "video", label: "Videos" },
@@ -802,6 +903,21 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           historyRange={historyRange}
           onRangeChange={setHistoryRange}
           loading={live && metricLoading && !stepsHistory}
+          stepsGoal={stepsGoal}
+          stepsGoalEditing={stepsGoalEditing}
+          stepsGoalDraft={stepsGoalDraft}
+          onStartEditGoal={() => {
+            setStepsGoalDraft(stepsGoal);
+            setStepsGoalEditing(true);
+          }}
+          onCancelGoal={() => {
+            setStepsGoalEditing(false);
+            setStepsGoalDraft(stepsGoal);
+          }}
+          onSaveGoal={saveStepsGoal}
+          onDraftGoalChange={setStepsGoalDraft}
+          canEdit={canEdit}
+          saving={stepsGoalSaving}
         />
       ) : null}
 

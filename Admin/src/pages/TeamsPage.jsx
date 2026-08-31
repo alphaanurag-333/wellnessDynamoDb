@@ -1259,6 +1259,7 @@ export function TeamsPage() {
   const pageParam = Number(searchParams.get("page"));
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   const roleParam = searchParams.get("role") || "";
+  const parentParam = String(searchParams.get("parent") || "").trim();
   const roleTab = roleParam || ALL_TAB_ID;
   const isAllTab = roleTab === ALL_TAB_ID;
 
@@ -1273,6 +1274,13 @@ export function TeamsPage() {
     const next = new URLSearchParams(searchParams);
     if (!role || role === ALL_TAB_ID) next.delete("role");
     else next.set("role", role);
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const clearParentFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("parent");
     next.delete("page");
     setSearchParams(next, { replace: true });
   };
@@ -1318,6 +1326,7 @@ export function TeamsPage() {
           limit: PAGE_SIZE,
           consoleRoleId: selectedConsoleRoleId,
           roleKey: selectedConsoleRoleId ? undefined : fallbackUiRoleKey,
+          parentAccountId: parentParam || undefined,
         });
         if (cancelled) return;
         const list = (rows || []).filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin");
@@ -1341,7 +1350,7 @@ export function TeamsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAllTab, selectedConsoleRoleId, fallbackUiRoleKey, rolesReady, currentPage, reloadNonce]);
+  }, [isAllTab, selectedConsoleRoleId, fallbackUiRoleKey, rolesReady, currentPage, reloadNonce, parentParam]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -1373,6 +1382,12 @@ export function TeamsPage() {
   useEffect(() => {
     if (!teamRoles.length) return;
     if (isAllTab) return;
+    // Normalize roleKey shortcuts (e.g. ?role=awc) to the live console role id so the tab highlights.
+    const byKey = teamRoles.find((r) => r.roleKey === roleTab || r.id === roleTab);
+    if (byKey && byKey.id !== roleTab) {
+      setRoleTab(byKey.id);
+      return;
+    }
     if (!teamRoles.some((r) => r.id === roleTab || r.roleKey === roleTab)) {
       setRoleTab(ALL_TAB_ID);
     }
@@ -1421,6 +1436,21 @@ export function TeamsPage() {
 
       <SectionLabel hint="">Team</SectionLabel>
       <PillTabs tabs={tabs} active={roleTab} onChange={setRoleTab} />
+      {parentParam ? (
+        <div className="ua-coach-filter" style={{ marginTop: 10 }}>
+          <span className="ua-coach-filter__label">
+            Under coach: {members.find((m) => m.parentName)?.parentName || parentParam}
+          </span>
+          <button
+            type="button"
+            className="ua-coach-filter__clear"
+            title="Clear coach filter"
+            onClick={clearParentFilter}
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
 
       {loading ? <BrandLoader variant="page" label="Loading team…" /> : null}
       {error ? (

@@ -157,7 +157,10 @@ const {
   getStaffHealUserWaterTrackingController,
   updateStaffHealUserWaterGoalController,
 } = require("../../controllers/waterTrackingHistoryController");
-const { getStaffHealUserStepsTrackingController } = require("../../controllers/stepsTrackingHistoryController");
+const {
+  getStaffHealUserStepsTrackingController,
+  updateStaffHealUserStepsGoalController,
+} = require("../../controllers/stepsTrackingHistoryController");
 const { getStaffHealUserSleepTrackingController } = require("../../controllers/sleepTrackingHistoryController");
 const { getStaffHealUserHeartRateTrackingController } = require("../../controllers/heartRateTrackingHistoryController");
 const {
@@ -208,6 +211,11 @@ router.patch(
   updateStaffHealUserWaterGoalController
 );
 router.get("/:id/steps-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking.steps" }), getStaffHealUserStepsTrackingController);
+router.patch(
+  "/:id/steps-tracking/goal",
+  staff("console.body.edit", { admin: "users.edit", coach: "clientTab.tracking.steps" }),
+  updateStaffHealUserStepsGoalController
+);
 router.get("/:id/sleep-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking" }), getStaffHealUserSleepTrackingController);
 router.get("/:id/heart-rate-tracking", staff("console.body.view", { admin: "users.view", coach: "clientTab.tracking" }), getStaffHealUserHeartRateTrackingController);
 router.patch(

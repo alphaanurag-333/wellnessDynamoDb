@@ -167,13 +167,21 @@ async function enrichMembersWithProfileImages(members) {
   });
 }
 
-export async function fetchAccessMembers({ search, roleKey, consoleRoleId, page = 1, limit = 20 } = {}) {
+export async function fetchAccessMembers({
+  search,
+  roleKey,
+  consoleRoleId,
+  parentAccountId,
+  page = 1,
+  limit = 20,
+} = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (search) q.set("search", search);
   if (consoleRoleId) q.set("consoleRoleId", consoleRoleId);
   else if (roleKey) q.set("roleKey", roleKey);
+  if (parentAccountId) q.set("parentAccountId", parentAccountId);
   try {
     const { data } = await api.get(`/account/access/members?${q}`, { headers: authHeader() });
     const members = await enrichMembersWithProfileImages(data.members);

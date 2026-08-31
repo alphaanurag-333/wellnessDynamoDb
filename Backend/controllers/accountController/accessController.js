@@ -913,6 +913,9 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
   const search = req.query.search || req.query.q;
   let roleFilter = String(req.query.roleKey || req.query.role || "").trim();
   let consoleRoleIdFilter = String(req.query.consoleRoleId || "").trim();
+  const parentAccountIdFilter = String(
+    req.query.parentAccountId || req.query.parent || ""
+  ).trim();
   if (!consoleRoleIdFilter && isConsoleRoleId(roleFilter)) {
     consoleRoleIdFilter = roleFilter;
     roleFilter = "";
@@ -943,18 +946,30 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
     });
   }
 
+  // Coaches are scoped to their own tree; admins may further filter by parent WC.
+  const scopedParentId =
+    visibleRoles !== null
+      ? req.auth.sub
+      : parentAccountIdFilter || undefined;
+
   let result;
   if (visibleRoles === null) {
     result = await listAccounts({
       status: "active",
       search,
       roleKey: accountRoleFilter,
+      parentAccountId: scopedParentId,
       page: listPage,
       limit: listLimit,
     });
   } else {
     result = {
-      accounts: await collectScopedTeamAccounts(req, { search, accountRoleFilter }),
+      accounts: await collectScopedTeamAccounts(req, {
+        search,
+        accountRoleFilter,
+        // When WC opens AWCs for their own profile, parent is themselves (already scoped).
+        // Ignore a mismatched parent filter from the URL.
+      }),
     };
   }
 
