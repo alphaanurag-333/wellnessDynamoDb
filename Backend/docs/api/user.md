@@ -242,6 +242,7 @@ See [program-payment.md](../domain/program-payment.md).
 | `GET` | `/user/heal-consultancy-tracks` |
 | `POST` | `/user/heal-consultancy-tracks` |
 | `PATCH` | `/user/heal-consultancy-tracks/:trackId/select-period` |
+| `POST` | `/user/heal-consultancy-tracks/:trackId/request-time` |
 
 ---
 

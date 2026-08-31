@@ -142,6 +142,8 @@ const {
   deleteCoachHealConsultancyTrackController,
   offerCoachHealConsultancyPeriodsController,
   confirmCoachHealConsultancyTimeController,
+  acceptCoachHealConsultancyRequestController,
+  rejectCoachHealConsultancyRequestController,
 } = require("../../controllers/adminController/healConsultancyTrackController");
 const {
   getStaffUserProtocolSettingsController,
@@ -414,6 +416,8 @@ router.get("/:userId/heal-consultancy-tracks", tracks, listCoachHealConsultancyT
 router.post("/:userId/heal-consultancy-tracks", tracksWrite, createCoachHealConsultancyTrackController);
 router.patch("/:userId/heal-consultancy-tracks/:trackId/offer-periods", tracksWrite, offerCoachHealConsultancyPeriodsController);
 router.patch("/:userId/heal-consultancy-tracks/:trackId/confirm-time", tracksWrite, confirmCoachHealConsultancyTimeController);
+router.post("/:userId/heal-consultancy-tracks/:trackId/accept-request", tracksWrite, acceptCoachHealConsultancyRequestController);
+router.post("/:userId/heal-consultancy-tracks/:trackId/reject-request", tracksWrite, rejectCoachHealConsultancyRequestController);
 router.patch("/:userId/heal-consultancy-tracks/:trackId", tracksWrite, updateCoachHealConsultancyTrackController);
 router.delete("/:userId/heal-consultancy-tracks/:trackId", staff("console.cal.delete", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" }), deleteCoachHealConsultancyTrackController);
 

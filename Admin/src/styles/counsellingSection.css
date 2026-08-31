@@ -281,6 +281,18 @@
   padding-bottom: 0;
 }
 
+.updated-admin .ua-cp-counselling__radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-counselling__radio-row input {
+  margin-top: 3px;
+}
+
 .updated-admin .ua-cp-counselling__pending li {
   padding: 10px 12px;
   border: 1px solid var(--border-soft);

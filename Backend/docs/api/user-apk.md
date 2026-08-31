@@ -377,6 +377,7 @@ See also: [program-payment.md](../domain/program-payment.md), [consultancy-payme
 | GET | `/api/user/heal-consultancy-tracks` | Heal | Tracks (`status`) |
 | POST | `/api/user/heal-consultancy-tracks` | Heal | Create track |
 | PATCH | `/api/user/heal-consultancy-tracks/:trackId/select-period` | Heal | Select period |
+| POST | `/api/user/heal-consultancy-tracks/:trackId/request-time` | Heal | Request another time (1–4 slots) |
 | GET | `/api/user/onboarding-meetings` | Heal+NoEagle | Meetings |
 | POST | `/api/user/onboarding-meetings/:meetingId/book` | Heal+NoEagle | Book |
 | POST | `/api/user/onboarding-meetings/:meetingId/request-time` | Heal+NoEagle | Request time |

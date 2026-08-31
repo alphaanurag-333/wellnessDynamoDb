@@ -334,6 +334,10 @@ Guide: [monthly-champions-feature.md](./monthly-champions-feature.md).
 | `GET` | `/user/heal-consultancy-tracks` |
 | `POST` | `/user/heal-consultancy-tracks` |
 | `PATCH` | `/user/heal-consultancy-tracks/:trackId/select-period` |
+| `POST` | `/user/heal-consultancy-tracks/:trackId/request-time` |
+
+Statuses include `requested`, `periods_offered`, `period_selected`, `time_requested`, `scheduled`, `completed`, `follow_up_needed`, `cancelled`.  
+`POST .../request-time` body: `{ slots: [{ startAt, endAt }] }` (1–4 slots); allowed when status is `periods_offered` or `time_requested`.
 
 ---
 
