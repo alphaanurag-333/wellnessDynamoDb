@@ -29,7 +29,9 @@ import {
   Target,
   Eye,
   Sparkles,
-  HelpCircle,
+  Gauge,
+  Tags,
+  CreditCard,
   ArrowRight,
   ArrowUpRight,
 } from "lucide-react";
@@ -123,6 +125,58 @@ function PillarDescription({ headTitle, html, text }) {
   );
 }
 
+const PROCESS_FAQ_ICONS = [Gauge, Tags, CreditCard, HeartPulse];
+
+const PROCESS_FAQS = [
+  {
+    id: 1,
+    question: "Our approach includes the following.",
+    answer:
+      "Our healing process starts with understanding your health history, lifestyle, nutrition, sleep, stress levels and long-term wellness goals. Every recommendation is personalized to your body and lifestyle.",
+    Icon: Gauge,
+  },
+  {
+    id: 2,
+    question: "Delve deep into health history, current lifestyle and aspired health goals.",
+    answer:
+      "We carefully analyze your reports, eating habits, stress levels, exercise routine and medical history before preparing your wellness roadmap.",
+    Icon: Tags,
+  },
+  {
+    id: 3,
+    question: "There is no one-size-fits-all solution.",
+    answer:
+      "Each individual receives a customized wellness plan that combines nutrition, diagnostics, therapy and sustainable lifestyle changes.",
+    Icon: CreditCard,
+  },
+  {
+    id: 4,
+    question: "We support you with ongoing guidance and follow-up.",
+    answer:
+      "Your wellness plan is reviewed regularly so nutrition, diagnostics, therapy and lifestyle changes stay aligned with your progress, reports and long-term health goals.",
+    Icon: HeartPulse,
+  },
+];
+
+function iconForProcessFaq(item, index) {
+  const question = String(item.question || "").trim().toLowerCase();
+  const matched = PROCESS_FAQS.find((faq) => faq.question.toLowerCase() === question);
+  const Icon =
+    item.Icon || matched?.Icon || PROCESS_FAQ_ICONS[index % PROCESS_FAQ_ICONS.length];
+  return <Icon size={18} aria-hidden />;
+}
+
+function withProcessFaqs(incoming) {
+  const source = Array.isArray(incoming) ? incoming : [];
+  const existing = new Set(
+    source.map((item) => String(item.question || "").trim().toLowerCase()).filter(Boolean),
+  );
+  const extras = PROCESS_FAQS.filter(
+    (faq) => !existing.has(faq.question.toLowerCase()),
+  );
+  return source.length ? [...source, ...extras] : PROCESS_FAQS;
+}
+
 const FALLBACK_DESCRIPTION_TITLE = "Meet Your Wellness Partner";
 const FALLBACK_DESCRIPTION_BODY =
   "We merge advanced clinical diagnostics with restorative holistic practices to create your personalized path to vitality.";
@@ -167,7 +221,7 @@ const AboutUsSection = () => {
     { title: "Stress Management", icon: <Dumbbell size={18} /> },
   ];
 
-  const [faqItems, setFaqItems] = useState([]);
+  const [faqItems, setFaqItems] = useState(PROCESS_FAQS);
   const [faqItemsLoading, setFaqItemsLoading] = useState(true);
   const [cofounderMessage, setCofounderMessage] = useState(null);
   const [leadershipNotes, setLeadershipNotes] = useState([]);
@@ -178,12 +232,14 @@ const AboutUsSection = () => {
   const [pillarPages, setPillarPages] = useState({});
   const [aboutPagesLoaded, setAboutPagesLoaded] = useState(false);
 
-  const faqData = faqItems.map((item, index) => ({
-    id: item.id || `faq-${index}`,
-    icon: <HelpCircle size={18} />,
-    question: String(item.question || "").trim(),
-    answer: String(item.answer || "").trim(),
-  })).filter((item) => item.question && item.answer);
+  const faqData = (faqItems.length ? faqItems : PROCESS_FAQS)
+    .map((item, index) => ({
+      id: item.id || `faq-${index}`,
+      icon: iconForProcessFaq(item, index),
+      question: String(item.question || "").trim(),
+      answer: String(item.answer || "").trim(),
+    }))
+    .filter((item) => item.question && item.answer);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,10 +249,11 @@ const AboutUsSection = () => {
       try {
         const response = await fetchFaqs({ page: 1, limit: 50, platform: "web" });
         if (!cancelled) {
-          setFaqItems(Array.isArray(response?.faqs) ? response.faqs : []);
+          const incoming = Array.isArray(response?.faqs) ? response.faqs : [];
+          setFaqItems(withProcessFaqs(incoming));
         }
       } catch {
-        if (!cancelled) setFaqItems([]);
+        if (!cancelled) setFaqItems(PROCESS_FAQS);
       } finally {
         if (!cancelled) setFaqItemsLoading(false);
       }
@@ -510,7 +567,7 @@ const AboutUsSection = () => {
   </div>
 </div>
 
-              {faqItemsLoading ? null : faqData.length ? (
+              {faqItemsLoading && !faqData.length ? null : faqData.length ? (
               <div
                 className="accordion aboutFaqAccordion"
                 id="aboutFaqAccordion"

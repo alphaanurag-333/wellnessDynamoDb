@@ -13,7 +13,8 @@ export default function AppHeroSection() {
   const apkLogoUrl = useSelector(selectApkLogoLightUrl);
   const appName = useSelector(selectAppDisplayName) || "India Redefining Wellness";
   const logoSrc = brandLogoUrl || defaultLogo;
-  const appPreviewSrc = apkLogoUrl || dummyAppImage;
+  const appPreviewSrc = dummyAppImage;
+  // const appPreviewSrc = apkLogoUrl || dummyAppImage;
 
   return (
     <section className="app-hero" aria-labelledby="app-hero-title">

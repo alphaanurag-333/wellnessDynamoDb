@@ -33,14 +33,14 @@ const ACTIVITY = [
 
 export default function BmrCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("male");
-  const [age, setAge] = useState(28);
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
-  const [heightCm, setHeightCm] = useState("175");
-  const [feet, setFeet] = useState("5");
-  const [inch, setInch] = useState("9");
-  const [weight, setWeight] = useState("70");
+  const [heightCm, setHeightCm] = useState("");
+  const [feet, setFeet] = useState("");
+  const [inch, setInch] = useState("");
+  const [weight, setWeight] = useState("");
   const [bmr, setBmr] = useState(0);
   const [errors, setErrors] = useState({});
 
@@ -68,6 +68,14 @@ export default function BmrCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
+    setGender("");
+    setAge("");
+    setHeightUnit("cm");
+    setWeightUnit("kg");
+    setHeightCm("");
+    setFeet("");
+    setInch("");
+    setWeight("");
     setBmr(0);
     setErrors({});
     onClose?.();

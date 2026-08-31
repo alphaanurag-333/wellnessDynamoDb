@@ -50,7 +50,8 @@ export function AppDownloadModal({ open, onClose }) {
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
   const apkLogoUrl = useSelector(selectApkLogoLightUrl);
   const logoSrc = brandLogoUrl || defaultLogo;
-  const apkScreenshotSrc = apkLogoUrl || apkScreenshot;
+  // const apkScreenshotSrc = apkLogoUrl || apkScreenshot;
+  const apkScreenshotSrc =  apkScreenshot;
   const [iosQrDataUrl, setIosQrDataUrl] = useState("");
   const [playQrDataUrl, setPlayQrDataUrl] = useState("");
 
@@ -130,10 +131,10 @@ export function AppDownloadModal({ open, onClose }) {
           </div>
 
           <div className="app-dl-modal__copy">
-            <div className="app-dl-modal__brand">
+            {/* <div className="app-dl-modal__brand">
               <img src={logoSrc} alt="" className="app-dl-modal__logo" />
               <span>{appName}</span>
-            </div>
+            </div> */}
 
             <p className="app-dl-modal__eyebrow">Book on the app</p>
             <h2 id="app-dl-modal-title" className="app-dl-modal__title">

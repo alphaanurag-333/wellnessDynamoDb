@@ -45,15 +45,15 @@ function gaugeAngle(bmi) {
 
 export default function BmiCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("male");
-  const [age, setAge] = useState("28");
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
-  const [heightCm, setHeightCm] = useState(175);
-  const [feet, setFeet] = useState(5);
-  const [inch, setInch] = useState(9);
-  const [weightKg, setWeightKg] = useState(70);
-  const [weightLb, setWeightLb] = useState(154.3);
+  const [heightCm, setHeightCm] = useState("");
+  const [feet, setFeet] = useState("");
+  const [inch, setInch] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [weightLb, setWeightLb] = useState("");
   const [bmi, setBmi] = useState(null);
   const [errors, setErrors] = useState({});
 
@@ -67,7 +67,7 @@ export default function BmiCalculatorModal({ open, onClose }) {
       setInch(i);
     } else {
       const cm = feetInchesToCm(feet, inch);
-      setHeightCm(cm ? Math.round(cm) : 175);
+      setHeightCm(cm ? String(Math.round(cm)) : "");
     }
     setHeightUnit(unit);
   };
@@ -75,15 +75,32 @@ export default function BmiCalculatorModal({ open, onClose }) {
   const changeWeightUnit = (unit) => {
     if (unit === weightUnit) return;
     if (unit === "lb") {
-      setWeightLb(Number((Number(weightKg) * 2.20462).toFixed(1)));
+      setWeightLb(
+        weightKg === "" || weightKg == null
+          ? ""
+          : Number((Number(weightKg) * 2.20462).toFixed(1))
+      );
     } else {
-      setWeightKg(Number((Number(weightLb) / 2.20462).toFixed(1)));
+      setWeightKg(
+        weightLb === "" || weightLb == null
+          ? ""
+          : Number((Number(weightLb) / 2.20462).toFixed(1))
+      );
     }
     setWeightUnit(unit);
   };
 
   const handleClose = () => {
     setView("form");
+    setGender("");
+    setAge("");
+    setHeightUnit("cm");
+    setWeightUnit("kg");
+    setHeightCm("");
+    setFeet("");
+    setInch("");
+    setWeightKg("");
+    setWeightLb("");
     setBmi(null);
     setErrors({});
     onClose?.();

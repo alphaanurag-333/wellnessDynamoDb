@@ -38,14 +38,14 @@ const VISCERAL_RISK = [
 
 export default function VisceralFatCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("male");
-  const [age, setAge] = useState(28);
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [waistUnit, setWaistUnit] = useState("cm");
-  const [heightCm, setHeightCm] = useState("175");
-  const [feet, setFeet] = useState("5");
-  const [inch, setInch] = useState("9");
-  const [waist, setWaist] = useState("82");
+  const [heightCm, setHeightCm] = useState("");
+  const [feet, setFeet] = useState("");
+  const [inch, setInch] = useState("");
+  const [waist, setWaist] = useState("");
   const [ratio, setRatio] = useState(null);
   const [visceralFat, setVisceralFat] = useState(null);
   const [visceralPercent, setVisceralPercent] = useState(null);
@@ -66,6 +66,14 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
+    setGender("");
+    setAge("");
+    setHeightUnit("cm");
+    setWaistUnit("cm");
+    setHeightCm("");
+    setFeet("");
+    setInch("");
+    setWaist("");
     setRatio(null);
     setVisceralFat(null);
     setVisceralPercent(null);

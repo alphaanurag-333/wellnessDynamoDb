@@ -54,18 +54,18 @@ function bodyFatCategory(pct, gender, age) {
 
 export default function BodyFatCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
-  const [gender, setGender] = useState("male");
-  const [age, setAge] = useState(28);
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
   const [weightUnit, setWeightUnit] = useState("kg");
   const [measureUnit, setMeasureUnit] = useState("cm");
-  const [heightCm, setHeightCm] = useState("175");
-  const [feet, setFeet] = useState("5");
-  const [inch, setInch] = useState("9");
-  const [weight, setWeight] = useState("70");
-  const [neck, setNeck] = useState("38");
-  const [waist, setWaist] = useState("85");
-  const [hip, setHip] = useState("95");
+  const [heightCm, setHeightCm] = useState("");
+  const [feet, setFeet] = useState("");
+  const [inch, setInch] = useState("");
+  const [weight, setWeight] = useState("");
+  const [neck, setNeck] = useState("");
+  const [waist, setWaist] = useState("");
+  const [hip, setHip] = useState("");
   const [bodyFat, setBodyFat] = useState(null);
   const [errors, setErrors] = useState({});
 
@@ -94,6 +94,18 @@ export default function BodyFatCalculatorModal({ open, onClose }) {
 
   const handleClose = () => {
     setView("form");
+    setGender("");
+    setAge("");
+    setHeightUnit("cm");
+    setWeightUnit("kg");
+    setMeasureUnit("cm");
+    setHeightCm("");
+    setFeet("");
+    setInch("");
+    setWeight("");
+    setNeck("");
+    setWaist("");
+    setHip("");
     setBodyFat(null);
     setErrors({});
     onClose?.();
