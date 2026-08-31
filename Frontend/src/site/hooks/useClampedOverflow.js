@@ -17,7 +17,7 @@ export function useClampedOverflow(text, expanded) {
       if (expanded) return;
 
       // Force layout with clamp applied, then compare full vs visible height.
-      const next = el.scrollHeight > el.clientHeight + 1;
+      const next = el.scrollHeight > el.clientHeight + 2;
       setOverflows(next);
     };
 

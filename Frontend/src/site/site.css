@@ -7274,20 +7274,21 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .monthly-champions .champion-card {
-  padding: 12px 14px;
+  padding: 16px 18px 18px;
   border-radius: 12px;
 }
 
 .monthly-champions .champion-title {
   font-size: 0.9rem;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   line-height: 1.2;
   letter-spacing: 0.01em;
 }
 
 .monthly-champions .champion-user {
   gap: 12px;
+  align-items: flex-start;
 }
 
 .monthly-champions .champion-avatar {
@@ -7312,9 +7313,13 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .monthly-champions .champion-info__more {
-  margin-top: 4px;
-  font-size: 0.72rem;
+  margin-top: 8px;
+  margin-left: auto;
+  width: auto;
+  font-size: 0.75rem;
   gap: 4px;
+  justify-content: flex-end;
+  align-self: flex-end;
 }
 
 .monthly-champions .champion-info__more svg {
@@ -7323,8 +7328,11 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .monthly-champions .champion-info__text--clamped {
-  -webkit-line-clamp: 2;
-  max-height: 2.8em;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  max-height: calc(1.45em * 2) !important;
 }
 .birthday-title {
   color: #683f7c;
@@ -7346,7 +7354,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 
 .monthly-champions .champion-user {
   flex-wrap: nowrap;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .birthday-user {
@@ -7382,8 +7390,71 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .monthly-champions .champion-info {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   text-align: left;
   min-width: 0;
+  width: 100%;
+}
+
+.monthly-champions .champion-info p.champion-info__text {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.monthly-champions .champion-info p.champion-info__text--clamped {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  line-clamp: 2 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis;
+  min-height: 0 !important;
+  line-height: 1.45 !important;
+  max-height: calc(1.45em * 2) !important;
+}
+
+.monthly-champions .champion-info p.champion-info__text:not(.champion-info__text--clamped) {
+  display: block !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  overflow: auto !important;
+  max-height: 11.6em !important;
+  line-height: 1.45 !important;
+}
+
+.champion-info__headline {
+  margin-top: 2px !important;
+  margin-bottom: 0;
+  color: var(--text-body);
+  font-weight: 500;
+}
+
+.champion-info__more {
+  margin-top: 8px;
+  margin-left: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: flex-end;
+  gap: 6px;
+  width: auto;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  line-height: var(--line-height-heading);
+  transition: var(--transition);
+  min-height: auto;
+  position: relative;
+  z-index: 2;
 }
 
 .birthday-info {
@@ -7423,30 +7494,6 @@ background-image: url("../site/images/birthday-card-bg.png");
   overflow: visible;
 }
 
-.champion-info__more {
-  margin-top: 6px;
-  margin-left: auto;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  color: var(--primary);
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-small);
-  font-weight: var(--fw-semibold);
-  line-height: var(--line-height-heading);
-  transition: var(--transition);
-  min-height: auto;
-  position: relative;
-  z-index: 2;
-}
-
 .champion-info__more svg {
   transition: var(--transition);
   flex-shrink: 0;
@@ -7461,7 +7508,7 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .champion-card--expanded {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .birthday-info h4 {
@@ -13218,7 +13265,7 @@ bottom: -18px;
     min-height: auto !important;
   }
   .monthly-champions .champion-card {
-    padding: 10px 12px !important;
+    padding: 14px 16px 16px !important;
   }
   .monthly-champions .champion-avatar {
     width: 48px;
@@ -13228,7 +13275,7 @@ bottom: -18px;
   }
   .monthly-champions .champion-user {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
     gap: 10px;
     flex-wrap: nowrap;
@@ -13262,7 +13309,11 @@ bottom: -18px;
     margin-bottom: 0;
   }
   .monthly-champions .champion-info__more {
-    font-size: 0.68rem;
+    margin-top: 6px;
+    margin-left: auto;
+    font-size: 0.72rem;
+    justify-content: flex-end;
+    align-self: flex-end;
   }
   .monthly-champions__slider--count-1,
   .monthly-champions__slider--count-2 {

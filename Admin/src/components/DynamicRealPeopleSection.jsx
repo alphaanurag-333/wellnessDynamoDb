@@ -521,26 +521,6 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                 />
                 <div className="ua-cfg-rp-new__meta">
                   <label className="ua-cfg-rp-field">
-                    <span>Health concern</span>
-                    <ConcernSelect
-                      options={concernOptions}
-                      value={draft.healthConcernId}
-                      disabled={busy}
-                      onChange={(value) => setDraft((prev) => ({ ...prev, healthConcernId: value }))}
-                    />
-                  </label>
-                  <label className="ua-cfg-rp-field">
-                    <span>Rating</span>
-                    <CfgSelect
-                      className="ua-cfg-rp-select"
-                      options={STAR_OPTIONS}
-                      value={draft.stars}
-                      disabled={busy}
-                      ariaLabel="Rating"
-                      onChange={(value) => setDraft((prev) => ({ ...prev, stars: Number(value) }))}
-                    />
-                  </label>
-                  <label className="ua-cfg-rp-field ua-cfg-rp-field--wide">
                     <span>Client name</span>
                     <input
                       className="ua-cfg-vh-input"
@@ -550,26 +530,48 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                       onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
                     />
                   </label>
+                  <label className="ua-cfg-rp-field">
+                    <span>Health concern</span>
+                    <ConcernSelect
+                      options={concernOptions}
+                      value={draft.healthConcernId}
+                      disabled={busy}
+                      onChange={(value) => setDraft((prev) => ({ ...prev, healthConcernId: value }))}
+                    />
+                  </label>
+                  <div className="ua-cfg-rp-new__story-col">
+                    <span className="ua-cfg-rp-new__story-label">Review</span>
+                    <textarea
+                      className="ua-cfg-tf-story ua-cfg-rp-new__story"
+                      rows={3}
+                      placeholder="Client review shown with the photo…"
+                      value={asCopyString(draft.review)}
+                      disabled={busy}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
+                    />
+                  </div>
+                  <div className="ua-cfg-rp-new__rating-col">
+                    <label className="ua-cfg-rp-field">
+                      <span>Rating</span>
+                      <CfgSelect
+                        className="ua-cfg-rp-select"
+                        options={STAR_OPTIONS}
+                        value={draft.stars}
+                        disabled={busy}
+                        ariaLabel="Rating"
+                        onChange={(value) => setDraft((prev) => ({ ...prev, stars: Number(value) }))}
+                      />
+                    </label>
+                    <div className="ua-cfg-rp-new__foot">
+                      <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
+                        {busy ? "Saving…" : "Add testimonial"}
+                      </button>
+                    </div>
+                  </div>
                   {!concernOptions.length ? (
                     <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">Add health concerns in Configs → Dropdowns first.</p>
                   ) : null}
                 </div>
-              </div>
-              <div className="ua-cfg-rp-new__story-col">
-                <span className="ua-cfg-rp-new__story-label">Review</span>
-                <textarea
-                  className="ua-cfg-tf-story ua-cfg-rp-new__story"
-                  rows={5}
-                  placeholder="Client review shown with the photo…"
-                  value={asCopyString(draft.review)}
-                  disabled={busy}
-                  onChange={(event) => setDraft((prev) => ({ ...prev, review: event.target.value }))}
-                />
-              </div>
-              <div className="ua-cfg-rp-new__foot">
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addItem}>
-                  {busy ? "Saving…" : "Add testimonial"}
-                </button>
               </div>
             </div>
           </section>
