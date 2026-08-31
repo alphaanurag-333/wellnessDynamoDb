@@ -16297,7 +16297,7 @@ h5.pillar-card__head-title,
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 32px;
+  /* border-radius: 32px; */
 }
 
 .app-dl-modal__copy {
@@ -16500,7 +16500,7 @@ h5.pillar-card__head-title,
   }
 
   .app-dl-modal__screenshot {
-    border-radius: 22px;
+    /* border-radius: 22px; */
   }
 
   .app-dl-modal__copy {

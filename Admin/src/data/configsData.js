@@ -21,7 +21,7 @@ export const CONFIG_GROUPS = {
           web: false,
           live: false,
           on: false,
-          tags: [],
+          tags: ["Language"],
         },
         {
           id: "app-whatsapp-support",
@@ -100,7 +100,7 @@ export const CONFIG_GROUPS = {
           web: false,
           live: true,
           on: true,
-          tags: [],
+          tags: ["GST"],
         },
         {
           id: "app-payment-gateway",
@@ -111,7 +111,7 @@ export const CONFIG_GROUPS = {
           web: false,
           live: false,
           on: false,
-          tags: [],
+          tags: ["Payment"],
           toggleable: false,
         },
       ],

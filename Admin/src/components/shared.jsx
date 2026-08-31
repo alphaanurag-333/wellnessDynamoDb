@@ -274,7 +274,7 @@ export function CfgSelect({
   ) : null;
 
   return (
-    <div className={`ua-cfg-select${open ? " is-open" : ""}${searchable ? " ua-cfg-select--searchable" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
+    <div style={{padding:"0px"}} className={` ua-cfg-select${open ? " is-open" : ""}${searchable ? " ua-cfg-select--searchable" : ""}${className ? ` ${className}` : ""}`} ref={ref}>
       <button
         type="button"
         className="ua-cfg-select__trigger"

@@ -1,0 +1,107 @@
+/* Dashboard tablet layout — /dashboard at 768px
+   Keeps program categories + AppUser side-by-side (desktop alignment).
+   Phone stacking in admin.css stays below 768px. */
+
+@media (min-width: 768px) and (max-width: 900px) {
+  .updated-admin .ua-dash-page .section__head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .updated-admin .ua-dash-page .section__title {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-dash-page .section__hint {
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats--v2 {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats__main {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 10px 2px;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats__scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 8px;
+    padding-top: 2px;
+    scrollbar-width: thin;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats__scroll .prog-cat {
+    flex: 0 0 118px;
+    min-width: 118px;
+    max-width: 118px;
+    width: 118px;
+    padding: 9px 10px;
+    gap: 5px;
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats__appuser {
+    flex: 0 0 158px;
+    min-width: 148px;
+    max-width: 168px;
+    width: 158px;
+    padding: 8px 9px 10px;
+  }
+
+  .updated-admin .ua-dash-page .prog-cats__appuser-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .updated-admin .ua-dash-page .prog-cat--appuser {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 auto;
+    padding: 9px 10px;
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .updated-admin .ua-dash-page .prog-cat__icon {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    border-radius: 9px;
+  }
+
+  .updated-admin .ua-dash-page .prog-cat__label {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .updated-admin .ua-dash-page .prog-cat__count {
+    font-size: 18px;
+    margin-top: auto;
+  }
+}

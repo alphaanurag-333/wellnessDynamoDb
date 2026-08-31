@@ -1054,6 +1054,9 @@
   .ua-cfg-bn-editor__surfaces {
     grid-template-columns: 1fr;
   }
+  .sceensizmanage {
+    display:contents !important;
+  }
 }
 
 @media (max-width: 900px) {

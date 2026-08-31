@@ -89,6 +89,7 @@ function DropZone({ label, previewUrl, onUpload, className = "" }) {
       {uploaded ? <img className="ua-cfg-bn-drop__img" src={previewUrl} alt="" /> : BANNER_DROP_ICON}
       <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-bn-drop__btn" onClick={onUpload}>
         {uploaded ? label.replace(/^Upload/, "Replace") : label}
+         
       </button>
     </div>
   );
@@ -725,7 +726,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           ) : null}
         >
           <div className="ua-cfg-bn-editor">
-            <div className="ua-cfg-bn-meta">
+            <div className="ua-cfg-bn-meta sceensizmanage">
               <label className="ua-cfg-bn-field">
                 <span>Banner type</span>
                 <CfgSelect
@@ -781,10 +782,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             </div>
 
             {editor.split ? (
-              <div className="ua-cfg-bn-split-drops">
+              <div className="ua-cfg-bn-split-drops sceensizmanage">
                 <div className="ua-cfg-bn-slot ua-cfg-bn-slot--desktop">
                   <div className="ua-cfg-bn-split-drops__label">
-                    <strong className="is-web">WEB</strong>
+                    <strong className="is-web">WEB <font style={{fontSize: "9px",color:"#94a3b8"}}>1905×640px</font></strong>
                     <span>Desktop · wide crop</span>
                   </div>
                   <DropZone
@@ -796,7 +797,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
                 </div>
                 <div className="ua-cfg-bn-slot ua-cfg-bn-slot--mobile">
                   <div className="ua-cfg-bn-split-drops__label">
-                    <strong className="is-app">MOBILE</strong>
+                    <strong className="is-app">MOBILE <font style={{fontSize: "9px",color:"#94a3b8"}}>1080×480px</font></strong>
                     <span>App · mobile crop</span>
                   </div>
                   <DropZone
@@ -810,7 +811,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             ) : (
               <div className="ua-cfg-bn-slot ua-cfg-bn-slot--shared">
                 <div className="ua-cfg-bn-split-drops__label">
-                  <strong className="is-web">BANNER</strong>
+                  <strong className="is-web">BANNER <font style={{fontSize: "9px",color:"#94a3b8"}}>1905×640px</font></strong>
                   <span>Shared · {placementChipLabel(placement) || BANNER_DESKTOP_SIZE.label}</span>
                 </div>
                 <DropZone
