@@ -6028,10 +6028,18 @@
 }
 
 .updated-admin .chart-legend--products {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
-  max-width: 320px;
-  gap: 8px 12px;
+  max-width: none;
+  gap: 8px 10px;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.updated-admin .chart-legend--products span {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .updated-admin .chart-legend span {
@@ -62582,8 +62590,9 @@ scrollbar-width: thin;
   }
 
   .updated-admin .chart-legend--products {
-    max-width: min(100%, 240px);
-    gap: 4px 8px;
+    max-width: none;
+    gap: 6px 8px;
+    flex-wrap: nowrap;
   }
 
   .updated-admin .charts-grid .bar-chart {
@@ -62630,6 +62639,33 @@ scrollbar-width: thin;
 
   .updated-admin .tier-legend-item {
     justify-content: space-between;
+  }
+}
+
+@media (max-width: 767px) {
+  .updated-admin .charts-grid .chart-card__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .chart-legend--products {
+    width: 100%;
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    justify-content: start;
+    gap: 8px 16px;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .updated-admin .chart-legend--products span {
+    flex-shrink: 1;
+    white-space: nowrap;
+  }
+
+  .updated-admin .bar-group__total.is-empty {
+    visibility: hidden;
   }
 }
 

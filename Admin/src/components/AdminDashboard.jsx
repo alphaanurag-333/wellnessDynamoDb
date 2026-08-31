@@ -1088,6 +1088,7 @@ export function AdminDashboard({
     month: row.month,
     label: row.label,
     total: formatRevenue(row.total),
+    hasTotal: asNumber(row.total) > 0,
     heights: {
       program: Math.round((asNumber(row.program) / trendMax) * 100),
       app: Math.round((asNumber(row.app) / trendMax) * 100),
@@ -2394,7 +2395,9 @@ export function AdminDashboard({
                         setProductMonthKey(m.month);
                       }}
                     >
-                      <span className="bar-group__total">{m.total}</span>
+                      <span className={`bar-group__total${m.hasTotal ? "" : " is-empty"}`}>
+                        {m.hasTotal ? m.total : "\u00a0"}
+                      </span>
                       <div className="bar-group__bars">
                         {REVENUE_PRODUCT_ORDER.map((key) => (
                           <div
