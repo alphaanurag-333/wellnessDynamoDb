@@ -334,6 +334,74 @@ function mealUiStatus(reviewStatus, photoAiStatus, { hasClientDetails = false } 
   return "approved";
 }
 
+export function normalizeItemMacro(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+export function formatApproxMacro(value, unit) {
+  const n = Math.round(Number(value) || 0);
+  return `~${n} ${unit}`;
+}
+
+export function sumItemsMacros(items) {
+  return roundMacros(
+    (Array.isArray(items) ? items : []).reduce(
+      (acc, item) => ({
+        protein: acc.protein + (Number(item?.proteinGm) || 0),
+        carbs: acc.carbs + (Number(item?.carbsGm) || 0),
+        fat: acc.fat + (Number(item?.fatsGm) || 0),
+        calories: acc.calories + (Number(item?.caloriesKcal) || 0),
+      }),
+      { protein: 0, carbs: 0, fat: 0, calories: 0 },
+    ),
+  );
+}
+
+export function scaleItemQuantity(item, newQuantityGm) {
+  const oldQty = Number(item?.quantityGm) || 0;
+  const newQty = Math.max(0, Number(newQuantityGm) || 0);
+  if (oldQty <= 0 || newQty === oldQty) {
+    return { ...item, quantityGm: Math.round(newQty * 100) / 100 };
+  }
+  const ratio = newQty / oldQty;
+  return {
+    ...item,
+    quantityGm: Math.round(newQty * 100) / 100,
+    proteinGm: normalizeItemMacro((Number(item?.proteinGm) || 0) * ratio),
+    fatsGm: normalizeItemMacro((Number(item?.fatsGm) || 0) * ratio),
+    carbsGm: normalizeItemMacro((Number(item?.carbsGm) || 0) * ratio),
+    caloriesKcal: normalizeItemMacro((Number(item?.caloriesKcal) || 0) * ratio),
+  };
+}
+
+export function distributeMealMacrosToItems(items, mealMacros) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length || !mealMacros) return list;
+  const hasItemMacros = list.some(
+    (item) => item.proteinGm || item.fatsGm || item.carbsGm || item.caloriesKcal,
+  );
+  if (hasItemMacros) return list;
+
+  const totalQty = list.reduce((sum, item) => sum + (Number(item.quantityGm) || 0), 0);
+  const weights = totalQty > 0
+    ? list.map((item) => (Number(item.quantityGm) || 0) / totalQty)
+    : list.map(() => 1 / list.length);
+
+  return list.map((item, index) => {
+    const share = weights[index] || 0;
+    const proteinGm = normalizeItemMacro((Number(mealMacros.protein) || 0) * share);
+    const fatsGm = normalizeItemMacro((Number(mealMacros.fat) || 0) * share);
+    const carbsGm = normalizeItemMacro((Number(mealMacros.carbs) || 0) * share);
+    let caloriesKcal = normalizeItemMacro((Number(mealMacros.calories) || 0) * share);
+    if (!caloriesKcal && (proteinGm || fatsGm || carbsGm)) {
+      caloriesKcal = Math.round(proteinGm * 4 + carbsGm * 4 + fatsGm * 9);
+    }
+    return { ...item, proteinGm, fatsGm, carbsGm, caloriesKcal };
+  });
+}
+
 export function normalizeMealItems(items) {
   if (!Array.isArray(items)) return [];
   return items
@@ -341,10 +409,15 @@ export function normalizeMealItems(items) {
       const name = String(item?.name || "").trim();
       if (!name) return null;
       const qty = Number(item?.quantityGm);
-      return {
+      const normalized = {
         name,
         quantityGm: Number.isFinite(qty) && qty >= 0 ? Math.round(qty * 100) / 100 : 0,
       };
+      if (item?.proteinGm != null) normalized.proteinGm = normalizeItemMacro(item.proteinGm);
+      if (item?.fatsGm != null) normalized.fatsGm = normalizeItemMacro(item.fatsGm);
+      if (item?.carbsGm != null) normalized.carbsGm = normalizeItemMacro(item.carbsGm);
+      if (item?.caloriesKcal != null) normalized.caloriesKcal = normalizeItemMacro(item.caloriesKcal);
+      return normalized;
     })
     .filter(Boolean);
 }
@@ -354,23 +427,34 @@ export function mapMealLogToUi(log) {
   const mealType = String(log?.mealType || "").trim();
   const catLabel = MEAL_CATEGORY_LABELS[category] || "Meal";
   const name = mealType ? `${catLabel} · ${mealType}` : catLabel;
-  const items = normalizeMealItems(log?.items);
+  const description = String(log?.description || "").trim();
+  const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
+  const reviewStatus = mealReviewStatus(log?.status);
+  const photoAiStatus = mealPhotoAiStatus(log);
+  const normalizedItems = normalizeMealItems(log?.items);
+  const hasClientDetails = normalizedItems.length > 0 || Boolean(description);
+  const uiStatus = mealUiStatus(reviewStatus, photoAiStatus, { hasClientDetails });
+  const hasCountableMacros =
+    photoAiStatus === "analysed"
+    || reviewStatus === "approved"
+    || (reviewStatus === "pending" && normalizedItems.length > 0);
+  const items = distributeMealMacrosToItems(
+    normalizedItems,
+    hasCountableMacros
+      ? roundMacros({
+        protein: log?.proteinGm,
+        carbs: log?.carbsGm,
+        fat: log?.fatsGm,
+        calories: log?.caloriesKcal,
+      })
+      : null,
+  );
   const itemTags = items
     .map((item) => {
       const qty = Number(item.quantityGm);
       return Number.isFinite(qty) && qty > 0 ? `${item.name} · ${qty} g` : item.name;
     });
-  const description = String(log?.description || "").trim();
   const detailedTags = itemTags;
-  const loggedBy = String(log?.loggedByRole || "") === "user" ? "entered by client" : "logged by coach";
-  const reviewStatus = mealReviewStatus(log?.status);
-  const photoAiStatus = mealPhotoAiStatus(log);
-  const hasClientDetails = items.length > 0 || Boolean(description);
-  const uiStatus = mealUiStatus(reviewStatus, photoAiStatus, { hasClientDetails });
-  const hasCountableMacros =
-    photoAiStatus === "analysed"
-    || reviewStatus === "approved"
-    || (reviewStatus === "pending" && items.length > 0);
 
   return {
     id: String(log?.id || log?._id || ""),

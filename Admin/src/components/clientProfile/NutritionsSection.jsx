@@ -60,6 +60,30 @@ function mealRelationForPeriod(periodId) {
   return "after";
 }
 
+function mealRelationFromMealTimings(mealTimingIds) {
+  if (!mealTimingIds.length) return null;
+  const relations = mealTimingIds.map(mealRelationForPeriod);
+  if (relations.every((row) => row === "before")) return "before";
+  if (relations.every((row) => row === "after")) return "after";
+  return relations[0];
+}
+
+function buildDosagePeriods(dayPartIds, mealTimingIds, quantity) {
+  if (dayPartIds.length) {
+    const sharedMealRelation = mealRelationFromMealTimings(mealTimingIds);
+    return dayPartIds.map((period) => ({
+      period,
+      quantity,
+      mealRelation: sharedMealRelation || mealRelationForPeriod(period),
+    }));
+  }
+  return mealTimingIds.map((period) => ({
+    period,
+    quantity,
+    mealRelation: mealRelationForPeriod(period),
+  }));
+}
+
 function formatPeriodCardLabel(period) {
   const label = PERIOD_LABEL[period.period] || period.period;
   // Legacy morning/afternoon/evening rows still carry mealRelation in the label
@@ -623,7 +647,7 @@ export function NutritionsSection({ user, onToast }) {
   const [timingOpen, setTimingOpen] = useState(false);
   const dayPartRef = useRef(null);
   const timingRef = useRef(null);
-  const selectedPeriodCount = addDayParts.length + addPeriods.length;
+  const selectedPeriodCount = addDayParts.length || addPeriods.length;
 
   const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
@@ -922,7 +946,7 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   async function addDosageCard() {
-    const periods = [...addDayParts, ...addPeriods];
+    const periods = buildDosagePeriods(addDayParts, addPeriods, addQty);
     if (!addSupp || !periods.length) return;
     setSaving(true);
     try {
@@ -933,11 +957,7 @@ export function NutritionsSection({ user, onToast }) {
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
         startDate: addStart || todayIsoDate(),
-        periods: periods.map((period) => ({
-          period,
-          quantity: addQty,
-          mealRelation: mealRelationForPeriod(period),
-        })),
+        periods,
       });
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
       onToast(`Added ${name} ×${periods.length}`);

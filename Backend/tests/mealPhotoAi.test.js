@@ -10,13 +10,41 @@ test("normalizeMealPhotoAi keeps food macros", () => {
     fatsGm: 1,
     carbsGm: 22,
     caloriesKcal: 118,
-    items: [{ name: "Juice", quantityGm: 250 }],
+    items: [{
+      name: "Juice",
+      quantityGm: 250,
+      proteinGm: 4.2,
+      fatsGm: 1,
+      carbsGm: 22,
+      caloriesKcal: 118,
+    }],
   });
 
   assert.equal(result.related, true);
   assert.equal(result.proteinGm, 4.2);
   assert.equal(result.caloriesKcal, 118);
   assert.equal(result.items[0].name, "Juice");
+  assert.equal(result.items[0].proteinGm, 4.2);
+});
+
+test("normalizeMealPhotoAi distributes meal macros to items without per-item macros", () => {
+  const result = normalizeMealPhotoAi({
+    related: true,
+    message: "Lunch plate",
+    proteinGm: 40,
+    fatsGm: 20,
+    carbsGm: 60,
+    caloriesKcal: 600,
+    items: [
+      { name: "Roti", quantityGm: 100 },
+      { name: "Dal", quantityGm: 100 },
+    ],
+  });
+
+  assert.equal(result.items.length, 2);
+  assert.equal(result.items[0].proteinGm, 20);
+  assert.equal(result.items[1].proteinGm, 20);
+  assert.equal(result.items[0].caloriesKcal, 300);
 });
 
 test("normalizeMealPhotoAi declines unrelated images with zero macros", () => {

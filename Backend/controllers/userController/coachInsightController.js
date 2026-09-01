@@ -6,7 +6,7 @@ exports.getMyCoachInsightController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
   if (!userId) throw new AppError("Unauthorized", 401);
 
-  const coachInsight = await getCoachInsightByUserId(userId);
+  const coachInsight = await getCoachInsightByUserId(userId, { includeExpired: false });
 
   return res.status(200).json({
     status: true,

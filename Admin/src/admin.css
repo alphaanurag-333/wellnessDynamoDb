@@ -5299,10 +5299,6 @@
   color: #a3abbd;
 }
 
-.updated-admin .prog-cat--appuser {
-  width: 100%;
-}
-
 .updated-admin .prog-cats {
   box-shadow: var(--shadow);
 }
@@ -5338,6 +5334,14 @@
 .updated-admin .prog-cat:hover {
   transform: translateY(-2px) !important;
   box-shadow: rgba(16, 35, 63, 0.12) 0px 5px 14px !important;
+}
+
+.updated-admin .prog-cats__appuser .prog-cat.prog-cat--appuser {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  flex: 1 1 auto;
+  align-self: stretch;
 }
 
 .updated-admin .prog-cat__icon {
@@ -13419,7 +13423,26 @@
 }
 
 .updated-admin .ua-cp-comms__bar--message {
-  grid-template-columns: minmax(148px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(148px, auto) minmax(0, 1fr) 92px auto auto;
+}
+
+.updated-admin .ua-cp-message-duration {
+  width: 92px;
+  min-width: 92px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: normal;
+  box-sizing: border-box;
+  color: var(--text);
+}
+
+.updated-admin .ua-cp-comms__action--delete {
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-comms__bar--reminders {
@@ -13452,6 +13475,10 @@
   font-size: 12px;
   font-weight: 600;
   color: #2b8f5b;
+}
+
+.updated-admin .ua-cp-comms__live--expired {
+  color: #b45309;
 }
 
 
@@ -26006,6 +26033,32 @@ scrollbar-width: thin;
   gap: 8px;
 }
 
+.updated-admin .ua-cp-food-meal-items__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-food-meal-items__copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e6ebf2;
+  border-radius: 8px;
+  background: #f7f9fc;
+  color: #8a97ac;
+  cursor: pointer;
+  padding: 0;
+}
+
+.updated-admin .ua-cp-food-meal-items__copy:hover {
+  color: #2f6fed;
+  border-color: #c8d9fb;
+  background: #f3f7ff;
+}
+
 .updated-admin .ua-cp-food-meal-items__add {
   border: none;
   background: transparent;
@@ -26026,6 +26079,11 @@ scrollbar-width: thin;
   gap: 6px;
 }
 
+.updated-admin .ua-cp-food-meal-items__list--macro {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .updated-admin .ua-cp-food-meal-items__cols,
 .updated-admin .ua-cp-food-meal-items__row {
   display: grid;
@@ -26034,9 +26092,48 @@ scrollbar-width: thin;
   align-items: center;
 }
 
+.updated-admin .ua-cp-food-meal-items__cols--macro,
+.updated-admin .ua-cp-food-meal-items__row--macro {
+  grid-template-columns: minmax(140px, 1.5fr) repeat(4, minmax(72px, 1fr));
+  min-width: 520px;
+}
+
 .updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__cols,
 .updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__row {
-  grid-template-columns: minmax(0, 1fr) 110px 28px;
+  grid-template-columns: minmax(0, 1fr) 110px 32px;
+}
+
+.updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__cols--macro:not(.ua-cp-food-meal-items__cols--macro-edit),
+.updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__row--macro:not(.ua-cp-food-meal-items__row--macro-edit) {
+  grid-template-columns: minmax(140px, 1.5fr) repeat(4, minmax(72px, 1fr)) 32px;
+  min-width: 560px;
+}
+
+.updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__cols--macro-edit,
+.updated-admin .ua-cp-food-meal--edit .ua-cp-food-meal-items__row--macro-edit {
+  grid-template-columns:
+    minmax(120px, 1.4fr)
+    repeat(4, minmax(68px, 0.85fr))
+    minmax(88px, 96px)
+    32px;
+  min-width: 680px;
+}
+
+.updated-admin .ua-cp-food-meal-items__macro-val {
+  font-size: 13px;
+  font-weight: 650;
+  color: #16233f;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-food-meal-items__macro-val--qty-head {
+  text-align: right;
+}
+
+.updated-admin .ua-cp-food-meal-items__remove-head {
+  width: 32px;
+  justify-self: end;
 }
 
 .updated-admin .ua-cp-food-meal-items__cols {
@@ -26078,11 +26175,15 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-food-meal-items__input--qty {
   text-align: right;
   font-weight: 700;
+  min-width: 0;
+  padding: 0 8px;
 }
 
 .updated-admin .ua-cp-food-meal-items__remove {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  justify-self: end;
   border: 1px solid #e6ebf2;
   border-radius: 8px;
   background: #f7f9fc;
@@ -60742,6 +60843,12 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-comms__bar--message {
     grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-comms__bar--message .ua-cp-message-duration,
+  .updated-admin .ua-cp-comms__bar--message .ua-cp-comms__action {
+    width: 100%;
+    min-width: 0;
   }
 
   .updated-admin .ua-cp-comms__bar--reminders {

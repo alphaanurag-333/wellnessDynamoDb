@@ -11,6 +11,7 @@ import {
   fetchUserReminders,
   getNextOnboardingStepLabel,
   saveUserCoachInsight,
+  deleteUserCoachInsight,
 } from "../../api/usersApi.js";
 import {
   acceptOnboardingMeetingRequest,
@@ -385,6 +386,13 @@ function SupplementsBlock({ supplements, onNavigate }) {
 }
 
 const COACH_MESSAGE_MAX = 500;
+const COACH_MESSAGE_DURATIONS = [
+  { hours: 8, label: "8 hrs" },
+  { hours: 24, label: "24 hrs" },
+  { hours: 48, label: "48 hrs" },
+  { hours: 72, label: "72 hrs" },
+];
+const DEFAULT_COACH_MESSAGE_DURATION = 24;
 const REMINDER_NAME_MAX = 120;
 const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAY_CHIPS = [
@@ -424,19 +432,26 @@ function formatReminderTime(time) {
   return `${hour12}:${minute} ${meridiem}`;
 }
 
-function formatCoachInsightTime(iso) {
+function formatCoachInsightExpiry(iso) {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+function resolveCoachMessageDuration(hours) {
+  const match = COACH_MESSAGE_DURATIONS.find((option) => option.hours === Number(hours));
+  return match?.hours || DEFAULT_COACH_MESSAGE_DURATION;
+}
+
 function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true }) {
   const userId = String(user?.id || "").trim();
   const isMock = isMockNumericId(userId);
   const [message, setMessage] = useState("");
+  const [durationHours, setDurationHours] = useState(DEFAULT_COACH_MESSAGE_DURATION);
   const [liveInsight, setLiveInsight] = useState(null);
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [reminder, setReminder] = useState("");
   const [reminderTime, setReminderTime] = useState("07:00");
   const [reminderDays, setReminderDays] = useState(ALL_WEEKDAYS);
@@ -455,6 +470,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
         if (cancelled) return;
         setLiveInsight(insight || null);
         setMessage(insight?.message || "");
+        setDurationHours(resolveCoachMessageDuration(insight?.durationHours));
       })
       .catch(() => {});
 
@@ -480,14 +496,41 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
 
     setSending(true);
     try {
-      const insight = await saveUserCoachInsight(userId, trimmed);
+      const insight = await saveUserCoachInsight(userId, {
+        message: trimmed,
+        durationHours,
+      });
       setLiveInsight(insight);
       setMessage(insight?.message || trimmed);
-      onToast("Message sent — it will show on their Heal page");
+      setDurationHours(resolveCoachMessageDuration(insight?.durationHours ?? durationHours));
+      onToast(`Message sent — visible in their app for ${durationHours} hrs`);
     } catch (err) {
       onToast(err?.message || "Failed to send message");
     } finally {
       setSending(false);
+    }
+  };
+
+  const removeCoachMessage = async () => {
+    if (!liveInsight?.message) {
+      onToast("No live message to remove");
+      return;
+    }
+    if (isMock) {
+      onToast("Demo profiles cannot delete messages.");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deleteUserCoachInsight(userId);
+      setLiveInsight(null);
+      setMessage("");
+      onToast("Message removed from their app");
+    } catch (err) {
+      onToast(err?.message || "Failed to delete message");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -540,7 +583,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
           placeholder="Write a message… pops up in their app"
           maxLength={COACH_MESSAGE_MAX}
           value={message}
-          disabled={sending}
+          disabled={sending || deleting}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -549,19 +592,48 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
             }
           }}
         />
+        <select
+          className="ua-cp-message-duration"
+          value={durationHours}
+          disabled={sending || deleting}
+          aria-label="Show message for"
+          onChange={(e) => setDurationHours(Number(e.target.value))}
+        >
+          {COACH_MESSAGE_DURATIONS.map((option) => (
+            <option key={option.hours} value={option.hours}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {liveInsight?.message ? (
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action ua-cp-comms__action--delete"
+            disabled={sending || deleting}
+            onClick={removeCoachMessage}
+          >
+            {deleting ? "Removing…" : "Remove"}
+          </button>
+        ) : null}
         <button
           type="button"
           className="ua-cp-btn ua-cp-btn--primary ua-cp-comms__action"
-          disabled={sending}
+          disabled={sending || deleting}
           onClick={sendCoachMessage}
         >
           {sending ? "Sending…" : "Send"}
         </button>
       </div>
       {liveInsight?.message ? (
-        <p className="ua-cp-comms__live">
-          Live on Heal page
-          {liveInsight.updatedAt ? ` · ${formatCoachInsightTime(liveInsight.updatedAt)}` : ""}
+        <p className={`ua-cp-comms__live${liveInsight.isVisible === false ? " ua-cp-comms__live--expired" : ""}`}>
+          {liveInsight.isVisible === false
+            ? "Expired — not shown in app"
+            : "Live on Heal page"}
+          {liveInsight.updatedAt ? ` · Sent ${formatCoachInsightExpiry(liveInsight.updatedAt)}` : ""}
+          {liveInsight.visibleUntil && liveInsight.isVisible !== false
+            ? ` · Visible until ${formatCoachInsightExpiry(liveInsight.visibleUntil)}`
+            : ""}
+          {liveInsight.durationHours ? ` · ${liveInsight.durationHours} hrs` : ""}
         </p>
       ) : null}
       <div className="ua-cp-comms__bar ua-cp-comms__bar--reminders">

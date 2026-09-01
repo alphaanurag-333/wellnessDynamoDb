@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchDashboardMediaBlob, fetchDashboardPayments } from "../api/dashboardApi.js";
+import { fetchDashboardLeaderboard, fetchDashboardMediaBlob, fetchDashboardPayments, recentLeaderboardMonthOptions } from "../api/dashboardApi.js";
 import { pushOnboardingReminder } from "../api/onboardingApi.js";
 import { fetchTeamMembers, sendTeamReminder, sendTeamWhatsAppReminder } from "../api/teamsApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -803,14 +803,14 @@ export function AdminDashboard({
 }) {
   const navigate = useNavigate();
   const { viewAs: viewAsId, viewAsPersona, liveMenuRoles, liveRolesReady, can } = useViewAs();
-  const canExport = can("console.dash.export");
-  const canViewRevenue = can("console.rev.view");
   // Prefer the selected View-as id for admin; persona is only for custom staff roles.
   const viewAs = viewAsId === "admin" ? "admin" : (viewAsPersona || viewAsId);
   const isStaffDash = viewAs === "wc" || viewAs === "awc";
   const isSupportDash = viewAs === "support";
   const isFullDash = viewAs === "admin" || isStaffDash;
   const isAdminDash = viewAs === "admin";
+  const canExport = can("console.dash.export");
+  const canViewRevenue = isAdminDash && can("console.rev.view");
   const isContentCommunity = isStaffDash || isSupportDash;
   const dashHasTeam = viewAs !== "awc";
   const clientsByConcern = useMemo(() => groupClientsByConcern(clients), [clients]);
@@ -946,7 +946,10 @@ export function AdminDashboard({
   const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : [];
   const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : [];
   const liveLeaderboard = liveCommunity?.leaderboard;
-  const activeLeaderboard = liveCommunity ? (liveLeaderboard?.rows || []) : [];
+  const [leaderboardRows, setLeaderboardRows] = useState([]);
+  const [leaderboardMonthLabel, setLeaderboardMonthLabel] = useState("");
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const activeLeaderboard = leaderboardRows;
   const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
   const pendingGroups = dynamicPendingGroups(
     basePendingGroups.map((group) => ({
@@ -970,7 +973,7 @@ export function AdminDashboard({
   const [broadcast, setBroadcast] = useState("");
   const [broadcastMeta, setBroadcastMeta] = useState("No broadcasts sent yet");
   const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
-  const [champMonth, setChampMonth] = useState("2026-07");
+  const [champMonth, setChampMonth] = useState(() => recentLeaderboardMonthOptions()[0]?.value || "");
   const [selectedFyStartYear, setSelectedFyStartYear] = useState(null);
   const [selectedMonthKey, setSelectedMonthKey] = useState(null);
   const [productMonthKey, setProductMonthKey] = useState(null);
@@ -991,14 +994,21 @@ export function AdminDashboard({
   const pageRef = useRef(null);
   const exportPreviewUrlRef = useRef(null);
 
-  const champMonthOptions = liveCommunity ? (liveLeaderboard?.months || []) : [];
-  const champ = liveCommunity
-    ? {
-        label: liveLeaderboard?.monthLabel || champMonthOptions[0]?.label || "",
-        champion: liveLeaderboard?.rows?.[0]?.name || "—",
-        score: liveLeaderboard?.rows?.[0]?.score ?? 0,
-      }
-    : { label: "", champion: "—", score: 0 };
+  const champMonthOptions = useMemo(() => {
+    const fromApi = liveLeaderboard?.months?.length ? liveLeaderboard.months : [];
+    const fallback = recentLeaderboardMonthOptions();
+    const byValue = new Map(fallback.map((opt) => [opt.value, opt]));
+    for (const opt of fromApi) byValue.set(opt.value, opt);
+    return [...byValue.values()];
+  }, [liveLeaderboard?.months]);
+  const champ = useMemo(() => {
+    const selected = champMonthOptions.find((opt) => opt.value === champMonth);
+    return {
+      label: leaderboardMonthLabel || selected?.label || champMonthOptions[0]?.label || "",
+      champion: activeLeaderboard[0]?.name || "—",
+      score: activeLeaderboard[0]?.score ?? 0,
+    };
+  }, [activeLeaderboard, champMonth, champMonthOptions, leaderboardMonthLabel]);
   const maxScore = activeLeaderboard[0]?.score ?? 1;
   const tierData = coachTiers.map((tier) => ({
     label: tier.label === "PWC ONLY" ? "PWC only" : tier.label === "HEAL" ? "Heal (paid)" : tier.label === "SEEK" ? "Seek (free)" : "Maintenance",
@@ -1039,9 +1049,40 @@ export function AdminDashboard({
   }, [fyMonths, productMonthKey, selectedMonthKey]);
 
   useEffect(() => {
-    const month = liveLeaderboard?.monthYear;
-    if (month) setChampMonth(month);
-  }, [liveLeaderboard?.monthYear]);
+    if (!champMonth) return undefined;
+    if (
+      liveLeaderboard?.monthYear === champMonth
+      && Array.isArray(liveLeaderboard?.rows)
+    ) {
+      setLeaderboardRows(liveLeaderboard.rows);
+      setLeaderboardMonthLabel(liveLeaderboard.monthLabel || "");
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLeaderboardLoading(true);
+    fetchDashboardLeaderboard(champMonth)
+      .then((payload) => {
+        if (cancelled) return;
+        setLeaderboardRows(Array.isArray(payload?.rows) ? payload.rows : []);
+        const selected = payload?.months?.find((opt) => opt.value === champMonth)
+          || champMonthOptions.find((opt) => opt.value === champMonth);
+        setLeaderboardMonthLabel(payload?.monthLabel || selected?.label || "");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLeaderboardRows([]);
+          setLeaderboardMonthLabel("");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLeaderboardLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [champMonth, liveLeaderboard?.monthYear, liveLeaderboard?.monthLabel, liveLeaderboard?.rows, champMonthOptions]);
 
   const selectedMonthRow = fyMonths.find((row) => row.month === selectedMonthKey) || fyMonths.at(-1) || null;
   const previousMonthRow = selectedMonthRow
@@ -1980,7 +2021,12 @@ export function AdminDashboard({
             <button
               type="button"
               className="prog-cat prog-cat--appuser"
-              style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
+              style={{
+                width: "100%",
+                minWidth: "100%",
+                background: appUserProgramCard.bg,
+                borderColor: appUserProgramCard.border,
+              }}
               onClick={() => openProgramCategory(appUserProgramCard)}
             >
               <span className="prog-cat__icon" style={{ background: "#fff" }}>
@@ -2194,7 +2240,9 @@ export function AdminDashboard({
 
         {!champExpanded ? (
           <div className="leaderboard__podium">
-            {champPodium.length === 0 ? (
+            {leaderboardLoading ? (
+              <div className="community-card__empty">Loading leaderboard…</div>
+            ) : champPodium.length === 0 ? (
               <div className="community-card__empty">No reflection scores for this month yet</div>
             ) : champPodium.map((row, i) => (
               <div
@@ -2214,6 +2262,8 @@ export function AdminDashboard({
               </div>
             ))}
           </div>
+        ) : leaderboardLoading ? (
+          <div className="community-card__empty">Loading leaderboard…</div>
         ) : activeLeaderboard.length === 0 ? (
           <div className="community-card__empty">No reflection scores for this month yet</div>
         ) : (

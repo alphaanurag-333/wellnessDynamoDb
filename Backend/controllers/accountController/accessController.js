@@ -1715,6 +1715,24 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
           dataScope: meta.dataScope,
         });
       }
+    } else if (roleKey === "wc") {
+      // Revenue analytics is admin-only — strip legacy rev grants from seeded WC roles.
+      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.wc);
+      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
+      const revSlugRe = /^console\.rev\./;
+      const nextPerms = [
+        ...new Set([
+          ...currentPerms.filter((slug) => !revSlugRe.test(String(slug))),
+          ...baselinePerms,
+        ]),
+      ];
+      const permsChanged =
+        nextPerms.length !== currentPerms.length
+        || nextPerms.some((slug) => !currentPerms.includes(slug))
+        || currentPerms.some((slug) => !nextPerms.includes(slug));
+      if (permsChanged) {
+        role = await updateRole(role.id, { permissions: nextPerms });
+      }
     } else if (roleKey === "support") {
       // Keep Support aligned with the current baseline (additive for new slugs, drop removed defaults).
       const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.support);

@@ -13,7 +13,7 @@ const {
 const { getCoachDashboardStats } = require("../../services/coachDashboardStatsService");
 const { getAssistantDashboardStats } = require("../../services/assistantDashboardStatsService");
 const { getProgramProgressOverview } = require("../../services/programProgressService");
-const { getDashboardCommunity, emptyCommunity } = require("../../services/dashboardCommunityService");
+const { getDashboardCommunity, getDashboardLeaderboard, emptyCommunity } = require("../../services/dashboardCommunityService");
 const {
   sendTeamReminders,
   sendTeamWhatsAppReminders,
@@ -101,6 +101,22 @@ exports.getStaffDashboardStatistics = asyncHandler(async (req, res) => {
       staleRecords: overview.staleRecords,
       community,
     },
+  });
+});
+
+exports.getStaffDashboardLeaderboard = asyncHandler(async (req, res) => {
+  const actor = resolveStaffActor(req);
+  const monthYear = String(req.query.monthYear || "").trim();
+  if (monthYear && !/^\d{4}-\d{2}$/.test(monthYear)) {
+    throw new AppError("monthYear must be YYYY-MM", 400);
+  }
+
+  const leaderboard = await getDashboardLeaderboard(actor, monthYear || undefined);
+
+  return res.status(200).json({
+    status: true,
+    message: "Dashboard leaderboard fetched",
+    leaderboard,
   });
 });
 

@@ -217,6 +217,79 @@ function metricRow({ user, coachName, start, current, change }) {
   };
 }
 
+function normalizeMarkerName(name) {
+  return String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isHba1cMarker(name) {
+  const normalized = normalizeMarkerName(name);
+  return (
+    normalized === "hba1c"
+    || normalized.includes("hba1c")
+    || normalized.includes("glycated hemoglobin")
+    || normalized.includes("glycated haemoglobin")
+    || /\ba1c\b/.test(normalized)
+  );
+}
+
+function parseMarkerNumericValue(raw) {
+  if (raw == null || raw === "" || raw === "—") return null;
+  const match = String(raw).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  return toNumberOrNull(match[0]);
+}
+
+function extractHba1cFromLabReport(report) {
+  if (!report || normalizeAiStatus(report.aiStatus) !== "analysed") return null;
+  const panels = report?.aiAnalysis?.panels;
+  if (!Array.isArray(panels) || !panels.length) return null;
+
+  for (const panel of panels) {
+    for (const row of panel?.rows || []) {
+      if (!isHba1cMarker(row?.name)) continue;
+      const value = parseMarkerNumericValue(row?.value);
+      if (value == null || !looksLikeA1cSeries([value])) continue;
+      const recordedAt = String(
+        report.reportDate || report.aiAnalysedAt || report.createdAt || "",
+      ).trim();
+      if (!recordedAt) continue;
+      return { value, recordedAt };
+    }
+  }
+  return null;
+}
+
+function normalizeAiStatus(value) {
+  const status = String(value || "").trim().toLowerCase();
+  return status === "analysed" ? "analysed" : status;
+}
+
+function labReportsToHba1cReadings(reports) {
+  const readings = [];
+  for (const report of reports || []) {
+    const reading = extractHba1cFromLabReport(report);
+    if (reading) readings.push(reading);
+  }
+  return readings.sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+}
+
+function glucoseLogsToHba1cReadings(logs) {
+  const values = (logs || []).map((row) => toNumberOrNull(row.value)).filter((n) => n != null);
+  if (!looksLikeA1cSeries(values)) return [];
+  return sortByStampAsc(logs)
+    .map((row) => ({
+      value: toNumberOrNull(row.value),
+      recordedAt: stampOf(row),
+    }))
+    .filter((row) => row.value != null && row.recordedAt);
+}
+
+function mergeHba1cReadings(glucoseLogs, labReports) {
+  return [...glucoseLogsToHba1cReadings(glucoseLogs), ...labReportsToHba1cReadings(labReports)].sort(
+    (a, b) => a.recordedAt.localeCompare(b.recordedAt),
+  );
+}
+
 module.exports = {
   ONBOARDING_STEP_LABELS,
   FAT_DOWN_MIN_KG,
@@ -244,4 +317,10 @@ module.exports = {
   classifyHba1c,
   firstAndLastNumeric,
   metricRow,
+  isHba1cMarker,
+  parseMarkerNumericValue,
+  extractHba1cFromLabReport,
+  labReportsToHba1cReadings,
+  glucoseLogsToHba1cReadings,
+  mergeHba1cReadings,
 };

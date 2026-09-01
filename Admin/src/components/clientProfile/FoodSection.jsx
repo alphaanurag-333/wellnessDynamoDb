@@ -15,6 +15,9 @@ import {
   normalizeMealItems,
   roundMacros,
   sumMealMacros,
+  sumItemsMacros,
+  scaleItemQuantity,
+  formatApproxMacro,
 } from "../../data/foodData.js";
 import { fetchUserBodyAnalytics, fetchUser } from "../../api/usersApi.js";
 import {
@@ -134,57 +137,143 @@ function emptyMealDraft(meal) {
   };
 }
 
-function MealItemsEditor({ items, editing, onChange }) {
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function buildItemsCopyText(items) {
+  const header = "Food Item\tCalories\tProtein\tCarbs\tFat";
+  const rows = items.map((item) => {
+    const label = item.quantityGm > 0 && !/\(\s*~?\s*\d/.test(item.name)
+      ? `${item.name} (~${item.quantityGm} g)`
+      : item.name;
+    return [
+      label,
+      formatApproxMacro(item.caloriesKcal || 0, "kcal"),
+      formatApproxMacro(item.proteinGm || 0, "g"),
+      formatApproxMacro(item.carbsGm || 0, "g"),
+      formatApproxMacro(item.fatsGm || 0, "g"),
+    ].join("\t");
+  });
+  return [header, ...rows].join("\n");
+}
+
+function MealItemsEditor({ items, editing, onChange, onToast }) {
+  const hasMacroBreakdown = items.some(
+    (item) => item.proteinGm || item.fatsGm || item.carbsGm || item.caloriesKcal,
+  );
+
+  function updateItems(nextItems) {
+    onChange(nextItems);
+  }
+
   function updateItem(index, patch) {
-    onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+    updateItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  function updateItemQuantity(index, newQuantityGm) {
+    const scaled = scaleItemQuantity(items[index], newQuantityGm);
+    updateItems(items.map((item, i) => (i === index ? scaled : item)));
   }
 
   function removeItem(index) {
-    onChange(items.filter((_, i) => i !== index));
+    updateItems(items.filter((_, i) => i !== index));
   }
 
   function addItem() {
-    onChange([...items, { name: "", quantityGm: 0 }]);
+    updateItems([...items, { name: "", quantityGm: 0, proteinGm: 0, fatsGm: 0, carbsGm: 0, caloriesKcal: 0 }]);
+  }
+
+  async function copyBreakdown() {
+    try {
+      await navigator.clipboard.writeText(buildItemsCopyText(items));
+      onToast?.("Macro breakdown copied");
+    } catch {
+      onToast?.("Could not copy to clipboard");
+    }
   }
 
   if (!editing && !items.length) return null;
 
+  const showMacroTable = hasMacroBreakdown || editing;
+
   return (
     <div className="ua-cp-food-meal-items">
       <div className="ua-cp-food-meal-items__head">
-        <span className="ua-cp-food-meal-items__title">Items</span>
-        {editing ? (
-          <button type="button" className="ua-cp-food-meal-items__add" onClick={addItem}>
-            + Add item
-          </button>
-        ) : null}
+        <span className="ua-cp-food-meal-items__title">{showMacroTable ? "Macro breakdown" : "Items"}</span>
+        <div className="ua-cp-food-meal-items__head-actions">
+          {showMacroTable && items.length && !editing ? (
+            <button type="button" className="ua-cp-food-meal-items__copy" aria-label="Copy macro breakdown" onClick={copyBreakdown}>
+              <CopyIcon />
+            </button>
+          ) : null}
+          {editing ? (
+            <button type="button" className="ua-cp-food-meal-items__add" onClick={addItem}>
+              + Add item
+            </button>
+          ) : null}
+        </div>
       </div>
       {items.length ? (
-        <div className="ua-cp-food-meal-items__list">
-          <div className="ua-cp-food-meal-items__cols" aria-hidden="true">
-            <span>Item name</span>
-            <span>Quantity (g)</span>
-            {editing ? <span /> : null}
+        <div className={`ua-cp-food-meal-items__list${showMacroTable ? " ua-cp-food-meal-items__list--macro" : ""}`}>
+          <div className={`ua-cp-food-meal-items__cols${showMacroTable ? " ua-cp-food-meal-items__cols--macro" : ""}${editing && showMacroTable ? " ua-cp-food-meal-items__cols--macro-edit" : ""}`} aria-hidden="true">
+            <span>Food item</span>
+            {showMacroTable ? (
+              <>
+                <span>Calories</span>
+                <span>Protein</span>
+                <span>Carbs</span>
+                <span>Fat</span>
+                {editing ? <span className="ua-cp-food-meal-items__macro-val ua-cp-food-meal-items__macro-val--qty-head">Qty (g)</span> : null}
+              </>
+            ) : (
+              <span>Quantity (g)</span>
+            )}
+            {editing ? <span className="ua-cp-food-meal-items__remove-head" aria-hidden="true" /> : null}
           </div>
           {items.map((item, index) => (
-            <div key={`item-${index}`} className="ua-cp-food-meal-items__row">
+            <div key={`item-${index}`} className={`ua-cp-food-meal-items__row${showMacroTable ? " ua-cp-food-meal-items__row--macro" : ""}${editing && showMacroTable ? " ua-cp-food-meal-items__row--macro-edit" : ""}`}>
               {editing ? (
                 <>
                   <input
                     type="text"
                     className="ua-cp-food-meal-items__input"
                     value={item.name}
-                    placeholder="Item name"
+                    placeholder="Food item"
                     onChange={(e) => updateItem(index, { name: e.target.value })}
                   />
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.1}
-                    className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
-                    value={item.quantityGm}
-                    onChange={(e) => updateItem(index, { quantityGm: Number(e.target.value) || 0 })}
-                  />
+                  {showMacroTable ? (
+                    <>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.caloriesKcal || 0, "kcal")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.proteinGm || 0, "g")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.carbsGm || 0, "g")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.1}
+                        className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                        value={item.quantityGm}
+                        placeholder="Qty"
+                        title="Quantity in grams"
+                        onChange={(e) => updateItemQuantity(index, Number(e.target.value) || 0)}
+                      />
+                    </>
+                  ) : (
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.1}
+                      className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                      value={item.quantityGm}
+                      onChange={(e) => updateItem(index, { quantityGm: Number(e.target.value) || 0 })}
+                    />
+                  )}
                   <button
                     type="button"
                     className="ua-cp-food-meal-items__remove"
@@ -196,8 +285,21 @@ function MealItemsEditor({ items, editing, onChange }) {
                 </>
               ) : (
                 <>
-                  <span className="ua-cp-food-meal-items__name">{item.name}</span>
-                  <span className="ua-cp-food-meal-items__qty">{item.quantityGm} g</span>
+                  <span className="ua-cp-food-meal-items__name">
+                    {item.quantityGm > 0 && !/\(\s*~?\s*\d/.test(item.name)
+                      ? `${item.name} (~${item.quantityGm} g)`
+                      : item.name}
+                  </span>
+                  {showMacroTable ? (
+                    <>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.caloriesKcal || 0, "kcal")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.proteinGm || 0, "g")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.carbsGm || 0, "g")}</span>
+                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
+                    </>
+                  ) : (
+                    <span className="ua-cp-food-meal-items__qty">{item.quantityGm} g</span>
+                  )}
                 </>
               )}
             </div>
@@ -264,6 +366,18 @@ function MealCard({
     if (autoEdit) setEditing(true);
   }, [autoEdit]);
 
+  function handleItemsChange(items) {
+    const itemMacros = sumItemsMacros(items);
+    const hasItemMacros = items.some(
+      (item) => item.proteinGm || item.fatsGm || item.carbsGm || item.caloriesKcal,
+    );
+    setDraft((d) => ({
+      ...d,
+      items,
+      macros: hasItemMacros ? itemMacros : d.macros,
+    }));
+  }
+
   function startEdit() {
     setDraft(emptyMealDraft(meal));
     setEditing(true);
@@ -271,6 +385,10 @@ function MealCard({
 
   async function saveEdit() {
     const items = normalizeMealItems(draft.items);
+    const hasItemMacros = items.some(
+      (item) => item.proteinGm || item.fatsGm || item.carbsGm || item.caloriesKcal,
+    );
+    const macros = hasItemMacros ? sumItemsMacros(items) : draft.macros;
     if (
       editing &&
       draft.items.some((item) => !String(item.name || "").trim() && Number(item.quantityGm) > 0)
@@ -287,7 +405,7 @@ function MealCard({
     }
     try {
       await onSaveEdit(meal.id, {
-        macros: draft.macros,
+        macros,
         items,
         description: String(draft.description || "").trim(),
       });
@@ -386,7 +504,8 @@ function MealCard({
           <MealItemsEditor
             items={shownItems}
             editing={editing}
-            onChange={(items) => setDraft((d) => ({ ...d, items }))}
+            onChange={handleItemsChange}
+            onToast={onToast}
           />
           <div className="ua-cp-food-meal__macros-wrap">
             <span className="ua-cp-food-meal__macros-title">Macro breakup</span>
@@ -765,8 +884,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             items: m.items?.length
               ? m.items
               : [
-                { name: "Amla juice", quantityGm: 200 },
-                { name: "Chia seeds", quantityGm: 5 },
+                { name: "Amla juice", quantityGm: 200, proteinGm: 1, fatsGm: 0, carbsGm: 18, caloriesKcal: 76 },
+                { name: "Chia seeds", quantityGm: 5, proteinGm: 3, fatsGm: 1, carbsGm: 4, caloriesKcal: 42 },
               ],
             description: m.description || "Functional juice with chia",
             declineMessage: "",

@@ -19,6 +19,7 @@ const {
 } = require("../../services/accountResolver");
 const { sendCoachAssignmentNotifications } = require("../../utils/whatsapp");
 const { emitCoachAssigned } = require("../../services/adminActivityService");
+const { dispatchCoachAssignmentChangeNotification } = require("../../services/notificationDispatchService");
 const { buildPaidOnboardingResetUpdates } = require("../../utils/paidOnboardingHelpers");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
@@ -181,6 +182,14 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
         : (await getWellnessCoachByIdResolved(assignedCoachId)) ||
           (await getWellnessCoachRecordById(assignedCoachId));
     await sendCoachAssignmentNotifications({ user, assignee, assigneeType: assignedCoachType });
+    dispatchCoachAssignmentChangeNotification({
+      userId: user.id,
+      assigneeName: assignee?.name,
+      assigneeType: assignedCoachType,
+      action: "assigned",
+    }).catch((notifyErr) => {
+      console.error("[UserAssignment] coach assignment inbox notification failed", notifyErr?.message || notifyErr);
+    });
     emitCoachAssigned({
       user,
       assigneeName: assignee?.name,
@@ -226,6 +235,14 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
           (await getAssistantWellnessCoachById(assignedCoachId))
         : (await getWellnessCoachByIdResolved(assignedCoachId)) ||
           (await getWellnessCoachRecordById(assignedCoachId));
+    dispatchCoachAssignmentChangeNotification({
+      userId: user.id,
+      assigneeName: assignee?.name,
+      assigneeType: assignedCoachType,
+      action: "reassigned",
+    }).catch((notifyErr) => {
+      console.error("[UserAssignment] coach reassignment inbox notification failed", notifyErr?.message || notifyErr);
+    });
     emitCoachAssigned({
       user,
       assigneeName: assignee?.name,
@@ -342,6 +359,25 @@ exports.reassignHealUserForStaffController = asyncHandler(async (req, res) => {
     );
   } catch (err) {
     mapAssignmentError(err);
+  }
+
+  try {
+    const assignee =
+      assignedCoachType === "assistant_wellness_coach"
+        ? (await getAssistantWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getAssistantWellnessCoachById(assignedCoachId))
+        : (await getWellnessCoachByIdResolved(assignedCoachId)) ||
+          (await getWellnessCoachRecordById(assignedCoachId));
+    dispatchCoachAssignmentChangeNotification({
+      userId: user.id,
+      assigneeName: assignee?.name,
+      assigneeType: assignedCoachType,
+      action: "reassigned",
+    }).catch((notifyErr) => {
+      console.error("[UserAssignment] staff coach reassignment inbox notification failed", notifyErr?.message || notifyErr);
+    });
+  } catch (err) {
+    console.error("[UserAssignment] staff reassignment notification failed", err.message);
   }
 
   return res.status(200).json({

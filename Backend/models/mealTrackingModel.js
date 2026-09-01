@@ -177,7 +177,23 @@ function normalizeItems(value) {
       err.name = "ValidationError";
       throw err;
     }
-    return { name, quantityGm: Math.round(quantityGm * 100) / 100 };
+    const normalized = {
+      name,
+      quantityGm: Math.round(quantityGm * 100) / 100,
+    };
+    if (item?.proteinGm != null) {
+      normalized.proteinGm = normalizeMacro(item.proteinGm, `items[${i}].proteinGm`);
+    }
+    if (item?.fatsGm != null) {
+      normalized.fatsGm = normalizeMacro(item.fatsGm, `items[${i}].fatsGm`);
+    }
+    if (item?.carbsGm != null) {
+      normalized.carbsGm = normalizeMacro(item.carbsGm, `items[${i}].carbsGm`);
+    }
+    if (item?.caloriesKcal != null) {
+      normalized.caloriesKcal = normalizeMacro(item.caloriesKcal, `items[${i}].caloriesKcal`);
+    }
+    return normalized;
   });
 }
 

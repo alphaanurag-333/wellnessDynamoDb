@@ -25,6 +25,7 @@ const {
   formatChangeKg,
   formatChangePts,
   metricRow,
+  mergeHba1cReadings,
   daysAgo,
 } = require("../utils/programProgressCalculations");
 
@@ -215,18 +216,21 @@ function buildFatLoss(users, coachNames, weightByUser, bodyByUser) {
   };
 }
 
-function buildHba1c(users, coachNames, glucoseByUser) {
+function buildHba1c(users, coachNames, glucoseByUser, labReportsByUser) {
   const down2 = [];
   const under65 = [];
 
   for (const user of users || []) {
     const userId = userIdOf(user);
     if (!userId) continue;
-    const logs = glucoseByUser.get(userId) || [];
-    const values = logs.map((row) => toNumberOrNull(row.value)).filter((n) => n != null);
+    const readings = mergeHba1cReadings(
+      glucoseByUser.get(userId) || [],
+      labReportsByUser.get(userId) || [],
+    );
+    const values = readings.map((row) => row.value);
     if (!looksLikeA1cSeries(values)) continue;
 
-    const series = firstAndLastNumeric(logs, (row) => toNumberOrNull(row.value));
+    const series = firstAndLastNumeric(readings, (row) => toNumberOrNull(row.value));
     const flags = classifyHba1c({ start: series.start, current: series.current });
     if (!flags.down2 && !flags.under65) continue;
 
@@ -521,7 +525,9 @@ async function getProgramProgressOverview(actor) {
     }),
     loadSupplements(actor, allowedIds),
     loadMeetings(actor, allowedIds),
-    safeScan(LAB_TABLE, { projection: "userId, reportDate, createdAt, fileKey" }),
+    safeScan(LAB_TABLE, {
+      projection: "userId, reportDate, createdAt, fileKey, aiStatus, aiAnalysis, aiAnalysedAt",
+    }),
   ]);
 
   const filterRows = (rows) =>
@@ -533,7 +539,12 @@ async function getProgramProgressOverview(actor) {
     groupByUserId(filterRows(weightRows)),
     groupByUserId(filterRows(bodyRows))
   );
-  const hba1c = buildHba1c(users, coachNames, groupByUserId(filterRows(glucoseRows)));
+  const hba1c = buildHba1c(
+    users,
+    coachNames,
+    groupByUserId(filterRows(glucoseRows)),
+    groupByUserId(filterRows(labReports)),
+  );
 
   return {
     programProgress: {

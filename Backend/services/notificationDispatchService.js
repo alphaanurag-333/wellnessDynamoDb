@@ -58,6 +58,8 @@ const FCM_TYPE_BY_KIND = {
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
   presentable_pic_reviewed: "presentable_pic_reviewed_notification",
+  coach_assigned: "coach_assigned_notification",
+  coach_reassigned: "coach_reassigned_notification",
 };
 
 function buildPushData(notification) {
@@ -462,6 +464,32 @@ async function dispatchPhysicalExerciseAssignedNotification({
     message,
     referenceType: "assigned_physical_exercise",
     title: "New physical exercises",
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
+async function dispatchCoachAssignmentChangeNotification({
+  userId,
+  assigneeName,
+  assigneeType,
+  action = "assigned",
+}) {
+  const coachLabel =
+    assigneeType === "assistant_wellness_coach" ? "assistant wellness coach" : "wellness coach";
+  const name = String(assigneeName || "").trim() || `your ${coachLabel}`;
+  const isReassign = action === "reassigned";
+  const message = isReassign
+    ? `Your ${coachLabel} has been updated to ${name}. They will reach out to schedule your consultancy session.`
+    : `You have been assigned to ${name}. They will reach out to schedule your consultancy session.`;
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: isReassign ? "coach_reassigned" : "coach_assigned",
+    message,
+    referenceType: "user_coach_assignment",
+    title: isReassign ? "Coach updated" : "Coach assigned",
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -1024,6 +1052,7 @@ module.exports = {
   ensureReminderDueInbox,
   dispatchDailyReflectionBedtimeNotification,
   dispatchPhysicalExerciseAssignedNotification,
+  dispatchCoachAssignmentChangeNotification,
   dispatchMentalWellbeingAssignedNotification,
   dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
