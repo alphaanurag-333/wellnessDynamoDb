@@ -3,7 +3,32 @@ const {
   getAppConfig,
   toPublicAppConfig: resolveAppConfigMediaUrls,
   normalizeProgressPhotoGuidelines,
+  normalizeWebSocialLinks,
 } = require("../../models/appConfigModel");
+
+const LEGACY_SOCIAL_FIELDS = [
+  { id: "facebook", key: "facebook", label: "Facebook", icon: "facebook" },
+  { id: "instagram", key: "instagram", label: "Instagram", icon: "instagram" },
+  { id: "youtube", key: "youtube", label: "YouTube", icon: "youtube" },
+  { id: "linkedin", key: "linkedin", label: "LinkedIn", icon: "linkedin" },
+  { id: "x", key: "twitter", label: "X", icon: "x" },
+];
+
+function legacySocialLinksFromConfig(config) {
+  return LEGACY_SOCIAL_FIELDS
+    .map((field) => ({
+      id: field.id,
+      label: field.label,
+      icon: field.icon,
+      url: String(config?.[field.key] || "").trim(),
+    }))
+    .filter((row) => row.url);
+}
+
+function resolvePublicSocialLinks(config) {
+  const stored = normalizeWebSocialLinks(config?.web_social_links);
+  return stored.length ? stored : legacySocialLinksFromConfig(config);
+}
 
 /**
  * Shape returned to clients without auth — suitable for storefront / login branding.
@@ -71,6 +96,7 @@ function toPublicClientAppConfig(doc) {
     web_contact_details: Array.isArray(config.web_contact_details)
       ? config.web_contact_details
       : [],
+    web_social_links: resolvePublicSocialLinks(config),
     address: config.address ?? "",
     latitude: config.latitude ?? "",
     longitude: config.longitude ?? "",

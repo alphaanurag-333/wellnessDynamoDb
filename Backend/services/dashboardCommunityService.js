@@ -13,6 +13,7 @@ const BIRTHDAY_LIMIT = 10;
 const CLIENT_CARD_LIMIT = 2;
 const COACH_CARD_LIMIT = 1;
 const LEADERBOARD_LIMIT = 10;
+const LEADERBOARD_MONTHS = 6;
 const COACH_RANK_SAMPLE = 40;
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -36,6 +37,27 @@ function formatMonthShort(monthYear) {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+/** Last N calendar months in IST (current month first). */
+function recentLeaderboardMonths(count = LEADERBOARD_MONTHS, now = new Date()) {
+  const [currentYear, currentMonth] = currentMonthYear(now).split("-").map(Number);
+  const months = [];
+  let year = currentYear;
+  let month = currentMonth;
+  for (let i = 0; i < count; i += 1) {
+    const monthYear = `${year}-${String(month).padStart(2, "0")}`;
+    months.push({
+      value: monthYear,
+      label: formatMonthShort(monthYear) || monthLabel(monthYear),
+    });
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+  }
+  return months;
 }
 
 function formatBirthdayWhen(offset, dateOnly) {
@@ -180,6 +202,12 @@ async function loadBirthdayUsers(actor) {
   return listScopedUsers(actor);
 }
 
+async function resolveAllowedUserIds(actor) {
+  if (isAdminLike(actor)) return null;
+  const users = await listScopedUsers(actor);
+  return new Set((users || []).map(userIdOf).filter(Boolean));
+}
+
 async function loadAllowedUserIds(actor, users) {
   if (isAdminLike(actor)) return null;
   return new Set((users || []).map(userIdOf).filter(Boolean));
@@ -266,11 +294,11 @@ function buildTopClientCoach(topClientRows, usersById, coachNames) {
   }];
 }
 
-async function loadChampionRankings(allowedIds) {
-  const monthYear = currentMonthYear();
+async function loadChampionRankings(allowedIds, monthYear = currentMonthYear()) {
+  const targetMonth = String(monthYear || currentMonthYear()).trim();
 
   try {
-    const averaged = await computeUserAveragesForMonth(monthYear);
+    const averaged = await computeUserAveragesForMonth(targetMonth);
     const rows = (averaged || [])
       .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
       .map((row) => ({
@@ -279,17 +307,34 @@ async function loadChampionRankings(allowedIds) {
         averageScore: Number(row.averageScore) || 0,
         daysSubmitted: Number(row.daysSubmitted) || 0,
       }));
-    return { monthYear, rows, source: "live" };
+    return { monthYear: targetMonth, rows, source: "live" };
   } catch (err) {
     console.warn("[dashboardCommunity] live rankings failed:", err?.message || err);
   }
 
-  return { monthYear: null, rows: [], source: "none" };
+  return { monthYear: targetMonth, rows: [], source: "none" };
 }
 
-async function loadChampionsAndLeaderboard(allowedIds) {
-  const { monthYear, rows } = await loadChampionRankings(allowedIds);
-  const monthLbl = monthYear ? formatMonthShort(monthYear) || monthLabel(monthYear) : "";
+async function buildLeaderboardRows(allowedIds, monthYear) {
+  const { monthYear: resolvedMonth, rows } = await loadChampionRankings(allowedIds, monthYear);
+  const monthLbl = resolvedMonth ? formatMonthShort(resolvedMonth) || monthLabel(resolvedMonth) : "";
+  const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
+  const usersById = await enrichUsers(sample.map((row) => row.userId));
+  const ranked = sample.filter((row) => usersById.has(row.userId));
+  const leaderboardRows = ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => (
+    toLeaderboardRow(row, usersById.get(row.userId), index + 1)
+  ));
+
+  return {
+    monthYear: resolvedMonth,
+    monthLabel: monthLbl,
+    rows: leaderboardRows,
+  };
+}
+
+async function loadChampionsAndLeaderboard(allowedIds, monthYear = currentMonthYear()) {
+  const { monthYear: resolvedMonth, rows } = await loadChampionRankings(allowedIds, monthYear);
+  const monthLbl = resolvedMonth ? formatMonthShort(resolvedMonth) || monthLabel(resolvedMonth) : "";
   const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
   const usersById = await enrichUsers(sample.map((row) => row.userId));
   const ranked = sample.filter((row) => usersById.has(row.userId));
@@ -303,17 +348,27 @@ async function loadChampionsAndLeaderboard(allowedIds) {
 
   return {
     champions: {
-      monthYear,
+      monthYear: resolvedMonth,
       monthLabel: monthLbl,
       clients: topClients.map((row) => toClientCard(row, usersById.get(row.userId))),
       coaches: buildTopClientCoach(topClients, usersById, coachNames).slice(0, COACH_CARD_LIMIT),
     },
     leaderboard: {
-      monthYear,
+      monthYear: resolvedMonth,
       monthLabel: monthLbl,
-      months: monthYear ? [{ value: monthYear, label: monthLbl }] : [],
+      months: recentLeaderboardMonths(LEADERBOARD_MONTHS),
       rows: leaderboardRows,
     },
+  };
+}
+
+async function getDashboardLeaderboard(actor, monthYear) {
+  const allowedIds = await resolveAllowedUserIds(actor);
+  const targetMonth = String(monthYear || currentMonthYear()).trim();
+  const leaderboard = await buildLeaderboardRows(allowedIds, targetMonth);
+  return {
+    ...leaderboard,
+    months: recentLeaderboardMonths(LEADERBOARD_MONTHS),
   };
 }
 
@@ -335,9 +390,11 @@ async function getDashboardCommunity(actor) {
 
 module.exports = {
   getDashboardCommunity,
+  getDashboardLeaderboard,
   formatBirthdayWhen,
   formatScoreDisplay,
   nextBirthdayFromDob,
   pickUpcomingBirthdays,
+  recentLeaderboardMonths,
   emptyCommunity,
 };

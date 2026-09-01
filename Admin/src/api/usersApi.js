@@ -989,14 +989,28 @@ export async function deleteUserReminder(id, reminderId) {
   }
 }
 
-export async function saveUserCoachInsight(id, message) {
+export async function saveUserCoachInsight(id, payload) {
   try {
+    const body = typeof payload === "string"
+      ? { message: payload }
+      : { message: String(payload?.message ?? ""), durationHours: payload?.durationHours };
     const { data } = await api.put(
       `/account/heal-users/${encodeURIComponent(id)}/coach-insight`,
-      { message: String(message ?? "") },
+      body,
       { headers: authHeader() },
     );
     return data.coachInsight || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function deleteUserCoachInsight(id) {
+  try {
+    await api.delete(
+      `/account/heal-users/${encodeURIComponent(id)}/coach-insight`,
+      { headers: authHeader() },
+    );
   } catch (error) {
     normalizeApiError(error);
   }

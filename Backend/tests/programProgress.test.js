@@ -9,6 +9,9 @@ const {
   formatChangeKg,
   formatChangePts,
   resolveGoalWeightKg,
+  extractHba1cFromLabReport,
+  labReportsToHba1cReadings,
+  mergeHba1cReadings,
 } = require("../utils/programProgressCalculations");
 
 describe("classifyFatLoss", () => {
@@ -44,6 +47,53 @@ describe("classifyHba1c", () => {
     const flags = classifyHba1c({ start: 112, current: 98 });
     assert.equal(flags.down2, false);
     assert.equal(flags.under65, false);
+  });
+});
+
+describe("lab report HbA1c extraction", () => {
+  it("reads analysed AI panels and ignores non-A1c glucose logs", () => {
+    const report = {
+      aiStatus: "analysed",
+      reportDate: "2026-07-12",
+      aiAnalysis: {
+        panels: [{
+          title: "GLUCOSE PANEL",
+          rows: [{ name: "HbA1c", value: "6.8%", tone: "bad", note: "Elevated" }],
+        }],
+      },
+    };
+    assert.deepEqual(extractHba1cFromLabReport(report), {
+      value: 6.8,
+      recordedAt: "2026-07-12",
+    });
+
+    const readings = mergeHba1cReadings(
+      [{ value: 112, recordedAt: "2026-06-01T00:00:00.000Z", createdAt: "2026-06-01T00:00:00.000Z" }],
+      [
+        {
+          aiStatus: "analysed",
+          reportDate: "2026-03-01",
+          aiAnalysis: {
+            panels: [{ title: "GLUCOSE", rows: [{ name: "HbA1c", value: "8.9" }] }],
+          },
+        },
+        report,
+      ],
+    );
+    assert.equal(readings.length, 2);
+    assert.equal(readings[0].value, 8.9);
+    assert.equal(readings[1].value, 6.8);
+    const flags = classifyHba1c({
+      start: readings[0].value,
+      current: readings[1].value,
+    });
+    assert.equal(flags.down2, true);
+    assert.equal(flags.under65, false);
+  });
+
+  it("skips reports without analysed AI output", () => {
+    assert.equal(extractHba1cFromLabReport({ aiStatus: "pending" }), null);
+    assert.equal(labReportsToHba1cReadings([{ aiStatus: "failed" }]).length, 0);
   });
 });
 

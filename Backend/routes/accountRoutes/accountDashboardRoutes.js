@@ -3,6 +3,7 @@ const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
 const {
   getStaffDashboardStatistics,
+  getStaffDashboardLeaderboard,
   listStaffDashboardPayments,
   sendTeamRemindersController,
   sendTeamWhatsAppRemindersController,
@@ -25,6 +26,13 @@ router.get(
   protectAccount,
   dashboardViewAuth,
   getStaffDashboardStatistics
+);
+
+router.get(
+  "/leaderboard",
+  protectAccount,
+  dashboardViewAuth,
+  getStaffDashboardLeaderboard
 );
 
 router.get(

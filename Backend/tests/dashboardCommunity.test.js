@@ -33,6 +33,18 @@ describe("nextBirthdayFromDob", () => {
   });
 });
 
+describe("recentLeaderboardMonths", () => {
+  it("returns the last six calendar months with the current month first", () => {
+    const { recentLeaderboardMonths } = require("../services/dashboardCommunityService");
+    const months = recentLeaderboardMonths(6, new Date("2026-09-15T12:00:00+05:30"));
+    assert.equal(months.length, 6);
+    assert.equal(months[0].value, "2026-09");
+    assert.equal(months[1].value, "2026-08");
+    assert.equal(months[5].value, "2026-04");
+    assert.match(months[0].label, /Sep/i);
+  });
+});
+
 describe("pickUpcomingBirthdays", () => {
   it("returns the next 10 birthdays across the year, not only the current month", () => {
     const users = [

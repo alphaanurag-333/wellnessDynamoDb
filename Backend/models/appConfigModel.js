@@ -148,6 +148,40 @@ function normalizeWebContactDetails(value) {
     .filter(Boolean);
 }
 
+function normalizeWebSocialLinkIcon(label, icon) {
+  const key = String(label || "").trim().toLowerCase();
+  if (key.includes("instagram")) return "instagram";
+  if (key.includes("youtube")) return "youtube";
+  if (key.includes("linkedin")) return "linkedin";
+  if (key === "x" || key.includes("twitter")) return "x";
+  if (key.includes("facebook")) return "facebook";
+  if (key.includes("pinterest")) return "pinterest";
+
+  const rawIcon = String(icon || "").trim().toLowerCase();
+  if (rawIcon && rawIcon !== "link") return rawIcon;
+  return "link";
+}
+
+function normalizeWebSocialLinkRow(row, index, seen) {
+  if (!row || typeof row !== "object") return null;
+  const label = String(row.label || "").trim();
+  const url = String(row.url || "").trim();
+  if (!label || !url) return null;
+  return {
+    id: uniqueId(row.id || label, `sm-${index + 1}`, seen),
+    label,
+    url,
+    icon: normalizeWebSocialLinkIcon(label, row.icon),
+  };
+}
+
+function normalizeWebSocialLinks(value) {
+  const seen = new Set();
+  return parseStoredArray(value)
+    .map((row, index) => normalizeWebSocialLinkRow(row, index, seen))
+    .filter(Boolean);
+}
+
 function slugifyTrackerId(value) {
   return String(value || "")
     .toLowerCase()
@@ -258,6 +292,7 @@ function toPublicAppConfig(config) {
     health_progress_trackers: normalizeHealthProgressTrackers(config.health_progress_trackers),
     web_locations: normalizeWebLocations(config.web_locations),
     web_contact_details: normalizeWebContactDetails(config.web_contact_details),
+    web_social_links: normalizeWebSocialLinks(config.web_social_links),
     commitment_letter_text: resolveCommitmentLetterText(config.commitment_letter_text),
     commitment_letter_version: Math.max(
       1,
@@ -305,6 +340,7 @@ async function createAppConfig() {
     health_progress_trackers: DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => ({ ...row })),
     web_locations: [],
     web_contact_details: [],
+    web_social_links: [],
     address:        "",
     latitude:       "",
     longitude:      "",
@@ -435,6 +471,8 @@ async function updateAppConfig(updates) {
       nextVal = normalizeWebLocations(val);
     } else if (key === "web_contact_details") {
       nextVal = normalizeWebContactDetails(val);
+    } else if (key === "web_social_links") {
+      nextVal = normalizeWebSocialLinks(val);
     }
     exprValues[`:${key}`] = nextVal;
     setExpr += `, #${key} = :${key}`;
@@ -472,4 +510,5 @@ module.exports = {
   normalizeHealthProgressTrackers,
   normalizeWebLocations,
   normalizeWebContactDetails,
+  normalizeWebSocialLinks,
 };

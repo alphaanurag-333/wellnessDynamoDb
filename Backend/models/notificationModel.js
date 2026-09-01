@@ -56,6 +56,8 @@ const KIND = new Set([
   "program_assigned",
   "presentable_pic_request",
   "presentable_pic_reviewed",
+  "coach_assigned",
+  "coach_reassigned",
 ]);
 const BROADCAST_KINDS = new Set(["admin_broadcast", "health_tool", "recipe", "yoga"]);
 

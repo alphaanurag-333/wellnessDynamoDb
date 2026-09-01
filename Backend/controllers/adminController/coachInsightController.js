@@ -27,7 +27,7 @@ function mapValidationError(err) {
 
 exports.getCoachUserCoachInsightController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
-  const coachInsight = await getCoachInsightByUserId(userId);
+  const coachInsight = await getCoachInsightByUserId(userId, { includeExpired: true });
 
   return res.status(200).json({
     status: true,
@@ -58,6 +58,7 @@ exports.upsertCoachUserCoachInsightController = asyncHandler(async (req, res) =>
   try {
     coachInsight = await upsertCoachInsight(userId, {
       message: trimmed,
+      durationHours: req.body?.durationHours,
       updatedByCoachId: actingCoachId,
       updatedByCoachType: "wellness_coach",
     });
@@ -69,5 +70,16 @@ exports.upsertCoachUserCoachInsightController = asyncHandler(async (req, res) =>
     status: true,
     message: "Coach insight saved",
     coachInsight,
+  });
+});
+
+exports.deleteCoachUserCoachInsightController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  await deleteCoachInsight(userId);
+
+  return res.status(200).json({
+    status: true,
+    message: "Coach insight deleted",
+    coachInsight: null,
   });
 });

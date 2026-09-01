@@ -17,6 +17,60 @@ export async function fetchDashboardStatistics() {
   }
 }
 
+const LEADERBOARD_MONTHS = 6;
+
+function formatLeaderboardMonthLabel(monthYear) {
+  const raw = String(monthYear || "").trim();
+  if (!/^\d{4}-\d{2}$/.test(raw)) return raw || "—";
+  const [year, month] = raw.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function currentLeaderboardMonthKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return year && month ? `${year}-${month}` : "";
+}
+
+/** Last N calendar months in IST (current month first). */
+export function recentLeaderboardMonthOptions(count = LEADERBOARD_MONTHS) {
+  const current = currentLeaderboardMonthKey();
+  if (!current) return [];
+  let [year, month] = current.split("-").map(Number);
+  const options = [];
+  for (let i = 0; i < count; i += 1) {
+    const value = `${year}-${String(month).padStart(2, "0")}`;
+    options.push({ value, label: formatLeaderboardMonthLabel(value) });
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+  }
+  return options;
+}
+
+export async function fetchDashboardLeaderboard(monthYear) {
+  try {
+    const { data } = await api.get("/account/dashboard/leaderboard", {
+      headers: authHeader(),
+      params: monthYear ? { monthYear } : undefined,
+    });
+    return data?.leaderboard ?? null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 function monthKeyFromIso(iso) {
   if (!iso) return "";
   const date = new Date(iso);

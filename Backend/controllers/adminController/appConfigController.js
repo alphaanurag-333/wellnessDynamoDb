@@ -13,6 +13,7 @@ const {
   normalizeProgressPhotoGuidelines,
   normalizeHealthProgressTrackers,
   normalizeWebLocations,
+  normalizeWebSocialLinks,
   normalizeWebContactDetails,
   BODY_MEASUREMENT_INFO_IMAGE_FIELDS,
   BODY_MEASUREMENT_INFO_SHOWN_FIELDS,
@@ -773,6 +774,12 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
   if (req.body.web_contact_details !== undefined) {
     updates.web_contact_details = normalizeWebContactDetails(
       parseJSON(req.body.web_contact_details, [])
+    );
+  }
+
+  if (req.body.web_social_links !== undefined) {
+    updates.web_social_links = normalizeWebSocialLinks(
+      parseJSON(req.body.web_social_links, [])
     );
   }
 

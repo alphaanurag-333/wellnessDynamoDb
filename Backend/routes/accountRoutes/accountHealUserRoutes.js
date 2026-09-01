@@ -134,6 +134,7 @@ const {
 const {
   getCoachUserCoachInsightController,
   upsertCoachUserCoachInsightController,
+  deleteCoachUserCoachInsightController,
 } = require("../../controllers/adminController/coachInsightController");
 const {
   listCoachHealConsultancyTracksController,
@@ -417,6 +418,7 @@ router.post("/:userId/gut-resets", gutResetWrite, saveStaffUserGutResetControlle
 
 router.get("/:userId/coach-insight", insight, getCoachUserCoachInsightController);
 router.put("/:userId/coach-insight", staff("console.diet.edit", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" }), upsertCoachUserCoachInsightController);
+router.delete("/:userId/coach-insight", staff("console.diet.edit", { admin: "users.clientHub.care.coach-message", coach: "clientTab.care.coach-message" }), deleteCoachUserCoachInsightController);
 
 const tracks = staff("console.cal.view", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
 const tracksWrite = staff("console.cal.edit", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });

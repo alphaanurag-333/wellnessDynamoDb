@@ -98,7 +98,6 @@ export const DEFAULT_GRANTS = {
   },
   wc: {
     dash: ["view", "export"],
-    rev: ["view"],
     cl: ["view", "create", "edit", "export"],
     pii: ["view", "edit"],
     body: ["view", "edit", "upload"],

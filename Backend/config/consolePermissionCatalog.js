@@ -106,7 +106,6 @@ const DEFAULT_CONSOLE_GRANTS = {
   admin: null,
   wc: {
     dash: ["view", "export"],
-    rev: ["view"],
     cl: ["view", "create", "edit", "export"],
     pii: ["view", "edit"],
     body: ["view", "edit", "upload"],
