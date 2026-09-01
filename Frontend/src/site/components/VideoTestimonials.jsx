@@ -52,6 +52,7 @@ function VideoTestimonialCard({ item, isPlaying, onPlay }) {
             <video
               ref={videoRef}
               src={item.playUrl}
+              poster={item.image || undefined}
               controls
               autoPlay
               playsInline

@@ -7,7 +7,7 @@ function StoreBadge({ href, label, icon: Icon, tone }) {
   const toneClass = tone === "light" ? " site-app-badge--light" : "";
   return (
     <a
-      className={`site-app-badge site-app-badge--${label === "Google Play" ? "play" : "apple"}${toneClass}`}
+      className={`width-fits site-app-badge site-app-badge--${label === "Google Play" ? "play" : "apple"}${toneClass}`}
       href={href}
       target="_blank"
       rel="noopener noreferrer"

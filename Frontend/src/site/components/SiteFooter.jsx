@@ -37,7 +37,7 @@ const FOOTER_LEGAL_LINKS = [
   { slug: "privacy-policy", label: "Privacy Policy", to: "/privacy-policy" },
   { slug: "terms-and-conditions", label: "Terms of Service", to: "/terms-and-conditions" },
   { slug: "community-guideline", label: "Community Guidelines", to: "/community-guideline" },
-  { slug: "contact-us", label: "Contact Us", to: "/contact-us" },
+  // { slug: "contact-us", label: "Contact Us", to: "/contact-us" },
 ];
 
 function footerNavClass({ isActive }) {

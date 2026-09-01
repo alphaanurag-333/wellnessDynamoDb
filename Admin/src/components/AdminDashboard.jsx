@@ -2006,7 +2006,8 @@ export function AdminDashboard({
             <button
               type="button"
               className="prog-cat prog-cat--appuser"
-              style={{ background: appUserProgramCard.bg, borderColor: appUserProgramCard.border }}
+              style={{width: "100%",minWidth: "100%", background: "rgb(255, 255, 255)", borderColor: "rgb(94 106 210 / 20%)" }}
+
               onClick={() => openProgramCategory(appUserProgramCard)}
             >
               <span className="prog-cat__icon" style={{ background: "#fff" }}>

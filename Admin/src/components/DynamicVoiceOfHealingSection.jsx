@@ -32,6 +32,17 @@ const VH_CROP_RATIO = "1:1";
 const VH_COVER_SIZE_LABEL = "Thumbnail: 300x300";
 const VH_VIDEO_SIZE_LABEL = "Video: 1920x1080";
 
+function withYoutubeAutoplay(embedUrl) {
+  if (!embedUrl) return "";
+  try {
+    const parsed = new URL(embedUrl);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+  }
+}
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -99,10 +110,20 @@ function VideoDrop({ fileName, disabled, onPick, onRemove }) {
 }
 
 function VoiceViewModal({ entry, onClose, onEdit }) {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+  }, [entry?.id]);
+
   if (!entry) return null;
   const photo = entry.imagePreview || entry.profileImage;
   const embed = youtubeEmbedUrl(entry.ytLink);
   const isVideo = entry.type === "video";
+  const hasPlayer = Boolean(embed || (isVideo && entry.video));
+  const title = asCopyString(entry.name) || "Voice of Healing video";
+  const showCover = Boolean(photo) && (!hasPlayer || !playing);
+
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-vh-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="vh-view-title">
@@ -120,17 +141,43 @@ function VoiceViewModal({ entry, onClose, onEdit }) {
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-vh-view__body">
-          {photo ? (
-            <div className="ua-cfg-rc-view__media">
+          {hasPlayer ? (
+            <div className={`ua-cfg-vh-player${showCover ? " has-cover" : ""}`}>
+              {showCover ? (
+                <button
+                  type="button"
+                  className="ua-cfg-vh-player__cover"
+                  onClick={() => setPlaying(true)}
+                  aria-label={`Play ${title}`}
+                >
+                  <img src={photo} alt="" />
+                  <span className="ua-cfg-vh-player__play" aria-hidden="true">▶</span>
+                </button>
+              ) : null}
+              {playing || !photo ? (
+                embed ? (
+                  <iframe
+                    title={title}
+                    src={playing && photo ? withYoutubeAutoplay(embed) : embed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={entry.video}
+                    poster={photo || undefined}
+                    controls
+                    playsInline
+                    autoPlay={playing}
+                    preload={photo ? "none" : "metadata"}
+                  />
+                )
+              ) : null}
+            </div>
+          ) : photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
               <img src={photo} alt="" />
             </div>
-          ) : null}
-          {embed ? (
-            <div className="ua-cfg-rc-view__embed">
-              <iframe title={asCopyString(entry.name) || "Voice of Healing video"} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          ) : isVideo && entry.video ? (
-            <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
           ) : null}
           <dl className="ua-cfg-rc-view__meta">
             <div>
