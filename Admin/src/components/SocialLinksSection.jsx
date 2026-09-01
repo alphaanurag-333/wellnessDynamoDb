@@ -31,6 +31,7 @@ function SocialGlyph({ icon }) {
     icon === "linkedin" ? "💼" :
     icon === "x" ? "𝕏" :
     icon === "facebook" ? "f" :
+    icon === "pinterest" ? "P" :
     icon === "play" ? "G" :
     icon === "apple" ? "A" :
     icon === "globe" ? "QR" :
@@ -48,7 +49,7 @@ function LinkRows({
   editingId,
   draftUrl,
   locked,
-  persistToAppConfig,
+  allowRemove,
   onStartEdit,
   onCancelEdit,
   onDraftChange,
@@ -109,7 +110,7 @@ function LinkRows({
                   Edit
                 </button>
               )}
-              {persistToAppConfig ? null : (
+              {allowRemove ? (
                 <button
                   type="button"
                   className="ua-cfg-icon-btn"
@@ -119,7 +120,7 @@ function LinkRows({
                 >
                   ×
                 </button>
-              )}
+              ) : null}
             </div>
           </article>
         );
@@ -148,6 +149,7 @@ export function SocialLinksSection({
   const [editingId, setEditingId] = useState(null);
   const [draftUrl, setDraftUrl] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddSocial, setShowAddSocial] = useState(false);
   const [newDraft, setNewDraft] = useState({ label: "", url: "" });
 
   linksRef.current = links;
@@ -232,6 +234,7 @@ export function SocialLinksSection({
 
   function startEdit(entry) {
     setShowAdd(false);
+    setShowAddSocial(false);
     setEditingId(entry.id);
     setDraftUrl(asCopyString(entry.url));
   }
@@ -278,17 +281,17 @@ export function SocialLinksSection({
     if (ok) {
       setNewDraft({ label: "", url: "" });
       setShowAdd(false);
+      setShowAddSocial(false);
     }
   }
 
   async function removeLink(entry) {
-    if (persistToAppConfig) return;
+    if (APP_DOWNLOAD_IDS.has(entry.id)) return;
     const next = links.filter((row) => row.id !== entry.id);
     const ok = await persist(next);
     if (ok && editingId === entry.id) cancelEdit();
   }
 
-  const canAdd = !persistToAppConfig;
   const locked = busy || loading;
 
   const { socialEntries, downloadEntries } = useMemo(() => {
@@ -310,13 +313,50 @@ export function SocialLinksSection({
     editingId,
     draftUrl,
     locked,
-    persistToAppConfig,
     onStartEdit: startEdit,
     onCancelEdit: cancelEdit,
     onDraftChange: setDraftUrl,
     onSaveEdit: saveEdit,
     onRemove: removeLink,
   };
+
+  function renderAddForm({ onClose }) {
+    return (
+      <section className="ua-cfg-sm-add">
+        <div className="ua-cfg-sm-add__head">
+          <strong><span aria-hidden="true">🔗</span> New link</strong>
+          <button
+            type="button"
+            className="ua-cfg-icon-btn"
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        </div>
+        <div className="ua-cfg-sm-add__row">
+          <input
+            type="text"
+            className="ua-cfg-vh-input"
+            placeholder={labelPlaceholder}
+            value={asCopyString(newDraft.label)}
+            onChange={(event) => setNewDraft((prev) => ({ ...prev, label: event.target.value }))}
+          />
+          <input
+            type="text"
+            className="ua-cfg-vh-input"
+            placeholder={urlPlaceholder}
+            value={asCopyString(newDraft.url)}
+            disabled={locked}
+            onChange={(event) => setNewDraft((prev) => ({ ...prev, url: event.target.value }))}
+          />
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addLink}>
+            Add link
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="ua-cfg-sm">
@@ -339,7 +379,11 @@ export function SocialLinksSection({
           {loading ? (
             <p className="ua-cfg-panel__sub">Fetching app download links from App Config…</p>
           ) : (
-            <LinkRows entries={downloadEntries} {...rowProps} />
+            <LinkRows
+              entries={downloadEntries}
+              allowRemove={false}
+              {...rowProps}
+            />
           )}
         </Panel>
 
@@ -352,11 +396,39 @@ export function SocialLinksSection({
                 ? "Shown in the website footer. Edits stay local until you publish."
                 : "Footer social links. Saved to App Config."
           }
+          actions={
+            loading ? null : (
+              <button
+                type="button"
+                className="ua-cfg-rc-add"
+                disabled={locked}
+                onClick={() => {
+                  cancelEdit();
+                  setShowAddSocial(true);
+                  setNewDraft({ label: "", url: "" });
+                }}
+              >
+                + Add link
+              </button>
+            )
+          }
         >
           {loading ? (
             <p className="ua-cfg-panel__sub">Fetching social links from App Config…</p>
           ) : (
-            <LinkRows entries={socialEntries} {...rowProps} />
+            <>
+              {showAddSocial ? renderAddForm({
+                onClose: () => {
+                  setShowAddSocial(false);
+                  setNewDraft({ label: "", url: "" });
+                },
+              }) : null}
+              <LinkRows
+                entries={socialEntries}
+                allowRemove
+                {...rowProps}
+              />
+            </>
           )}
         </Panel>
       </>
@@ -365,7 +437,7 @@ export function SocialLinksSection({
       title="Links"
       subtitle="Shown in the website footer."
       actions={
-        loading || !canAdd ? null : (
+        loading ? null : (
           <button
             type="button"
             className="ua-cfg-rc-add"
@@ -385,46 +457,14 @@ export function SocialLinksSection({
         <p className="ua-cfg-panel__sub">Fetching social links from App Config…</p>
       ) : (
         <>
-          {showAdd ? (
-            <section className="ua-cfg-sm-add">
-              <div className="ua-cfg-sm-add__head">
-                <strong><span aria-hidden="true">🔗</span> New link</strong>
-                <button
-                  type="button"
-                  className="ua-cfg-icon-btn"
-                  aria-label="Close"
-                  onClick={() => {
-                    setShowAdd(false);
-                    setNewDraft({ label: "", url: "" });
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="ua-cfg-sm-add__row">
-                <input
-                  type="text"
-                  className="ua-cfg-vh-input"
-                  placeholder={labelPlaceholder}
-                  value={asCopyString(newDraft.label)}
-                  onChange={(event) => setNewDraft((prev) => ({ ...prev, label: event.target.value }))}
-                />
-                <input
-                  type="text"
-                  className="ua-cfg-vh-input"
-                  placeholder={urlPlaceholder}
-                  value={asCopyString(newDraft.url)}
-                  disabled={locked}
-                  onChange={(event) => setNewDraft((prev) => ({ ...prev, url: event.target.value }))}
-                />
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={locked} onClick={addLink}>
-                  Add link
-                </button>
-              </div>
-            </section>
-          ) : null}
+          {showAdd ? renderAddForm({
+            onClose: () => {
+              setShowAdd(false);
+              setNewDraft({ label: "", url: "" });
+            },
+          }) : null}
 
-          <LinkRows entries={socialEntries} {...rowProps} />
+          <LinkRows entries={socialEntries} allowRemove {...rowProps} />
         </>
       )}
     </Panel>

@@ -75,10 +75,52 @@ const SOCIAL_FIELDS = [
   { key: "linkedin", label: "LinkedIn", icon: "linkedin" },
 ];
 
-const STORE_FIELDS = [
-  { key: "android_app_link", label: "Google Play", icon: "play" },
-  { key: "ios_app_link", label: "App Store", icon: "apple" },
-];
+function toExternalHref(value) {
+  const raw = str(value);
+  if (!raw) return "";
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+}
+
+function socialIconForLabel(label, icon) {
+  const key = str(label).toLowerCase();
+  if (key.includes("instagram")) return "instagram";
+  if (key.includes("youtube")) return "youtube";
+  if (key.includes("linkedin")) return "linkedin";
+  if (key === "x" || key.includes("twitter")) return "x";
+  if (key.includes("facebook")) return "facebook";
+  if (key.includes("pinterest")) return "pinterest";
+  if (key.includes("play") || key.includes("android") || key.includes("google")) return "play";
+  if (key.includes("app store") || key.includes("apple") || key.includes("ios")) return "apple";
+
+  const rawIcon = str(icon).toLowerCase();
+  if (rawIcon && rawIcon !== "link") return rawIcon;
+  return "link";
+}
+
+/** Footer icons from Admin → Configs → FS · Social media links (`web-fs-social`). */
+function buildFooterSocialLinks(config) {
+  const configuredSocial = Array.isArray(config?.web_social_links)
+    ? config.web_social_links
+        .map((row) => ({
+          key: str(row?.id) || str(row?.label),
+          label: str(row?.label),
+          icon: socialIconForLabel(row?.label, row?.icon),
+          href: toExternalHref(row?.url),
+        }))
+        .filter((item) => item.href)
+    : [];
+
+  const legacySocial = SOCIAL_FIELDS.map(({ key, label, icon }) => ({
+    key,
+    label,
+    icon,
+    href: toExternalHref(
+      key === "youtube" ? (config?.youtube ?? config?.twitter) : config?.[key],
+    ),
+  })).filter((item) => item.href);
+
+  return configuredSocial.length ? configuredSocial : legacySocial;
+}
 
 const DEFAULT_FOOTER_TAGLINE =
   "Personalized wellness coaching, community support, and programs designed for lasting health transformation.";
@@ -269,20 +311,7 @@ export function useSiteConfig() {
       });
     }
 
-    const social = [
-      ...SOCIAL_FIELDS.map(({ key, label, icon }) => ({
-        key,
-        label,
-        icon,
-        href: str(key === "youtube" ? (config?.youtube ?? config?.twitter) : config?.[key]),
-      })),
-      ...STORE_FIELDS.map(({ key, label, icon }) => ({
-        key,
-        label,
-        icon,
-        href: str(config?.[key]),
-      })),
-    ].filter((item) => item.href);
+    const social = buildFooterSocialLinks(config);
 
     const footerMeta = parseAppFooterText(footerText);
     const footerBrandText =

@@ -1,10 +1,11 @@
 import axios from "axios";
 
-// Keep in sync with Admin so Configs → Yoga & Pranayam appear on /wellnesspedia.
-// const API_BASE = "http://localhost:5000";
-const API_BASE = "https://wellness-development.developmentalphawizz.com";
-//  const API_BASE = "https://wellness.developmentalphawizz.com:5005";
-  // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
+// Prefer local backend during development so the site reflects Admin → Configs changes.
+// Override with VITE_API_URL when you need the remote API.
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+// const API_BASE = "https://wellness-development.developmentalphawizz.com";
+// const API_BASE = "https://wellness.developmentalphawizz.com:5005";
+// const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 
 export function getApiBase() {
   return API_BASE;

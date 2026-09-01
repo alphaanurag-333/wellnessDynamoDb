@@ -47418,6 +47418,11 @@ scrollbar-width: thin;
   color: #2563eb;
 }
 
+.updated-admin .ua-cfg-sm-icon--pinterest {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
 .updated-admin .ua-cfg-sm-icon--play {
   background: #ecfdf5;
   color: #059669;
