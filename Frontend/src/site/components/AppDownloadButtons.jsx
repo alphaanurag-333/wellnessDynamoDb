@@ -50,7 +50,7 @@ export function AppDownloadButtons({
   if (!androidUrl && !iosUrl) return null;
 
   return (
-    <div className={`site-app-badges site-app-badges--${tone}${block ? " site-app-badges--block" : ""}`}>
+    <div className={`managealignment site-app-badges site-app-badges--${tone}${block ? " site-app-badges--block" : ""}`}>
       {appleFirst ? (
         <>
           {apple}

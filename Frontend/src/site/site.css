@@ -16245,6 +16245,9 @@ bottom: -18px;
     margin-inline: auto;
     text-align: center;
   }
+  .managealignment {
+    flex-direction: row !important;
+  }
 
   .app-hero .site-app-badges {
     flex-direction: column;
