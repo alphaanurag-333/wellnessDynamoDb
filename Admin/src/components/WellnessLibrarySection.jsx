@@ -34,10 +34,10 @@ const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
 
-/** Locked cover crop sizes by wellness library kind (3× display size for retina). */
+/** Locked cover crop sizes by wellness library kind. */
 const LIB_COVER_SPECS = {
   yoga: { width: 780, height: 420, label: "Thumbnail: 780x420", ratio: "780:420" },
-  exercise: { width: 462, height: 327, label: "Thumbnail: 462x327", ratio: "462:327" },
+  exercise: { width: 460, height: 195, label: "Cover: 460x195", ratio: "460:195" },
   mental: { width: 780, height: 342, label: "Thumbnail: 780x342", ratio: "780:342" },
 };
 const LIB_VIDEO_SIZE_LABEL = "1920x1080";
@@ -91,7 +91,7 @@ function revokeBlobUrl(url) {
   if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
-function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
+function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEdit }) {
   if (!entry) return null;
   const type = resolveLibraryType(entry.type);
   const isVideo = type === "video";
@@ -110,7 +110,7 @@ function LibraryViewModal({ entry, viewTag, itemNoun, onClose, onEdit }) {
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-rc-view__body">
-          <div className="ua-cfg-rc-view__media" style={{aspectRatio: "0/4"}}>
+          <div className="ua-cfg-rc-view__media" style={coverAspect ? { aspectRatio: coverAspect } : undefined}>
             {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
           </div>
           <dl className="ua-cfg-rc-view__meta">
@@ -1180,6 +1180,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
         entry={items.find((row) => row.id === viewingId) || null}
         viewTag={meta.title}
         itemNoun={meta.noun}
+        coverAspect={`${coverSpec.width} / ${coverSpec.height}`}
         onClose={() => setViewingId("")}
         onEdit={(id) => {
           setCreating(false);
