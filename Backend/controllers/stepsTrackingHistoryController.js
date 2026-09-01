@@ -1,7 +1,7 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
-const { getUserStepsHistory, upsertSettings } = require("../models/stepsTrackingModel");
+const { getUserStepsHistory, upsertSettings, unlockGoalSettings } = require("../models/stepsTrackingModel");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
@@ -78,7 +78,7 @@ exports.updateStaffHealUserStepsGoalController = asyncHandler(async (req, res) =
 
   let settings;
   try {
-    settings = await upsertSettings(userId, { goalSteps });
+    settings = await upsertSettings(userId, { goalSteps, lockGoal: true });
   } catch (err) {
     if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     throw err;
@@ -87,6 +87,21 @@ exports.updateStaffHealUserStepsGoalController = asyncHandler(async (req, res) =
   return res.status(200).json({
     status: true,
     message: "Daily steps goal updated",
+    data: { settings },
+  });
+});
+
+exports.unlockStaffHealUserStepsGoalController = asyncHandler(async (req, res) => {
+  const userId = req.params.id || req.params.userId;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const settings = await unlockGoalSettings(userId);
+
+  return res.status(200).json({
+    status: true,
+    message: "Client can edit steps goal",
     data: { settings },
   });
 });

@@ -20,6 +20,7 @@ import {
   fetchUserStepsTracking,
   updateUserBmsTracking,
   updateUserStepsGoal,
+  unlockUserStepsGoal,
 } from "../../api/bmsTrackingApi.js";
 import { fetchUser } from "../../api/usersApi.js";
 import {
@@ -145,6 +146,10 @@ function StepsGoalBar({
   onDraftChange,
   canEdit,
   saving,
+  goalLocked,
+  clientCanEditGoal,
+  onAllowClientEdit,
+  unlockBusy,
 }) {
   return (
     <div className="ua-cp-bms-steps-goal">
@@ -166,6 +171,7 @@ function StepsGoalBar({
           <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" disabled={saving} onClick={onSave}>
             {saving ? "Saving…" : "Save"}
           </button>
+          <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--locked">App editing locked</span>
         </>
       ) : (
         <>
@@ -173,6 +179,21 @@ function StepsGoalBar({
           <strong className="ua-cp-bms-steps-goal__value">{Number(goal).toLocaleString()} steps / day</strong>
           {canEdit ? (
             <button type="button" className="ua-cp-bms-steps-goal__set" onClick={onStartEdit}>Set target</button>
+          ) : null}
+          {goalLocked ? (
+            <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--locked">App editing locked</span>
+          ) : clientCanEditGoal ? (
+            <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--ok">Client can set in app</span>
+          ) : null}
+          {canEdit && goalLocked ? (
+            <button
+              type="button"
+              className="ua-cp-bms-steps-goal__set"
+              disabled={unlockBusy}
+              onClick={onAllowClientEdit}
+            >
+              {unlockBusy ? "Updating…" : "Allow client to edit"}
+            </button>
           ) : null}
         </>
       )}
@@ -194,6 +215,10 @@ function StepsPanel({
   onDraftGoalChange,
   canEdit,
   saving,
+  goalLocked,
+  clientCanEditGoal,
+  onAllowClientEdit,
+  unlockBusy,
 }) {
   const max = Math.max(...(chart.days.map((d) => d.value)), chart.goal, 1);
   if (loading) return <p className="ua-cp-bms-library-hint">Loading step tracking…</p>;
@@ -212,6 +237,10 @@ function StepsPanel({
           onDraftChange={onDraftGoalChange}
           canEdit={canEdit}
           saving={saving}
+          goalLocked={goalLocked}
+          clientCanEditGoal={clientCanEditGoal}
+          onAllowClientEdit={onAllowClientEdit}
+          unlockBusy={unlockBusy}
         />
       </div>
       <MetricChartCard
@@ -549,6 +578,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [stepsGoalEditing, setStepsGoalEditing] = useState(false);
   const [stepsGoalDraft, setStepsGoalDraft] = useState(BMS_GOALS.steps);
   const [stepsGoalSaving, setStepsGoalSaving] = useState(false);
+  const [stepsGoalLocked, setStepsGoalLocked] = useState(false);
+  const [stepsGoalUnlockBusy, setStepsGoalUnlockBusy] = useState(false);
   const [heartHistory, setHeartHistory] = useState(null);
   const [sleepHistory, setSleepHistory] = useState(null);
   const [sleepToday, setSleepToday] = useState(null);
@@ -576,6 +607,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     setStepsGoal(BMS_GOALS.steps);
     setStepsGoalDraft(BMS_GOALS.steps);
     setStepsGoalEditing(false);
+    setStepsGoalLocked(false);
     setHeartHistory(null);
     setSleepHistory(null);
     setSleepToday(null);
@@ -633,6 +665,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
             setStepsGoal(goal);
             setStepsGoalDraft(goal);
           }
+          setStepsGoalLocked(Boolean(data?.settings?.goalLocked));
         } else if (tab === "heart") {
           setHeartHistory(history);
         } else {
@@ -836,12 +869,27 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
       const saved = Number(result?.settings?.goalSteps ?? nextGoal);
       setStepsGoal(saved);
       setStepsGoalDraft(saved);
+      setStepsGoalLocked(Boolean(result?.settings?.goalLocked ?? true));
       setStepsGoalEditing(false);
-      onToast("Daily steps goal updated");
+      onToast("Daily steps goal updated · app editing locked");
     } catch (error) {
       onToast(error?.message || "Failed to update steps goal");
     } finally {
       setStepsGoalSaving(false);
+    }
+  }
+
+  async function allowClientStepsGoalEdit() {
+    if (!live || stepsGoalUnlockBusy) return;
+    setStepsGoalUnlockBusy(true);
+    try {
+      const result = await unlockUserStepsGoal(userId);
+      setStepsGoalLocked(Boolean(result?.settings?.goalLocked));
+      onToast("Client can now edit their steps goal in the app");
+    } catch (error) {
+      onToast(error?.message || "Failed to allow client editing");
+    } finally {
+      setStepsGoalUnlockBusy(false);
     }
   }
 
@@ -918,6 +966,10 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           onDraftGoalChange={setStepsGoalDraft}
           canEdit={canEdit}
           saving={stepsGoalSaving}
+          goalLocked={stepsGoalLocked}
+          clientCanEditGoal={!stepsGoalLocked}
+          onAllowClientEdit={allowClientStepsGoalEdit}
+          unlockBusy={stepsGoalUnlockBusy}
         />
       ) : null}
 

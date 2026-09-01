@@ -79,6 +79,7 @@ export function CounsellingSection({ user, onToast }) {
   const userId = String(user?.id || user?._id || "").trim();
   const [tracks, setTracks] = useState([]);
   const [activeTrack, setActiveTrack] = useState(null);
+  const [scheduledTrack, setScheduledTrack] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
   const [busy, setBusy] = useState(false);
   const [offerDate, setOfferDate] = useState("");
@@ -96,6 +97,7 @@ export function CounsellingSection({ user, onToast }) {
       const data = await fetchHealConsultancyTracks(userId, { page: 1, limit: 30 });
       setTracks(data.tracks || []);
       setActiveTrack(data.activeTrack || null);
+      setScheduledTrack(data.scheduledTrack || null);
       setCoachNotes(data.activeTrack?.coachNotes || "");
       const slots = data.activeTrack?.requestedSlots || [];
       setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
@@ -243,11 +245,11 @@ export function CounsellingSection({ user, onToast }) {
     }
   }
 
-  async function patchStatus(status) {
-    if (!activeTrack) return;
+  async function patchTrackStatus(trackId, status) {
+    if (!trackId) return;
     setBusy(true);
     try {
-      await updateHealConsultancyTrack(userId, activeTrack.id, { status });
+      await updateHealConsultancyTrack(userId, trackId, { status });
       onToast?.(`Marked ${STATUS_LABEL[status] || status}`);
       await load();
     } catch (error) {
@@ -256,6 +258,14 @@ export function CounsellingSection({ user, onToast }) {
       setBusy(false);
     }
   }
+
+  async function patchStatus(status) {
+    if (!activeTrack) return;
+    await patchTrackStatus(activeTrack.id, status);
+  }
+
+  const scheduledSession =
+    scheduledTrack && scheduledTrack.id !== activeTrack?.id ? scheduledTrack : null;
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
   const showShareBlock =
@@ -287,8 +297,59 @@ export function CounsellingSection({ user, onToast }) {
 
       {loading ? <p className="ua-cp-counselling__muted">Loading sessions…</p> : null}
 
-      {!loading && !activeTrack ? (
+      {!loading && !activeTrack && !scheduledSession ? (
         <div className="ua-cp-counselling__empty">No open counselling request. History is listed below.</div>
+      ) : null}
+
+      {scheduledSession ? (
+        <div className="ua-cp-counselling__card ua-cp-counselling__card--scheduled">
+          <div className="ua-cp-counselling__card-head">
+            <span className="ua-cp-counselling__status ua-cp-counselling__status--scheduled">
+              Scheduled session
+            </span>
+            <span className="ua-cp-counselling__muted">{formatWhen(scheduledSession.scheduledAt)}</span>
+          </div>
+          {scheduledSession.concern ? (
+            <p className="ua-cp-counselling__concern">{scheduledSession.concern}</p>
+          ) : null}
+          <div className="ua-cp-counselling__block">
+            <p className="ua-cp-counselling__scheduled-time">{formatWhen(scheduledSession.scheduledAt)}</p>
+            {scheduledSession.zoomJoinUrl || scheduledSession.meetingLink ? (
+              <a
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                href={scheduledSession.zoomStartUrl || scheduledSession.zoomJoinUrl || scheduledSession.meetingLink}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open meeting
+              </a>
+            ) : null}
+            {canEdit || canDelete ? (
+              <div className="ua-cp-counselling__actions">
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                    onClick={() => patchTrackStatus(scheduledSession.id, "completed")}
+                    disabled={busy}
+                  >
+                    Mark completed
+                  </button>
+                ) : null}
+                {canDelete ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                    onClick={() => patchTrackStatus(scheduledSession.id, "cancelled")}
+                    disabled={busy}
+                  >
+                    Cancel session
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
       ) : null}
 
       {activeTrack ? (
@@ -521,6 +582,16 @@ export function CounsellingSection({ user, onToast }) {
                     <strong>Review {reviewNumber}</strong>
                     <span>{dateLabel}</span>
                     <span className="ua-cp-counselling__muted">{STATUS_LABEL[track.status] || track.status}</span>
+                    {canDelete && track.status === "scheduled" && track.id !== scheduledSession?.id ? (
+                      <button
+                        type="button"
+                        className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                        onClick={() => patchTrackStatus(track.id, "cancelled")}
+                        disabled={busy}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
                   </div>
                 );
               })}

@@ -738,16 +738,19 @@ async function dispatchOnboardingReminderNotification({
   userId,
   message,
   stepLabel = "",
+  stepKey = "",
   actorUserId = null,
 }) {
   const body = String(message || "").trim();
   const label = String(stepLabel || "").trim();
   const title = label ? `Reminder: ${label}` : "Onboarding reminder";
+  const onboardingStepKey = String(stepKey || "").trim();
 
   const notification = await createTargetedNotification({
     userId,
     kind: "onboarding_reminder",
     message: body,
+    referenceId: onboardingStepKey || null,
     referenceType: "onboarding_step",
     actorUserId,
     title,
@@ -765,6 +768,7 @@ async function dispatchOnboardingSlotsOfferedNotification({ userId, stepKey, mee
     message: `Your coach offered time slots for your ${label} meeting.`,
     referenceId: meetingId ? String(meetingId) : null,
     referenceType: "onboarding_meeting",
+    comment: stepKey ? String(stepKey) : "",
     title: "New meeting slots",
   });
   runPushSafely(deliverTargetedPush(userId, notification));

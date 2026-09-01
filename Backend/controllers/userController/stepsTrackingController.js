@@ -4,6 +4,7 @@ const { isValidDateOnly, todayDateOnly } = require("../../utils/dateOnly");
 const {
   getUserStepsSummary,
   upsertSettings,
+  getSettings,
   syncStepRecords,
   setManualDayStepCount,
 } = require("../../models/stepsTrackingModel");
@@ -68,9 +69,14 @@ exports.updateMyStepsGoalController = asyncHandler(async (req, res) => {
     throw new AppError("goalSteps is required", 400);
   }
 
+  const currentSettings = await getSettings(userId);
+  if (currentSettings.goalLocked) {
+    throw new AppError("Your coach has set this goal. Contact them to change it.", 403);
+  }
+
   let settings;
   try {
-    settings = await upsertSettings(userId, { goalSteps });
+    settings = await upsertSettings(userId, { goalSteps, lockGoal: false });
   } catch (err) {
     mapStepsError(err);
   }

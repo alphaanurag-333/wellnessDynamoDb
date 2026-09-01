@@ -25,6 +25,7 @@ import {
   deleteUserMealLog,
   updateUserMealTrackingMode,
   updateUserWaterGoal,
+  unlockUserWaterGoal,
   analyzeUserMealLog,
 } from "../../api/mealTrackingApi.js";
 import { updateUserDietPlanEnabled } from "../../api/dietPlanCatalogApi.js";
@@ -480,7 +481,21 @@ function WaterChartCard({ chart, goal, todayDay }) {
   );
 }
 
-function WaterGoalBar({ goal, editing, draftGoal, onStartEdit, onCancel, onSave, onDraftChange, canEdit, saving }) {
+function WaterGoalBar({
+  goal,
+  editing,
+  draftGoal,
+  onStartEdit,
+  onCancel,
+  onSave,
+  onDraftChange,
+  canEdit,
+  saving,
+  goalLocked,
+  clientCanEditGoal,
+  onAllowClientEdit,
+  unlockBusy,
+}) {
   return (
     <div className="ua-cp-food-water-goal">
       {editing ? (
@@ -500,12 +515,28 @@ function WaterGoalBar({ goal, editing, draftGoal, onStartEdit, onCancel, onSave,
           <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" disabled={saving} onClick={onSave}>
             {saving ? "Saving…" : "Save"}
           </button>
+          <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--locked">App editing locked</span>
         </>
       ) : (
         <>
           <span className="ua-cp-food-water-goal__text">Goal <strong>{goal}</strong> glasses / day</span>
           {canEdit ? (
             <button type="button" className="ua-cp-food-water-goal__set" onClick={onStartEdit}>Set target</button>
+          ) : null}
+          {goalLocked ? (
+            <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--locked">App editing locked</span>
+          ) : clientCanEditGoal ? (
+            <span className="ua-cp-bms-sleep-goal__badge ua-cp-bms-sleep-goal__badge--ok">Client can set in app</span>
+          ) : null}
+          {canEdit && goalLocked ? (
+            <button
+              type="button"
+              className="ua-cp-food-water-goal__set"
+              disabled={unlockBusy}
+              onClick={onAllowClientEdit}
+            >
+              {unlockBusy ? "Updating…" : "Allow client to edit"}
+            </button>
           ) : null}
         </>
       )}
@@ -529,6 +560,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [waterGoalEditing, setWaterGoalEditing] = useState(false);
   const [waterGoalDraft, setWaterGoalDraft] = useState(8);
   const [waterGoalSaving, setWaterGoalSaving] = useState(false);
+  const [waterGoalLocked, setWaterGoalLocked] = useState(false);
+  const [waterGoalUnlockBusy, setWaterGoalUnlockBusy] = useState(false);
   const [selectedDate, setSelectedDate] = useState(today);
   const [waterRange, setWaterRange] = useState(() => defaultWaterRange(today));
   const [macroTargets, setMacroTargets] = useState(() => macroTargetsFromTdee(0, 0));
@@ -565,6 +598,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setWaterRange(defaultWaterRange(today));
     setPhotoMeal(null);
     setWaterHistory(null);
+    setWaterGoalLocked(false);
     setMacroTargets(macroTargetsFromTdee(0, 0));
     setMeals([]);
     jumpedToLatestRef.current = false;
@@ -674,6 +708,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
           setWaterGoal(goal);
           setWaterGoalDraft(goal);
         }
+        setWaterGoalLocked(Boolean(data?.settings?.goalLocked));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -887,12 +922,27 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       const saved = Number(result?.settings?.goalGlasses ?? result?.day?.goalGlasses ?? nextGoal);
       setWaterGoal(saved);
       setWaterGoalDraft(saved);
+      setWaterGoalLocked(Boolean(result?.settings?.goalLocked ?? true));
       setWaterGoalEditing(false);
-      onToast?.("Water intake goal updated");
+      onToast?.("Water intake goal updated · app editing locked");
     } catch (err) {
       onToast?.(err?.message || "Failed to update water goal");
     } finally {
       setWaterGoalSaving(false);
+    }
+  }
+
+  async function allowClientWaterGoalEdit() {
+    if (!live || waterGoalUnlockBusy) return;
+    setWaterGoalUnlockBusy(true);
+    try {
+      const result = await unlockUserWaterGoal(userId);
+      setWaterGoalLocked(Boolean(result?.settings?.goalLocked));
+      onToast?.("Client can now edit their water goal in the app");
+    } catch (err) {
+      onToast?.(err?.message || "Failed to allow client editing");
+    } finally {
+      setWaterGoalUnlockBusy(false);
     }
   }
 
@@ -1030,6 +1080,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
               draftGoal={waterGoalDraft}
               canEdit={canEdit}
               saving={waterGoalSaving}
+              goalLocked={waterGoalLocked}
+              clientCanEditGoal={!waterGoalLocked}
+              unlockBusy={waterGoalUnlockBusy}
+              onAllowClientEdit={allowClientWaterGoalEdit}
               onStartEdit={() => { setWaterGoalDraft(waterGoal); setWaterGoalEditing(true); }}
               onCancel={() => { setWaterGoalEditing(false); setWaterGoalDraft(waterGoal); }}
               onSave={saveWaterGoal}

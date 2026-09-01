@@ -11,6 +11,7 @@ const { docClient } = require("../config/db");
 
 const TABLE = "CoachAssignedWellnessPrescription";
 const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach", "admin"]);
+const REVIEW_STATUSES = new Set(["active", "cancelled"]);
 /** WC may edit & re-publish the current assignment within this window of createdAt. */
 const PRESCRIPTION_EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
@@ -89,18 +90,80 @@ function normalizeSourcePrescriptionIds(ids) {
   return [...new Set(ids.map((id) => String(id || "").trim()).filter(Boolean))];
 }
 
-function toCoachAssignedWellnessPrescriptionPublic(item) {
+function normalizeReviewStatus(value) {
+  const next = String(value || "active").trim().toLowerCase();
+  return REVIEW_STATUSES.has(next) ? next : "active";
+}
+
+function groupItemsByTitle(items) {
+  const sections = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    const text = String(item?.text || "").trim();
+    if (!text) continue;
+    const prescriptionId = String(item?.prescriptionId || "").trim();
+    const titleHint = String(item?.title || "").trim();
+    const last = sections[sections.length - 1];
+    const sameGroup =
+      last &&
+      String(last.prescriptionId || "") === prescriptionId &&
+      (!titleHint || last.title === titleHint);
+    if (sameGroup) {
+      last.points.push(text);
+      continue;
+    }
+    sections.push({
+      prescriptionId: prescriptionId || null,
+      title: titleHint || (prescriptionId ? prescriptionId : "Custom protocol"),
+      points: [text],
+    });
+  }
+  return sections;
+}
+
+function buildReviewSummary(items) {
+  const sections = groupItemsByTitle(items);
+  if (!sections.length) return "Wellness prescription";
+  const titles = sections.map((section) => section.title).filter(Boolean);
+  const pointCount = sections.reduce((sum, section) => sum + section.points.length, 0);
+  const titlePart = titles.length ? titles.join(" · ") : "Wellness prescription";
+  return pointCount > 0 ? `${titlePart} — ${pointCount} points` : titlePart;
+}
+
+function getReviewAt(assignment) {
+  if (!assignment) return null;
+  const createdAt = assignment.createdAt || null;
+  const updatedAt = assignment.updatedAt || createdAt;
+  if (!createdAt) return updatedAt;
+  if (!updatedAt) return createdAt;
+  return updatedAt > createdAt ? updatedAt : createdAt;
+}
+
+function getLatestActiveReviewAt(assignments) {
+  const list = Array.isArray(assignments) ? assignments : [];
+  let latest = null;
+  for (const row of list) {
+    if (normalizeReviewStatus(row?.reviewStatus) !== "active") continue;
+    const reviewAt = getReviewAt(row);
+    if (!reviewAt) continue;
+    if (!latest || reviewAt > latest) latest = reviewAt;
+  }
+  return latest;
+}
+
+function toCoachAssignedWellnessPrescriptionPublic(item, extras = {}) {
   const row = withLegacyId(item);
   if (!row) return null;
   const editableUntil = getPrescriptionEditDeadline(row.createdAt);
   const canEdit = isWithinPrescriptionEditWindow(row.createdAt);
+  const reviewStatus = normalizeReviewStatus(row.reviewStatus);
+  const items = Array.isArray(row.items) ? row.items : [];
   return {
     id: row.id,
     _id: row._id,
     userId: row.userId,
     coachId: row.coachId,
     date: row.date,
-    items: Array.isArray(row.items) ? row.items : [],
+    items,
     sourcePrescriptionIds: Array.isArray(row.sourcePrescriptionIds)
       ? row.sourcePrescriptionIds
       : [],
@@ -108,8 +171,14 @@ function toCoachAssignedWellnessPrescriptionPublic(item) {
     createdById: row.createdById,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    reviewStatus,
+    cancelledAt: row.cancelledAt || null,
+    cancelledById: row.cancelledById || null,
+    reviewAt: getReviewAt(row),
+    summary: buildReviewSummary(items),
     editableUntil,
     canEdit,
+    ...extras,
   };
 }
 
@@ -139,6 +208,9 @@ async function createCoachAssignedWellnessPrescription({
     sourcePrescriptionIds: normalizeSourcePrescriptionIds(sourcePrescriptionIds),
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
+    reviewStatus: "active",
+    cancelledAt: null,
+    cancelledById: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -258,6 +330,43 @@ async function listCoachAssignedWellnessPrescriptionsByUserId(userId) {
     .filter(Boolean);
 }
 
+async function cancelCoachAssignedWellnessPrescriptionReview(id, { cancelledById } = {}) {
+  const assignmentId = String(id || "").trim();
+  const actorId = String(cancelledById || "").trim();
+  if (!assignmentId) throw new Error("id is required");
+  if (!actorId) throw new Error("cancelledById is required");
+
+  const existing = await getCoachAssignedWellnessPrescriptionRecordById(assignmentId);
+  if (!existing) {
+    const err = new Error("Assignment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (normalizeReviewStatus(existing.reviewStatus) === "cancelled") {
+    return toCoachAssignedWellnessPrescriptionPublic(existing);
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: assignmentId },
+      UpdateExpression:
+        "SET reviewStatus = :reviewStatus, cancelledAt = :cancelledAt, cancelledById = :cancelledById, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":reviewStatus": "cancelled",
+        ":cancelledAt": now,
+        ":cancelledById": actorId,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toCoachAssignedWellnessPrescriptionPublic(Attributes);
+}
+
 async function deleteCoachAssignedWellnessPrescription(id) {
   const record = await getCoachAssignedWellnessPrescriptionRecordById(id);
   if (!record) {
@@ -310,12 +419,17 @@ module.exports = {
   getCoachAssignedWellnessPrescriptionById,
   getCoachAssignedWellnessPrescriptionRecordById,
   updateCoachAssignedWellnessPrescription,
+  cancelCoachAssignedWellnessPrescriptionReview,
   listCoachAssignedWellnessPrescriptionsByUserId,
   deleteCoachAssignedWellnessPrescription,
   isWellnessPrescriptionCatalogReferenced,
   toCoachAssignedWellnessPrescriptionPublic,
   isWithinPrescriptionEditWindow,
   getPrescriptionEditDeadline,
+  buildReviewSummary,
+  getReviewAt,
+  getLatestActiveReviewAt,
   normalizeDate,
   normalizeCreatedByRole,
+  normalizeReviewStatus,
 };

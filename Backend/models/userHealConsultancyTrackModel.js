@@ -223,6 +223,11 @@ async function findActiveHealConsultancyTrackByUserId(userId) {
   return result.items.find((item) => isActiveTrackStatus(item.status)) || null;
 }
 
+async function findScheduledHealConsultancyTrackByUserId(userId) {
+  const result = await listHealConsultancyTracksByUserId(userId, { page: 1, limit: 50 });
+  return result.items.find((item) => String(item.status || "").toLowerCase() === "scheduled") || null;
+}
+
 async function updateHealConsultancyTrack(id, updates) {
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
@@ -287,6 +292,7 @@ module.exports = {
   listHealConsultancyTracksByUserId,
   listHealConsultancyTracksByParentCoachId,
   findActiveHealConsultancyTrackByUserId,
+  findScheduledHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   deleteHealConsultancyTrack,
   resolveRequestedSlots,

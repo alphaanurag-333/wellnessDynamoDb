@@ -4,12 +4,18 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   createCoachAssignedWellnessPrescription,
   updateCoachAssignedWellnessPrescription,
-  listCoachAssignedWellnessPrescriptionsByUserId,
+  cancelCoachAssignedWellnessPrescriptionReview,
   deleteCoachAssignedWellnessPrescription,
+  toCoachAssignedWellnessPrescriptionPublic,
 } = require("../../models/coachAssignedWellnessPrescriptionModel");
 const {
   dispatchWellnessPrescriptionAssignedNotification,
 } = require("../../services/notificationDispatchService");
+const {
+  listEnrichedWellnessPrescriptionsForUser,
+  syncUserLastReviewedAt,
+  enrichAssignmentsWithReviewMeta,
+} = require("../../services/wellnessPrescriptionReviewService");
 const {
   readUserIdParam,
   readAssignmentIdParam,
@@ -26,6 +32,15 @@ const {
   buildAssignmentItems,
 } = require("../helpers/wellnessPrescriptionControllerHelpers");
 
+function mapPrescriptionListResponse(assignments) {
+  const list = Array.isArray(assignments) ? assignments : [];
+  return {
+    assignments: list,
+    recommended: list[0] || null,
+    history: list.length > 1 ? list.slice(1) : [],
+  };
+}
+
 exports.listCoachUserWellnessPrescriptionsController = asyncHandler(async (req, res) => {
   const actingCoachId = req.auth?.sub;
   if (!actingCoachId) throw new AppError("Unauthorized", 401);
@@ -35,14 +50,12 @@ exports.listCoachUserWellnessPrescriptionsController = asyncHandler(async (req, 
   await assertStaffCanAccessUser(req, user);
   assertHealTierUser(user);
 
-  const assignments = await listCoachAssignedWellnessPrescriptionsByUserId(userId);
+  const assignments = await listEnrichedWellnessPrescriptionsForUser(userId, user);
 
   return res.status(200).json({
     status: true,
     message: "Wellness prescriptions fetched successfully",
-    assignments,
-    recommended: assignments[0] || null,
-    history: assignments.length > 1 ? assignments.slice(1) : [],
+    ...mapPrescriptionListResponse(assignments),
   });
 });
 
@@ -84,6 +97,9 @@ exports.createCoachUserWellnessPrescriptionController = asyncHandler(async (req,
     handleValidationError(err);
   }
 
+  await syncUserLastReviewedAt(userId);
+  const [enrichedAssignment] = await enrichAssignmentsWithReviewMeta([assignment], user);
+
   const coachName = coach?.name || "Your coach";
   dispatchWellnessPrescriptionAssignedNotification({
     userId,
@@ -96,7 +112,7 @@ exports.createCoachUserWellnessPrescriptionController = asyncHandler(async (req,
   return res.status(201).json({
     status: true,
     message: "Wellness prescription assigned successfully",
-    assignment,
+    assignment: enrichedAssignment || toCoachAssignedWellnessPrescriptionPublic(assignment),
   });
 });
 
@@ -138,6 +154,9 @@ exports.updateCoachUserWellnessPrescriptionController = asyncHandler(async (req,
     handleValidationError(err);
   }
 
+  await syncUserLastReviewedAt(userId);
+  const [enrichedAssignment] = await enrichAssignmentsWithReviewMeta([assignment], user);
+
   const coachName = resolveStaffActor(req).displayName || "Your coach";
   dispatchWellnessPrescriptionAssignedNotification({
     userId,
@@ -151,7 +170,40 @@ exports.updateCoachUserWellnessPrescriptionController = asyncHandler(async (req,
   return res.status(200).json({
     status: true,
     message: "Wellness prescription re-published successfully",
-    assignment,
+    assignment: enrichedAssignment || toCoachAssignedWellnessPrescriptionPublic(assignment),
+  });
+});
+
+exports.cancelCoachUserWellnessPrescriptionReviewController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const assignmentId = readAssignmentIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  await loadAssignmentForUser(assignmentId, userId);
+
+  let assignment;
+  try {
+    assignment = await cancelCoachAssignedWellnessPrescriptionReview(assignmentId, {
+      cancelledById: actingCoachId,
+    });
+  } catch (err) {
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Wellness prescription assignment not found", 404);
+    }
+    handleValidationError(err);
+  }
+
+  await syncUserLastReviewedAt(userId);
+  const [enrichedAssignment] = await enrichAssignmentsWithReviewMeta([assignment], user);
+
+  return res.status(200).json({
+    status: true,
+    message: "Review cancelled successfully",
+    assignment: enrichedAssignment || toCoachAssignedWellnessPrescriptionPublic(assignment),
   });
 });
 
@@ -174,6 +226,8 @@ exports.deleteCoachUserWellnessPrescriptionController = asyncHandler(async (req,
     }
     throw err;
   }
+
+  await syncUserLastReviewedAt(userId);
 
   return res.status(200).json({
     status: true,

@@ -166,6 +166,7 @@ exports.pushUserOnboardingReminderController = asyncHandler(async (req, res) => 
     userId: user.id,
     message,
     stepLabel,
+    stepKey: nextIncompleteStep || "",
     actorUserId: actor.id,
   });
 

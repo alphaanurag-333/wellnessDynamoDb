@@ -185,7 +185,7 @@ function GlanceHeader({ user, onOpenReview }) {
         </p>
       </div>
       <div className="ua-cp-glance-head__badges">
-        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="When have they met their wellness coach?">
+        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
           ⏱️ Last reviewed {user.lastReviewed || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
@@ -1515,7 +1515,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       ) : null}
 
       {reviewOpen ? (
-        <ReviewHistoryModal user={user} onClose={() => setReviewOpen(false)} />
+        <ReviewHistoryModal
+          user={user}
+          onClose={() => setReviewOpen(false)}
+          onNavigate={onNavigate}
+        />
       ) : null}
 
       {remindersOpen ? (

@@ -5,6 +5,7 @@ const {
   deleteHealConsultancyTrack,
   listHealConsultancyTracksByUserId,
   findActiveHealConsultancyTrackByUserId,
+  findScheduledHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   toPublicHealConsultancyTrack,
   resolveRequestedSlots,
@@ -36,6 +37,11 @@ const {
   dispatchCounsellingCancelledNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
+function shouldNotifyCounsellingCancellation(previousStatus) {
+  const status = String(previousStatus || "").toLowerCase().trim();
+  return Boolean(status) && status !== "cancelled" && status !== "completed";
+}
+
 exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res) => {
   const coachId = req.auth?.sub || req.user?.id;
   if (!coachId) throw new AppError("Unauthorized", 401);
@@ -48,6 +54,7 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
   const status = req.query.status || req.query.consultancyStatus || null;
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
+  const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
 
   return res.status(200).json({
     status: true,
@@ -55,6 +62,7 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
     data: {
       tracks: result.items.map(toPublicHealConsultancyTrack),
       activeTrack: toPublicHealConsultancyTrack(active),
+      scheduledTrack: toPublicHealConsultancyTrack(scheduled),
       pagination: result.pagination,
     },
   });
@@ -122,7 +130,7 @@ exports.updateCoachHealConsultancyTrackController = asyncHandler(async (req, res
     handleValidationError(err);
   }
 
-  if (updates.status === "cancelled" && existing.status !== "cancelled") {
+  if (updates.status === "cancelled" && shouldNotifyCounsellingCancellation(existing.status)) {
     dispatchCounsellingCancelledNotificationAsync({
       userId,
       trackId,
@@ -144,7 +152,7 @@ exports.deleteCoachHealConsultancyTrackController = asyncHandler(async (req, res
   const trackId = String(req.params.trackId || "").trim();
   const user = await loadHealUser(userId);
   await assertStaffCanAccessUser(req, user);
-  await loadTrackForUser(trackId, userId);
+  const existing = await loadTrackForUser(trackId, userId);
 
   try {
     await deleteHealConsultancyTrack(trackId);
@@ -153,6 +161,13 @@ exports.deleteCoachHealConsultancyTrackController = asyncHandler(async (req, res
       throw new AppError("Consultancy track not found", 404);
     }
     throw err;
+  }
+
+  if (shouldNotifyCounsellingCancellation(existing.status)) {
+    dispatchCounsellingCancelledNotificationAsync({
+      userId,
+      trackId,
+    });
   }
 
   return res.status(200).json({

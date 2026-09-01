@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { formatLongDate } from "../../api/usersApi.js";
 import {
   assignUserWellnessPrescription,
+  cancelUserWellnessPrescriptionReview,
   listActiveWellnessPrescriptionPool,
   listUserWellnessPrescriptions,
   republishUserWellnessPrescription,
@@ -10,6 +12,83 @@ import { sectionsSummary, totalPoints } from "../../data/prescriptionData.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
+
+function getModalRoot() {
+  return document.querySelector(".updated-admin .ua-cp-drawer")
+    || document.querySelector(".updated-admin");
+}
+
+function CancelReviewConfirmModal({
+  open,
+  entryTitle,
+  busy,
+  onClose,
+  onConfirm,
+}) {
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.key === "Escape" && !busy) onClose?.();
+    }
+    if (open) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [busy, open, onClose]);
+
+  if (!open) return null;
+
+  const overlay = (
+    <div
+      className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer"
+      onClick={busy ? undefined : onClose}
+      role="presentation"
+    >
+      <div
+        className="ua-cp-modal ua-cp-reflect-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="rx-cancel-review-title"
+      >
+        <p className="ua-cp-reflect-modal__eyebrow ua-cp-reflect-modal__eyebrow--danger">
+          Cancel review
+        </p>
+        <h3 id="rx-cancel-review-title" className="ua-cp-reflect-modal__title">
+          Cancel this coach review?
+        </h3>
+        <p className="ua-cp-reflect-modal__body">
+          {entryTitle ? (
+            <>
+              <strong>{entryTitle}</strong>
+              {" "}
+              will appear struck out in the client&apos;s review history. Their Wellness Prescription screen will stay unchanged.
+            </>
+          ) : (
+            "This review will appear struck out in the client's review history. Their Wellness Prescription screen will stay unchanged."
+          )}
+        </p>
+        <div className="ua-cp-reflect-modal__foot">
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--outline"
+            disabled={busy}
+            onClick={onClose}
+          >
+            Keep review
+          </button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-reflect-modal__confirm--danger"
+            disabled={busy}
+            onClick={onConfirm}
+          >
+            {busy ? "Cancelling…" : "Cancel review"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const root = getModalRoot();
+  return root ? createPortal(overlay, root) : overlay;
+}
 
 function todayIsoDate() {
   const d = new Date();
@@ -77,19 +156,23 @@ function formatEditWindowLabel(deadlineMs, nowMs = Date.now()) {
 function assignmentToHistoryEntry(assignment, { current = false, unsaved = false, user, sections } = {}) {
   const nextSections = cloneSections(sections || assignment?.sections || []);
   const dateValue = assignment?.date || assignment?.createdAt || "";
+  const reviewCancelled = String(assignment?.reviewStatus || "active").toLowerCase() === "cancelled";
   return {
     id: assignment?.id || "current-draft",
+    assignmentId: assignment?.id || null,
     date: dateValue,
     dateLabel: unsaved && current
       ? "Not saved yet"
       : formatLongDate(dateValue) || dateValue || "—",
     status: current ? "current" : "replaced",
     unsaved,
+    reviewCancelled,
     title: sectionsSummary(nextSections) || "Wellness prescription",
     points: totalPoints(nextSections),
     author: authorLabel(assignment, user),
     sections: nextSections,
-    canRestore: !current,
+    canRestore: !current && !reviewCancelled,
+    canCancelReview: Boolean(assignment?.id) && !unsaved && !reviewCancelled,
   };
 }
 
@@ -182,9 +265,9 @@ function HistoryDetail({ sections }) {
   );
 }
 
-function HistoryRow({ entry, expanded, onToggle, onRestore, canRestore }) {
+function HistoryRow({ entry, expanded, onToggle, onRestore, onCancelReview, canRestore, cancelling }) {
   return (
-    <div className={`ua-cp-rx-history__item${expanded ? " ua-cp-rx-history__item--open" : ""}`}>
+    <div className={`ua-cp-rx-history__item${expanded ? " ua-cp-rx-history__item--open" : ""}${entry.reviewCancelled ? " ua-cp-rx-history__item--cancelled" : ""}`}>
       <div className="ua-cp-rx-history__row">
         <span className="ua-cp-rx-history__date">{entry.dateLabel}</span>
         <div className="ua-cp-rx-history__badges">
@@ -192,6 +275,8 @@ function HistoryRow({ entry, expanded, onToggle, onRestore, canRestore }) {
             <span className="ua-cp-rx-badge ua-cp-rx-badge--unsaved">CURRENT · UNSAVED</span>
           ) : entry.status === "current" ? (
             <span className="ua-cp-rx-badge ua-cp-rx-badge--current">CURRENT</span>
+          ) : entry.reviewCancelled ? (
+            <span className="ua-cp-rx-badge ua-cp-rx-badge--replaced">REVIEW CANCELLED</span>
           ) : (
             <span className="ua-cp-rx-badge ua-cp-rx-badge--replaced">REPLACED</span>
           )}
@@ -204,9 +289,20 @@ function HistoryRow({ entry, expanded, onToggle, onRestore, canRestore }) {
           </button>
           {entry.canRestore && canRestore ? (
             <button type="button" className="ua-cp-rx-btn ua-cp-rx-btn--restore" onClick={onRestore}>Restore</button>
-          ) : (
+          ) : null}
+          {entry.canCancelReview ? (
+            <button
+              type="button"
+              className="ua-cp-rx-btn ua-cp-rx-btn--cancel"
+              onClick={onCancelReview}
+              disabled={cancelling}
+            >
+              {cancelling ? "Cancelling…" : "Cancel review"}
+            </button>
+          ) : null}
+          {!entry.canRestore && !entry.canCancelReview ? (
             <span className="ua-cp-rx-history__action-spacer" aria-hidden="true" />
-          )}
+          ) : null}
         </div>
       </div>
       {expanded ? <HistoryDetail sections={entry.sections} /> : null}
@@ -233,6 +329,8 @@ export function PrescriptionSection({ user, onToast }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [cancellingId, setCancellingId] = useState("");
+  const [cancelConfirmEntry, setCancelConfirmEntry] = useState(null);
 
   const dirty = !sectionsEqual(sections, savedSections);
   const hasPoints = sections.some((section) => section.points.some((point) => String(point).trim()));
@@ -343,6 +441,29 @@ export function PrescriptionSection({ user, onToast }) {
       id: `${section.id}-${Date.now()}`,
     })));
     onToast?.(`Restored ${entry.title}`);
+  }
+
+  async function cancelReviewHistory(entry) {
+    const assignmentId = String(entry?.assignmentId || entry?.id || "").trim();
+    if (!assignmentId || assignmentId === "current-draft") return;
+
+    setCancellingId(assignmentId);
+    try {
+      await cancelUserWellnessPrescriptionReview(userId, assignmentId);
+      onToast?.("Review cancelled");
+      setCancelConfirmEntry(null);
+      await load();
+    } catch (err) {
+      onToast?.(err?.message || "Could not cancel review");
+    } finally {
+      setCancellingId("");
+    }
+  }
+
+  function openCancelReviewConfirm(entry) {
+    const assignmentId = String(entry?.assignmentId || entry?.id || "").trim();
+    if (!assignmentId || assignmentId === "current-draft") return;
+    setCancelConfirmEntry(entry);
   }
 
   async function handleSave() {
@@ -508,11 +629,25 @@ export function PrescriptionSection({ user, onToast }) {
               expanded={expandedHistoryId === entry.id}
               onToggle={() => setExpandedHistoryId((id) => (id === entry.id ? null : entry.id))}
               onRestore={() => restoreHistory(entry)}
+              onCancelReview={() => openCancelReviewConfirm(entry)}
               canRestore={editorUnlocked && !saving}
+              cancelling={cancellingId === entry.assignmentId}
             />
           ))}
         </div>
       </div>
+
+      <CancelReviewConfirmModal
+        open={Boolean(cancelConfirmEntry)}
+        entryTitle={cancelConfirmEntry?.title || ""}
+        busy={Boolean(cancellingId)}
+        onClose={() => {
+          if (!cancellingId) setCancelConfirmEntry(null);
+        }}
+        onConfirm={() => {
+          if (cancelConfirmEntry) void cancelReviewHistory(cancelConfirmEntry);
+        }}
+      />
     </div>
   );
 }

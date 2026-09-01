@@ -56,10 +56,16 @@ function normalizeGlassCount(value) {
 }
 
 function formatSettings(item) {
+  const goalSetBy = item?.goalSetBy === "staff" || item?.goalSetBy === "user"
+    ? item.goalSetBy
+    : null;
   return {
     goalGlasses: Number(item?.goalGlasses ?? DEFAULT_GOAL_GLASSES),
     glassSizeMl: Number(item?.glassSizeMl ?? DEFAULT_GLASS_SIZE_ML),
     updatedAt: item?.updatedAt ?? null,
+    goalLocked: Boolean(item?.goalLocked),
+    goalSetBy,
+    goalSetAt: item?.goalSetAt ?? null,
   };
 }
 
@@ -95,18 +101,52 @@ async function getSettings(userId) {
   return formatSettings(Item);
 }
 
-async function upsertSettings(userId, { goalGlasses }) {
+async function upsertSettings(userId, { goalGlasses, lockGoal } = {}) {
   const now = new Date().toISOString();
   const normalizedGoal = normalizeGoalGlasses(goalGlasses);
+  let updateExpression =
+    "SET goalGlasses = :goalGlasses, glassSizeMl = if_not_exists(glassSizeMl, :glassSizeMl), updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)";
+  const expressionAttributeValues = {
+    ":goalGlasses": normalizedGoal,
+    ":glassSizeMl": DEFAULT_GLASS_SIZE_ML,
+    ":updatedAt": now,
+    ":createdAt": now,
+  };
+
+  if (lockGoal === true) {
+    updateExpression += ", goalLocked = :goalLocked, goalSetBy = :goalSetBy, goalSetAt = :goalSetAt";
+    expressionAttributeValues[":goalLocked"] = true;
+    expressionAttributeValues[":goalSetBy"] = "staff";
+    expressionAttributeValues[":goalSetAt"] = now;
+  } else if (lockGoal === false) {
+    updateExpression += ", goalLocked = :goalLocked, goalSetBy = :goalSetBy, goalSetAt = :goalSetAt";
+    expressionAttributeValues[":goalLocked"] = false;
+    expressionAttributeValues[":goalSetBy"] = "user";
+    expressionAttributeValues[":goalSetAt"] = now;
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { userId, recordKey: SETTINGS_KEY },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: "ALL_NEW",
+    })
+  );
+  return formatSettings(Attributes);
+}
+
+async function unlockGoalSettings(userId) {
+  const now = new Date().toISOString();
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { userId, recordKey: SETTINGS_KEY },
       UpdateExpression:
-        "SET goalGlasses = :goalGlasses, glassSizeMl = if_not_exists(glassSizeMl, :glassSizeMl), updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)",
+        "SET goalLocked = :goalLocked, updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)",
       ExpressionAttributeValues: {
-        ":goalGlasses": normalizedGoal,
-        ":glassSizeMl": DEFAULT_GLASS_SIZE_ML,
+        ":goalLocked": false,
         ":updatedAt": now,
         ":createdAt": now,
       },
@@ -117,7 +157,7 @@ async function upsertSettings(userId, { goalGlasses }) {
 }
 
 /** Set goal for a specific date; preserves glass count. Updates global default only for today. */
-async function setDayGoal(userId, date, goalGlasses) {
+async function setDayGoal(userId, date, goalGlasses, { lockGoal } = {}) {
   const normalizedGoal = normalizeGoalGlasses(goalGlasses);
   const existing = await getDayLog(userId, date);
   const glassCount = Number(existing?.glassCount ?? 0);
@@ -128,7 +168,7 @@ async function setDayGoal(userId, date, goalGlasses) {
     explicitGoal: true,
   });
   if (date === todayDateOnly()) {
-    await upsertSettings(userId, { goalGlasses: normalizedGoal });
+    await upsertSettings(userId, { goalGlasses: normalizedGoal, lockGoal });
   }
   return { settings: await getSettings(userId), day: dayLog };
 }
@@ -292,6 +332,7 @@ module.exports = {
   normalizeGlassCount,
   getSettings,
   upsertSettings,
+  unlockGoalSettings,
   setDayGoal,
   getDayLog,
   setDayGlassCount,

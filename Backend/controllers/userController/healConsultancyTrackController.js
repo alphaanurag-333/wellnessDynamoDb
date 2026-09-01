@@ -4,6 +4,7 @@ const {
   createHealConsultancyTrack,
   listHealConsultancyTracksByUserId,
   findActiveHealConsultancyTrackByUserId,
+  findScheduledHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
   toUserFacingHealConsultancyTrack,
   mirrorRequestedSlots,
@@ -70,6 +71,7 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
   const status = req.query.status || req.query.consultancyStatus || null;
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
+  const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
 
   return res.status(200).json({
     status: true,
@@ -77,6 +79,7 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
     data: {
       tracks: result.items.map(toUserFacingHealConsultancyTrack),
       activeTrack: toUserFacingHealConsultancyTrack(active),
+      scheduledTrack: toUserFacingHealConsultancyTrack(scheduled),
       pagination: result.pagination,
     },
   });
