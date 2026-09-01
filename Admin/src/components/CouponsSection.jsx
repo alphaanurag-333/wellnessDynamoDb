@@ -17,9 +17,9 @@ const EMPTY = {
   appliesTo: ["challenge"],
 };
 
-function Panel({ title, subtitle, actions, children }) {
+function Panel({ title, subtitle, actions, children, className = "" }) {
   return (
-    <section className="ua-cfg-panel">
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       <div className="ua-cfg-panel__head">
         <div className="ua-cfg-panel__copy">
           {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
@@ -117,6 +117,7 @@ export function CouponsSection({ onToast }) {
   return (
     <>
       <Panel
+        className="ua-cfg-cpn ua-cfg-faq-shell"
         title="Coupons"
         subtitle={
           loading
@@ -124,57 +125,48 @@ export function CouponsSection({ onToast }) {
             : `${items.length} coupon${items.length === 1 ? "" : "s"} · challenge checkout discounts`
         }
         actions={
-          formOpen ? null : (
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={openCreate}>
-              + Add New
-            </button>
-          )
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-faq-add"
+            disabled={saving || loading}
+            onClick={openCreate}
+          >
+            + Add coupon
+          </button>
         }
       >
         {formOpen ? (
-          <div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: 12,
-                marginBottom: 16,
-              }}
-            >
-              <div>
-                <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
-                  {editingId ? "Edit coupon" : "New coupon"}
-                </h4>
-                <p className="ua-cfg-panel__sub" style={{ marginTop: 4 }}>
-                  Challenge checkout coupons (percentage or fixed).
-                </p>
-              </div>
+          <section className="ua-cfg-faq-new ua-cfg-cpn-form">
+            <div className="ua-cfg-faq-new__head">
+              <h4 className="ua-cfg-faq-new__title">
+                <span aria-hidden="true">🎟</span> {editingId ? "Edit coupon" : "New coupon"}
+              </h4>
               <button
                 type="button"
-                className="ua-cfg-btn ua-cfg-btn--ghost"
+                className="ua-cfg-icon-btn"
+                aria-label="Close"
                 onClick={closeForm}
                 disabled={saving}
               >
-                Cancel
+                ×
               </button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <label>
+            <div className="ua-cfg-cpn-form__grid">
+              <label className="ua-cfg-cpn-field">
                 <span>Title</span>
                 <input
-                  className="ua-cfg-tc-field"
+                  className="ua-cfg-faq-new__question"
                   value={draft.title}
                   disabled={saving}
                   placeholder="e.g. Launch offer"
                   onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
                 />
               </label>
-              <label>
+              <label className="ua-cfg-cpn-field">
                 <span>Code</span>
                 <input
-                  className="ua-cfg-tc-field"
+                  className="ua-cfg-faq-new__question"
                   value={draft.couponCode}
                   disabled={saving}
                   placeholder="SAVE20"
@@ -183,7 +175,7 @@ export function CouponsSection({ onToast }) {
                   }
                 />
               </label>
-              <label>
+              <label className="ua-cfg-cpn-field">
                 <span>Type</span>
                 <CfgSelect
                   className="ua-cfg-tc-select"
@@ -196,10 +188,10 @@ export function CouponsSection({ onToast }) {
                   onChange={(discountType) => setDraft((p) => ({ ...p, discountType }))}
                 />
               </label>
-              <label>
+              <label className="ua-cfg-cpn-field">
                 <span>Value</span>
                 <input
-                  className="ua-cfg-tc-field"
+                  className="ua-cfg-faq-new__question"
                   inputMode="decimal"
                   value={draft.value}
                   disabled={saving}
@@ -209,7 +201,7 @@ export function CouponsSection({ onToast }) {
                   }
                 />
               </label>
-              <label>
+              <label className="ua-cfg-cpn-field">
                 <span>Status</span>
                 <CfgSelect
                   className="ua-cfg-tc-select"
@@ -224,76 +216,55 @@ export function CouponsSection({ onToast }) {
               </label>
             </div>
 
-            <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--outline"
-                onClick={closeForm}
-                disabled={saving}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="ua-cfg-btn ua-cfg-btn--primary"
-                disabled={saving}
-                onClick={save}
-              >
-                {saving ? "Saving…" : editingId ? "Update" : "Create"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            {items.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 0",
-                  borderBottom: "1px solid #f0f0f0",
-                }}
-              >
-                <div>
-                  <strong>{item.couponCode}</strong> — {item.title}
-                  <div className="ua-cfg-panel__sub">
-                    {item.discountType === "percentage" ? `${item.value}%` : `₹${item.value}`} ·{" "}
-                    {item.status}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--ghost"
-                    onClick={() => startEdit(item)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--outline"
-                    onClick={() => setDeleteId(item.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-            {!loading && !items.length ? (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>
-                <p className="ua-cfg-panel__sub" style={{ marginBottom: 12 }}>
-                  No coupons yet.
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--primary"
+              disabled={saving}
+              onClick={save}
+            >
+              {saving ? "Saving…" : editingId ? "Save" : "Add coupon"}
+            </button>
+          </section>
+        ) : null}
+
+        <div className="ua-cfg-faq-list ua-cfg-cpn-list">
+          {items.map((item) => (
+            <article key={item.id} className="ua-cfg-cpn-list__item">
+              <div className="ua-cfg-cpn-list__copy">
+                <p className="ua-cfg-cpn-list__title">
+                  <strong>{item.couponCode}</strong>
+                  <span> — {item.title}</span>
                 </p>
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={openCreate}>
-                  + Add New
+                <p className="ua-cfg-panel__sub ua-cfg-cpn-list__meta">
+                  {item.discountType === "percentage" ? `${item.value}%` : `₹${item.value}`} ·{" "}
+                  {item.status}
+                </p>
+              </div>
+              <div className="ua-cfg-cpn-list__actions">
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                  onClick={() => startEdit(item)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+                  aria-label={`Delete ${item.couponCode}`}
+                  onClick={() => setDeleteId(item.id)}
+                >
+                  ×
                 </button>
               </div>
-            ) : null}
-          </div>
-        )}
+            </article>
+          ))}
+          {!loading && !items.length && !formOpen ? (
+            <div className="ua-cfg-cpn-empty">
+              <p className="ua-cfg-panel__sub">No coupons yet.</p>
+            </div>
+          ) : null}
+        </div>
       </Panel>
 
       <ConfirmDialog

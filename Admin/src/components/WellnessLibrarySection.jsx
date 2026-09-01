@@ -116,9 +116,9 @@ function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEd
   const embed = type === "ytlink" ? youtubeEmbedUrl(entry.ytLink) : "";
   const mediaSrc = isVideo || isAudio ? entry.fileUrl : "";
   const photo = entry.thumbnail;
-  const hasPlayer = Boolean(embed || (isVideo && mediaSrc));
-  const title = entry.title || `${itemNoun} video`;
-  const showCover = Boolean(photo) && (!hasPlayer || !playing);
+  const hasPlayer = Boolean(embed || ((isVideo || isAudio) && mediaSrc));
+  const title = entry.title || `${itemNoun} ${isAudio ? "audio" : "video"}`;
+  const showCover = Boolean(photo) && (isAudio || !playing);
   const mediaStyle = coverAspect ? { aspectRatio: coverAspect } : undefined;
 
   return (
@@ -145,36 +145,53 @@ function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEd
         </div>
         <div className="ua-cfg-recipes-view__body">
           {hasPlayer ? (
-            <div className={`ua-cfg-rc-player${showCover ? " has-cover" : ""}`} style={mediaStyle}>
-              {showCover ? (
-                <button
-                  type="button"
-                  className="ua-cfg-rc-player__cover"
-                  onClick={() => setPlaying(true)}
-                  aria-label={`Play ${title}`}
-                >
-                  <img src={photo} alt="" />
-                  <span className="ua-cfg-rc-player__play" aria-hidden="true">▶</span>
-                </button>
-              ) : null}
-              {playing || !photo ? (
-                embed ? (
-                  <iframe
-                    title={title}
-                    src={playing && photo ? withYoutubeAutoplay(embed) : embed}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                ) : (
-                  <video
-                    src={mediaSrc}
-                    poster={photo || undefined}
-                    controls
-                    playsInline
-                    autoPlay={playing}
-                    preload={photo ? "none" : "metadata"}
-                  />
-                )
+            <div className={`ua-cfg-lib-view__stage${isAudio ? " is-audio" : ""}${playing && isAudio ? " is-playing" : ""}`}>
+              <div className={`ua-cfg-rc-player${showCover ? " has-cover" : ""}${isAudio ? " is-audio" : ""}`} style={mediaStyle}>
+                {showCover ? (
+                  playing && isAudio ? (
+                    <div className="ua-cfg-rc-player__cover">
+                      <img src={photo} alt="" />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ua-cfg-rc-player__cover"
+                      onClick={() => setPlaying(true)}
+                      aria-label={`Play ${title}`}
+                    >
+                      <img src={photo} alt="" />
+                      <span className="ua-cfg-rc-player__play" aria-hidden="true">▶</span>
+                    </button>
+                  )
+                ) : null}
+                {!isAudio && (playing || !photo) ? (
+                  embed ? (
+                    <iframe
+                      title={title}
+                      src={playing && photo ? withYoutubeAutoplay(embed) : embed}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <video
+                      src={mediaSrc}
+                      poster={photo || undefined}
+                      controls
+                      playsInline
+                      autoPlay={playing}
+                      preload={photo ? "none" : "metadata"}
+                    />
+                  )
+                ) : null}
+              </div>
+              {isAudio && (playing || !photo) && mediaSrc ? (
+                <audio
+                  className="ua-cfg-lib-view__audio"
+                  src={mediaSrc}
+                  controls
+                  autoPlay={playing}
+                  preload="metadata"
+                />
               ) : null}
             </div>
           ) : photo ? (
@@ -186,9 +203,6 @@ function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEd
               <div className="ua-cfg-rc-view__media-empty">No cover</div>
             </div>
           )}
-          {isAudio && mediaSrc ? (
-            <audio className="ua-cfg-rc-view__player ua-cfg-lib-view__audio" src={mediaSrc} controls preload="metadata" />
-          ) : null}
           <dl className="ua-cfg-rc-view__meta">
             <div>
               <dt>{isAudio ? "Audio" : isVideo ? "Video" : "YouTube"}</dt>

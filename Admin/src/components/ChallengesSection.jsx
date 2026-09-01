@@ -231,9 +231,9 @@ function ChallengeForm({
   };
 
   return (
-    <div className="ua-cfg-ch-form">
-      <label className={`ua-cfg-ch-field${errors.title ? " is-invalid" : ""}`}>
-        <span className="ua-cfg-ch-field__label">
+    <div className="ua-cfg-chal-form">
+      <label className={`ua-cfg-chal-field${errors.title ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-chal-field__label">
           <span>Title *</span>
           <CharHint value={draft.title} max={TITLE_MAX_LEN} />
         </span>
@@ -246,13 +246,13 @@ function ChallengeForm({
           aria-invalid={Boolean(errors.title)}
           onChange={(e) => patch({ title: clampText(e.target.value, TITLE_MAX_LEN) })}
         />
-        {errors.title ? <span className="ua-cfg-ch-field__error">{errors.title}</span> : (
-          <span className="ua-cfg-ch-field__hint">{TITLE_MIN_LEN}–{TITLE_MAX_LEN} characters</span>
+        {errors.title ? <span className="ua-cfg-chal-field__error">{errors.title}</span> : (
+          <span className="ua-cfg-chal-field__hint">{TITLE_MIN_LEN}–{TITLE_MAX_LEN} characters</span>
         )}
       </label>
 
-      <label className={`ua-cfg-ch-field${errors.description ? " is-invalid" : ""}`}>
-        <span className="ua-cfg-ch-field__label">
+      <label className={`ua-cfg-chal-field${errors.description ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-chal-field__label">
           <span>Description *</span>
           <CharHint value={draft.description} max={DESCRIPTION_MAX_LEN} />
         </span>
@@ -267,14 +267,14 @@ function ChallengeForm({
           onChange={(e) => patch({ description: clampText(e.target.value, DESCRIPTION_MAX_LEN) })}
         />
         {errors.description ? (
-          <span className="ua-cfg-ch-field__error">{errors.description}</span>
+          <span className="ua-cfg-chal-field__error">{errors.description}</span>
         ) : (
-          <span className="ua-cfg-ch-field__hint">{DESCRIPTION_MIN_LEN}–{DESCRIPTION_MAX_LEN} characters</span>
+          <span className="ua-cfg-chal-field__hint">{DESCRIPTION_MIN_LEN}–{DESCRIPTION_MAX_LEN} characters</span>
         )}
       </label>
 
-      <div className="ua-cfg-ch-grid ua-cfg-ch-grid--3">
-        <label className={`ua-cfg-ch-field${errors.price ? " is-invalid" : ""}`}>
+      <div className="ua-cfg-chal-grid ua-cfg-chal-grid--3">
+        <label className={`ua-cfg-chal-field${errors.price ? " is-invalid" : ""}`}>
           <span>Price (₹) *</span>
           <input
             className="ua-cfg-tc-field"
@@ -285,11 +285,11 @@ function ChallengeForm({
             aria-invalid={Boolean(errors.price)}
             onChange={(e) => patch({ price: sanitizePriceInput(e.target.value) })}
           />
-          {errors.price ? <span className="ua-cfg-ch-field__error">{errors.price}</span> : (
-            <span className="ua-cfg-ch-field__hint">Greater than 0, up to ₹{PRICE_MAX.toLocaleString("en-IN")}</span>
+          {errors.price ? <span className="ua-cfg-chal-field__error">{errors.price}</span> : (
+            <span className="ua-cfg-chal-field__hint">Greater than 0, up to ₹{PRICE_MAX.toLocaleString("en-IN")}</span>
           )}
         </label>
-        <label className={`ua-cfg-ch-field${errors.startDate ? " is-invalid" : ""}`}>
+        <label className={`ua-cfg-chal-field${errors.startDate ? " is-invalid" : ""}`}>
           <span>Start date *</span>
           <input
             type="date"
@@ -301,9 +301,9 @@ function ChallengeForm({
             aria-invalid={Boolean(errors.startDate)}
             onChange={(e) => patch({ startDate: e.target.value })}
           />
-          {errors.startDate ? <span className="ua-cfg-ch-field__error">{errors.startDate}</span> : null}
+          {errors.startDate ? <span className="ua-cfg-chal-field__error">{errors.startDate}</span> : null}
         </label>
-        <label className={`ua-cfg-ch-field${errors.endDate ? " is-invalid" : ""}`}>
+        <label className={`ua-cfg-chal-field${errors.endDate ? " is-invalid" : ""}`}>
           <span>End date *</span>
           <input
             type="date"
@@ -315,12 +315,12 @@ function ChallengeForm({
             aria-invalid={Boolean(errors.endDate)}
             onChange={(e) => patch({ endDate: e.target.value })}
           />
-          {errors.endDate ? <span className="ua-cfg-ch-field__error">{errors.endDate}</span> : null}
+          {errors.endDate ? <span className="ua-cfg-chal-field__error">{errors.endDate}</span> : null}
         </label>
       </div>
 
-      <div className="ua-cfg-ch-grid ua-cfg-ch-grid--2">
-        <label className="ua-cfg-ch-field">
+      <div className="ua-cfg-chal-grid ua-cfg-chal-grid--2">
+        <label className="ua-cfg-chal-field">
           <span>Status</span>
           <CfgSelect
             className="ua-cfg-tc-select"
@@ -330,7 +330,7 @@ function ChallengeForm({
             onChange={(status) => patch({ status })}
           />
         </label>
-        <label className={`ua-cfg-ch-field${errors.maxGroupSize ? " is-invalid" : ""}`}>
+        <label className={`ua-cfg-chal-field${errors.maxGroupSize ? " is-invalid" : ""}`}>
           <span>Max group size *</span>
           <input
             className="ua-cfg-tc-field"
@@ -342,15 +342,15 @@ function ChallengeForm({
             onChange={(e) => patch({ maxGroupSize: sanitizeGroupSizeInput(e.target.value) })}
           />
           {errors.maxGroupSize ? (
-            <span className="ua-cfg-ch-field__error">{errors.maxGroupSize}</span>
+            <span className="ua-cfg-chal-field__error">{errors.maxGroupSize}</span>
           ) : (
-            <span className="ua-cfg-ch-field__hint">{GROUP_SIZE_MIN}–{GROUP_SIZE_MAX} people</span>
+            <span className="ua-cfg-chal-field__hint">{GROUP_SIZE_MIN}–{GROUP_SIZE_MAX} people</span>
           )}
         </label>
       </div>
 
-      <label className={`ua-cfg-ch-field${errors.whatsappMessageTemplate ? " is-invalid" : ""}`}>
-        <span className="ua-cfg-ch-field__label">
+      <label className={`ua-cfg-chal-field${errors.whatsappMessageTemplate ? " is-invalid" : ""}`}>
+        <span className="ua-cfg-chal-field__label">
           <span>WhatsApp message template</span>
           <CharHint value={draft.whatsappMessageTemplate} max={WHATSAPP_MAX_LEN} />
         </span>
@@ -365,22 +365,22 @@ function ChallengeForm({
           onChange={(e) => patch({ whatsappMessageTemplate: clampText(e.target.value, WHATSAPP_MAX_LEN) })}
         />
         {errors.whatsappMessageTemplate ? (
-          <span className="ua-cfg-ch-field__error">{errors.whatsappMessageTemplate}</span>
+          <span className="ua-cfg-chal-field__error">{errors.whatsappMessageTemplate}</span>
         ) : (
-          <span className="ua-cfg-ch-field__hint">Optional · placeholders {`{name}, {title}, {amount}, {ref}`} · max {WHATSAPP_MAX_LEN}</span>
+          <span className="ua-cfg-chal-field__hint">Optional · placeholders {`{name}, {title}, {amount}, {ref}`} · max {WHATSAPP_MAX_LEN}</span>
         )}
       </label>
 
-      <div className="ua-cfg-ch-field">
+      <div className="ua-cfg-chal-field">
         <span>Paid onboarding steps (free → temp paid only)</span>
-        <div className="ua-cfg-ch-steps">
+        <div className="ua-cfg-chal-steps">
           {Object.entries(ONBOARDING_STEP_LABELS).map(([key, label]) => {
             const on = (draft.onboardingStepKeys || []).includes(key);
             return (
               <button
                 key={key}
                 type="button"
-                className={`ua-cfg-ch-chip${on ? " is-on" : ""}`}
+                className={`ua-cfg-chal-chip${on ? " is-on" : ""}`}
                 disabled={disabled}
                 onClick={() => toggleStep(key)}
               >
@@ -391,15 +391,15 @@ function ChallengeForm({
         </div>
       </div>
 
-      <div className={`ua-cfg-ch-field${errors.images ? " is-invalid" : ""}`}>
+      <div className={`ua-cfg-chal-field${errors.images ? " is-invalid" : ""}`}>
         <span>Images</span>
-        <div className="ua-cfg-ch-images">
+        <div className="ua-cfg-chal-images">
           {(draft.images || []).map((url) => (
-            <div key={url} className="ua-cfg-ch-thumb">
+            <div key={url} className="ua-cfg-chal-thumb">
               <img src={url} alt="" />
               <button
                 type="button"
-                className="ua-cfg-ch-thumb__remove"
+                className="ua-cfg-chal-thumb__remove"
                 disabled={disabled}
                 aria-label="Remove image"
                 onClick={() => removeExistingImage(url)}
@@ -408,11 +408,12 @@ function ChallengeForm({
               </button>
             </div>
           ))}
-          <label className={`ua-cfg-ch-uploader${disabled ? " is-disabled" : ""}`}>
+          <label className={`ua-cfg-chal-uploader${disabled ? " is-disabled" : ""}`}>
             <span>+</span>
             Add images
             <input
               type="file"
+              className="ua-cfg-chal-uploader__input"
               accept="image/*"
               multiple
               hidden
@@ -427,11 +428,11 @@ function ChallengeForm({
           </label>
         </div>
         {errors.images ? (
-          <span className="ua-cfg-ch-field__error">{errors.images}</span>
+          <span className="ua-cfg-chal-field__error">{errors.images}</span>
         ) : imageFiles.length ? (
           <p className="ua-cfg-panel__sub">{imageFiles.length} new file(s) ready to upload</p>
         ) : (
-          <span className="ua-cfg-ch-field__hint">Optional · up to {IMAGE_MAX_COUNT} images · 5 MB each</span>
+          <span className="ua-cfg-chal-field__hint">Optional · up to {IMAGE_MAX_COUNT} images · 5 MB each</span>
         )}
       </div>
     </div>
@@ -634,7 +635,7 @@ export function ChallengesSection({ onToast }) {
   };
 
   return (
-    <div className="ua-cfg-ch">
+    <div className="ua-cfg-chal">
       <SectionSurfacePanel
         sectionId="challenges"
         onToast={onToast}
@@ -679,25 +680,36 @@ export function ChallengesSection({ onToast }) {
         }
         actions={
           formOpen ? null : (
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={openCreate}>
-              + New challenge
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-tf-add-btn"
+              disabled={saving || loading}
+              onClick={openCreate}
+            >
+              + Add challenge
             </button>
           )
         }
       >
         {formOpen ? (
-          <div className="ua-cfg-ch-editor">
-            <div className="ua-cfg-ch-editor__head">
-              <div>
-                <h4 className="ua-cfg-ch-editor__title">
+          <div className="ua-cfg-chal-editor">
+            <div className="ua-cfg-chal-editor__head">
+              <div className="ua-cfg-chal-editor__copy">
+                <h4 className="ua-cfg-chal-editor__title">
                   {editingId ? "Edit challenge" : "New challenge"}
                 </h4>
-                <p className="ua-cfg-panel__sub">
+                <p className="ua-cfg-chal-editor__sub">
                   Fill details, pick onboarding steps for free users, then save.
                 </p>
               </div>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost" onClick={closeForm} disabled={saving}>
-                Cancel
+              <button
+                type="button"
+                className="ua-cfg-icon-btn"
+                aria-label="Close form"
+                onClick={closeForm}
+                disabled={saving}
+              >
+                ×
               </button>
             </div>
 
@@ -712,7 +724,7 @@ export function ChallengesSection({ onToast }) {
               onClearError={clearFieldErrors}
             />
 
-            <div className="ua-cfg-ch-editor__foot">
+            <div className="ua-cfg-chal-editor__foot">
               <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={closeForm} disabled={saving}>
                 Cancel
               </button>
@@ -721,67 +733,96 @@ export function ChallengesSection({ onToast }) {
               </button>
             </div>
           </div>
-        ) : (
-          <div className="ua-cfg-ch-list">
-            {items.map((item) => (
-              <article
-                key={item.id}
-                className={`ua-cfg-ch-card${selectedId === item.id ? " is-selected" : ""}`}
-              >
-                <div className="ua-cfg-ch-card__media">
-                  {item.images?.[0] ? (
-                    <img src={item.images[0]} alt="" />
-                  ) : (
-                    <div className="ua-cfg-ch-card__ph" aria-hidden="true" />
-                  )}
-                </div>
-                <div className="ua-cfg-ch-card__body">
-                  <div className="ua-cfg-ch-card__top">
-                    <h4 className="ua-cfg-ch-card__title">{item.title}</h4>
-                    <span className={`ua-cfg-ch-badge ua-cfg-ch-badge--${statusTone(item.status)}`}>
-                      {item.status}
-                    </span>
+        ) : null}
+
+        <div className="ua-cfg-chal-list">
+          {items.map((item) => (
+            <article
+              key={item.id}
+              className={`ua-cfg-chal-card${selectedId === item.id ? " is-selected" : ""}${editingId === item.id ? " is-editing" : ""}`}
+            >
+              <div className="ua-cfg-chal-card__media">
+                {item.images?.[0] ? (
+                  <img src={item.images[0]} alt="" />
+                ) : (
+                  <div className="ua-cfg-chal-card__ph" aria-hidden="true" />
+                )}
+              </div>
+              <div className="ua-cfg-chal-card__body">
+                <div className="ua-cfg-chal-card__head">
+                  <div className="ua-cfg-chal-card__identity">
+                    <div className="ua-cfg-chal-card__top">
+                      <h4 className="ua-cfg-chal-card__title">{item.title}</h4>
+                      <span className={`ua-cfg-chal-badge ua-cfg-chal-badge--${statusTone(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <p className="ua-cfg-chal-card__meta">
+                      ₹{Number(item.price || 0).toLocaleString("en-IN")} · {item.startDate} → {item.endDate} ·{" "}
+                      {item.enrollmentCount || 0} enrolled
+                    </p>
                   </div>
-                  <p className="ua-cfg-ch-card__meta">
-                    ₹{Number(item.price || 0).toLocaleString("en-IN")} · {item.startDate} → {item.endDate} ·{" "}
-                    {item.enrollmentCount || 0} enrolled
-                  </p>
-                  <div className="ua-cfg-ch-card__actions">
+                  <div className="ua-cfg-chal-card__actions">
                     <button
                       type="button"
-                      className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--outline"
-                      onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
+                      className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm colorbs"
+                      disabled={saving}
+                      onClick={() => {
+                        if (formOpen) closeForm();
+                        setSelectedId(selectedId === item.id ? null : item.id);
+                      }}
                     >
-                      {selectedId === item.id ? "Hide" : "View"}
+                      View
                     </button>
+                    {editingId === item.id ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                          disabled={saving}
+                          onClick={save}
+                        >
+                          {saving ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                          disabled={saving}
+                          onClick={closeForm}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm colorbs"
+                        disabled={saving}
+                        onClick={() => startEdit(item)}
+                      >
+                        Edit
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--ghost"
-                      onClick={() => startEdit(item)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-cfg-btn ua-cfg-btn--sm ua-cfg-btn--outline"
+                      className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
+                      aria-label={`Delete ${item.title}`}
+                      disabled={saving}
                       onClick={() => setDeleteId(item.id)}
                     >
-                      Delete
+                      ×
                     </button>
                   </div>
                 </div>
-              </article>
-            ))}
-            {!loading && !items.length ? (
-              <div className="ua-cfg-ch-empty">
-                <p>No challenges yet.</p>
-                <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" onClick={openCreate}>
-                  + New challenge
-                </button>
               </div>
-            ) : null}
-          </div>
-        )}
+            </article>
+          ))}
+          {!loading && !items.length && !formOpen ? (
+            <div className="ua-cfg-chal-empty">
+              <p>No challenges yet.</p>
+            </div>
+          ) : null}
+        </div>
       </Panel>
 
       {selected && !formOpen ? (
@@ -789,13 +830,17 @@ export function ChallengesSection({ onToast }) {
           title={`Enrollments · ${selected.title}`}
           subtitle={`${enrollments.length} enrolled · create groups of 20 and assign users to a coach`}
           actions={
-            <button type="button" className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm" onClick={() => setSelectedId(null)}>
+            <button
+              type="button"
+              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+              onClick={() => setSelectedId(null)}
+            >
               Close
             </button>
           }
         >
-          <div className="ua-cfg-ch-ops">
-            <div className="ua-cfg-ch-ops__row">
+          <div className="ua-cfg-chal-ops">
+            <div className="ua-cfg-chal-ops__row">
               <input
                 className="ua-cfg-tc-field"
                 placeholder="Coach account id (optional)"
@@ -807,10 +852,10 @@ export function ChallengesSection({ onToast }) {
               </button>
             </div>
 
-            <div className="ua-cfg-ch-ops__block">
+            <div className="ua-cfg-chal-ops__block">
               <h5>Groups</h5>
               {groups.map((g) => (
-                <div key={g.id} className="ua-cfg-ch-ops__line">
+                <div key={g.id} className="ua-cfg-chal-ops__line">
                   {g.label || g.id.slice(0, 8)} · {g.enrolledCount}/{g.capacity} · {g.status}
                   {g.coachId ? ` · coach ${g.coachId}` : ""}
                 </div>
@@ -818,22 +863,22 @@ export function ChallengesSection({ onToast }) {
               {!groups.length ? <p className="ua-cfg-panel__sub">No groups yet.</p> : null}
             </div>
 
-            <div className="ua-cfg-ch-ops__block">
+            <div className="ua-cfg-chal-ops__block">
               <h5>Enrolled users ({enrollments.length})</h5>
               {enrollments.map((enr) => {
                 const phone = formatPhone(enr.user);
                 return (
-                  <div key={enr.id} className="ua-cfg-ch-ops__enroll">
-                    <div className="ua-cfg-ch-ops__enroll-copy">
-                      <div className="ua-cfg-ch-ops__enroll-name">
+                  <div key={enr.id} className="ua-cfg-chal-ops__enroll">
+                    <div className="ua-cfg-chal-ops__enroll-copy">
+                      <div className="ua-cfg-chal-ops__enroll-name">
                         {enr.userId ? (
-                          <Link to={UPDATED_ADMIN_PATHS.userDetail(enr.userId)} className="ua-cfg-ch-ops__user-link">
+                          <Link to={UPDATED_ADMIN_PATHS.userDetail(enr.userId)} className="ua-cfg-chal-ops__user-link">
                             {enrollmentLabel(enr)}
                           </Link>
                         ) : (
                           enrollmentLabel(enr)
                         )}
-                        <span className={`ua-cfg-ch-badge ua-cfg-ch-badge--${statusTone(enr.status === "booked" ? "draft" : enr.status === "active" ? "live" : "muted")}`}>
+                        <span className={`ua-cfg-chal-badge ua-cfg-chal-badge--${statusTone(enr.status === "booked" ? "draft" : enr.status === "active" ? "live" : "muted")}`}>
                           {enr.status}
                         </span>
                       </div>
@@ -845,7 +890,7 @@ export function ChallengesSection({ onToast }) {
                     </div>
                     {groups.length ? (
                       <select
-                        className="ua-cfg-tc-field ua-cfg-ch-ops__assign"
+                        className="ua-cfg-tc-field ua-cfg-chal-ops__assign"
                         value={enr.groupId || ""}
                         onChange={(e) => assignToGroup(enr.id, e.target.value)}
                       >
