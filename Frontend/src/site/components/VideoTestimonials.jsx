@@ -164,7 +164,7 @@ export default function VideoTestimonials() {
                   disableOnInteraction: false,
                   pauseOnMouseEnter: true,
                 }
-              : false
+              : true
           }
           onSwiper={(swiper) => {
             swiperRef.current = swiper;

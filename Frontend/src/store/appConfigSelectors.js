@@ -1,6 +1,6 @@
 import { mediaUrl } from "../media.js";
 
-const DEFAULT_APP_NAME = "IR Wellness";
+const DEFAULT_APP_NAME = "India Redefining Wellness";
 
 export function selectAppConfigData(state) {
   return state.appConfig?.data ?? null;

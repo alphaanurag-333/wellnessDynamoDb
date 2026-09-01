@@ -85,7 +85,7 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
 
   return (
     <div className={`ua-cfg-cf-drop ua-cfg-cf-cover-wrap${filled ? " is-on" : ""}`}>
-      {filled ? <img className="ua-cfg-cf-drop__img" src={previewUrl} alt="" /> : null}
+      {filled ? <img style={{objectFit: "unset"}} className="ua-cfg-cf-drop__img" src={previewUrl} alt="" /> : null}
       {!filled ? (
         <>
           <span className="ua-cfg-cf-drop__icon" aria-hidden="true">📷</span>

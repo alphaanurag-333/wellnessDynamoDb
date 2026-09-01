@@ -377,7 +377,7 @@ function TrackerSectionHeader({ tracker }) {
   return (
     <div className="ua-cp-hptrack-section-head" id={`hp-tracker-${tracker.id}`}>
       <span className="ua-cp-hptrack-section-head__dot" style={{ background: tracker.color }} />
-      <h3>{tracker.name}</h3>
+      <h3 style={{textTransform: "capitalize"}}>{tracker.name}</h3>
     </div>
   );
 }
@@ -483,6 +483,7 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, onDelete
           </div>
           <button type="button" className="ua-cp-hptrack-weight-history-modal__close" onClick={onClose} aria-label="Close">×</button>
         </div>
+        
         <div className="ua-cp-hptrack-weight-history-modal__grid">
           {photos.length ? photos.map((photo) => (
             <WeightPhotoCard
@@ -755,17 +756,33 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
           onClick={() => setHistoryOpen(true)}
         >
           {latestPhoto ? (
-            <>
-              <img
-                className="ua-cp-hptrack-weight-form__pics-img"
-                src={latestPhoto.url}
-                alt={`Weight photo from ${latestPhoto.date}`}
-              />
-              <span className="ua-cp-hptrack-weight-form__pics-overlay">
-                <strong>View weight pics</strong>
-                <span>Tap to view history</span>
-              </span>
-            </>
+             <>
+             <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                 <circle cx="12" cy="13" r="4" />
+               </svg>
+             </span>
+             <strong>View weight pics</strong>
+             <span>{photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "Tap to view history"}</span>
+           </>
+            // <>
+            // <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
+            //     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            //       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            //       <circle cx="12" cy="13" r="4" />
+            //     </svg>
+            //   </span>
+            //   <img
+            //     className="ua-cp-hptrack-weight-form__pics-img"
+            //     src={latestPhoto.url}
+            //     alt={`Weight photo from ${latestPhoto.date}`}
+            //   />
+            //   <span className="ua-cp-hptrack-weight-form__pics-overlay">
+            //     <strong>View weight pics</strong>
+            //     <span>Tap to view history</span>
+            //   </span>
+            // </>
           ) : (
             <>
               <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">

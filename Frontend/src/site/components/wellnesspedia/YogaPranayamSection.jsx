@@ -198,7 +198,7 @@ export default function YogaPranayamSection() {
             <ContentCarouselSkeleton count={2} variant="yoga" />
           ) : hasItems ? (
             <>
-              <Swiper
+              <Swiper 
                 key={`yoga-${category || "all"}`}
                 spaceBetween={18}
                 speed={650}
