@@ -1,9 +1,7 @@
-import { Link, useOutletContext } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 
 export function AdminNotFoundPage() {
-  const { showToast } = useOutletContext();
-
   return (
     <main className="content">
       <div className="ua-not-found">
@@ -16,9 +14,6 @@ export function AdminNotFoundPage() {
           <Link to={UPDATED_ADMIN_PATHS.dashboard} className="ua-btn-orange ua-not-found__btn">
             Back to Dashboard
           </Link>
-          <button type="button" className="btn btn--outline" onClick={() => showToast("Contact support if you need this page")}>
-            Report missing page
-          </button>
         </div>
       </div>
     </main>

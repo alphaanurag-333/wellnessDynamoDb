@@ -6,7 +6,7 @@ import {
   adminPreviewYoutubeDuration,
   adminUpdateWellnessLibraryItem,
 } from "../api/wellnessLibraryApi.js";
-import { formatRecipeDate, youtubeEmbedUrl } from "../data/recipesConfigData.js";
+import { youtubeEmbedUrl } from "../data/recipesConfigData.js";
 import {
   WELLNESS_LIBRARY_KINDS,
   WELLNESS_LIBRARY_PAGE_SIZE,
@@ -33,6 +33,17 @@ import { useMediaPicker } from "./useMediaPicker.jsx";
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
 const TIME_HINT = "Enter time as 5:12 (minutes:seconds), not a number";
 const SEARCH_DEBOUNCE_MS = 400;
+
+function withYoutubeAutoplay(embedUrl) {
+  if (!embedUrl) return "";
+  try {
+    const parsed = new URL(embedUrl);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+  }
+}
 
 /** Locked cover crop sizes by wellness library kind. */
 const LIB_COVER_SPECS = {
@@ -92,32 +103,93 @@ function revokeBlobUrl(url) {
 }
 
 function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEdit }) {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+  }, [entry?.id]);
+
   if (!entry) return null;
   const type = resolveLibraryType(entry.type);
   const isVideo = type === "video";
   const isAudio = type === "audio";
   const embed = type === "ytlink" ? youtubeEmbedUrl(entry.ytLink) : "";
   const mediaSrc = isVideo || isAudio ? entry.fileUrl : "";
+  const photo = entry.thumbnail;
+  const hasPlayer = Boolean(embed || (isVideo && mediaSrc));
+  const title = entry.title || `${itemNoun} video`;
+  const showCover = Boolean(photo) && (!hasPlayer || !playing);
+  const mediaStyle = coverAspect ? { aspectRatio: coverAspect } : undefined;
+
   return (
     <div className="ua-cp-modal-backdrop ua-cfg-lib-view-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-lib-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="library-view-title">
+      <div
+        className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-lib-view ua-cfg-recipes-view"
+        style={coverAspect ? { "--ua-lib-cover-ratio": coverAspect } : undefined}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-labelledby="library-view-title"
+      >
         <div className="ua-cfg-rc-view__head">
-          <div>
+          <div className="ua-cfg-recipes-view__intro">
             <p className="ua-cfg-rc-view__tag">{viewTag}</p>
             <h3 id="library-view-title">{entry.title || `Untitled ${itemNoun}`}</h3>
-            <p>{displayTypeLabel(entry.type)}{entry.duration ? ` · ${entry.duration}` : ""} · {entry.live ? "Live" : "Hidden"}</p>
+            <p className="ua-cfg-recipes-view__meta">
+              <span>{displayTypeLabel(entry.type)}{entry.duration ? ` · ${entry.duration}` : ""}</span>
+              <span className={`ua-cfg-tf-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
           </div>
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
-        <div className="ua-cfg-rc-view__body">
-          <div className="ua-cfg-rc-view__media" style={coverAspect ? { aspectRatio: coverAspect } : undefined}>
-            {entry.thumbnail ? <img src={entry.thumbnail} alt="" /> : <div className="ua-cfg-rc-view__media-empty">No cover</div>}
-          </div>
+        <div className="ua-cfg-recipes-view__body">
+          {hasPlayer ? (
+            <div className={`ua-cfg-rc-player${showCover ? " has-cover" : ""}`} style={mediaStyle}>
+              {showCover ? (
+                <button
+                  type="button"
+                  className="ua-cfg-rc-player__cover"
+                  onClick={() => setPlaying(true)}
+                  aria-label={`Play ${title}`}
+                >
+                  <img src={photo} alt="" />
+                  <span className="ua-cfg-rc-player__play" aria-hidden="true">▶</span>
+                </button>
+              ) : null}
+              {playing || !photo ? (
+                embed ? (
+                  <iframe
+                    title={title}
+                    src={playing && photo ? withYoutubeAutoplay(embed) : embed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={mediaSrc}
+                    poster={photo || undefined}
+                    controls
+                    playsInline
+                    autoPlay={playing}
+                    preload={photo ? "none" : "metadata"}
+                  />
+                )
+              ) : null}
+            </div>
+          ) : photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo" style={mediaStyle}>
+              <img src={photo} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-rc-view__media" style={mediaStyle}>
+              <div className="ua-cfg-rc-view__media-empty">No cover</div>
+            </div>
+          )}
+          {isAudio && mediaSrc ? (
+            <audio className="ua-cfg-rc-view__player ua-cfg-lib-view__audio" src={mediaSrc} controls preload="metadata" />
+          ) : null}
           <dl className="ua-cfg-rc-view__meta">
-            {/* <div>
-              <dt>Type</dt>
-              <dd>{displayTypeLabel(entry.type)}</dd>
-            </div> */}
             <div>
               <dt>{isAudio ? "Audio" : isVideo ? "Video" : "YouTube"}</dt>
               <dd>
@@ -128,33 +200,7 @@ function LibraryViewModal({ entry, viewTag, itemNoun, coverAspect, onClose, onEd
                 ) : "—"}
               </dd>
             </div>
-            {/* <div>
-              <dt>Time</dt>
-              <dd>{entry.duration || "—"}</dd>
-            </div> */}
-            {/* <div>
-              <dt>Created</dt>
-              <dd>{formatRecipeDate(entry.createdAt)}</dd>
-            </div>
-            <div>
-              <dt>Updated</dt>
-              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-            </div> */}
           </dl>
-          {embed ? (
-            <div className="ua-cfg-rc-view__embed">
-              <iframe
-                title={entry.title || `${itemNoun} video`}
-                src={embed}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : isAudio && mediaSrc ? (
-            <audio className="ua-cfg-rc-view__player" src={mediaSrc} controls preload="metadata" />
-          ) : mediaSrc ? (
-            <video className="ua-cfg-rc-view__player" src={mediaSrc} controls preload="metadata" />
-          ) : null}
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
@@ -810,6 +856,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
   return (
     <div
       className={`ua-cfg-rc ua-cfg-lib${lockedCoverCrop ? ` ua-cfg-lib--cover-locked ua-cfg-lib--cover-${coverSpec.width}x${coverSpec.height}` : ""}`}
+      style={lockedCoverCrop ? { "--ua-lib-cover-ratio": `${coverSpec.width} / ${coverSpec.height}` } : undefined}
     >
       <Panel
         title={meta.title}
