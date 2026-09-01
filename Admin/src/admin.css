@@ -16424,13 +16424,19 @@
 
 .updated-admin .ua-cp-ba-photos {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(104px, 0.58fr);
   gap: 12px;
+  align-items: stretch;
 }
 
 @media (max-width: 1100px) {
   .updated-admin .ua-cp-ba-photos {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-cp-ba-photo--weight {
+    max-width: 168px;
+    justify-self: start;
   }
 }
 
@@ -16450,6 +16456,26 @@
   font-family: inherit;
   text-align: center;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.updated-admin .ua-cp-ba-photo--weight {
+  min-height: 196px;
+  padding: 12px 8px;
+  gap: 5px;
+  border-radius: 12px;
+  align-self: center;
+}
+
+.updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__icon {
+  font-size: 18px;
+}
+
+.updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__label {
+  font-size: 12px;
+}
+
+.updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__hint {
+  font-size: 10px;
 }
 
 .updated-admin .ua-cp-ba-photo:hover {
@@ -16756,6 +16782,28 @@ scrollbar-width: thin;
   max-height: calc(92vh - 68px);
   object-fit: contain;
   background: #0b1220;
+}
+
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__dialog {
+  width: min(360px, calc(100% - 32px));
+  max-height: min(58vh, 420px);
+  border-radius: 12px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__head {
+  padding: 10px 12px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__title {
+  font-size: 13px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__sub {
+  font-size: 11px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__dialog img {
+  max-height: min(calc(58vh - 52px), 360px);
 }
 
 
@@ -61798,6 +61846,11 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-ba-photos {
     grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-ba-photo--weight {
+    max-width: 168px;
+    justify-self: start;
   }
 
   .updated-admin .ua-cp-ba-photo-grid {
