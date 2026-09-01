@@ -455,11 +455,11 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
   const filled = Boolean(previewUrl || embedUrl || fileName);
 
   return (
-    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
+    <div  className={` ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
       {previewUrl ? (
         <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
       ) : embedUrl ? (
-        <iframe
+        <iframe style={{aspectRatio: "16:9"}}
           className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
           title="YouTube preview"
           src={embedUrl}
