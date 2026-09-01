@@ -46,30 +46,34 @@ function DisorderCard({ item, onOpen }) {
         <p className="wp-disorder-card__desc">{item.description}</p>
       ) : null}
 
-      <p className="wp-disorder-card__label">Clinical Symptoms</p>
-      {previewSymptoms.length > 0 ? (
-        <ul>
-          {previewSymptoms.map((symptom, index) => (
-            <li key={`${item.id}-${index}`}>{symptom}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="wp-disorder-card__empty">Details coming soon.</p>
-      )}
+      <div className="wp-disorder-card__foot">
+        <p className="wp-disorder-card__label">Clinical Symptoms</p>
+        {previewSymptoms.length > 0 ? (
+          <ul>
+            {previewSymptoms.map((symptom, index) => (
+              <li key={`${item.id}-${index}`} title={symptom}>
+                {symptom}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="wp-disorder-card__empty">Details coming soon.</p>
+        )}
 
-      {hasContent ? (
-        <button
-          type="button"
-          className="wp-disorder-card__more"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(item);
-          }}
-        >
-          Read More
-          <ArrowRight size={16} aria-hidden />
-        </button>
-      ) : null}
+        {hasContent ? (
+          <button
+            type="button"
+            className="wp-disorder-card__more"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(item);
+            }}
+          >
+            Read More
+            <ArrowRight size={16} aria-hidden />
+          </button>
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -115,9 +119,9 @@ export default function HealthDisordersSection() {
   const breakpoints = useMemo(
     () => ({
       0: { slidesPerView: 1.1, spaceBetween: 14 },
-      640: { slidesPerView: 2, spaceBetween: 18 },
-      992: { slidesPerView: 3, spaceBetween: 20 },
-      1200: { slidesPerView: 4, spaceBetween: 22 },
+      640: { slidesPerView: 2, spaceBetween: 16 },
+      992: { slidesPerView: 3, spaceBetween: 18 },
+      1200: { slidesPerView: 4, spaceBetween: 20 },
     }),
     []
   );

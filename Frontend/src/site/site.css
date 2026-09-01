@@ -1621,7 +1621,7 @@ min-height: 100dvh;
   --radius-xs: 8px;
   --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-lg: 20px;
   --radius-xl: 32px;
   --radius-pill: 999px;
 --fw-light: 400;
@@ -6904,7 +6904,7 @@ box-shadow: var(--shadow-sm);
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: fill;
   object-position: center;
   transition: var(--transition-slow);
 }
@@ -13755,7 +13755,7 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-section {
-  padding: 1.3rem 0 0.85rem;
+  padding: 1rem 0 0.85rem;
   background: #fef4ed;
 }
 .backgroundapply {
@@ -13991,10 +13991,19 @@ bottom: -18px;
 .wellnesspedia-page .wp-content-swiper .swiper-slide {
   height: auto;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
 }
 
 .wellnesspedia-page .wp-content-swiper .swiper-slide > * {
   width: 100%;
+}
+
+.wellnesspedia-page .wp-content-swiper .swiper-slide .wp-disorder-card {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 100%;
+  height: auto;
 }
 
 /* Recipe cards */
@@ -14215,23 +14224,28 @@ bottom: -18px;
 .wellnesspedia-page .wp-disorder-card {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 220px;
+  flex: 1 1 auto;
+  align-self: stretch;
+  height: auto;
+  min-height: 100%;
   min-width: 0;
   border: 1px solid #e5e7eb;
   border-top-width: 4px;
   border-radius: 14px;
-  padding: 1.1rem 1.15rem 1.25rem;
+  padding: 1.1rem 1.15rem 1rem;
   background: #fff;
 }
 
 .wellnesspedia-page .wp-disorder-card h3 {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.55rem;
   font-size: 1.05rem;
   font-weight: 700;
   color: #1e293b;
   min-width: 0;
   max-width: 100%;
+  flex: 0 0 auto;
+  line-height: 1.35;
+  min-height: 1.35em;
 }
 
 .wellnesspedia-page .wp-disorder-card h3.is-clamped {
@@ -14241,7 +14255,7 @@ bottom: -18px;
 }
 
 .wellnesspedia-page .wp-disorder-card__desc {
-  margin: 0 0 0.75rem;
+  margin: 0 0 0.65rem;
   font-size: 0.86rem;
   color: #64748b;
   line-height: 1.45;
@@ -14249,15 +14263,25 @@ bottom: -18px;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 0 0 auto;
+  min-height: calc(1.45em * 3);
+}
+
+.wellnesspedia-page .wp-disorder-card__foot {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  margin-top: auto;
 }
 
 .wellnesspedia-page .wp-disorder-card__label {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.4rem;
   font-size: 0.7rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #94a3b8;
   font-weight: 600;
+  flex: 0 0 auto;
 }
 
 .wellnesspedia-page .wp-disorder-card ul {
@@ -14266,6 +14290,13 @@ bottom: -18px;
   color: #475569;
   font-size: 0.88rem;
   line-height: 1.55;
+  flex: 0 0 auto;
+}
+
+.wellnesspedia-page .wp-disorder-card li {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .wellnesspedia-page .wp-disorder-card__more {
@@ -14273,10 +14304,11 @@ bottom: -18px;
   align-items: center;
   justify-content: flex-end;
   align-self: flex-end;
+  flex: 0 0 auto;
   gap: 6px;
   width: auto;
-  margin: auto 0 0 auto;
-  padding-top: 0.85rem;
+  margin: 0.5rem 0 0 auto;
+  padding: 0;
   border: none;
   outline: none;
   background: transparent;

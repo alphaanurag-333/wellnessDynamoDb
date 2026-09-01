@@ -950,7 +950,7 @@ export function WellnessLibrarySection({ kind, onToast }) {
                   />
                 </label>
                 {draft.type === "ytlink" ? (
-                  <label className="ua-cfg-rc-field ua-cfg-rc-field--wide">
+                  <label className="ua-cfg-rc-field ">
                     <span>YouTube link</span>
                     <input
                       className="ua-cfg-vh-input"
