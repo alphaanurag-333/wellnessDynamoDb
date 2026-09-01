@@ -41350,8 +41350,21 @@ scrollbar-width: thin;
   border-radius: 10px;
   padding: 10px 12px;
   font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
   color: #1a1d26;
   background: #fff;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-dp-add__title::placeholder,
+.updated-admin .ua-cfg-dp-add__content::placeholder {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #9ca3af;
+  opacity: 1;
 }
 
 .updated-admin .ua-cfg-dp-add__title {
@@ -41483,6 +41496,112 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-tc-grid + .ua-users-pagination {
   margin: 16px 0 0;
+}
+
+.updated-admin .ua-cfg-cpn.ua-cfg-faq-shell {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.updated-admin .ua-cfg-cpn .ua-cfg-faq-new {
+  margin-bottom: 14px;
+}
+
+.updated-admin .ua-cfg-cpn-form__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 16px;
+  margin-bottom: 4px;
+}
+
+.updated-admin .ua-cfg-cpn-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-cpn-field > span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cfg-cpn-field .ua-cfg-faq-new__question {
+  margin-bottom: 10px;
+}
+
+.updated-admin .ua-cfg-cpn-field .ua-cfg-tc-select {
+  margin-bottom: 10px;
+}
+
+.updated-admin .ua-cfg-cpn-field .ua-cfg-tc-select .ua-cfg-select__trigger {
+  height: 40px;
+}
+
+.updated-admin .ua-cfg-cpn-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  padding: 13px 15px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 35, 63, 0.04);
+}
+
+.updated-admin .ua-cfg-cpn-list__copy {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-cpn-list__title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: #16233f;
+}
+
+.updated-admin .ua-cfg-cpn-list__title strong {
+  font-size: inherit;
+  font-weight: 800;
+}
+
+.updated-admin .ua-cfg-cpn-list__meta {
+  margin-top: 3px;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.updated-admin .ua-cfg-cpn-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-cpn-empty {
+  padding: 8px 0;
+}
+
+.updated-admin .ua-cfg-cpn-empty .ua-cfg-panel__sub {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+@media (max-width: 640px) {
+  .updated-admin .ua-cfg-cpn-form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-cpn-list__item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
 }
 
 .updated-admin .ua-cfg-tc-card {
@@ -56487,11 +56606,35 @@ scrollbar-width: thin;
   aspect-ratio: var(--ua-lib-cover-ratio, 16 / 9);
 }
 
+.updated-admin .ua-cfg-lib-view__stage {
+  margin: 0 0 14px;
+}
+
+.updated-admin .ua-cfg-lib-view__stage .ua-cfg-rc-player {
+  margin-bottom: 0;
+}
+
+.updated-admin .ua-cfg-lib-view__stage.is-playing .ua-cfg-rc-player {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
 .updated-admin .ua-cfg-lib-view .ua-cfg-lib-view__audio {
   display: block;
   width: 100%;
-  height: auto;
-  margin: 0 0 14px;
+  height: 54px;
+  min-height: 54px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  position: static;
+  inset: auto;
+  z-index: 2;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0 0 12px 12px;
+  background: #0f172a;
+  flex: none;
 }
 
 .updated-admin .ua-cfg-lib-view .ua-cfg-rc-view__foot {
@@ -64455,6 +64598,12 @@ scrollbar-width: thin;
   resize: none;
 }
 
+.updated-admin .ua-cfg-yoga-view.ua-cfg-recipes-view.ua-cfg-rc-view,
+.updated-admin .ua-cfg-yoga-view.ua-cfg-recipes-view.ua-cfg-rc-view--sheet {
+  width: min(520px, calc(100vw - 24px));
+  max-height: min(80vh, 620px);
+}
+
 .updated-admin .ua-cfg-recipes-view.ua-cfg-rc-view--sheet .ua-cfg-rc-view__head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36px;
@@ -64538,6 +64687,16 @@ scrollbar-width: thin;
   background: #0f172a;
 }
 
+.updated-admin .ua-cfg-yoga-view .ua-cfg-rc-view__media,
+.updated-admin .ua-cfg-yoga-view .ua-cfg-rc-view__media--photo,
+.updated-admin .ua-cfg-yoga-view .ua-cfg-rc-player {
+  width: min(100%, 392px);
+  max-height: 220px;
+  aspect-ratio: 16 / 9;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media img,
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-view__media--photo img,
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-player__cover img {
@@ -64566,6 +64725,17 @@ scrollbar-width: thin;
   max-height: none;
   background: #000;
   object-fit: contain;
+}
+
+.updated-admin .ua-cfg-lib-view .ua-cfg-lib-view__stage .ua-cfg-lib-view__audio {
+  display: block;
+  width: 100%;
+  height: 54px;
+  min-height: 54px;
+  max-height: 54px;
+  position: static;
+  inset: auto;
+  aspect-ratio: auto;
 }
 
 .updated-admin .ua-cfg-recipes-view .ua-cfg-rc-player__cover {

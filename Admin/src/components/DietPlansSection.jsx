@@ -328,7 +328,7 @@ export function DietPlansSection({ plans, setPlans, onToast }) {
             <textarea
               className="ua-cfg-dp-add__content"
               rows={4}
-              
+              placeholder="Write the plan · meals, portions, notes…"
               value={newContent}
               disabled={busy}
               onChange={(event) => setNewContent(event.target.value)}

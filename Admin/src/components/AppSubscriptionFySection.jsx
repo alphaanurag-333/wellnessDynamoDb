@@ -143,7 +143,7 @@ export function AppSubscriptionFySection({ settings, setSettings, onToast }) {
             ))}
           </div>
 
-          <div className="ua-cfg-consult__foot">
+          <div className="ua-cfg-consult__foot" style={{justifyContent:"flex-end"}}>
             <button
               type="button"
               className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-consult__save"

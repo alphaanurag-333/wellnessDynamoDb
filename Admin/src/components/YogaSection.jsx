@@ -64,6 +64,17 @@ function cropBoxSize(ratio) {
   return { width: Math.round(w * scale), height: Math.round(h * scale), w, h };
 }
 
+function withYoutubeAutoplay(embedUrl) {
+  if (!embedUrl) return "";
+  try {
+    const parsed = new URL(embedUrl);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+  }
+}
+
 function Panel({ title, subtitle, actions, children }) {
   return (
     <section className="ua-cfg-panel">
@@ -314,13 +325,23 @@ function SpecChips({ specs }) {
 }
 
 function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", itemNoun = "Practice", showSpecs = false }) {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+  }, [entry?.id]);
+
   if (!entry) return null;
   const embed = youtubeEmbedUrl(entry.videoLink);
   const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
   const mediaHref = isVideo && entry.video ? entry.video : entry.videoLink;
+  const photo = entry.thumbnail;
+  const hasPlayer = Boolean(embed || (isVideo && entry.video));
+  const title = asCopyString(entry.title) || `${itemNoun} video`;
+  const showCover = Boolean(photo) && (!hasPlayer || !playing);
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-recipes-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
+      <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-recipes-view ua-cfg-yoga-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
         <div className="ua-cfg-rc-view__head">
           <div className="ua-cfg-recipes-view__intro">
             <p className="ua-cfg-rc-view__tag">{viewTag}</p>
@@ -335,9 +356,42 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-recipes-view__body">
-          {entry.thumbnail ? (
+          {hasPlayer ? (
+            <div className={`ua-cfg-rc-player${showCover ? " has-cover" : ""}`}>
+              {showCover ? (
+                <button
+                  type="button"
+                  className="ua-cfg-rc-player__cover"
+                  onClick={() => setPlaying(true)}
+                  aria-label={`Play ${title}`}
+                >
+                  <img src={photo} alt="" />
+                  <span className="ua-cfg-rc-player__play" aria-hidden="true">▶</span>
+                </button>
+              ) : null}
+              {playing || !photo ? (
+                embed ? (
+                  <iframe
+                    title={title}
+                    src={playing && photo ? withYoutubeAutoplay(embed) : embed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={entry.video}
+                    poster={photo || undefined}
+                    controls
+                    playsInline
+                    autoPlay={playing}
+                    preload={photo ? "none" : "metadata"}
+                  />
+                )
+              ) : null}
+            </div>
+          ) : photo ? (
             <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-              <img src={entry.thumbnail} alt="" />
+              <img src={photo} alt="" />
             </div>
           ) : (
             <div className="ua-cfg-rc-view__media">
@@ -350,8 +404,8 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
             <p className="ua-cfg-rc-view__copy ua-cfg-recipes-view__empty">No description yet.</p>
           )}
           {showSpecs ? <SpecChips specs={entry.videoSpecification} /> : null}
-          {/* <dl className="ua-cfg-rc-view__meta"> */}
-            {/* <div>
+          <dl className="ua-cfg-rc-view__meta">
+            <div>
               <dt>Type</dt>
               <dd>{isVideo ? "Uploaded video" : "YouTube link"}</dd>
             </div>
@@ -362,30 +416,8 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Yoga & Pranayam", 
                   <a href={mediaHref} target="_blank" rel="noreferrer">{mediaHref}</a>
                 ) : "—"}
               </dd>
-            </div> */}
-           
-            {/* <div>
-              <dt>Created</dt>
-              <dd>{formatRecipeDate(entry.createdAt)}</dd>
             </div>
-            <div>
-              <dt>Updated</dt>
-              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-            </div> */}
-          {/* </dl> */}
-          <div style={{marginBottom: "8px",fontSize:'14px'}}>
-              Type : {isVideo ? "Uploaded video" : "YouTube link"}
-            </div>
-          <div style={{marginBottom: "10px",fontSize:'14px'}}>{isVideo ? "Video" : "YouTube"} : {mediaHref ? (
-                  <a href={mediaHref} target="_blank" rel="noreferrer">{mediaHref}</a>
-                ) : "—"} </div>
-          {embed ? (
-            <div className="ua-cfg-rc-view__embed">
-              <iframe title={asCopyString(entry.title) || `${itemNoun} video`} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          ) : isVideo && entry.video ? (
-            <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
-          ) : null}
+          </dl>
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
