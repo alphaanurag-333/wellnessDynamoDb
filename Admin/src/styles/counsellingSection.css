@@ -466,3 +466,19 @@
     font-size: 13px;
   }
 }
+
+.updated-admin .ua-cp-counselling__card--scheduled {
+  margin-bottom: 12px;
+  border-color: #c8e6c9;
+  background: #f6fff7;
+}
+
+.updated-admin .ua-cp-counselling__card--scheduled .ua-cp-counselling__block {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+.updated-admin .ua-cp-counselling__history-row .ua-cp-btn {
+  margin-left: auto;
+}

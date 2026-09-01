@@ -1,60 +1,34 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { fetchHealConsultancyTracks } from "../../api/counsellingApi.js";
+import { formatLongDate } from "../../api/usersApi.js";
+import { listUserWellnessPrescriptions } from "../../api/wellnessPrescriptionAssignmentApi.js";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
     || document.querySelector(".updated-admin");
 }
 
-function StopwatchIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M9 2.5h6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <path d="M12 2.5v2.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="12" cy="13.2" r="7.3" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M12 10.2v3.2l2.2 1.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M18.2 7.4l1.1-1.1" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-/** Date + time for Review Tracking rows (`en-US` short month). */
 function formatReviewDate(value) {
-  if (!value) return "—";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  return formatLongDate(value) || "—";
+}
+
+function mapAssignmentsToReviewItems(assignments = []) {
+  return (Array.isArray(assignments) ? assignments : [])
+    .filter(Boolean)
+    .map((assignment) => ({
+      id: assignment.id,
+      date: formatReviewDate(assignment.date || assignment.reviewAt || assignment.createdAt),
+      authorName: assignment.authorName || "Coach",
+      summary: assignment.summary || "Wellness prescription",
+      cancelled: String(assignment.reviewStatus || "active").toLowerCase() === "cancelled",
+      hasPrescription: Array.isArray(assignment.items) && assignment.items.length > 0,
+    }));
 }
 
 /**
- * Maps heal consultancy tracks the same way the mobile app does for
- * "When have I met my Wellness Coach?" / Review Tracking.
+ * Live Review history — wellness prescription saves synced to the user app.
  */
-function mapTracksToReviewItems(tracks, total) {
-  const list = Array.isArray(tracks) ? tracks.filter(Boolean) : [];
-  const sorted = [...list].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-  const count = Number(total) > 0 ? Number(total) : sorted.length;
-  return sorted.map((track, index) => ({
-    id: track.id || track._id || `track-${index}`,
-    reviewNumber: Math.max(count - index, 1),
-    date: formatReviewDate(track.createdAt),
-  }));
-}
-
-/**
- * Live Review Tracking — same heal-consultancy meetings the client sees in-app.
- */
-export function ReviewHistoryModal({ user, onClose }) {
+export function ReviewHistoryModal({ user, onClose, onNavigate }) {
   const userId = String(user?.id || user?._id || "").trim();
   const [loading, setLoading] = useState(Boolean(userId));
   const [items, setItems] = useState([]);
@@ -80,17 +54,21 @@ export function ReviewHistoryModal({ user, onClose }) {
     setLoading(true);
     setError("");
 
-    fetchHealConsultancyTracks(userId, { page: 1, limit: 50 })
+    listUserWellnessPrescriptions(userId)
       .then((data) => {
         if (cancelled) return;
-        const tracks = data?.tracks || [];
-        const total = data?.pagination?.total ?? tracks.length;
-        setItems(mapTracksToReviewItems(tracks, total));
+        const assignments = data?.assignments?.length
+          ? data.assignments
+          : [
+            ...(data?.recommended ? [data.recommended] : []),
+            ...(Array.isArray(data?.history) ? data.history : []),
+          ];
+        setItems(mapAssignmentsToReviewItems(assignments));
       })
       .catch((err) => {
         if (cancelled) return;
         setItems([]);
-        setError(err?.message || "Could not load review tracking");
+        setError(err?.message || "Could not load review history");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -111,13 +89,11 @@ export function ReviewHistoryModal({ user, onClose }) {
       >
         <div className="ua-cp-review-modal__head">
           <div className="ua-cp-review-modal__identity">
-            <span className="ua-cp-review-modal__icon" aria-hidden="true">
-              <StopwatchIcon />
-            </span>
+            <span className="ua-cp-review-modal__icon" aria-hidden="true">⏱️</span>
             <div>
-              <div id="review-history-title" className="ua-cp-review-modal__title">Review Tracking</div>
+              <div id="review-history-title" className="ua-cp-review-modal__title">Review history</div>
               <div className="ua-cp-review-modal__sub">
-                {user?.name || "Client"} · when they met their wellness coach
+                {user?.name || "Client"} · coach check-ins over time
               </div>
             </div>
           </div>
@@ -129,7 +105,7 @@ export function ReviewHistoryModal({ user, onClose }) {
         <div className="ua-cp-review-modal__list">
           {loading ? (
             <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">Loading review tracking…</p>
+              <p className="ua-cp-review-modal__empty-text">Loading review history…</p>
             </div>
           ) : error ? (
             <div className="ua-cp-review-modal__empty">
@@ -137,17 +113,41 @@ export function ReviewHistoryModal({ user, onClose }) {
             </div>
           ) : items.length === 0 ? (
             <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">No wellness coach meetings yet.</p>
+              <p className="ua-cp-review-modal__empty-text">No coach reviews yet.</p>
             </div>
           ) : (
-            <div className="ua-cp-review-track-list">
-              {items.map((item) => (
-                <div key={item.id} className="ua-cp-review-track-row">
-                  <strong className="ua-cp-review-track-row__label">Review {item.reviewNumber}</strong>
-                  <span className="ua-cp-review-track-row__date">{item.date}</span>
+            items.map((item, index) => (
+              <article
+                key={item.id}
+                className={`ua-cp-review-item${item.cancelled ? " ua-cp-review-item--cancelled" : ""}`}
+              >
+                <div className="ua-cp-review-item__rail" aria-hidden="true">
+                  <span className="ua-cp-review-item__dot" />
+                  {index < items.length - 1 ? <span className="ua-cp-review-item__line" /> : null}
                 </div>
-              ))}
-            </div>
+                <div className="ua-cp-review-item__body">
+                  <div className="ua-cp-review-item__top">
+                    <div className="ua-cp-review-item__meta">
+                      <strong>{item.date}</strong>
+                      <span>by {item.authorName}</span>
+                    </div>
+                    {item.hasPrescription ? (
+                      <button
+                        type="button"
+                        className="ua-cp-review-item__rx"
+                        onClick={() => {
+                          onClose?.();
+                          onNavigate?.("prescription");
+                        }}
+                      >
+                        💊 Wellness prescription ›
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="ua-cp-review-item__note">{item.summary}</p>
+                </div>
+              </article>
+            ))
           )}
         </div>
       </div>

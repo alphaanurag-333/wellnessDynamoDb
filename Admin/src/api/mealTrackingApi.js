@@ -125,6 +125,17 @@ export async function updateUserWaterGoal(userId, goalGlasses, { date } = {}) {
   }
 }
 
+export async function unlockUserWaterGoal(userId) {
+  try {
+    const { data } = await api.patch(healUserPath(userId, "/water-tracking/goal/unlock"), {}, {
+      headers: authHeader(),
+    });
+    return data.data || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserDietPlanAssignments(userId) {
   try {
     const { data } = await api.get(healUserPath(userId, "/diet-plan-assignments"), {

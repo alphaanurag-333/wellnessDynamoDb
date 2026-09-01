@@ -126,9 +126,15 @@ function shouldReplaceDay(existing, incoming) {
 }
 
 function formatSettings(item) {
+  const goalSetBy = item?.goalSetBy === "staff" || item?.goalSetBy === "user"
+    ? item.goalSetBy
+    : null;
   return {
     goalSteps: Number(item?.goalSteps ?? DEFAULT_GOAL_STEPS),
     updatedAt: item?.updatedAt ?? null,
+    goalLocked: Boolean(item?.goalLocked),
+    goalSetBy,
+    goalSetAt: item?.goalSetAt ?? null,
   };
 }
 
@@ -199,17 +205,51 @@ async function getSettings(userId) {
   return formatSettings(Item);
 }
 
-async function upsertSettings(userId, { goalSteps }) {
+async function upsertSettings(userId, { goalSteps, lockGoal } = {}) {
   const now = new Date().toISOString();
   const normalizedGoal = normalizeGoalSteps(goalSteps);
+  let updateExpression =
+    "SET goalSteps = :goalSteps, updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)";
+  const expressionAttributeValues = {
+    ":goalSteps": normalizedGoal,
+    ":updatedAt": now,
+    ":createdAt": now,
+  };
+
+  if (lockGoal === true) {
+    updateExpression += ", goalLocked = :goalLocked, goalSetBy = :goalSetBy, goalSetAt = :goalSetAt";
+    expressionAttributeValues[":goalLocked"] = true;
+    expressionAttributeValues[":goalSetBy"] = "staff";
+    expressionAttributeValues[":goalSetAt"] = now;
+  } else if (lockGoal === false) {
+    updateExpression += ", goalLocked = :goalLocked, goalSetBy = :goalSetBy, goalSetAt = :goalSetAt";
+    expressionAttributeValues[":goalLocked"] = false;
+    expressionAttributeValues[":goalSetBy"] = "user";
+    expressionAttributeValues[":goalSetAt"] = now;
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { userId, recordKey: SETTINGS_KEY },
+      UpdateExpression: updateExpression,
+      ExpressionAttributeValues: expressionAttributeValues,
+      ReturnValues: "ALL_NEW",
+    })
+  );
+  return formatSettings(Attributes);
+}
+
+async function unlockGoalSettings(userId) {
+  const now = new Date().toISOString();
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { userId, recordKey: SETTINGS_KEY },
       UpdateExpression:
-        "SET goalSteps = :goalSteps, updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)",
+        "SET goalLocked = :goalLocked, updatedAt = :updatedAt, createdAt = if_not_exists(createdAt, :createdAt)",
       ExpressionAttributeValues: {
-        ":goalSteps": normalizedGoal,
+        ":goalLocked": false,
         ":updatedAt": now,
         ":createdAt": now,
       },
@@ -530,6 +570,7 @@ module.exports = {
   formatConnections,
   getSettings,
   upsertSettings,
+  unlockGoalSettings,
   getConnections,
   updateConnection,
   getDayLog,

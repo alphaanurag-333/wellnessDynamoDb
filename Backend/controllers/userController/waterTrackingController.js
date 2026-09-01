@@ -46,9 +46,14 @@ exports.updateMyWaterGoalController = asyncHandler(async (req, res) => {
   }
   const date = resolveTargetDate(req.body, req.query);
 
+  const currentSettings = await getSettings(userId);
+  if (currentSettings.goalLocked) {
+    throw new AppError("Your coach has set this goal. Contact them to change it.", 403);
+  }
+
   let result;
   try {
-    result = await setDayGoal(userId, date, goalGlasses);
+    result = await setDayGoal(userId, date, goalGlasses, { lockGoal: false });
   } catch (err) {
     mapWaterError(err);
   }

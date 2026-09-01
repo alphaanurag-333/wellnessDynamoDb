@@ -46,6 +46,19 @@ export async function updateUserStepsGoal(userId, goalSteps) {
   }
 }
 
+export async function unlockUserStepsGoal(userId) {
+  try {
+    const { data } = await api.patch(
+      healUserPath(userId, "/steps-tracking/goal/unlock"),
+      {},
+      { headers: authHeader() },
+    );
+    return data.data || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserHeartRateTracking(userId, range) {
   return fetchTracking(userId, "/heart-rate-tracking", range);
 }

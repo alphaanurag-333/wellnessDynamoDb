@@ -91,6 +91,12 @@ export function mapWellnessPrescriptionAssignment(row, catalog = []) {
     createdById: String(row.createdById || "").trim(),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    reviewStatus: String(row.reviewStatus || "active").toLowerCase(),
+    reviewAt: row.reviewAt || row.updatedAt || row.createdAt,
+    summary: String(row.summary || "").trim(),
+    authorName: String(row.authorName || "").trim(),
+    authorRole: String(row.authorRole || "").trim(),
+    cancelledAt: row.cancelledAt || null,
     editableUntil: row.editableUntil || null,
     canEdit,
   };
@@ -171,6 +177,19 @@ export async function republishUserWellnessPrescription(userId, assignmentId, { 
           points: Array.isArray(protocol.points) ? protocol.points : [],
         })),
       },
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return mapWellnessPrescriptionAssignment(data.assignment);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function cancelUserWellnessPrescriptionReview(userId, assignmentId) {
+  try {
+    const { data } = await api.patch(
+      `${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}/cancel-review`,
+      {},
       { headers: authHeader(tokenOrStored()) },
     );
     return mapWellnessPrescriptionAssignment(data.assignment);

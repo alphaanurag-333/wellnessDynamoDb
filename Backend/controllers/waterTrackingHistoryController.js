@@ -1,7 +1,7 @@
 const AppError = require("../utils/AppError");
 const { asyncHandler } = require("../utils/asyncHandler");
 const { getUserById } = require("../models/userModel");
-const { getUserWaterHistory, setDayGoal } = require("../models/waterTrackingModel");
+const { getUserWaterHistory, setDayGoal, unlockGoalSettings } = require("../models/waterTrackingModel");
 const { isValidDateOnly, todayDateOnly } = require("../utils/dateOnly");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
@@ -109,7 +109,7 @@ exports.updateStaffHealUserWaterGoalController = asyncHandler(async (req, res) =
 
   let result;
   try {
-    result = await setDayGoal(userId, date, goalGlasses);
+    result = await setDayGoal(userId, date, goalGlasses, { lockGoal: true });
   } catch (err) {
     if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     throw err;
@@ -119,6 +119,21 @@ exports.updateStaffHealUserWaterGoalController = asyncHandler(async (req, res) =
     status: true,
     message: "Daily water goal updated",
     data: result,
+  });
+});
+
+exports.unlockStaffHealUserWaterGoalController = asyncHandler(async (req, res) => {
+  const userId = req.params.id || req.params.userId;
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const settings = await unlockGoalSettings(userId);
+
+  return res.status(200).json({
+    status: true,
+    message: "Client can edit water goal",
+    data: { settings },
   });
 });
 
