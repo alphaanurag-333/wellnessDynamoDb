@@ -6022,7 +6022,7 @@
 .updated-admin .chart-legend {
   display: flex;
   gap: 12px;
-  font-size: 10.5px;
+  font-size: 9.5px;
   color: var(--muted);
   font-weight: 600;
 }
@@ -6616,8 +6616,8 @@
 }
 
 .updated-admin .ua-table-card--users {
-  min-width: 960px;
-  width: max(100%, 960px);
+  min-width: 1040px;
+  width: max(100%, 1040px);
   max-width: none;
   box-sizing: border-box;
 }
@@ -6648,7 +6648,7 @@
 }
 
 .updated-admin .ua-table--users {
-  --ua-users-cols: 36px minmax(180px, 1.7fr) minmax(112px, 0.95fr) minmax(148px, 1.15fr) minmax(148px, 1.15fr) minmax(92px, 0.7fr) minmax(88px, 0.7fr) 64px;
+  --ua-users-cols: 36px minmax(180px, 1.7fr) minmax(112px, 0.95fr) minmax(148px, 1.15fr) minmax(148px, 1.15fr) minmax(92px, 0.7fr) minmax(88px, 0.7fr) 72px;
   grid-template-columns: var(--ua-users-cols);
   width: 100%;
   min-width: 0;
@@ -6770,16 +6770,22 @@
 
 .updated-admin .ua-table--users > .ua-users-tier {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
+  gap: 4px;
   width: 100%;
 }
 
 .updated-admin .ua-table--users > .ua-users-row-actions {
   justify-content: flex-end;
   justify-self: end;
+  min-width: 72px;
+  width: 72px;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .updated-admin .ua-table--users .ua-table__muted {
@@ -7045,22 +7051,20 @@
 
 .updated-admin .ua-users-tier {
   display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  justify-content: flex-start;
   gap: 4px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
 }
 
-.updated-admin .ua-users-tier__moves {
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  gap: 4px;
+.updated-admin .ua-users-tier__moves,
+.updated-admin .ua-users-tier__stack {
+  display: contents;
 }
 
 .updated-admin .ua-table--users.ua-table__head > .ua-users-tier-head {
@@ -7074,10 +7078,6 @@
   width: auto;
   max-width: 100%;
   flex: 0 0 auto;
-}
-
-.updated-admin .ua-users-tier__stack {
-  display: contents;
 }
 
 .updated-admin .ua-users-tier__more {
@@ -7264,8 +7264,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  min-width: 0;
+  min-width: 72px;
   width: 100%;
+  flex-shrink: 0;
   overflow: visible;
 }
 
@@ -29570,7 +29571,7 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .updated-admin .ua-cp-hptrack-section-head__dot {
@@ -29652,8 +29653,8 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-hptrack-stat--red {
-  background: #fff5f5;
-  border-color: #fecaca;
+  background: rgb(255, 255, 255);
+  border-color: rgb(238, 241, 246);
 }
 
 .updated-admin .ua-cp-hptrack-stat__delta--down {
@@ -30771,7 +30772,7 @@ scrollbar-width: thin;
   min-height: 0;
   padding: 0;
   border-radius: 12px;
-  background: #1c2740;
+  /* background: #1c2740; */
   overflow: hidden;
   cursor: default;
 }
@@ -30792,7 +30793,7 @@ scrollbar-width: thin;
   width: 100%;
   height: 100%;
   object-fit: contain;
-  background: #1c2740;
+  /* background: #1c2740; */
 }
 
 .updated-admin .ua-cp-hptrack-weight-photo-card__img {
@@ -30800,7 +30801,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cp-hptrack-photo-card__badge {
@@ -31013,7 +31014,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-hptrack-weight-history-modal__head h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: #16233f;
 }
@@ -31060,10 +31061,10 @@ scrollbar-width: thin;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4 / 4;
   min-height: 120px;
   padding: 18px 14px;
-  background: linear-gradient(160deg, #fff4ed 0%, #ffe8d6 55%, #ffdfc8 100%);
+  /* background: linear-gradient(160deg, #fff4ed 0%, #ffe8d6 55%, #ffdfc8 100%); */
   overflow: hidden;
 }
 
@@ -31075,8 +31076,8 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-hptrack-weight-photo-card__remove {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 4px;
+  right: 4px;
   z-index: 4;
   display: inline-flex;
   align-items: center;
@@ -53746,7 +53747,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-cf-cover-wrap.is-on {
   border-style: solid;
   border-color: #d5dce8;
-  background: #0f172a;
+  /* background: #0f172a; */
   color: #e5e7eb;
 }
 
@@ -53948,7 +53949,7 @@ scrollbar-width: thin;
   margin: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: #0f172a;
+  /* background: #0f172a; */
   box-shadow: 0 1px 2px rgba(16, 35, 63, 0.06);
 }
 
@@ -62097,8 +62098,8 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-table-card--users {
-    min-width: 960px;
-    width: max(100%, 960px);
+    min-width: 1040px;
+    width: max(100%, 1040px);
   }
 
   .updated-admin .ua-table--users {
@@ -62118,8 +62119,8 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-table-card--users {
-    min-width: 960px;
-    width: max(100%, 960px);
+    min-width: 1040px;
+    width: max(100%, 1040px);
   }
 
   .updated-admin .ua-table--users {
@@ -68242,8 +68243,8 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-table-card--users {
-    min-width: 960px;
-    width: max(100%, 960px);
+    min-width: 1040px;
+    width: max(100%, 1040px);
     max-width: none;
     overflow: hidden;
     background: var(--surface);
@@ -68273,7 +68274,13 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-table--users > .ua-users-tier {
-    align-items: flex-start;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    justify-content: flex-start;
+    gap: 4px;
   }
 
   .updated-admin .ua-table--users .ua-inline-select {
@@ -68283,6 +68290,9 @@ scrollbar-width: thin;
 
   .updated-admin .ua-table--users > .ua-users-row-actions {
     justify-content: flex-end;
+    min-width: 72px;
+    width: 72px;
+    overflow: visible;
   }
 
   .updated-admin .ua-users-page .ua-users-pagination {

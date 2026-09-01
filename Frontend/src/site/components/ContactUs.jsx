@@ -269,8 +269,8 @@ export default function ContactUsSection() {
           <h2 className="wellness__title mb-0">
             {page?.title || (
               <>
-                Contact Our
-                <span> Wellness Team</span>
+                {/* Contact Our
+                <span> Wellness Team</span> */}
               </>
             )}
           </h2>
@@ -281,8 +281,8 @@ export default function ContactUsSection() {
             />
           ) : page?.content ? null : (
             <p className="wellness-toolkit__description">
-              Expert guidance for your wellness journey. Reach out to our
-              specialists for personalized clinical support.
+              {/* Expert guidance for your wellness journey. Reach out to our
+              specialists for personalized clinical support. */}
             </p>
           )}
         </div>

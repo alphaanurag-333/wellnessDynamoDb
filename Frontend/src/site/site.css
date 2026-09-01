@@ -3732,7 +3732,7 @@ line-height: 1.55;
 }
 
 .contact-section .contact-intro {
-  max-width: 40rem;
+  max-width: 100%;
   margin-bottom: 0;
 }
 
@@ -14160,9 +14160,12 @@ bottom: -18px;
   width: 100%;
   border: none;
   background: transparent;
-  padding: 0;
+  padding: 10px;
   text-align: left;
   cursor: pointer;
+  border: 1px solid #eceff3;
+  background: #fff;
+  
 }
 
 .wellnesspedia-page .wp-yoga-card__media {
