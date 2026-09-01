@@ -125,20 +125,38 @@ function SopMediaView({ sop }) {
     const poster = sop.thumbnailUrl || undefined;
     if (embed) {
       return (
-        <div className="ua-sop-media">
-          <div className="ua-sop-media__video">
-            <iframe title={sop.title} src={embed} allow="autoplay; fullscreen" allowFullScreen />
+        <div className="ua-sop-media ua-sop-media--video">
+          <div className="ua-sop-media__row">
+            <div className="ua-sop-media__video">
+              <iframe title={sop.title} src={embed} allow="autoplay; fullscreen" allowFullScreen />
+            </div>
+            <div className="ua-sop-media__aside">
+              <p className="ua-sop-media__kicker">YouTube video</p>
+              {sop.linkUrl ? (
+                <a className="ua-sop-media__open" href={sop.linkUrl} target="_blank" rel="noreferrer">
+                  Open on YouTube
+                </a>
+              ) : null}
+            </div>
           </div>
         </div>
       );
     }
     if (sop.fileUrl) {
       return (
-        <div className="ua-sop-media">
-          <video className="ua-sop-media__player" src={sop.fileUrl} poster={poster} controls />
-          <a className="ua-sop-media__link" href={sop.fileUrl} target="_blank" rel="noreferrer">
-            Open {sop.fileName || "video"}
-          </a>
+        <div className="ua-sop-media ua-sop-media--video">
+          <div className="ua-sop-media__row">
+            <div className="ua-sop-media__stage">
+              <video className="ua-sop-media__player" src={sop.fileUrl} poster={poster} controls playsInline preload="metadata" />
+            </div>
+            <div className="ua-sop-media__aside">
+              <p className="ua-sop-media__kicker">Uploaded video</p>
+              <p className="ua-sop-media__file">{sop.fileName || "Video file"}</p>
+              <a className="ua-sop-media__open" href={sop.fileUrl} target="_blank" rel="noreferrer">
+                Open file
+              </a>
+            </div>
+          </div>
         </div>
       );
     }
@@ -774,7 +792,7 @@ export function SopPage() {
               <article key={sop.id} className={`ua-sop-card${open ? " ua-sop-card--open" : ""}`}>
                 <div className="ua-sop-card__row">
                   <div className="ua-sop-card__main">
-                    {type === "video" && sop.thumbnailUrl ? (
+                    {type === "video" && sop.thumbnailUrl && !open ? (
                       <img className="ua-sop-card__thumb" src={sop.thumbnailUrl} alt="" />
                     ) : null}
                     <div className="ua-sop-card__badges">

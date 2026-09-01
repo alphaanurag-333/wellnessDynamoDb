@@ -84,26 +84,48 @@ function CoverDrop({ previewUrl, disabled, onPick, onRemove }) {
   const filled = Boolean(previewUrl);
 
   return (
-    <div className="ua-cfg-cf-cover-wrap">
+    <div className={`ua-cfg-cf-drop ua-cfg-cf-cover-wrap${filled ? " is-on" : ""}`}>
+      {filled ? <img className="ua-cfg-cf-drop__img" src={previewUrl} alt="" /> : null}
+      {!filled ? (
+        <>
+          <span className="ua-cfg-cf-drop__icon" aria-hidden="true">📷</span>
+          <p className="ua-cfg-cf-drop__label">Cover image</p>
+          <span className="ua-cfg-cf-drop__size">{CF_COVER_SIZE_LABEL} · 16:9</span>
+        </>
+      ) : null}
       <button
         type="button"
-        className={`ua-cfg-cf-cover-frame${filled ? " is-on" : ""}`}
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cf-drop__btn"
         disabled={disabled}
-        aria-label={filled ? "Replace cover image" : "Upload cover image"}
         onClick={() => onPick?.()}
       >
-        {filled ? (
-          <img src={previewUrl} alt="" />
-        ) : (
-          <>
-            <span aria-hidden="true">📷</span>
-            <em>Upload cover</em>
-          </>
-        )}
-        {filled ? <span className="ua-cfg-cf-cover-frame__replace">Replace</span> : null}
+        {filled ? "Replace photo" : "Upload photo"}
       </button>
       {filled && onRemove ? (
         <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove cover image" disabled={disabled} onClick={onRemove}>×</button>
+      ) : null}
+    </div>
+  );
+}
+
+function VideoDrop({ fileName, hasExisting, disabled, onPick, onRemove }) {
+  const filled = Boolean(fileName || hasExisting);
+
+  return (
+    <div className={`ua-cfg-cf-drop ua-cfg-cf-video-drop${filled ? " is-on" : ""}`}>
+      <span className="ua-cfg-cf-drop__icon" aria-hidden="true">▶</span>
+      <p className="ua-cfg-cf-drop__label">{fileName || (hasExisting ? "Video attached" : "Video file")}</p>
+      {!filled ? <span className="ua-cfg-cf-drop__size">Video: 1920×1080</span> : null}
+      <button
+        type="button"
+        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cf-drop__btn"
+        disabled={disabled}
+        onClick={() => onPick?.()}
+      >
+        {filled ? "Replace video" : "Upload video"}
+      </button>
+      {filled && onRemove ? (
+        <button type="button" className="ua-cfg-rc-media-x" aria-label="Remove video" disabled={disabled} onClick={onRemove}>×</button>
       ) : null}
     </div>
   );
@@ -412,7 +434,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
               <textarea
                 id="cf-message"
                 className="ua-cfg-tf-story ua-cfg-cf-message"
-                rows={6}
+                rows={10}
                 value={draft.message}
                 disabled={loading || busy}
                 onChange={(event) => setDraft((prev) => ({ ...prev, message: event.target.value }))}
@@ -449,32 +471,34 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
                     onPick={() => openCoverPicker()}
                     onRemove={coverFile instanceof File ? clearDraftCover : null}
                   />
-                  <p className="ua-cfg-cf-hint">{CF_COVER_SIZE_LABEL} · 16:9</p>
                 </div>
                 <div className="ua-cfg-cf-media__source">
                   {draft.type === "link" ? (
                     <div className="ua-cfg-cf-video-field">
                       <label className="ua-cfg-cf-label" htmlFor="cf-yt">YouTube link</label>
-                      <input
-                        id="cf-yt"
-                        type="url"
-                        className="ua-cfg-vh-input ua-cfg-cf-input"
-                        placeholder="https://youtube.com/watch?v=…"
-                        value={draft.ytLink}
-                        disabled={loading || busy}
-                        onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
-                      />
-                    </div>
-                  ) : (
-                    <div className="ua-cfg-cf-video-field">
-                      <span className="ua-cfg-cf-label">Video file</span>
-                      <div className="ua-cfg-cf-video-row">
-                        <strong>{videoName || (mapped?.video ? "Video attached" : "No video yet")}</strong>
-                        <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={loading || busy} onClick={() => openVideoPicker()}>
-                          {mapped?.video || videoFile ? "Replace video" : "Upload video"}
-                        </button>
+                      <div className="ua-cfg-cf-drop ua-cfg-cf-link-drop">
+                        <input
+                          id="cf-yt"
+                          type="url"
+                          className="ua-cfg-vh-input ua-cfg-cf-input"
+                          placeholder="https://youtube.com/watch?v=…"
+                          value={draft.ytLink}
+                          disabled={loading || busy}
+                          onChange={(event) => setDraft((prev) => ({ ...prev, ytLink: event.target.value }))}
+                        />
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <span className="ua-cfg-cf-label">Video file</span>
+                      <VideoDrop
+                        fileName={videoName}
+                        hasExisting={Boolean(mapped?.video)}
+                        disabled={loading || busy}
+                        onPick={() => openVideoPicker()}
+                        onRemove={videoFile instanceof File ? () => { setVideoFile(null); setVideoName(""); } : null}
+                      />
+                    </>
                   )}
                 </div>
                 {draft.type === "link" && embed ? (

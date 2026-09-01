@@ -7565,7 +7565,8 @@ background-image: url("../site/images/birthday-card-bg.png");
 .champion-avatar img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
 }
 
@@ -8034,7 +8035,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   width: 55px;
   height: 55px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   border: 3px solid var(--primary-light);
   flex-shrink: 0;
 }
@@ -16253,6 +16254,11 @@ bottom: -18px;
   }
   .managealignment {
     flex-direction: row !important;
+    width: max-content !important;
+    flex-wrap: wrap !important;
+  }
+  .width-fits {
+    width: max-content !important;
   }
 
   .app-hero .site-app-badges {

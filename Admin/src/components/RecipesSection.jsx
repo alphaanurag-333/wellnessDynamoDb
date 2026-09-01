@@ -38,6 +38,17 @@ const RC_CROP_WIDTH = 840;
 const RC_CROP_HEIGHT = 480;
 const RC_CROP_RATIO = "16:9";
 const RC_COVER_SIZE_LABEL = "840x480";
+
+function withYoutubeAutoplay(embedUrl) {
+  if (!embedUrl) return "";
+  try {
+    const parsed = new URL(embedUrl);
+    parsed.searchParams.set("autoplay", "1");
+    return parsed.toString();
+  } catch {
+    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
+  }
+}
 const RC_VIDEO_SIZE_LABEL = "1920x1080";
 
 function CharHint({ value, max }) {
@@ -322,10 +333,20 @@ function SpecChips({ specs }) {
 }
 
 function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", itemNoun = "Recipe", showSpecs = true }) {
+  const [playing, setPlaying] = useState(false);
+
+  useEffect(() => {
+    setPlaying(false);
+  }, [entry?.id]);
+
   if (!entry) return null;
   const embed = youtubeEmbedUrl(entry.videoLink);
   const isVideo = entry.apiType === "video" || entry.type === "VIDEO";
   const mediaHref = isVideo && entry.video ? entry.video : entry.videoLink;
+  const photo = entry.thumbnail;
+  const hasPlayer = Boolean(embed || (isVideo && entry.video));
+  const title = asCopyString(entry.title) || `${itemNoun} video`;
+  const showCover = Boolean(photo) && (!hasPlayer || !playing);
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-recipes-view" onClick={(event) => event.stopPropagation()} role="dialog" aria-labelledby="recipe-view-title">
@@ -343,9 +364,42 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", it
           <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
         </div>
         <div className="ua-cfg-recipes-view__body">
-          {entry.thumbnail ? (
+          {hasPlayer ? (
+            <div className={`ua-cfg-rc-player${showCover ? " has-cover" : ""}`}>
+              {showCover ? (
+                <button
+                  type="button"
+                  className="ua-cfg-rc-player__cover"
+                  onClick={() => setPlaying(true)}
+                  aria-label={`Play ${title}`}
+                >
+                  <img src={photo} alt="" />
+                  <span className="ua-cfg-rc-player__play" aria-hidden="true">▶</span>
+                </button>
+              ) : null}
+              {playing || !photo ? (
+                embed ? (
+                  <iframe
+                    title={title}
+                    src={playing && photo ? withYoutubeAutoplay(embed) : embed}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={entry.video}
+                    poster={photo || undefined}
+                    controls
+                    playsInline
+                    autoPlay={playing}
+                    preload={photo ? "none" : "metadata"}
+                  />
+                )
+              ) : null}
+            </div>
+          ) : photo ? (
             <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
-              <img src={entry.thumbnail} alt="" />
+              <img src={photo} alt="" />
             </div>
           ) : (
             <div className="ua-cfg-rc-view__media">
@@ -371,22 +425,7 @@ function RecipeViewModal({ entry, onClose, onEdit, viewTag = "Health recipe", it
                 ) : "—"}
               </dd>
             </div>
-            {/* <div>
-              <dt>Created</dt>
-              <dd>{formatRecipeDate(entry.createdAt)}</dd>
-            </div>
-            <div>
-              <dt>Updated</dt>
-              <dd>{formatRecipeDate(entry.updatedAt)}</dd>
-            </div> */}
           </dl>
-          {embed ? (
-            <div className="ua-cfg-rc-view__embed">
-              <iframe title={asCopyString(entry.title) || `${itemNoun} video`} src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          ) : isVideo && entry.video ? (
-            <video className="ua-cfg-rc-view__player" src={entry.video} controls preload="metadata" />
-          ) : null}
         </div>
         <div className="ua-cfg-rc-view__foot">
           <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
