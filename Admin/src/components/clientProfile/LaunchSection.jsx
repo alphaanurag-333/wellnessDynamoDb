@@ -786,22 +786,6 @@ function LifestyleTab({
           />
         ) : null}
       </div>
-      {canWrite ? (
-      <div className="ua-cp-launch-savebar">
-        <div className="ua-cp-launch-savebar__copy">
-          <span className="ua-cp-launch-savebar__label">Save this attempt</span>
-          {latest != null ? <span className="ua-cp-launch-savebar__meta">Latest score {latest.totalScore}</span> : null}
-        </div>
-        <button
-          type="button"
-          className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-          disabled={saving}
-          onClick={saveAssessment}
-        >
-          {saving ? "Saving…" : "Save assessment"}
-        </button>
-      </div>
-      ) : null}
       <div className="ua-cp-launch-domains-toolbar">
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={expandAll}>Expand all</button>
         <button type="button" className="ua-cp-launch-questions__expand-btn" onClick={collapseAll}>Collapse all</button>
@@ -828,6 +812,22 @@ function LifestyleTab({
         />
       ))}
       </div>
+      {canWrite ? (
+      <div className="ua-cp-launch-savebar">
+        <div className="ua-cp-launch-savebar__copy">
+          <span className="ua-cp-launch-savebar__label">Save this attempt</span>
+          {latest != null ? <span className="ua-cp-launch-savebar__meta">Latest score {latest.totalScore}</span> : null}
+        </div>
+        <button
+          type="button"
+          className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+          disabled={saving}
+          onClick={saveAssessment}
+        >
+          {saving ? "Saving…" : "Save assessment"}
+        </button>
+      </div>
+      ) : null}
       <FocusAreas
         autoPoints={autoPoints}
         catalog={focusAreas}
