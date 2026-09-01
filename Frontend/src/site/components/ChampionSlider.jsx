@@ -60,6 +60,13 @@ function mapChampion(row) {
 }
 
 function ChampionCard({ item, expanded, onToggle }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(item.avatar) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [item.avatar]);
+
   return (
     <article className={`champion-card${expanded ? " champion-card--expanded" : ""}`}>
       <div className="champion-title marginmanages">{item.title}</div>
