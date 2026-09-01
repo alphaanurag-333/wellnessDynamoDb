@@ -2,6 +2,7 @@ export const PHOTO_ANGLES = [
   { label: "Front", urlKey: "frontPicUrl", slug: "front" },
   { label: "Right", urlKey: "rightPicUrl", slug: "right" },
   { label: "Left", urlKey: "leftPicUrl", slug: "left" },
+  { label: "Weight", urlKey: "weightPicUrl", slug: "weight", source: "measurement", single: true },
 ];
 
 export const BODY_ANALYTICS = {
@@ -236,17 +237,42 @@ export function formatPhotoDate(value) {
   });
 }
 
-export function buildPhotosByAngle(photos) {
-  return Object.fromEntries(PHOTO_ANGLES.map((angle) => [
-    angle.label,
-    (photos || [])
-      .filter((photo) => photo[angle.urlKey])
-      .map((photo) => ({
-        id: `${photo.id || photo._id}-${angle.label}`,
-        photoId: String(photo.id || photo._id || ""),
-        angle: angle.slug,
-        date: formatPhotoDate(photo.recordedAt),
-        url: photo[angle.urlKey],
-      })),
-  ]));
+function mapPhotoRows(records, angle) {
+  return (records || [])
+    .filter((row) => row[angle.urlKey])
+    .map((row) => ({
+      id: `${row.id || row._id}-${angle.label}`,
+      photoId: String(row.id || row._id || ""),
+      angle: angle.slug,
+      stamp: row.recordedAt || row.createdAt || "",
+      date: formatPhotoDate(row.recordedAt || row.createdAt),
+      url: row[angle.urlKey],
+    }));
+}
+
+export function buildPhotosByAngle(photos, measurements = []) {
+  return Object.fromEntries(PHOTO_ANGLES.map((angle) => {
+    const records = angle.source === "measurement" ? measurements : photos;
+    const mapped = mapPhotoRows(records, angle);
+    const list = angle.single
+      ? mapped
+          .slice()
+          .sort((a, b) => String(a.stamp).localeCompare(String(b.stamp)))
+          .slice(0, 1)
+      : mapped;
+    return [angle.label, list.map(({ stamp, ...photo }) => photo)];
+  }));
+}
+
+export function latestPhotoStamp(photos, measurements = []) {
+  const onboardingWeight = (measurements || [])
+    .filter((row) => row.weightPicUrl)
+    .slice()
+    .sort((a, b) => String(a.recordedAt || a.createdAt || "").localeCompare(String(b.recordedAt || b.createdAt || "")))[0];
+  const stamps = [
+    ...(photos || []).map((row) => row.recordedAt || row.createdAt),
+    onboardingWeight?.recordedAt || onboardingWeight?.createdAt,
+  ].filter(Boolean);
+  if (!stamps.length) return null;
+  return stamps.sort((a, b) => String(b).localeCompare(String(a)))[0];
 }

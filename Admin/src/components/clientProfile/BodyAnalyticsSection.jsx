@@ -12,6 +12,7 @@ import {
   formatPhotoDate,
   getHistoryWindow,
   getPeriodOptions,
+  latestPhotoStamp,
 } from "../../data/bodyAnalyticsData.js";
 
 function getModalRoot() {
@@ -74,11 +75,17 @@ function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
   );
 }
 
+function photoCardHint(angle, photos) {
+  if (!photos?.length) return "No photo uploaded";
+  if (angle.single) return "Onboarding · tap to view";
+  return `${photos.length} photo${photos.length === 1 ? "" : "s"} · tap to view`;
+}
+
 function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
   return (
     <section className="ua-cp-ba-block ua-cp-ba-block--photos">
       <div className="ua-cp-ba-block__head">
-        <h3 className="ua-cp-ba-block__title">Progress photos · 3 angles</h3>
+        <h3 className="ua-cp-ba-block__title">Progress photos · 4 angles</h3>
         <span className="ua-cp-ba-block__meta">Latest: {latestPhotoDate}</span>
       </div>
       <div className="ua-cp-ba-photos">
@@ -92,11 +99,7 @@ function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
           >
             <span className="ua-cp-ba-photo__icon" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path></svg></span>
             <span className="ua-cp-ba-photo__label">{angle.label}</span>
-            <span className="ua-cp-ba-photo__hint">
-              {photosByAngle[angle.label]?.length
-                ? `${photosByAngle[angle.label].length} photo${photosByAngle[angle.label].length === 1 ? "" : "s"} · tap to view`
-                : "No photo uploaded"}
-            </span>
+            <span className="ua-cp-ba-photo__hint">{photoCardHint(angle, photosByAngle[angle.label])}</span>
           </button>
         ))}
       </div>
@@ -134,16 +137,20 @@ async function downloadPhotoFile(userId, photo, angleLabel) {
 function PhotoModal({ userId, angle, photos, onClose, onToast }) {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState("");
+  const angleMeta = PHOTO_ANGLES.find((item) => item.label === angle);
+  const isSingle = Boolean(angleMeta?.single);
+  const singlePhoto = isSingle ? photos[0] || null : null;
+  const activePreview = isSingle ? singlePhoto : preview;
 
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key !== "Escape") return;
-      if (preview) setPreview(null);
+      if (preview && !isSingle) setPreview(null);
       else onClose();
     }
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose, preview]);
+  }, [isSingle, onClose, preview]);
 
   const root = getModalRoot();
   if (!root) return null;
@@ -179,56 +186,58 @@ function PhotoModal({ userId, angle, photos, onClose, onToast }) {
 
   return createPortal(
     <>
-      <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
-        <div className="ua-cp-modal ua-cp-modal--photos" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="photo-modal-title">
-          <div className="ua-cp-modal__head ua-cp-modal__head--photos">
-            <div>
-              <div id="photo-modal-title" className="ua-cp-modal__title">{angle} Photos</div>
-              <div className="ua-cp-modal__sub">All {angle} photos uploaded by the client — compare over time</div>
-            </div>
-            <div className="ua-cp-modal__actions">
-              <button
-                type="button"
-                className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-                onClick={handleDownloadAll}
-                disabled={busy === "all" || !photos.length}
-              >
-                ↓ {busy === "all" ? "Downloading…" : "Download all"}
-              </button>
-              <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
-            </div>
-          </div>
-          <div className="ua-cp-ba-photo-grid">
-            {photos.map((p) => (
-              <div key={p.id} className="ua-cp-ba-photo-card">
+      {isSingle ? null : (
+        <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+          <div className="ua-cp-modal ua-cp-modal--photos" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="photo-modal-title">
+            <div className="ua-cp-modal__head ua-cp-modal__head--photos">
+              <div>
+                <div id="photo-modal-title" className="ua-cp-modal__title">{angle} Photos</div>
+                <div className="ua-cp-modal__sub">All {angle} photos uploaded by the client — compare over time</div>
+              </div>
+              <div className="ua-cp-modal__actions">
                 <button
                   type="button"
-                  className="ua-cp-ba-photo-card__img"
-                  onClick={() => setPreview(p)}
-                  aria-label={`Preview ${angle} photo from ${p.date}`}
+                  className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+                  onClick={handleDownloadAll}
+                  disabled={busy === "all" || !photos.length}
                 >
-                  <img src={p.url} alt={`${angle} progress from ${p.date}`} />
+                  ↓ {busy === "all" ? "Downloading…" : "Download all"}
                 </button>
-                <div className="ua-cp-ba-photo-card__foot">
-                  <span>{p.date}</span>
+                <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
+              </div>
+            </div>
+            <div className="ua-cp-ba-photo-grid">
+              {photos.map((p) => (
+                <div key={p.id} className="ua-cp-ba-photo-card">
                   <button
                     type="button"
-                    className="ua-cp-ba-photo-card__save"
-                    onClick={() => handleSave(p)}
-                    disabled={busy === p.id}
+                    className="ua-cp-ba-photo-card__img"
+                    onClick={() => setPreview(p)}
+                    aria-label={`Preview ${angle} photo from ${p.date}`}
                   >
-                    ↓ {busy === p.id ? "Saving…" : "Save"}
+                    <img src={p.url} alt={`${angle} progress from ${p.date}`} />
                   </button>
+                  <div className="ua-cp-ba-photo-card__foot">
+                    <span>{p.date}</span>
+                    <button
+                      type="button"
+                      className="ua-cp-ba-photo-card__save"
+                      onClick={() => handleSave(p)}
+                      disabled={busy === p.id}
+                    >
+                      ↓ {busy === p.id ? "Saving…" : "Save"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-      {preview ? (
+      )}
+      {activePreview ? (
         <div
           className="ua-cp-ba-photo-preview"
-          onClick={() => setPreview(null)}
+          onClick={isSingle ? onClose : () => setPreview(null)}
           role="presentation"
         >
           <div
@@ -240,21 +249,30 @@ function PhotoModal({ userId, angle, photos, onClose, onToast }) {
             <div className="ua-cp-ba-photo-preview__head">
               <div>
                 <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
-                <div className="ua-cp-ba-photo-preview__sub">{preview.date}</div>
+                <div className="ua-cp-ba-photo-preview__sub">
+                  {isSingle ? `Onboarding · ${activePreview.date}` : activePreview.date}
+                </div>
               </div>
               <div className="ua-cp-modal__actions">
                 <button
                   type="button"
                   className="ua-cp-ba-photo-card__save"
-                  onClick={() => handleSave(preview)}
-                  disabled={busy === preview.id}
+                  onClick={() => handleSave(activePreview)}
+                  disabled={busy === activePreview.id}
                 >
-                  ↓ {busy === preview.id ? "Saving…" : "Save"}
+                  ↓ {busy === activePreview.id ? "Saving…" : "Save"}
                 </button>
-                <button type="button" className="ua-cp-modal__close" onClick={() => setPreview(null)} aria-label="Close preview">×</button>
+                <button
+                  type="button"
+                  className="ua-cp-modal__close"
+                  onClick={isSingle ? onClose : () => setPreview(null)}
+                  aria-label="Close preview"
+                >
+                  ×
+                </button>
               </div>
             </div>
-            <img src={preview.url} alt={`${angle} progress from ${preview.date}`} />
+            <img src={activePreview.url} alt={`${angle} from ${activePreview.date}`} />
           </div>
         </div>
       ) : null}
@@ -342,10 +360,12 @@ export function BodyAnalyticsSection({ user, onToast }) {
   }
 
   const photosByAngle = useMemo(
-    () => buildPhotosByAngle(bodyAnalytics?.photos),
-    [bodyAnalytics?.photos],
+    () => buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
+    [bodyAnalytics?.measurements, bodyAnalytics?.photos],
   );
-  const latestPhotoDate = formatPhotoDate(bodyAnalytics?.photos?.[0]?.recordedAt);
+  const latestPhotoDate = formatPhotoDate(
+    latestPhotoStamp(bodyAnalytics?.photos, bodyAnalytics?.measurements),
+  );
 
   const unitToggle = (
     <SegToggle

@@ -4,6 +4,7 @@ const { getUserById } = require("../../models/userModel");
 const { assertStaffCanAccessUser } = require("../staffAccess");
 const {
   listBodyMeasurementsByUser,
+  getBodyMeasurementById,
   toPublicBodyMeasurement,
 } = require("../../models/userBodyMeasurementModel");
 const {
@@ -52,22 +53,32 @@ exports.downloadUserProgressPhotoController = asyncHandler(async (req, res) => {
   const userId = String(req.params.id || "").trim();
   const photoId = String(req.params.photoId || "").trim();
   const angle = String(req.params.angle || "").trim().toLowerCase();
-  const keyField = PROGRESS_PHOTO_ANGLE_KEYS[angle];
 
   if (!userId) throw new AppError("User id is required", 400);
   if (!photoId) throw new AppError("Photo id is required", 400);
-  if (!keyField) throw new AppError("angle must be front, right, or left", 400);
 
   const user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
 
-  const photo = await getProgressPhotoById(photoId);
-  if (!photo || String(photo.userId || "") !== userId) {
-    throw new AppError("Progress photo not found", 404);
+  let objectKey = "";
+  if (angle === "weight") {
+    const measurement = await getBodyMeasurementById(photoId);
+    if (!measurement || String(measurement.userId || "") !== userId) {
+      throw new AppError("Weight photo not found", 404);
+    }
+    objectKey = String(measurement.weightPicKey || "").trim();
+  } else {
+    const keyField = PROGRESS_PHOTO_ANGLE_KEYS[angle];
+    if (!keyField) throw new AppError("angle must be front, right, left, or weight", 400);
+
+    const photo = await getProgressPhotoById(photoId);
+    if (!photo || String(photo.userId || "") !== userId) {
+      throw new AppError("Progress photo not found", 404);
+    }
+    objectKey = String(photo[keyField] || "").trim();
   }
 
-  const objectKey = String(photo[keyField] || "").trim();
   if (!objectKey) throw new AppError("Photo file not found", 404);
 
   const ext = objectKey.match(/\.(jpe?g|png|webp|gif|heic)$/i)?.[1]?.toLowerCase() || "jpg";
