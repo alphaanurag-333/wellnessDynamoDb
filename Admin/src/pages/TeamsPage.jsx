@@ -26,7 +26,6 @@ import {
   setTeamMemberTotp,
   updateTeamMember,
 } from "../api/teamsApi.js";
-import { fetchAccessRoles } from "../api/accessApi.js";
 import { fetchUsers } from "../api/usersApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
@@ -287,6 +286,53 @@ function IconDeleteMember() {
 function memberRemindMessage(name) {
   const first = String(name || "").trim().split(/\s+/)[0] || "there";
   return `Hi ${first}, a quick reminder on your pending items — please take a look when you get a moment.`;
+}
+
+function memberBaseUiKey(member, teamRoles, roleById) {
+  const accessRole =
+    (member?.consoleRoleId && roleById?.[member.consoleRoleId]) ||
+    teamRoles.find((role) => role.roleKey && role.roleKey === member?.primaryRoleKey) ||
+    null;
+  return (
+    (accessRole && resolveBaseUiRoleKey(accessRole, teamRoles)) ||
+    String(member?.primaryRoleKey || "").toLowerCase()
+  );
+}
+
+function paginateMemberList(list, page, limit) {
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total / limit) || 1);
+  const safePage = Math.min(Math.max(1, page), pages);
+  const start = (safePage - 1) * limit;
+  return {
+    members: list.slice(start, start + limit),
+    pagination: { page: safePage, limit, total, pages },
+  };
+}
+
+async function fetchMembersForVisibleRoles({
+  teamRoles,
+  page,
+  limit,
+  parentAccountId,
+}) {
+  const chunks = await Promise.all(
+    teamRoles.map((role) =>
+      fetchTeamMembers({
+        page: 1,
+        limit: 200,
+        consoleRoleId: role.id,
+        parentAccountId,
+      }),
+    ),
+  );
+  const byId = new Map();
+  for (const chunk of chunks) {
+    for (const member of chunk?.members || []) {
+      if (member?.id) byId.set(String(member.id), member);
+    }
+  }
+  return paginateMemberList([...byId.values()], page, limit);
 }
 
 function isAdminAccessRole(role) {
@@ -1197,7 +1243,7 @@ function CreateMemberModal({
 
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs, sessionUi, can } = useViewAs();
+  const { isSuperAdmin, viewAs, sessionUi, can, accessRoles, liveRolesReady, reloadLiveRoles } = useViewAs();
   const teamsPersona = isSuperAdmin ? viewAs : sessionUi || viewAs;
   const actorIsWc = teamsPersona === "wc";
   const actorIsAwc = teamsPersona === "awc";
@@ -1213,8 +1259,6 @@ export function TeamsPage() {
     total: 0,
     pages: 1,
   });
-  const [accessRoles, setAccessRoles] = useState([]);
-  const [rolesReady, setRolesReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -1294,48 +1338,58 @@ export function TeamsPage() {
   const selectedConsoleRoleId = !isAllTab && ROLE_ID_RE.test(roleTab) ? roleTab : undefined;
   const fallbackUiRoleKey = !isAllTab && TEAM_ROLE_META[roleTab] ? roleTab : undefined;
 
-  const loadRoles = useCallback(async () => {
-    try {
-      const roles = await fetchAccessRoles();
-      setAccessRoles(Array.isArray(roles) ? roles : []);
-    } catch {
-      setAccessRoles([]);
-    } finally {
-      setRolesReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRoles();
-  }, [loadRoles]);
-
   const load = useCallback(() => {
     setReloadNonce((n) => n + 1);
-    loadRoles();
-  }, [loadRoles]);
+    reloadLiveRoles();
+  }, [reloadLiveRoles]);
+
+  const pendingRoleNormalize = Boolean(
+    liveRolesReady &&
+      !isAllTab &&
+      !selectedConsoleRoleId &&
+      teamRoles.length &&
+      (teamRoles.some((role) => role.roleKey === roleTab && role.id !== roleTab) ||
+        !teamRoles.some((role) => role.id === roleTab || role.roleKey === roleTab)),
+  );
 
   useEffect(() => {
     let cancelled = false;
     async function loadMembers() {
-      if (!isAllTab && !selectedConsoleRoleId && !rolesReady) return;
+      if (!liveRolesReady || pendingRoleNormalize) return;
+      const staffAllTab = (actorIsWc || actorIsAwc) && isAllTab;
+      if (staffAllTab && !teamRoles.length) {
+        setMembers([]);
+        setPagination({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError("");
       try {
-        const { members: rows, pagination: nextPagination } = await fetchTeamMembers({
-          page: currentPage,
-          limit: PAGE_SIZE,
-          consoleRoleId: selectedConsoleRoleId,
-          roleKey: selectedConsoleRoleId ? undefined : fallbackUiRoleKey,
-          parentAccountId: parentParam || undefined,
-        });
+        const result = staffAllTab
+          ? await fetchMembersForVisibleRoles({
+              teamRoles,
+              page: currentPage,
+              limit: PAGE_SIZE,
+              parentAccountId: parentParam || undefined,
+            })
+          : await fetchTeamMembers({
+              page: currentPage,
+              limit: PAGE_SIZE,
+              consoleRoleId: selectedConsoleRoleId,
+              roleKey: selectedConsoleRoleId ? undefined : fallbackUiRoleKey,
+              parentAccountId: parentParam || undefined,
+            });
         if (cancelled) return;
-        const list = (rows || []).filter((m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin");
+        const list = (result?.members || []).filter(
+          (m) => !m.isSuperAdmin && m.primaryRoleKey !== "admin",
+        );
         setMembers(list);
         setPagination({
-          page: Number(nextPagination?.page) || currentPage,
-          limit: Number(nextPagination?.limit) || PAGE_SIZE,
-          total: Number(nextPagination?.total) || 0,
-          pages: Math.max(1, Number(nextPagination?.pages) || 1),
+          page: Number(result?.pagination?.page) || currentPage,
+          limit: Number(result?.pagination?.limit) || PAGE_SIZE,
+          total: Number(result?.pagination?.total) || list.length,
+          pages: Math.max(1, Number(result?.pagination?.pages) || 1),
         });
       } catch (err) {
         if (cancelled) return;
@@ -1350,7 +1404,19 @@ export function TeamsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAllTab, selectedConsoleRoleId, fallbackUiRoleKey, rolesReady, currentPage, reloadNonce, parentParam]);
+  }, [
+    liveRolesReady,
+    pendingRoleNormalize,
+    actorIsWc,
+    actorIsAwc,
+    isAllTab,
+    teamRoles,
+    selectedConsoleRoleId,
+    fallbackUiRoleKey,
+    currentPage,
+    reloadNonce,
+    parentParam,
+  ]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -1395,18 +1461,14 @@ export function TeamsPage() {
   }, [teamRoles, roleTab, isAllTab]);
 
   const rows = useMemo(() => {
-    if (!actorIsAwc) return members;
-    return members.filter((m) => {
-      const accessRole =
-        (m.consoleRoleId && roleById[m.consoleRoleId]) ||
-        teamRoles.find((r) => r.roleKey && r.roleKey === m.primaryRoleKey) ||
-        null;
-      const baseUi =
-        (accessRole && resolveBaseUiRoleKey(accessRole, teamRoles)) ||
-        String(m.primaryRoleKey || "").toLowerCase();
-      return baseUi === "trainee";
-    });
-  }, [actorIsAwc, members, roleById, teamRoles]);
+    const allowed = actorIsAwc
+      ? new Set(["trainee"])
+      : actorIsWc
+        ? new Set(["awc", "trainee"])
+        : null;
+    if (!allowed) return members;
+    return members.filter((m) => allowed.has(memberBaseUiKey(m, teamRoles, roleById)));
+  }, [actorIsAwc, actorIsWc, members, roleById, teamRoles]);
 
   const baseUiForCol = activeRole
     ? resolveBaseUiRoleKey(activeRole, teamRoles) || activeRole.roleKey

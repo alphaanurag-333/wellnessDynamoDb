@@ -206,9 +206,42 @@ async function listAllUnpaged() {
   return (result.items || []).map(withLegacyId);
 }
 
+const HEALTH_CONCERN_DROPDOWN_SLUGS = new Set(["program-category", "health-concern"]);
+
+function healthConcernsToDropdownList(concerns, slug) {
+  const key = slugify(slug) || "health-concern";
+  return {
+    id: key,
+    _id: key,
+    slug: key,
+    title: key === "program-category" ? "Program category" : "Health concern",
+    wide: true,
+    status: "active",
+    sortOrder: 0,
+    options: (concerns || []).map((row, index) => ({
+      id: row.id,
+      label: String(row.title || "").trim(),
+      value: row.id,
+      icon: row.icon || "",
+      on: String(row.status || "active").toLowerCase() !== "inactive",
+      sortOrder: index,
+    })),
+  };
+}
+
+async function healthConcernsAsDropdownList(slug) {
+  const { listHealthConcerns, ensureOtherHealthConcern } = require("./healthConcernModel");
+  await ensureOtherHealthConcern();
+  const data = await listHealthConcerns({ page: 1, limit: 200, status: "active" });
+  return healthConcernsToDropdownList(data.healthConcerns, slug);
+}
+
 async function getDropdownBySlug(slug) {
   const key = slugify(slug);
   if (!key) return null;
+  if (HEALTH_CONCERN_DROPDOWN_SLUGS.has(key)) {
+    return healthConcernsAsDropdownList(key);
+  }
   const result = await listByPartitionKey({
     tableName: TABLE,
     indexName: "SlugIndex",
@@ -540,4 +573,6 @@ module.exports = {
   getActiveDropdownValues,
   ensureSeeded,
   toPublicList,
+  HEALTH_CONCERN_DROPDOWN_SLUGS,
+  healthConcernsToDropdownList,
 };

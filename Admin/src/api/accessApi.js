@@ -108,63 +108,8 @@ function normalizeMemberProfileImage(member) {
   return profileImage ? { ...member, profileImage } : { ...member, profileImage: null };
 }
 
-async function enrichMembersWithProfileImages(members) {
-  const list = Array.isArray(members) ? members.map(normalizeMemberProfileImage) : [];
-  if (!list.length || list.every((m) => m.profileImage)) {
-    return list;
-  }
-
-  let photoById = new Map();
-
-  try {
-    const { data } = await api.get("/account/accounts", {
-      headers: authHeader(),
-      params: { status: "active", limit: 200 },
-    });
-    photoById = new Map(
-      (Array.isArray(data.accounts) ? data.accounts : [])
-        .filter((account) => account?.id && account?.profileImage)
-        .map((account) => [String(account.id), account.profileImage]),
-    );
-  } catch {
-    /* fall through to per-member lookup */
-  }
-
-  let enriched = list.map((member) => {
-    if (member.profileImage) return member;
-    const profileImage = photoById.get(String(member.id));
-    return profileImage ? { ...member, profileImage } : member;
-  });
-
-  const missing = enriched.filter((member) => member?.id && !member.profileImage);
-  if (!missing.length) return enriched;
-
-  const detailPairs = await Promise.all(
-    missing.map(async (member) => {
-      try {
-        const { data } = await api.get(
-          `/account/access/members/${encodeURIComponent(member.id)}`,
-          { headers: authHeader() },
-        );
-        const profileImage = String(data?.member?.profileImage || "").trim();
-        return profileImage ? [String(member.id), profileImage] : null;
-      } catch {
-        return null;
-      }
-    }),
-  );
-
-  for (const pair of detailPairs) {
-    if (pair) photoById.set(pair[0], pair[1]);
-  }
-
-  if (!photoById.size) return enriched;
-
-  return enriched.map((member) => {
-    if (member.profileImage) return member;
-    const profileImage = photoById.get(String(member.id));
-    return profileImage ? { ...member, profileImage } : member;
-  });
+function withListProfileImages(members) {
+  return Array.isArray(members) ? members.map(normalizeMemberProfileImage) : [];
 }
 
 export async function fetchAccessMembers({
@@ -184,9 +129,8 @@ export async function fetchAccessMembers({
   if (parentAccountId) q.set("parentAccountId", parentAccountId);
   try {
     const { data } = await api.get(`/account/access/members?${q}`, { headers: authHeader() });
-    const members = await enrichMembersWithProfileImages(data.members);
     return {
-      members,
+      members: withListProfileImages(data.members),
       pagination: data.pagination,
     };
   } catch (error) {

@@ -16,6 +16,9 @@ const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync 
 const {
   emitMealLogged,
   emitLabReportUploaded,
+  emitCounsellingRequested,
+  emitCounsellingPeriodSelected,
+  emitCounsellingTimeRequested,
 } = require("./adminActivityService");
 
 const PUSH_TITLE_DEFAULT = "IR Wellness";
@@ -54,6 +57,7 @@ const FCM_TYPE_BY_KIND = {
   counselling_period_selected: "counselling_period_selected_notification",
   counselling_time_requested: "counselling_time_requested_notification",
   counselling_scheduled: "counselling_scheduled_notification",
+  counselling_cancelled: "counselling_cancelled_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
@@ -929,17 +933,19 @@ async function dispatchCounsellingCoachPush({ user, title, body, kind, trackId }
 }
 
 async function dispatchCounsellingRequestedCoachNotification({ user, trackId }) {
+  emitCounsellingRequested({ user, trackId });
   const userName = String(user?.name || "A client").trim() || "A client";
   return dispatchCounsellingCoachPush({
     user,
-    title: "Counselling requested",
-    body: `${userName} requested a counselling session.`,
+    title: "Counselling booked",
+    body: `${userName} booked a counselling session.`,
     kind: "counselling_requested",
     trackId,
   });
 }
 
 async function dispatchCounsellingPeriodSelectedCoachNotification({ user, trackId }) {
+  emitCounsellingPeriodSelected({ user, trackId });
   const userName = String(user?.name || "A client").trim() || "A client";
   return dispatchCounsellingCoachPush({
     user,
@@ -951,6 +957,7 @@ async function dispatchCounsellingPeriodSelectedCoachNotification({ user, trackI
 }
 
 async function dispatchCounsellingTimeRequestedCoachNotification({ user, trackId }) {
+  emitCounsellingTimeRequested({ user, trackId });
   const userName = String(user?.name || "A client").trim() || "A client";
   return dispatchCounsellingCoachPush({
     user,
@@ -987,6 +994,19 @@ async function dispatchCounsellingScheduledNotification({ userId, trackId }) {
   return notification;
 }
 
+async function dispatchCounsellingCancelledNotification({ userId, trackId }) {
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "counselling_cancelled",
+    message: "Your wellness coach cancelled your counselling session.",
+    referenceId: trackId ? String(trackId) : null,
+    referenceType: "heal_consultancy_track",
+    title: "Counselling cancelled",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 function dispatchCounsellingRequestedCoachNotificationAsync(payload) {
   runPushSafely(dispatchCounsellingRequestedCoachNotification(payload));
 }
@@ -1008,6 +1028,12 @@ function dispatchCounsellingPeriodsOfferedNotificationAsync(payload) {
 function dispatchCounsellingScheduledNotificationAsync(payload) {
   dispatchCounsellingScheduledNotification(payload).catch((err) => {
     console.error("Counselling scheduled notification failed:", err?.message || err);
+  });
+}
+
+function dispatchCounsellingCancelledNotificationAsync(payload) {
+  dispatchCounsellingCancelledNotification(payload).catch((err) => {
+    console.error("Counselling cancelled notification failed:", err?.message || err);
   });
 }
 
@@ -1061,6 +1087,8 @@ module.exports = {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotification,
   dispatchCounsellingScheduledNotificationAsync,
+  dispatchCounsellingCancelledNotification,
+  dispatchCounsellingCancelledNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,

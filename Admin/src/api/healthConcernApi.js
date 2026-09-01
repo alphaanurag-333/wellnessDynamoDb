@@ -44,6 +44,19 @@ export function mapConcernsToDropdownList(concerns = []) {
   };
 }
 
+export async function fetchPublicHealthConcernOptions() {
+  try {
+    const params = new URLSearchParams({ page: "1", limit: "200" });
+    const { data } = await api.get(`/public/misc/health-concerns?${params}`);
+    const concerns = (Array.isArray(data.healthConcerns) ? data.healthConcerns : [])
+      .map(mapConcern)
+      .filter(Boolean);
+    return mapConcernsToDropdownList(concerns).options.filter((row) => row.on);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function adminListHealthConcerns(token, { page = 1, limit = 200, status, search } = {}) {
   const q = new URLSearchParams();
   q.set("page", String(page));

@@ -78,20 +78,25 @@ export function ViewAsProvider({ children }) {
   const [bootstrapping, setBootstrapping] = useState(Boolean(readAccountAuth()?.accessToken));
   const [authError, setAuthError] = useState("");
   const [liveMenuRoles, setLiveMenuRoles] = useState(() => staticViewAsMenuRoles());
+  const [accessRoles, setAccessRoles] = useState([]);
   const [liveRolesReady, setLiveRolesReady] = useState(false);
 
   const reloadLiveRoles = useCallback(async () => {
     if (!readAccountAuth()?.accessToken) {
       setLiveMenuRoles(staticViewAsMenuRoles());
+      setAccessRoles([]);
       setLiveRolesReady(true);
       return [];
     }
     try {
       const roles = await fetchAccessRoles();
-      const mapped = (Array.isArray(roles) ? roles : []).map(toViewAsMenuRole);
+      const list = Array.isArray(roles) ? roles : [];
+      setAccessRoles(list);
+      const mapped = list.map(toViewAsMenuRole);
       setLiveMenuRoles(mapped.length ? mapped : staticViewAsMenuRoles());
       return mapped;
     } catch {
+      setAccessRoles([]);
       setLiveMenuRoles(staticViewAsMenuRoles());
       return [];
     } finally {
@@ -371,6 +376,7 @@ export function ViewAsProvider({ children }) {
       availableUiRoles,
       catalogRoles,
       liveMenuRoles,
+      accessRoles,
       liveRolesReady,
       reloadLiveRoles,
       auth,
@@ -402,6 +408,7 @@ export function ViewAsProvider({ children }) {
       availableUiRoles,
       catalogRoles,
       liveMenuRoles,
+      accessRoles,
       liveRolesReady,
       reloadLiveRoles,
       auth,

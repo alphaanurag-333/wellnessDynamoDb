@@ -73,10 +73,18 @@ function countClientsByTier(users) {
   return counts;
 }
 
+function healthConcernIdOf(user) {
+  const raw = user?.primaryHealthConcern;
+  if (raw && typeof raw === "object") {
+    return String(raw.id || raw._id || "").trim();
+  }
+  return String(raw || "").trim();
+}
+
 function countClientsByHealthConcern(users) {
   const counts = new Map();
   for (const user of users) {
-    const concernId = String(user?.primaryHealthConcern || "").trim();
+    const concernId = healthConcernIdOf(user);
     if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
   }
   return Object.fromEntries(counts);

@@ -33,6 +33,7 @@ const { createZoomForMeeting } = require("../../services/onboardingMeetingServic
 const {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotificationAsync,
+  dispatchCounsellingCancelledNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
 exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res) => {
@@ -104,7 +105,7 @@ exports.updateCoachHealConsultancyTrackController = asyncHandler(async (req, res
   const trackId = String(req.params.trackId || "").trim();
   const user = await loadHealUser(userId);
   await assertStaffCanAccessUser(req, user);
-  await loadTrackForUser(trackId, userId);
+  const existing = await loadTrackForUser(trackId, userId);
 
   const updates = parseStatusUpdateBody(req.body || {});
   let track;
@@ -119,6 +120,13 @@ exports.updateCoachHealConsultancyTrackController = asyncHandler(async (req, res
       throw new AppError("Consultancy track not found", 404);
     }
     handleValidationError(err);
+  }
+
+  if (updates.status === "cancelled" && existing.status !== "cancelled") {
+    dispatchCounsellingCancelledNotificationAsync({
+      userId,
+      trackId,
+    });
   }
 
   return res.status(200).json({

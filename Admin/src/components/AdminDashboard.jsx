@@ -772,6 +772,28 @@ function clientRowFromUser(user) {
   };
 }
 
+function countsFromClientRoster(clients) {
+  const counts = {};
+  if (!Array.isArray(clients)) return counts;
+  for (const user of clients) {
+    const id = concernKey(user?.healthConcernId);
+    if (!id) continue;
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  return counts;
+}
+
+function paletteForConcern(option, index) {
+  const label = String(option?.label || "").toLowerCase();
+  const match = PROG_CATS.find((category) => category.label.toLowerCase() === label);
+  const palette = match || PROG_CATS[index % PROG_CATS.length];
+  return {
+    accent: palette.accent,
+    bg: palette.bg,
+    border: palette.border,
+  };
+}
+
 /** Live clients grouped under both their concern id and concern title. */
 function groupClientsByConcern(clients) {
   if (!Array.isArray(clients)) return null;
@@ -815,41 +837,36 @@ export function AdminDashboard({
   const dashHasTeam = viewAs !== "awc";
   const clientsByConcern = useMemo(() => groupClientsByConcern(clients), [clients]);
   const programCards = useMemo(() => {
-    if (!Array.isArray(healthConcerns)) {
-      return PROG_CATS.map((category) => ({
-        ...category,
-        count: 0,
-        modalKey: category.label,
-        modalLabel: category.label,
-      }));
-    }
+    if (!Array.isArray(healthConcerns) || healthConcerns.length === 0) return [];
     const concernCounts = statistics?.healthConcernCounts ?? {};
+    const rosterCounts = countsFromClientRoster(clients);
     return healthConcerns
       .filter(
         (option) =>
-          option.on &&
+          option.on !== false &&
           String(option.label || "").trim().toLowerCase() !== "everyday wellness",
       )
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       .map((option, index) => {
-        const fallback = PROG_CATS.find(
-          (category) =>
-            category.value === option.value ||
-            category.label.toLowerCase() === String(option.label || "").toLowerCase(),
+        const palette = paletteForConcern(option, index);
+        const count = asNumber(
+          concernCounts[option.id] ??
+            concernCounts[option.value] ??
+            rosterCounts[concernKey(option.id)] ??
+            rosterCounts[concernKey(option.value)],
         );
-        const palette = fallback ?? PROG_CATS[index % PROG_CATS.length];
         return {
           ...palette,
           id: option.id,
           value: option.value,
           label: option.label,
-          icon: option.icon || fallback?.icon || "🌿",
-          count: asNumber(concernCounts[option.id] ?? concernCounts[option.value]),
+          icon: option.icon || "",
+          count,
           modalKey: option.id || option.value || option.label,
-          modalLabel: option.label || fallback?.label,
+          modalLabel: option.label,
         };
       });
-  }, [healthConcerns, statistics]);
+  }, [clients, healthConcerns, statistics]);
 
   const hasAdminStatistics = statistics && Object.hasOwn(statistics, "totalUsers");
   const hasStaffStatistics = statistics && Object.hasOwn(statistics, "totalClients");
@@ -1860,7 +1877,11 @@ export function AdminDashboard({
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {programCards.map((p, index) => (
+              {programCards.length === 0 ? (
+                <p className="section__hint" style={{ margin: 0, padding: "8px 4px" }}>
+                  No live health concerns yet.
+                </p>
+              ) : programCards.map((p, index) => (
                 <button
                   key={p.id || p.value || `${p.label}-${index}`}
                   type="button"
@@ -1958,7 +1979,11 @@ export function AdminDashboard({
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">
             <div className="prog-cats__scroll">
-              {programCards.map((p, index) => (
+              {programCards.length === 0 ? (
+                <p className="section__hint" style={{ margin: 0, padding: "8px 4px" }}>
+                  No live health concerns yet.
+                </p>
+              ) : programCards.map((p, index) => (
                 <button
                   key={p.id || p.value || `${p.label}-${index}`}
                   type="button"

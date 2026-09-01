@@ -2,25 +2,47 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { fetchActiveConfigDropdown } from "../api/configDropdownApi.js";
 import { fetchDashboardStatistics } from "../api/dashboardApi.js";
-import { adminListHealthConcerns, mapConcernsToDropdownList } from "../api/healthConcernApi.js";
+import {
+  adminListHealthConcerns,
+  fetchPublicHealthConcernOptions,
+  mapConcernsToDropdownList,
+} from "../api/healthConcernApi.js";
 import { fetchScopedUsers, fetchUsers } from "../api/usersApi.js";
 import { AdminDashboard } from "../components/AdminDashboard.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 
 async function loadProgramCategories(token, can) {
   if (can("console.cf.view")) {
-    const { healthConcerns } = await adminListHealthConcerns(token, { limit: 200 });
-    return mapConcernsToDropdownList(healthConcerns || []).options ?? null;
+    try {
+      const { healthConcerns } = await adminListHealthConcerns(token, {
+        limit: 200,
+        status: "active",
+      });
+      const options = mapConcernsToDropdownList(healthConcerns || []).options || [];
+      const active = options.filter((row) => row.on);
+      if (active.length) return active;
+    } catch {
+      /* public catalog next */
+    }
   }
+
+  try {
+    const options = await fetchPublicHealthConcernOptions();
+    if (options?.length) return options;
+  } catch {
+    /* dropdown alias next */
+  }
+
   for (const slug of ["program-category", "health-concern"]) {
     try {
       const list = await fetchActiveConfigDropdown(slug);
-      if (list?.options?.length) return list.options;
+      const options = (list?.options || []).filter((row) => row.on !== false);
+      if (options.length) return options;
     } catch {
       /* try the next public catalog */
     }
   }
-  return null;
+  return [];
 }
 
 export function formatDashboardUpdatedLabel(date) {
@@ -44,7 +66,7 @@ export function DashboardPage() {
   const { token, dataScope, can, viewAs, permissions } = useViewAs();
   const permissionKey = permissions.join("|");
   const [statistics, setStatistics] = useState(null);
-  const [healthConcerns, setHealthConcerns] = useState(null);
+  const [healthConcerns, setHealthConcerns] = useState([]);
   const [clients, setClients] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,7 +100,11 @@ export function DashboardPage() {
       ]);
       if (statisticsResult.status === "rejected") throw statisticsResult.reason;
       setStatistics(statisticsResult.value);
-      setHealthConcerns(concernsResult.status === "fulfilled" ? concernsResult.value : null);
+      setHealthConcerns(
+        concernsResult.status === "fulfilled" && Array.isArray(concernsResult.value)
+          ? concernsResult.value
+          : [],
+      );
       setClients(
         clientsResult.status === "fulfilled" && Array.isArray(clientsResult.value?.users)
           ? clientsResult.value.users
@@ -90,7 +116,7 @@ export function DashboardPage() {
       if (!initial) showToastRef.current?.("Dashboard refreshed");
     } catch (error) {
       setStatistics(null);
-      setHealthConcerns(null);
+      setHealthConcerns([]);
       setClients(null);
       setLoadError(error?.message || "Couldn’t load dashboard data.");
       if (!initial) showToastRef.current?.(error?.message || "Couldn’t refresh dashboard.");

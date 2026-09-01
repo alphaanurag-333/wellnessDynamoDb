@@ -127,6 +127,56 @@ function emitMealLogged({ user, mealLogId }) {
   });
 }
 
+function counsellingProfileHref(user) {
+  const userId = user?.id || user?._id;
+  return userId ? `/users/${userId}?section=counselling` : "/users";
+}
+
+function emitCounsellingClientAction({ user, trackId, title }) {
+  const name = userDisplayName(user);
+  const userId = user?.id || user?._id || null;
+  emitAdminActivityAsync({
+    kind: "counselling",
+    title,
+    from: "Client",
+    actorType: "user",
+    actorId: userId,
+    actorName: name,
+    subjectUserId: userId,
+    subjectUserName: name,
+    referenceType: "heal_consultancy_track",
+    referenceId: trackId || null,
+    href: counsellingProfileHref(user),
+  });
+}
+
+function emitCounsellingRequested({ user, trackId }) {
+  const name = userDisplayName(user);
+  emitCounsellingClientAction({
+    user,
+    trackId,
+    title: `${name} booked a counselling session`,
+  });
+}
+
+function emitCounsellingPeriodSelected({ user, trackId }) {
+  const name = userDisplayName(user);
+  emitCounsellingClientAction({
+    user,
+    trackId,
+    title: `${name} selected a counselling time period`,
+  });
+}
+
+function emitCounsellingTimeRequested({ user, trackId }) {
+  const name = userDisplayName(user);
+  emitCounsellingClientAction({
+    user,
+    trackId,
+    title: `${name} requested another time for counselling`,
+  });
+}
+
 function emitLabReportUploaded({ user, reportId }) {
   const name = userDisplayName(user);
   emitAdminActivityAsync({
@@ -184,6 +234,9 @@ module.exports = {
   emitBirthdayToday,
   emitMonthlyChampion,
   emitMealLogged,
+  emitCounsellingRequested,
+  emitCounsellingPeriodSelected,
+  emitCounsellingTimeRequested,
   emitLabReportUploaded,
   emitContactInquiry,
   emitCoachClientAction,
