@@ -98,16 +98,76 @@ function cloneBlocks(blocks = []) {
   }));
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function htmlFromLegalBlocks(blocks = []) {
+  return sectionsFromBlocks(blocks)
+    .filter((row) => row.shown)
+    .map((row) => {
+      const body = String(row.body || "").trim();
+      if (!body) return "";
+      if (row.id === "intro" || row.id === "copyright" || row.id === "secondary") return body;
+      const heading = row.title ? `<h2>${escapeHtml(row.title)}</h2>` : "";
+      return `${heading}\n${body}`.trim();
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function contentFromLegalPage(page = {}, fallbackBlocks = []) {
+  const stored = String(page.content || "").trim();
+  if (stored) return stored;
+  const fromBlocks = htmlFromLegalBlocks(page.blocks);
+  if (fromBlocks) return fromBlocks;
+  return htmlFromLegalBlocks(fallbackBlocks);
+}
+
+export function previewBlocksFromContent(title, content, live = true) {
+  return [
+    {
+      id: "intro",
+      title: String(title || "Content").trim() || "Content",
+      shown: live !== false,
+      webVersion: 1,
+      appVersion: 1,
+      versions: [
+        {
+          n: 1,
+          date: todayLabel(),
+          author: "Admin",
+          text: String(content || "").trim(),
+        },
+      ],
+    },
+  ];
+}
+
 export function mapLegalPage(page = {}, fallbackBlocks = []) {
-  const blocks = Array.isArray(page.blocks) && page.blocks.length
+  const storedBlocks = Array.isArray(page.blocks) && page.blocks.length
     ? cloneBlocks(page.blocks)
-    : cloneBlocks(fallbackBlocks);
+    : [];
+  const content = contentFromLegalPage(
+    { ...page, blocks: storedBlocks },
+    fallbackBlocks,
+  );
+  const blocks = storedBlocks.length
+    ? storedBlocks
+    : content
+      ? previewBlocksFromContent(page.title, content, page.status !== "inactive")
+      : cloneBlocks(fallbackBlocks);
   return {
     id: page.id || "",
     slug: page.slug || "",
     title: String(page.title || "").trim(),
     status: page.status || "active",
     icon: String(page.icon || "").trim(),
+    content,
     blocks,
   };
 }
@@ -136,20 +196,21 @@ export async function getLegalPage(slug, fallbackBlocks = []) {
     return mapLegalPage(data?.data || {}, fallbackBlocks);
   } catch (error) {
     if (error?.response?.status === 404) {
-      return mapLegalPage({ slug, title: "", blocks: fallbackBlocks }, fallbackBlocks);
+      return mapLegalPage({ slug, title: "", content: "", blocks: fallbackBlocks }, fallbackBlocks);
     }
     normalizeApiError(error);
   }
 }
 
-export async function saveLegalPage(slug, { title, blocks, status = "active", icon }) {
+export async function saveLegalPage(slug, { title, content, blocks, status = "active", icon }) {
   try {
     const payload = {
       slug,
       title,
-      blocks,
       status,
     };
+    if (content !== undefined) payload.content = content;
+    if (blocks !== undefined) payload.blocks = blocks;
     if (icon !== undefined) payload.icon = icon;
     const { data } = await api.put(`${pagesBase()}/by-slug/${encodeURIComponent(slug)}`, payload);
     return mapLegalPage(data?.data || {}, blocks);

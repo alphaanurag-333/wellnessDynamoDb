@@ -390,19 +390,20 @@
 
 .updated-admin .ua-cp-counselling__history-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(92px, 0.9fr) minmax(120px, 1.1fr) minmax(96px, 0.9fr) minmax(76px, auto);
   gap: 8px 12px;
   align-items: center;
-  padding: 11px 0;
+  min-height: 44px;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border-soft);
   font-size: 12.5px;
 }
 
-.updated-admin .ua-cp-counselling__history-row--review strong {
+.updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-label {
   font-size: 13px;
 }
 
-.updated-admin .ua-cp-counselling__history-row--review span:first-of-type {
+.updated-admin .ua-cp-counselling__history-date {
   color: #16233f;
   font-weight: 600;
 }
@@ -412,20 +413,41 @@
   padding-bottom: 0;
 }
 
-.updated-admin .ua-cp-counselling__history-row strong {
+.updated-admin .ua-cp-counselling__history-label {
   font-size: 12px;
   font-weight: 700;
   color: #16233f;
-}
-
-.updated-admin .ua-cp-counselling__history-row span {
-  color: var(--muted);
   min-width: 0;
-  overflow-wrap: anywhere;
 }
 
-.updated-admin .ua-cp-counselling__history-row span:last-child {
+.updated-admin .ua-cp-counselling__history-status {
+  min-width: 0;
   color: #5a6b85;
+  font-weight: 600;
+}
+
+.updated-admin .ua-cp-counselling__history-status--scheduled,
+.updated-admin .ua-cp-counselling__history-status--completed {
+  color: #15803d;
+}
+
+.updated-admin .ua-cp-counselling__history-status--cancelled,
+.updated-admin .ua-cp-counselling__history-status--follow_up_needed {
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-counselling__history-action {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-width: 76px;
+}
+
+.updated-admin .ua-cp-counselling__history-row .ua-cp-btn {
+  margin: 0;
+  white-space: nowrap;
+  height: 30px;
+  padding: 0 12px;
 }
 
 @media (min-width: 560px) {
@@ -457,13 +479,32 @@
   }
 
   .updated-admin .ua-cp-counselling__history-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "label action"
+      "date date"
+      "status status";
+    gap: 4px 10px;
     padding: 12px 0;
+    min-height: 0;
   }
 
-  .updated-admin .ua-cp-counselling__history-row strong {
+  .updated-admin .ua-cp-counselling__history-label {
+    grid-area: label;
     font-size: 13px;
+  }
+
+  .updated-admin .ua-cp-counselling__history-date {
+    grid-area: date;
+  }
+
+  .updated-admin .ua-cp-counselling__history-status {
+    grid-area: status;
+  }
+
+  .updated-admin .ua-cp-counselling__history-action {
+    grid-area: action;
+    min-width: 0;
   }
 }
 
@@ -477,8 +518,4 @@
   margin-top: 0;
   border-top: none;
   padding-top: 0;
-}
-
-.updated-admin .ua-cp-counselling__history-row .ua-cp-btn {
-  margin-left: auto;
 }

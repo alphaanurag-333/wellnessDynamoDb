@@ -8,8 +8,7 @@
  */
 require("dotenv").config();
 
-const { createPage, getPageBySlug, updatePage } = require("../models/staticPageModel");
-const { htmlToLegalBlocks } = require("../utils/legalBlocks");
+const { createPage, getPageBySlug, updatePage, deletePage } = require("../models/staticPageModel");
 
 const EFFECTIVE_DATE = "July 4, 2026";
 const COMPANY_NAME = "Wellness";
@@ -254,13 +253,40 @@ const STATIC_PAGES = [
     slug: "app-dpa",
     status: "active",
     content: `
-      <p>IR Wellness processes your health data to deliver coaching, lab reviews, and app features. This agreement explains what we collect, why, and how long we keep it.</p>
-      <h2>How we process data</h2>
+      <p><strong>Effective date:</strong> ${EFFECTIVE_DATE}</p>
+      <p>This Data Processing Agreement ("Agreement") describes how ${COMPANY_NAME} ("we", "our", or "us") processes personal data, including health-related information, when you use our mobile application, coaching services, and related features.</p>
+      <p>By creating an account or continuing to use the app, you acknowledge this Agreement together with our Privacy Policy and Terms of Service.</p>
+
+      <h2>1. Roles and purpose</h2>
+      <p>We process personal data to deliver wellness coaching, programme tracking, lab reviews, consultations, and in-app support. Processing is limited to what is needed to provide those services and to meet legal obligations.</p>
+
+      <h2>2. Data we process</h2>
       <ul>
-        <li>We collect profile details, body metrics, lab reports, and coach notes needed for your program.</li>
-        <li>Data is stored securely and accessed only by you, your assigned coach, and authorised IRW staff.</li>
-        <li>We do not sell your data. Processors such as labs and payment gateways receive only what is required to fulfil a service.</li>
-        <li>You may request export or deletion of your account data by contacting support; some records may be retained where law requires.</li>
+        <li>Account details such as name, contact information, and login identifiers.</li>
+        <li>Health and wellness inputs you provide, including goals, measurements, lifestyle answers, and coach notes.</li>
+        <li>Lab reports, prescriptions, and programme files uploaded for your care team.</li>
+        <li>Usage, device, and support records needed to operate and secure the app.</li>
+      </ul>
+
+      <h2>3. How we use and share data</h2>
+      <ul>
+        <li>Data is accessed by you, your assigned coach, and authorised ${COMPANY_NAME} staff for service delivery.</li>
+        <li>Trusted processors such as hosting, messaging, labs, and payment providers receive only what is required to fulfil a service, under confidentiality obligations.</li>
+        <li>We do not sell personal data.</li>
+        <li>We may disclose information when required by law, to protect user safety, or with your explicit consent.</li>
+      </ul>
+
+      <h2>4. Security and retention</h2>
+      <p>We use access controls, encrypted connections, and restricted staff permissions to protect personal data. Records are kept while your account is active and for as long as needed to provide services, resolve disputes, and meet legal retention rules. When data is no longer required, we delete or anonymise it using reasonable practices.</p>
+
+      <h2>5. Your rights</h2>
+      <p>Subject to applicable law, you may request access, correction, export, or deletion of your account data. Some records may be retained where law or legitimate programme records require it. To exercise these rights, contact support using the details below.</p>
+
+      <h2>6. Contact</h2>
+      <ul>
+        <li><strong>Email:</strong> <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></li>
+        <li><strong>Phone:</strong> <a href="tel:${SUPPORT_PHONE.replace(/\s/g, "")}">${SUPPORT_PHONE}</a></li>
+        <li><strong>Address:</strong> ${COMPANY_ADDRESS}</li>
       </ul>
     `.trim(),
   },
@@ -405,21 +431,61 @@ const STATIC_PAGES = [
   },
 ];
 
-async function upsertPage(row) {
-  const payload = { ...row };
-  const legalSlugs = new Set([
-    "terms-and-conditions",
-    "privacy-policy",
-    "community-guideline",
-    "app-dpa",
-    "app-terms-of-service",
-    "app-privacy-policy",
-    "app-community-guidelines",
-    "app-compliance",
-  ]);
-  if (!payload.blocks && payload.content && legalSlugs.has(payload.slug)) {
-    payload.blocks = htmlToLegalBlocks(payload.content, payload.title);
+const LEGAL_RESET_SLUGS = [
+  "terms-and-conditions",
+  "terms-of-service",
+  "terms",
+  "privacy-policy",
+  "privacy",
+  "community-guideline",
+  "community-guidelines",
+  "app-dpa",
+  "dpa",
+  "data-processing-agreement",
+  "app-terms-of-service",
+  "app-mobile-tos",
+  "app-privacy-policy",
+  "app-privacy",
+  "app-community-guidelines",
+  "app-community-guideline",
+  "app-compliance",
+];
+
+function pageBySlug(slug) {
+  return STATIC_PAGES.find((row) => row.slug === slug);
+}
+
+function applySharedLegalCopy() {
+  const privacy = pageBySlug("privacy-policy")?.content;
+  const terms = pageBySlug("terms-and-conditions")?.content;
+  const guidelines = pageBySlug("community-guideline")?.content;
+  for (const row of STATIC_PAGES) {
+    if (row.slug === "app-privacy-policy" && privacy) row.content = privacy;
+    if (row.slug === "app-terms-of-service" && terms) row.content = terms;
+    if (row.slug === "app-community-guidelines" && guidelines) row.content = guidelines;
   }
+}
+
+async function resetLegalPages(onlySlugs) {
+  const targets = onlySlugs
+    ? LEGAL_RESET_SLUGS.filter((slug) => onlySlugs.has(slug))
+    : LEGAL_RESET_SLUGS;
+  console.log("Removing existing legal StaticPage records...\n");
+  let deleted = 0;
+  for (const slug of targets) {
+    const page = await getPageBySlug(slug);
+    if (!page) continue;
+    await deletePage(page.id);
+    console.log(`  ✓ deleted: ${page.title} (${slug})`);
+    deleted += 1;
+  }
+  console.log(deleted ? `\nRemoved ${deleted} legal page(s).\n` : "No existing legal pages found.\n");
+}
+
+async function upsertPage(row) {
+  const isLegal = LEGAL_RESET_SLUGS.includes(row.slug);
+  const payload = { ...row };
+  if (isLegal) delete payload.blocks;
 
   const existing = await getPageBySlug(payload.slug);
 
@@ -429,7 +495,11 @@ async function upsertPage(row) {
       slug: payload.slug,
       content: payload.content,
       status: payload.status,
-      ...(payload.blocks ? { blocks: payload.blocks } : {}),
+      ...(payload.blocks
+        ? { blocks: payload.blocks }
+        : isLegal
+          ? { blocks: null }
+          : {}),
     });
     return { action: "updated", item: updated };
   }
@@ -451,7 +521,11 @@ async function main() {
     throw new Error("No matching static pages to seed");
   }
 
+  applySharedLegalCopy();
+
   console.log("Seeding StaticPage entries...\n");
+
+  await resetLegalPages(onlySlugs);
 
   let created = 0;
   let updated = 0;

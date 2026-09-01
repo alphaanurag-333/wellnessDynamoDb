@@ -15,7 +15,6 @@ const {
 const {
   compileLegalBlocksToHtml,
   normalizeLegalBlocks,
-  resolveLegalBlocks,
   slugCandidates,
 } = require("../utils/legalBlocks");
 const { normalizeStoredMedia, resolvePublicUrl } = require("../utils/s3");
@@ -80,40 +79,54 @@ async function getPageBySlugWithAliases(slug) {
   return null;
 }
 
-function withResolvedBlocks(row, fallbackBlocks) {
-  if (!row) return null;
-  return {
-    ...row,
-    blocks: resolveLegalBlocks(row, fallbackBlocks),
-  };
+function compactHtml(value) {
+  return String(value || "")
+    .replace(/\n[ \t]+/g, "\n")
+    .trim();
 }
 
-function toAdminPagePayload(row, fallbackBlocks) {
-  const resolved = withResolvedBlocks(row, fallbackBlocks);
-  if (!resolved) return null;
+function storedBlocks(row) {
+  return normalizeLegalBlocks(row?.blocks);
+}
 
-  return {
-    id: resolved.id,
-    slug: resolved.slug,
-    title: resolved.title,
-    status: resolved.status,
-    icon: resolveIconUrl(resolved.icon),
-    blocks: resolved.blocks,
-    createdAt: resolved.createdAt,
-    updatedAt: resolved.updatedAt,
+function storedPageContent(row) {
+  return compactHtml(row?.content);
+}
+
+function pageHtml(row, surface = "web") {
+  const content = storedPageContent(row);
+  if (content) return content;
+  return compileLegalBlocksToHtml(storedBlocks(row), surface);
+}
+
+function toAdminPagePayload(row) {
+  if (!row) return null;
+  const payload = {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    status: row.status,
+    content: pageHtml(row),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
+  const icon = resolveIconUrl(row.icon);
+  if (icon) payload.icon = icon;
+  const blocks = storedBlocks(row);
+  if (blocks.length) payload.blocks = blocks;
+  return payload;
 }
 
 function toPublicPagePayload(row, surface = "web") {
-  const resolved = withResolvedBlocks(row);
-  if (!resolved) return null;
-  const compiled = compileLegalBlocksToHtml(resolved.blocks, surface);
-  return {
-    title: resolved.title,
-    slug: resolved.slug,
-    content: compiled || String(resolved.content || "").trim(),
-    icon: resolveIconUrl(resolved.icon),
+  if (!row) return null;
+  const payload = {
+    title: row.title,
+    slug: row.slug,
+    content: pageHtml(row, surface),
   };
+  const icon = resolveIconUrl(row.icon);
+  if (icon) payload.icon = icon;
+  return payload;
 }
 
 async function listPages() {
@@ -143,9 +156,11 @@ async function createPage({ title, content = "", status = "active", slug, blocks
   const now = new Date().toISOString();
   const cleanSlug = slugify(slug || cleanTitle);
   const normalizedBlocks = blocks !== undefined ? normalizeLegalBlocks(blocks) : undefined;
-  const compiled = normalizedBlocks
-    ? compileLegalBlocksToHtml(normalizedBlocks)
-    : String(content || "").trim();
+  const compiled = compactHtml(
+    normalizedBlocks
+      ? compileLegalBlocksToHtml(normalizedBlocks)
+      : content,
+  );
   const normalizedIcon = normalizeIconField(icon);
 
   const existing = await getPageBySlug(cleanSlug);
@@ -165,7 +180,7 @@ async function createPage({ title, content = "", status = "active", slug, blocks
     updatedAt: now,
   };
   if (normalizedBlocks) item.blocks = normalizedBlocks;
-  if (normalizedIcon !== undefined) item.icon = normalizedIcon;
+  if (normalizedIcon) item.icon = normalizedIcon;
 
   await docClient.send(new PutCommand({
     TableName: TABLE,
@@ -186,11 +201,19 @@ async function updatePage(id, updates) {
 
   const next = { ...updates };
 
-  if (next.blocks !== undefined) {
+  const removeKeys = [];
+  if (next.blocks === null) {
+    delete next.blocks;
+    removeKeys.push("blocks");
+  } else if (next.blocks !== undefined) {
     next.blocks = normalizeLegalBlocks(next.blocks);
     if (next.content === undefined) {
       next.content = compileLegalBlocksToHtml(next.blocks);
     }
+  }
+
+  if (next.content !== undefined) {
+    next.content = compactHtml(next.content);
   }
 
   if (next.icon !== undefined) {
@@ -216,7 +239,7 @@ async function updatePage(id, updates) {
   }
 
   const entries = Object.entries(next).filter(([, value]) => value !== undefined);
-  if (entries.length === 0) {
+  if (entries.length === 0 && !removeKeys.length) {
     throw new Error("No valid fields provided for update");
   }
 
@@ -232,10 +255,17 @@ async function updatePage(id, updates) {
     setExpr += `, ${n} = ${v}`;
   }
 
+  for (const key of removeKeys) {
+    exprNames[`#${key}`] = key;
+  }
+  const removeExpr = removeKeys.length
+    ? ` REMOVE ${removeKeys.map((key) => `#${key}`).join(", ")}`
+    : "";
+
   const { Attributes } = await docClient.send(new UpdateCommand({
     TableName: TABLE,
     Key: { id },
-    UpdateExpression: setExpr,
+    UpdateExpression: setExpr + removeExpr,
     ExpressionAttributeNames: exprNames,
     ExpressionAttributeValues: exprValues,
     ConditionExpression: "attribute_exists(id)",
@@ -258,7 +288,6 @@ module.exports = {
   getPageById,
   getPageBySlug,
   getPageBySlugWithAliases,
-  withResolvedBlocks,
   toAdminPagePayload,
   toPublicPagePayload,
   createPage,

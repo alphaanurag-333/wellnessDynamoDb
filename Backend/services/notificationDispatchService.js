@@ -479,6 +479,7 @@ async function dispatchCoachAssignmentChangeNotification({
   assigneeName,
   assigneeType,
   action = "assigned",
+  referenceId = null,
 }) {
   const coachLabel =
     assigneeType === "assistant_wellness_coach" ? "assistant wellness coach" : "wellness coach";
@@ -492,6 +493,7 @@ async function dispatchCoachAssignmentChangeNotification({
     userId,
     kind: isReassign ? "coach_reassigned" : "coach_assigned",
     message,
+    referenceId,
     referenceType: "user_coach_assignment",
     title: isReassign ? "Coach updated" : "Coach assigned",
   });

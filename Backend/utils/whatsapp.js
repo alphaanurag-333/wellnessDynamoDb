@@ -469,18 +469,20 @@ async function sendConsultancyWhatsAppNotifications({
   return results;
 }
 
-async function sendCoachAssignmentNotifications({ user, assignee, assigneeType }) {
+async function sendCoachAssignmentNotifications({ user, assignee, assigneeType, action = "assigned" }) {
   const coachLabel =
     assigneeType === "assistant_wellness_coach" ? "assistant wellness coach" : "wellness coach";
+  const coachName = assignee?.name || `your ${coachLabel}`;
+  const isReassign = action === "reassigned";
+  const userMessage = isReassign
+    ? `Your ${coachLabel} has been updated to ${coachName}. They will reach out to schedule your consultancy session.`
+    : `You have been assigned to ${coachName}. They will reach out to schedule your consultancy session.`;
+  const assigneeMessage = isReassign
+    ? `A client has been reassigned to you: ${user?.name || "User"} (${user?.email || user?.phone || "contact in portal"}).`
+    : `A new client has been assigned to you: ${user?.name || "User"} (${user?.email || user?.phone || "contact in portal"}).`;
   return {
-    user: await notifyPerson(
-      user,
-      `You have been assigned to ${assignee?.name || `your ${coachLabel}`}. They will reach out to schedule your consultancy session.`
-    ),
-    assignee: await notifyPerson(
-      assignee,
-      `A new client has been assigned to you: ${user?.name || "User"} (${user?.email || user?.phone || "contact in portal"}).`
-    ),
+    user: await notifyPerson(user, userMessage),
+    assignee: await notifyPerson(assignee, assigneeMessage),
   };
 }
 

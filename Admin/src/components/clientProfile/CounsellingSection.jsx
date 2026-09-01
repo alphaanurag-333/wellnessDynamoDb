@@ -9,6 +9,7 @@ import {
 } from "../../api/counsellingApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   formatDateKey,
   isBeforeCalendarDay,
@@ -89,6 +90,7 @@ export function CounsellingSection({ user, onToast }) {
   const [fixedTime, setFixedTime] = useState("18:00");
   const [durationMinutes, setDurationMinutes] = useState(45);
   const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
+  const [pendingCancel, setPendingCancel] = useState(null);
 
   async function load() {
     if (!userId) return;
@@ -264,6 +266,22 @@ export function CounsellingSection({ user, onToast }) {
     await patchTrackStatus(activeTrack.id, status);
   }
 
+  function askCancel(track, extras = {}) {
+    if (!track?.id) return;
+    setPendingCancel({
+      id: track.id,
+      kind: track.status === "scheduled" ? "session" : "request",
+      label: extras.label || null,
+    });
+  }
+
+  async function confirmCancel() {
+    const trackId = pendingCancel?.id;
+    if (!trackId) return;
+    setPendingCancel(null);
+    await patchTrackStatus(trackId, "cancelled");
+  }
+
   const scheduledSession =
     scheduledTrack && scheduledTrack.id !== activeTrack?.id ? scheduledTrack : null;
 
@@ -340,7 +358,7 @@ export function CounsellingSection({ user, onToast }) {
                   <button
                     type="button"
                     className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-                    onClick={() => patchTrackStatus(scheduledSession.id, "cancelled")}
+                    onClick={() => askCancel(scheduledSession)}
                     disabled={busy}
                   >
                     Cancel session
@@ -542,7 +560,7 @@ export function CounsellingSection({ user, onToast }) {
                     </button>
                   ) : null}
                   {canDelete ? (
-                    <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => patchStatus("cancelled")} disabled={busy}>
+                    <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => askCancel(activeTrack)} disabled={busy}>
                       Cancel
                     </button>
                   ) : null}
@@ -553,7 +571,7 @@ export function CounsellingSection({ user, onToast }) {
 
           {canDelete && activeTrack.status !== "scheduled" ? (
             <div className="ua-cp-counselling__foot">
-              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => patchStatus("cancelled")} disabled={busy}>
+              <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => askCancel(activeTrack)} disabled={busy}>
                 Cancel request
               </button>
             </div>
@@ -579,25 +597,49 @@ export function CounsellingSection({ user, onToast }) {
                 });
                 return (
                   <div key={track.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
-                    <strong>Review {reviewNumber}</strong>
-                    <span>{dateLabel}</span>
-                    <span className="ua-cp-counselling__muted">{STATUS_LABEL[track.status] || track.status}</span>
-                    {canDelete && track.status === "scheduled" && track.id !== scheduledSession?.id ? (
-                      <button
-                        type="button"
-                        className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-                        onClick={() => patchTrackStatus(track.id, "cancelled")}
-                        disabled={busy}
-                      >
-                        Cancel
-                      </button>
-                    ) : null}
+                    <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
+                    <span className="ua-cp-counselling__history-date">{dateLabel}</span>
+                    <span className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${track.status}`}>
+                      {STATUS_LABEL[track.status] || track.status}
+                    </span>
+                    <div className="ua-cp-counselling__history-action">
+                      {canDelete && track.status === "scheduled" && track.id !== scheduledSession?.id ? (
+                        <button
+                          type="button"
+                          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                          onClick={() => askCancel(track, { label: `Review ${reviewNumber}` })}
+                          disabled={busy}
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingCancel)}
+        tag="Counselling"
+        title={
+          pendingCancel?.kind === "session"
+            ? `Cancel ${pendingCancel.label || "this session"}?`
+            : `Cancel ${pendingCancel?.label || "this request"}?`
+        }
+        body={
+          pendingCancel?.kind === "session"
+            ? "This scheduled counselling session will be cancelled. The client will be notified."
+            : "This counselling request will be cancelled. The client will be notified."
+        }
+        cancelLabel="Keep it"
+        confirmLabel={pendingCancel?.kind === "session" ? "Cancel session" : "Cancel request"}
+        confirmTone="danger"
+        onCancel={() => setPendingCancel(null)}
+        onConfirm={confirmCancel}
+      />
     </div>
   );
 }

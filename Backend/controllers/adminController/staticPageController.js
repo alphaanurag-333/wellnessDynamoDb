@@ -18,7 +18,7 @@ exports.listPagesController = asyncHandler(async (_req, res) => {
   const rows = await listPages();
   return res.status(200).json({
     status: true,
-    data: rows,
+    data: rows.map((row) => toAdminPagePayload(row)).filter(Boolean),
   });
 });
 
@@ -70,8 +70,11 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
   if (!existing && blocks === undefined && content === undefined) {
     throw new AppError("blocks or content is required", 400);
   }
-  if (blocks && !blocks.length && !content && icon === undefined) {
-    throw new AppError("Add at least one section before saving", 400);
+  if (Array.isArray(blocks) && !blocks.length && content === undefined && icon === undefined) {
+    throw new AppError("Content is required", 400);
+  }
+  if (content !== undefined && !String(content || "").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").trim() && icon === undefined) {
+    throw new AppError("Content is required", 400);
   }
 
   const nextTitle = title || existing?.title || slug.replace(/-/g, " ");
@@ -98,7 +101,10 @@ exports.upsertPageBySlugController = asyncHandler(async (req, res) => {
     const updates = { title: nextTitle, slug };
     if (status !== undefined) updates.status = status;
     if (blocks !== undefined) updates.blocks = blocks;
-    else if (content !== undefined) updates.content = content;
+    if (content !== undefined) {
+      updates.content = content;
+      if (blocks === undefined) updates.blocks = null;
+    }
     if (icon !== undefined) updates.icon = icon;
 
     const row = await updatePage(existing.id, updates);

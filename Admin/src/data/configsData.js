@@ -122,7 +122,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-terms-of-service",
           name: "Terms of Service",
-          note: "Mobile app only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -133,7 +133,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-privacy-policy",
           name: "Privacy Policy",
-          note: "Mobile app only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -144,7 +144,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-community-guidelines",
           name: "Community Guidelines",
-          note: "Mobile app only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -155,7 +155,7 @@ export const CONFIG_GROUPS = {
         {
           id: "app-dpa",
           name: "Data processing agreement",
-          note: "App legal copy · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: true,
           web: false,
@@ -489,7 +489,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-tos",
           name: "Terms & Conditions",
-          note: "Website only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -500,7 +500,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-privacy",
           name: "Privacy Policy",
-          note: "Website only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: false,
           web: true,
@@ -511,7 +511,7 @@ export const CONFIG_GROUPS = {
         {
           id: "web-fs-guidelines",
           name: "Community Guidelines",
-          note: "Website only · Static Pages",
+          note: "Title and content",
           owner: "Admin / Support",
           app: false,
           web: true,

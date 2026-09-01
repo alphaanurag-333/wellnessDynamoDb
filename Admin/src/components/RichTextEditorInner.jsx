@@ -1,3 +1,4 @@
+import { memo, useEffect, useRef } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import {
   Autoformat,
@@ -77,27 +78,37 @@ const EDITOR_CONFIG = {
   },
 };
 
-export default function RichTextEditorInner({
+function RichTextEditorInner({
   value = "",
   onChange,
   disabled = false,
   compact = false,
   placeholder = "Write the section copy…",
 }) {
+  const initialDataRef = useRef(String(value || ""));
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   return (
     <div className={`ua-cfg-ckeditor${compact ? " is-compact" : ""}${disabled ? " is-disabled" : ""}`}>
       <CKEditor
         editor={ClassicEditor}
-        data={value}
+        data={initialDataRef.current}
         disabled={disabled}
         config={{
           ...EDITOR_CONFIG,
           placeholder,
         }}
         onChange={(_event, editor) => {
-          onChange?.(editor.getData());
+          onChangeRef.current?.(editor.getData());
         }}
       />
     </div>
   );
 }
+
+export default memo(RichTextEditorInner, (prev, next) => (
+  prev.disabled === next.disabled
+  && prev.compact === next.compact
+  && prev.placeholder === next.placeholder
+));

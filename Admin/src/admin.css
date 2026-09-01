@@ -48161,8 +48161,22 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-privacy .ua-cfg-privacy__page-title {
-  max-width: 420px;
+  max-width: none;
   min-width: 0;
+}
+
+.updated-admin .ua-cfg-legal-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.updated-admin .ua-cfg-legal-page__content .ua-cfg-ckeditor .ck.ck-editor__main > .ck-editor__editable {
+  min-height: 360px;
+  max-height: 640px;
+  user-select: text;
+  pointer-events: auto;
+  caret-color: #16233f;
 }
 
 .updated-admin .ua-cfg-privacy .ua-cfg-legal-edit__label {
@@ -48459,6 +48473,9 @@ scrollbar-width: thin;
   min-height: 220px;
   max-height: 420px;
   overflow-y: auto;
+  user-select: text;
+  pointer-events: auto;
+  caret-color: #16233f;
 }
 
 .updated-admin .ua-cfg-ckeditor.is-compact .ck.ck-editor__main > .ck-editor__editable {
