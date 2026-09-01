@@ -199,8 +199,9 @@ export function mapWellnessLibraryItem(row) {
   if (!id) return null;
   const type = resolveLibraryType(row.type || row.mediaType);
   const ytLink = String(row.ytLink || (type === "ytlink" ? row.link : "") || "").trim();
+  const rawFile = row.file || row.video || row.fileUrl || (type === "video" || type === "audio" ? row.link : "");
   const fileUrl = type === "video" || type === "audio"
-    ? String(row.file || row.link || "").trim()
+    ? String(rawFile || "").trim()
     : "";
   return {
     id: String(id),

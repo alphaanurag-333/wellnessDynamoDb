@@ -265,15 +265,16 @@ function CoverDrop({ previewUrl, disabled, label = "Cover photo", sizeLabel = ""
 
 function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, sizeLabel = "", onPick, onRemove }) {
   const isAudio = mode === "audio";
-  const filled = Boolean(previewUrl || embedUrl || fileName);
+  const hasMedia = Boolean(previewUrl || embedUrl);
+  const filled = hasMedia || Boolean(fileName);
   const label = isAudio ? "Audio file" : "Video file";
 
   return (
-    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${hasMedia ? " is-on" : ""}`}>
       {previewUrl && isAudio ? (
         <audio className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
       ) : previewUrl ? (
-        <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
+        <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls playsInline preload="metadata" />
       ) : embedUrl ? (
         <iframe
           className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
@@ -283,9 +284,13 @@ function MediaDrop({ mode = "video", previewUrl, embedUrl, fileName, disabled, s
           allowFullScreen
         />
       ) : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">{isAudio ? "♪" : "▶"}</span>
-      <p className="ua-cfg-tf-drop__label">{fileName || label}</p>
-      {!filled && sizeLabel ? <span className="ua-cfg-lib-drop__size">{sizeLabel}</span> : null}
+      {!hasMedia ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">{isAudio ? "♪" : "▶"}</span>
+          <p className="ua-cfg-tf-drop__label">{label}</p>
+          {sizeLabel ? <span className="ua-cfg-lib-drop__size">{sizeLabel}</span> : null}
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"

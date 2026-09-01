@@ -459,7 +459,7 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
       {previewUrl ? (
         <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
       ) : embedUrl ? (
-        <iframe style={{aspectRatio: "16:9"}}
+        <iframe 
           className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview"
           title="YouTube preview"
           src={embedUrl}
@@ -467,9 +467,13 @@ function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove 
           allowFullScreen
         />
       ) : null}
-      <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
-      <p className="ua-cfg-tf-drop__label">{fileName || "Video file"}</p>
-      {!filled ? <span className="ua-cfg-lib-drop__size">{YG_VIDEO_SIZE_LABEL}</span> : null}
+      {!filled ? (
+        <>
+          <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
+          <p className="ua-cfg-tf-drop__label">Video file</p>
+          <span className="ua-cfg-lib-drop__size">{YG_VIDEO_SIZE_LABEL}</span>
+        </>
+      ) : null}
       <button
         type="button"
         className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-tf-drop__btn"

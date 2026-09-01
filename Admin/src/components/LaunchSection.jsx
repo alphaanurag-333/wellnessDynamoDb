@@ -24,16 +24,27 @@ import {
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
+  const isDrf = className.includes("ua-cfg-drf");
   return (
-    <section  className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
+    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
       {hasHead ? (
-        <div className="ua-cfg-panel__head">
-          <div className="ua-cfg-panel__copy">
-            {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+        isDrf ? (
+          <div className="ua-cfg-panel__head ua-cfg-drf__head">
+            <div className="ua-cfg-drf__head-row">
+              {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+              {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+            </div>
             {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
           </div>
-          {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
-        </div>
+        ) : (
+          <div className="ua-cfg-panel__head">
+            <div className="ua-cfg-panel__copy">
+              {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
+              {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
+            </div>
+            {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
+          </div>
+        )
       ) : null}
       {children}
     </section>
@@ -495,7 +506,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
             disabled={busy}
             onChange={(event) => setRatingDraft({ ...ratingDraft, description: event.target.value })}
           />
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={addRating}>
+          <button style={{height:"38px"}} type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={addRating}>
             + Add rating
           </button>
         </div>
@@ -505,7 +516,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         className="ua-cfg-drf ua-cfg-launch-domains"
         title={(
           <>
-            LAUNCH assessment · domains
+            <span className="ua-cfg-drf__head-label">LAUNCH assessment · domains</span>
             <span className={`ua-cfg-drf__allocated${weightTotal === 100 ? " is-full" : " is-warn"}`}>
               {weightTotal === 100 ? "100% allocated" : `${weightTotal}% allocated`}
             </span>

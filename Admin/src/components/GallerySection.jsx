@@ -131,7 +131,65 @@ function HistoryModal({ entry, busy, onClose, onDownload, onRestore }) {
   );
 }
 
-function MediaThumb({ entry }) {
+function mediaFileUrl(url) {
+  if (!url) return "";
+  return String(url).split("#")[0];
+}
+
+function mediaPosterUrl(url) {
+  const file = mediaFileUrl(url);
+  return file ? `${file}#t=0.1` : "";
+}
+
+function GalleryPlayModal({ entry, onClose }) {
+  if (!entry) return null;
+  const src = mediaFileUrl(entry.url);
+  const isAudio = entry.type === "audio";
+
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-cfg-gl-player"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="gallery-play-title"
+      >
+        <div className="ua-cfg-gl-player__head">
+          <div>
+            <h3 id="gallery-play-title">{entry.title}</h3>
+            <p>
+              {(entry.category || entry.type || "Media").toString()}
+              {entry.duration ? ` · ${entry.duration}` : ""}
+              {entry.owner ? ` · ${entry.owner}` : ""}
+            </p>
+          </div>
+          <button type="button" className="ua-cfg-mv-upload-modal__close" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        {src ? (
+          isAudio ? (
+            <audio className="ua-cfg-gl-player__audio" src={src} controls autoPlay preload="metadata" />
+          ) : (
+            <video
+              className="ua-cfg-gl-player__video"
+              src={src}
+              controls
+              autoPlay
+              playsInline
+              preload="auto"
+            />
+          )
+        ) : (
+          <p className="ua-cfg-gl-section__empty">No file available to play.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MediaThumb({ entry, onPlay }) {
   const type = entry.type === "audio" || entry.type === "video" ? entry.type : "image";
   const badgeLabel =
     type === "audio" || type === "video"
@@ -145,11 +203,8 @@ function MediaThumb({ entry }) {
       : type === "audio"
         ? "AUDIO"
         : "VIDEO";
-  const videoSrc = entry.url
-    ? entry.url.includes("#")
-      ? entry.url
-      : `${entry.url}#t=0.1`
-    : "";
+  const videoSrc = mediaPosterUrl(entry.url);
+  const canPlay = Boolean(onPlay && entry.url && (type === "video" || type === "audio"));
 
   return (
     <>
@@ -173,10 +228,21 @@ function MediaThumb({ entry }) {
         </span>
       )}
 
-      <span className="ua-cfg-gl-card__placeholder">
+      {canPlay ? (
+        <button
+          type="button"
+          className="ua-cfg-gl-card__play"
+          aria-label={`Play ${entry.title}`}
+          onClick={onPlay}
+        >
+          ▶
+        </button>
+      ) : null}
+
+      {/* <span className="ua-cfg-gl-card__placeholder">
         {placeholderLabel}
         {entry.duration ? ` · ${entry.duration}` : ""}
-      </span>
+      </span> */}
     </>
   );
 }
@@ -202,6 +268,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
   const [knownOwners, setKnownOwners] = useState(() => new Set(["Admin"]));
   const [videoPreviews, setVideoPreviews] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
+  const [playingAsset, setPlayingAsset] = useState(null);
 
   const owners = useMemo(
     () => ["All owners", ...Array.from(knownOwners).sort((a, b) => a.localeCompare(b))],
@@ -284,6 +351,15 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
   useEffect(() => {
     setSelected([]);
   }, [activeTab, query, owner, typeFilter, fromDate, toDate]);
+
+  useEffect(() => {
+    if (!playingAsset) return undefined;
+    function onKeyDown(event) {
+      if (event.key === "Escape") setPlayingAsset(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [playingAsset]);
 
   const tabs = useMemo(
     () => [
@@ -475,11 +551,17 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
               {videoPreviews.length ? (
                 videoPreviews.map((entry) => (
                   <article key={entry.id} className="ua-cfg-gl-video">
-                    <div className="ua-cfg-gl-video__thumb" aria-hidden="true">
+                    <button
+                      type="button"
+                      className="ua-cfg-gl-video__thumb"
+                      disabled={!entry.url}
+                      aria-label={`Play ${entry.title}`}
+                      onClick={() => entry.url && setPlayingAsset(entry)}
+                    >
                       {entry.url ? (
                         <video
                           className="ua-cfg-gl-video__preview"
-                          src={entry.url.includes("#") ? entry.url : `${entry.url}#t=0.1`}
+                          src={mediaPosterUrl(entry.url)}
                           muted
                           playsInline
                           preload="metadata"
@@ -489,7 +571,8 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                           <MediaTypeIcon type="video" />
                         </span>
                       )}
-                    </div>
+                      {entry.url ? <span className="ua-cfg-gl-video__play" aria-hidden="true">▶</span> : null}
+                    </button>
                     <strong>{entry.title}</strong>
                     <div className="ua-cfg-gl-video__meta">
                       <span className="ua-cfg-gl-video__tag">{entry.type.toUpperCase()}</span>
@@ -507,7 +590,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
         {(activeTab === "all" || activeTab === "image") && (
           <div className="ua-cfg-gl-section">
             <h4 className="ua-cfg-gl-section__title">Images</h4>
-            <p className="ua-cfg-gl-section__sub">Recent image assets in the media library.</p>
+            {/* <p className="ua-cfg-gl-section__sub">Recent image assets in the media library.</p> */}
             <div className="ua-cfg-gl-images">
               {imagePreviews.length ? (
                 imagePreviews.map((entry) => (
@@ -557,7 +640,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                 </option>
               ))}
             </select>
-            <select
+            <select style={{display:"none"}}
               className="ua-cfg-mv-gallery__select"
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value)}
@@ -626,7 +709,14 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                         onChange={() => toggleSelect(entry.id)}
                       />
                     </label>
-                    <MediaThumb entry={entry} />
+                    <MediaThumb
+                      entry={entry}
+                      onPlay={
+                        entry.url && (entry.type === "video" || entry.type === "audio")
+                          ? () => setPlayingAsset(entry)
+                          : undefined
+                      }
+                    />
                   </div>
                   <div className="ua-cfg-gl-card__body">
                     <strong>{entry.title}</strong>
@@ -676,7 +766,7 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
                       disabled={entry.live || busyId === entry.id}
                       onClick={() => requestDeleteItem(entry)}
                     >
-                      🗑
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
                     </button>
                   </div>
                 </article>
@@ -704,6 +794,8 @@ export function GallerySection({ media, setMedia, onToast, onLiveChange }) {
           />
         </div>
       </Panel>
+
+      <GalleryPlayModal entry={playingAsset} onClose={() => setPlayingAsset(null)} />
 
       <HistoryModal
         entry={historyEntry}
