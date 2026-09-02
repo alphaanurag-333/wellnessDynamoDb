@@ -1307,8 +1307,8 @@ function RolesPermissionsTab({ onToast }) {
               </div>
               <p className="ua-ac-matrix__hint">
                 {activeSection
-                  ? "Tap a toggle to grant or revoke. Dashes mean the action does not apply."
-                  : "Tap a section on the left to focus its permissions, or toggle actions below."}
+                  ? "Tap a section to see its permissions on the right. The tick opens or closes it in the left navigation."
+                  : "Tap a column heading to set that action across every row."}
               </p>
             </div>
             <div className="ua-ac-legend">
@@ -1857,7 +1857,10 @@ function ApprovalsTab({ onToast, onCountChange }) {
       {loading ? <BrandLoader variant="page" label="Loading requests…" /> : null}
       {error ? <p className="ua-table__muted">{error}</p> : null}
       {!loading && !error && requests.length === 0 ? (
-        <p className="ua-table__muted" style={{textAlign:"center"}}>No pending permission requests.</p>
+        <div data-dc-tpl="984" style={{background: "rgb(255, 255, 255)", border: "1px solid rgb(230, 235, 242)", borderRadius: "12px", padding: "52px 20px", textAlign: "center", boxShadow: "rgba(16, 35, 63, 0.04) 0px 1px 2px"}}>
+        <div data-dc-tpl="985" style={{fontSize: "15px", fontWeight: "700", color: "rgb(22, 35, 63)", marginBottom: "5px"}}>Nothing waiting on you</div>
+        <div data-dc-tpl="986" style={{fontSize: "12.5px", color: "rgb(138, 151, 172)"}}>Permission and role requests raised by a Wellness Coach land here.</div>
+      </div>
       ) : null}
       {requests.map((a) => (
         <div key={a.id} className="ua-approval-card">

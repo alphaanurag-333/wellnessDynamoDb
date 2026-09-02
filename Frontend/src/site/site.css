@@ -4935,7 +4935,7 @@ color: var(--primary);
 .leadership__video-cover img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   object-position: center;
   display: block;
 }
@@ -10154,7 +10154,7 @@ flex-shrink: 0;
 
 .about-page .leadership:not(.leadership-slider) .leadership__video {
   width: 100%;
-  max-width: 560px;
+  max-width: 480px;
   margin-inline: auto;
 }
 

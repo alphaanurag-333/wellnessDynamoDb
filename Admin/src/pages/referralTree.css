@@ -288,7 +288,7 @@
 .updated-admin .ua-table--rt-top,
 .updated-admin .ua-table--rt-staff {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(88px, 0.75fr) minmax(72px, 0.65fr) 56px 64px;
+  grid-template-columns: minmax(0, 1.6fr) minmax(88px, 0.75fr) minmax(110px, 0.9fr) 56px 64px;
   align-items: center;
   column-gap: 10px;
   padding-left: 12px;
@@ -297,6 +297,7 @@
   min-width: 560px;
   max-width: none;
   box-sizing: border-box;
+  font-size: 13px;
 }
 
 .updated-admin .ua-table--rt-recent {
@@ -318,7 +319,9 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
   color: inherit;
 }
 
@@ -332,6 +335,19 @@
   gap: 2px;
   min-width: 0;
   overflow: hidden;
+}
+
+.updated-admin .ua-table--rt-top .ua-rt-name,
+.updated-admin .ua-table--rt-top .ua-rt-tier {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.updated-admin .ua-table--rt-top .ua-rt-tier {
+  font-weight: 400;
 }
 
 .updated-admin .ua-rt-sub {
