@@ -696,3 +696,277 @@
   cursor: not-allowed;
   pointer-events: none;
 }
+
+/* ── List + edit cards ───────────────────────────────────────────
+   Viewport 1024px still has the sidebar, so the card body is ~700px.
+   Wrap the crowded header and stack edit actions instead of overlapping. */
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.ua-cfg-rc-item {
+  display: grid;
+  grid-template-columns: minmax(148px, 200px) minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair.ua-cfg-rc-cover-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-rc-item__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__head,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__head {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__identity {
+  flex: 1 1 8rem;
+  min-width: min(100%, 8rem);
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__identity strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1 1 18rem;
+  min-width: min(100%, 18rem);
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__surfaces,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__live,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__moves,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__live {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns .ua-cfg-btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__story {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-chips {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__identity,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__actions {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__actions {
+  justify-content: flex-start;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-points-ed,
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-story {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-table {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-table__row {
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-add-pt {
+  width: auto;
+  max-width: 100%;
+}
+
+@container ua-cfg-tf (max-width: 960px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item:not(.is-editing) .ua-cfg-tf-item__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item:not(.is-editing) .ua-cfg-tf-item__identity,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item:not(.is-editing) .ua-cfg-tf-item__actions {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item:not(.is-editing) .ua-cfg-tf-item__actions {
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item.ua-cfg-rc-item {
+    grid-template-columns: minmax(132px, 176px) minmax(0, 1fr);
+  }
+}
+
+@container ua-cfg-tf (max-width: 820px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-table {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container ua-cfg-tf (max-width: 720px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item.ua-cfg-rc-item {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair.ua-cfg-rc-cover-wrap {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-rc-item__body {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@container ua-cfg-tf (max-width: 520px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair.ua-cfg-rc-cover-wrap {
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns .ua-cfg-btn {
+    flex: 1 1 5.5rem;
+  }
+}
+
+@media (max-width: 1280px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__head,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__actions,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__surfaces,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1100px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item:not(.is-editing) .ua-cfg-tf-item__head,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-item__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__identity,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__actions {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__actions {
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item.ua-cfg-rc-item {
+    grid-template-columns: minmax(132px, 176px) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item.is-editing .ua-cfg-tf-table {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item,
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item.ua-cfg-rc-item {
+    display: flex;
+    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair,
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair.ua-cfg-rc-cover-wrap {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .updated-admin .ua-cfg-detail--tf .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-rc-item__body {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair,
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-pair.ua-cfg-rc-cover-wrap {
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-item .ua-cfg-tf-item__btns .ua-cfg-btn {
+    flex: 1 1 5.5rem;
+  }
+}
