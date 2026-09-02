@@ -66,7 +66,7 @@ function jsonFields(fields) {
   return payload;
 }
 
-export async function adminListTransformations(token, { page = 1, limit = 20, status, search } = {}) {
+export async function adminListTransformations(token, { page = 1, limit = 10, status, search } = {}) {
   const params = { page, limit };
   if (status) params.status = status;
   if (String(search || "").trim()) params.search = String(search).trim();

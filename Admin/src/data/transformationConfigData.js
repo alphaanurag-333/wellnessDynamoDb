@@ -1,3 +1,6 @@
+export const TRANSFORMATION_MEDIA_CATEGORY = "Transformation";
+export const TRANSFORMATION_PAGE_SIZE = 10;
+
 export const TRANSFORMATION_EDITOR = {
   appOn: true,
   webOn: true,
