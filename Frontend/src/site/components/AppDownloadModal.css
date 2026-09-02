@@ -1,0 +1,555 @@
+/* App download modal — scoped to this overlay only */
+
+.app-dl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: grid;
+  place-items: center;
+  padding:
+    max(1rem, env(safe-area-inset-top))
+    max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom))
+    max(1rem, env(safe-area-inset-left));
+  background: rgba(15, 31, 56, 0.58);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: app-dl-fade-in 180ms ease;
+  overscroll-behavior: contain;
+}
+
+@keyframes app-dl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.app-dl-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 100%);
+  max-height: min(92vh, 740px);
+  max-height: min(92dvh, 740px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 28px 64px rgba(15, 31, 56, 0.3);
+  animation: app-dl-rise 220ms ease;
+}
+
+@keyframes app-dl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.app-dl-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e6ebf2;
+  border-radius: 999px;
+  background: #fff;
+  color: #16233f;
+  box-shadow: 0 4px 14px rgba(15, 31, 56, 0.08);
+  cursor: pointer;
+}
+
+.app-dl-modal__close:hover {
+  border-color: #d7deea;
+  color: var(--primary, #e7863a);
+}
+
+.app-dl-modal__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.9fr) minmax(0, 1.1fr);
+  gap: 1.5rem 2rem;
+  align-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 2rem 2rem 2rem 1.5rem;
+}
+
+.app-dl-modal__phone {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.app-dl-modal__phone-frame {
+  width: min(100%, 280px);
+  filter: drop-shadow(0 24px 40px rgba(15, 31, 56, 0.24));
+}
+
+.app-dl-modal__screenshot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.app-dl-modal__copy {
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+
+.app-dl-modal__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.app-dl-modal__logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #edf1f7;
+}
+
+.app-dl-modal__eyebrow {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary, #e7863a);
+}
+
+.app-dl-modal__title {
+  margin: 0 0 0.7rem;
+  max-width: 22ch;
+  font-size: clamp(1.35rem, 2.4vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #0f1f38;
+}
+
+.app-dl-modal__text {
+  margin: 0 0 1.25rem;
+  max-width: 38ch;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #5f6f86;
+}
+
+.app-dl-modal__text--mobile {
+  display: none;
+}
+
+.app-dl-modal__stores {
+  margin-bottom: 1.35rem;
+}
+
+.app-dl-modal__stores .site-app-badges,
+.app-dl-modal__stores .managealignment {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 0.65rem !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.app-dl-modal__stores .site-app-badge,
+.app-dl-modal__stores .width-fits {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: 200px;
+  min-height: 50px;
+  padding: 0.5rem 0.85rem;
+  gap: 0.5rem;
+  border-radius: 12px;
+  background: #0f172a !important;
+  color: #fff !important;
+  box-shadow: none;
+}
+
+.app-dl-modal__stores .site-app-badge:hover {
+  background: #1e293b !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+}
+
+.app-dl-modal__stores .site-app-badge small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  text-transform: none;
+}
+
+.app-dl-modal__stores .site-app-badge strong {
+  color: #fff;
+  font-size: 0.98rem;
+}
+
+.app-dl-modal__qr-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e3e9f2;
+  border-radius: 18px;
+  background: #f5f7fb;
+}
+
+.app-dl-modal__qr-block--dual {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+
+.app-dl-modal__qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  text-align: center;
+  min-width: 0;
+}
+
+.app-dl-modal__qr {
+  flex-shrink: 0;
+  width: 124px;
+  height: 124px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e8edf5;
+  overflow: hidden;
+}
+
+.app-dl-modal__qr.is-empty {
+  padding: 12px;
+}
+
+.app-dl-modal__qr img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.app-dl-modal__qr-fallback {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.app-dl-modal__qr-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-dl-modal__qr-copy strong {
+  font-size: 0.92rem;
+  color: #0f1f38;
+}
+
+.app-dl-modal__qr-copy span {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #5f6f86;
+}
+
+@media (min-width: 761px) and (max-width: 960px) {
+  .app-dl-modal__grid {
+    gap: 1.15rem 1.2rem;
+    padding: 1.5rem 1.25rem 1.5rem 1.1rem;
+  }
+
+  .app-dl-modal__stores .site-app-badge,
+  .app-dl-modal__stores .width-fits {
+    max-width: none;
+    min-height: 46px;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .app-dl-modal__stores .site-app-badge small {
+    font-size: 0.58rem;
+  }
+
+  .app-dl-modal__stores .site-app-badge strong {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-dl-modal-overlay {
+    place-items: center;
+    padding:
+      max(0.75rem, env(safe-area-inset-top))
+      max(0.75rem, env(safe-area-inset-right))
+      max(0.75rem, env(safe-area-inset-bottom))
+      max(0.75rem, env(safe-area-inset-left));
+  }
+
+  .app-dl-modal {
+    width: min(100%, 440px);
+    max-height: min(90vh, calc(100dvh - 1.5rem));
+    border-radius: 20px;
+  }
+
+  .app-dl-modal__close {
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .app-dl-modal__grid {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+    padding: 1.25rem 1.1rem 1.1rem;
+    align-content: start;
+    text-align: center;
+  }
+
+  .app-dl-modal__phone {
+    padding-top: 0.25rem;
+  }
+
+  .app-dl-modal__phone-frame {
+    width: min(36vw, 120px);
+    filter: drop-shadow(0 12px 20px rgba(15, 31, 56, 0.16));
+  }
+
+  .app-dl-modal__copy {
+    text-align: center;
+    padding-right: 0;
+  }
+
+  .app-dl-modal__brand {
+    justify-content: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .app-dl-modal__logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .app-dl-modal__eyebrow {
+    margin-bottom: 0.25rem;
+    font-size: 0.66rem;
+  }
+
+  .app-dl-modal__title {
+    max-width: none;
+    margin: 0 auto 0.4rem;
+    font-size: clamp(1.05rem, 4.6vw, 1.25rem);
+    line-height: 1.3;
+  }
+
+  .app-dl-modal__text {
+    max-width: 34ch;
+    margin: 0 auto 0.8rem;
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .app-dl-modal__text--desktop {
+    display: none;
+  }
+
+  .app-dl-modal__text--mobile {
+    display: block;
+  }
+
+  .app-dl-modal__stores {
+    margin-bottom: 0.8rem;
+  }
+
+  .app-dl-modal__stores .site-app-badges,
+  .app-dl-modal__stores .managealignment {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: auto;
+    gap: 0.55rem !important;
+  }
+
+  .app-dl-modal__stores .site-app-badge,
+  .app-dl-modal__stores .width-fits {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none;
+    min-height: 46px;
+    padding: 0.4rem 0.5rem;
+    gap: 0.4rem;
+    border-radius: 10px;
+    justify-content: center;
+  }
+
+  .app-dl-modal__stores .site-app-badge__icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .app-dl-modal__stores .site-app-badge small {
+    font-size: 0.55rem;
+  }
+
+  .app-dl-modal__stores .site-app-badge strong {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .app-dl-modal__qr-block,
+  .app-dl-modal__qr-block--dual {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+    padding: 0.7rem 0.55rem 0.6rem;
+    border-radius: 14px;
+  }
+
+  .app-dl-modal__qr {
+    width: 78px;
+    height: 78px;
+    padding: 5px;
+    border-radius: 12px;
+  }
+
+  .app-dl-modal__qr-copy {
+    text-align: center;
+  }
+
+  .app-dl-modal__qr-copy strong {
+    font-size: 0.72rem;
+  }
+
+  .app-dl-modal__qr-copy span {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .app-dl-modal-overlay {
+    padding: 0.6rem;
+  }
+
+  .app-dl-modal {
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  .app-dl-modal__grid {
+    padding: 1.1rem 0.85rem 0.95rem;
+    gap: 0.55rem;
+  }
+
+  .app-dl-modal__phone-frame {
+    width: min(32vw, 104px);
+  }
+
+  .app-dl-modal__title {
+    font-size: 1rem;
+  }
+
+  .app-dl-modal__stores .site-app-badges,
+  .app-dl-modal__stores .managealignment {
+    flex-direction: column !important;
+    max-width: 240px;
+  }
+
+  .app-dl-modal__stores .site-app-badge,
+  .app-dl-modal__stores .width-fits {
+    width: 100% !important;
+    flex: none !important;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .app-dl-modal__stores .site-app-badge strong {
+    font-size: 0.84rem;
+  }
+
+  .app-dl-modal__qr {
+    width: 68px;
+    height: 68px;
+  }
+
+  .app-dl-modal__qr-copy strong {
+    font-size: 0.68rem;
+  }
+}
+
+@media (max-height: 720px) and (max-width: 760px) {
+  .app-dl-modal__phone-frame {
+    width: min(28vw, 96px);
+  }
+
+  .app-dl-modal__grid {
+    gap: 0.5rem;
+    padding-top: 1.05rem;
+    padding-bottom: 0.9rem;
+  }
+
+  .app-dl-modal__title {
+    margin-bottom: 0.3rem;
+  }
+
+  .app-dl-modal__text {
+    margin-bottom: 0.6rem;
+  }
+
+  .app-dl-modal__stores {
+    margin-bottom: 0.6rem;
+  }
+
+  .app-dl-modal__qr {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (max-height: 620px) and (max-width: 760px) {
+  .app-dl-modal__phone {
+    display: none;
+  }
+
+  .app-dl-modal__grid {
+    padding-top: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dl-modal-overlay,
+  .app-dl-modal {
+    animation: none;
+  }
+}

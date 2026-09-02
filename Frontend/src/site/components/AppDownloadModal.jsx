@@ -8,6 +8,7 @@ import { selectApkLogoLightUrl, selectLoginBrandLogoUrl } from "../../store/appC
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
 import apkScreenshot from "../images/apk.png";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
+import "./AppDownloadModal.css";
 
 async function toQrDataUrl(target) {
   if (!target) return "";
@@ -140,8 +141,11 @@ export function AppDownloadModal({ open, onClose }) {
             <h2 id="app-dl-modal-title" className="app-dl-modal__title">
               Download {appName} to book your consultation
             </h2>
-            <p className="app-dl-modal__text">
+            <p className="app-dl-modal__text app-dl-modal__text--desktop">
               Get the app on your phone — scan a QR code or open the store links below.
+            </p>
+            <p className="app-dl-modal__text app-dl-modal__text--mobile">
+              Get the app on your phone — tap a store button or scan a QR code.
             </p>
 
             <div className="app-dl-modal__stores">

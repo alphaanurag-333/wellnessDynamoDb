@@ -257,7 +257,7 @@
 }
 
 .updated-admin .ua-cfg-tf .ua-cfg-tf-pair .ua-cfg-rc-cover-wrap {
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 6;
   max-height: none;
 }
 
@@ -509,7 +509,7 @@
 
 .updated-admin .ua-cfg-tf .ua-cfg-tf-gallery .ua-cfg-mv-gallery__grid {
   grid-template-columns: repeat(auto-fill, minmax(148px, 168px));
-  gap: 10px;
+  gap: 9px;
   align-items: stretch;
   justify-content: start;
 }
@@ -620,7 +620,14 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-
+@media (max-width: 768px) {
+  .updated-admin .ua-cfg-tf .ua-cfg-tf-gallery .ua-cfg-mv-gallery__grid {
+    grid-template-columns: repeat(auto-fill, minmax(148px, 168px));
+    gap: 4px;
+    align-items: stretch;
+    justify-content: start;
+  }
+}
 .updated-admin .ua-cfg-tf .ua-cfg-tf-gallery .ua-cfg-gl-card__check,
 .updated-admin .ua-cfg-tf .ua-cfg-tf-gallery .ua-cfg-mv-gallery-card__check {
   display: grid;
