@@ -138,10 +138,10 @@ export function AppDownloadModal({ open, onClose }) {
             </div> */}
 
             <p className="app-dl-modal__eyebrow">Book on the app</p>
-            <h2 id="app-dl-modal-title" className="app-dl-modal__title">
+            <h2 id="app-dl-modal-title" style={{maxWidth:"100%"}} className="app-dl-modal__title">
               Download {appName} to book your consultation
             </h2>
-            <p className="app-dl-modal__text app-dl-modal__text--desktop">
+            <p style={{maxWidth:"100%"}} className="app-dl-modal__text app-dl-modal__text--desktop">
               Get the app on your phone — scan a QR code or open the store links below.
             </p>
             <p className="app-dl-modal__text app-dl-modal__text--mobile">
