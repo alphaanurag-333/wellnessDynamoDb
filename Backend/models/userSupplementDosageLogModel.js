@@ -5,7 +5,7 @@ const {
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
-const { PERIODS } = require("./userSupplementDosageModel");
+const { isValidPeriod } = require("./userSupplementDosageModel");
 
 const TABLE = "UserSupplementDosageLog";
 
@@ -32,7 +32,7 @@ function normalizeLogDate(value) {
 
 function normalizePeriod(value) {
   const period = String(value || "").trim().toLowerCase();
-  if (!PERIODS.has(period)) {
+  if (!isValidPeriod(period)) {
     const err = new Error("Invalid dosage timing");
     err.name = "ValidationError";
     throw err;
