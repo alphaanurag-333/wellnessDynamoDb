@@ -42,10 +42,7 @@ function Stars({ count = 5 }) {
   );
 }
 
-function Avatar({ src, name }) {
-  if (src) {
-    return <img className="ua-cfg-cr-avatar ua-cfg-cr-avatar--img" src={src} alt="" />;
-  }
+function DefaultAvatar({ name }) {
   return (
     <span className="ua-cfg-cr-avatar ua-cfg-cr-avatar--empty" aria-hidden="true" title={asCopyString(name)}>
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -53,6 +50,26 @@ function Avatar({ src, name }) {
       </svg>
     </span>
   );
+}
+
+function Avatar({ src, name }) {
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setBroken(false);
+  }, [src]);
+
+  if (src && !broken) {
+    return (
+      <img
+        className="ua-cfg-cr-avatar ua-cfg-cr-avatar--img"
+        src={src}
+        alt=""
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+  return <DefaultAvatar name={name} />;
 }
 
 function EditReviewModal({ review, busy, onClose, onSave }) {

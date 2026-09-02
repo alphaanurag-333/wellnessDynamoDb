@@ -1353,6 +1353,9 @@ export function RecipesSection({
                       ) : null}
                       <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
                       <p className="ua-cfg-tf-drop__label">YouTube preview</p>
+                      {!youtubeEmbedUrl(draft.videoLink) ? (
+                        <span className="ua-cfg-lib-drop__size">{RC_VIDEO_SIZE_LABEL}</span>
+                      ) : null}
                     </div>
                   )
                 ) : (
@@ -1756,6 +1759,9 @@ export function RecipesSection({
                                   ) : null}
                                   <span className="ua-cfg-tf-drop__icon" aria-hidden="true">▶</span>
                                   <p className="ua-cfg-tf-drop__label">YouTube preview</p>
+                                  {!youtubeEmbedUrl(entry.videoLink) ? (
+                                    <span className="ua-cfg-lib-drop__size">{RC_VIDEO_SIZE_LABEL}</span>
+                                  ) : null}
                                 </div>
                               )}
                             </div>

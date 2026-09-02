@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { asCopyString } from "../data/bannerConfigData.js";
+import "./yogaSection.css";
 import { adminGetConfigDropdown, adminListConfigDropdowns } from "../api/configDropdownApi.js";
 import {
   adminCreateYoga,
@@ -483,11 +484,11 @@ function revokeBlobUrl(url) {
   if (url && String(url).startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
-function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove }) {
+function VideoDrop({ previewUrl, embedUrl, fileName, disabled, onPick, onRemove, className = "" }) {
   const filled = Boolean(previewUrl || embedUrl || fileName);
 
   return (
-    <div  className={` ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}`}>
+    <div className={`ua-cfg-tf-drop ua-cfg-tf-drop--after ua-cfg-rc-dropbox${filled ? " is-on" : ""}${className ? ` ${className}` : ""}`}>
       {previewUrl ? (
         <video className="ua-cfg-tf-drop__img ua-cfg-rc-video-preview" src={previewUrl} controls preload="metadata" />
       ) : embedUrl ? (
@@ -1151,6 +1152,17 @@ export function YogaSection({
 
   return (
     <div className="ua-cfg-rc ua-cfg-recipes">
+      <style>{`
+        .ua-cfg-yoga-media{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;width:100%!important}
+        .ua-cfg-yoga-drop-slot{flex:none!important;width:100%!important;max-width:100%!important;height:auto!important;aspect-ratio:16/9;overflow:hidden}
+        .ua-cfg-yoga-drop-slot .ua-cfg-tf-drop,.ua-cfg-yoga-drop{width:100%!important;max-width:none!important;height:100%!important}
+        .ua-cfg-yoga-media>.ua-cfg-yoga-link{flex:none!important;width:100%!important;min-width:0!important;max-width:none!important}
+        @media (min-width:721px){
+          .ua-cfg-yoga-media{flex-direction:row!important;align-items:center!important}
+          .ua-cfg-yoga-drop-slot{flex:0 0 140px!important;width:140px!important;max-width:140px!important;height:80px!important}
+          .ua-cfg-yoga-media>.ua-cfg-yoga-link{flex:1 1 0%!important;width:0!important}
+        }
+      `}</style>
       <SectionSurfacePanel
         sectionId="yoga"
         editor={editor}
@@ -1474,39 +1486,40 @@ export function YogaSection({
                             })}
                           />
                         </div>
-                        <div className="ua-cfg-rc-edit__media">
-                          <VideoDrop
-                            previewUrl={entry.videoPreview || entry.video || ""}
-                            embedUrl={(entry.videoPreview || entry.video) ? "" : youtubeEmbedUrl(entry.videoLink)}
-                            fileName={entry.videoName}
-                            disabled={disabled}
-                            onPick={() => openVideoPicker(entry.id)}
-                            onRemove={() => clearItemVideo(entry.id)}
-                          />
-                          <div className="ua-cfg-rc-edit__side">
-                            <input
-                              className="ua-cfg-vh-input"
-                              placeholder="YouTube link · youtube.com/watch?v=…"
-                              value={asCopyString(entry.videoLink)}
+                        <div className="ua-cfg-yoga-media">
+                          <div className="ua-cfg-yoga-drop-slot">
+                            <VideoDrop
+                              className="ua-cfg-yoga-drop"
+                              previewUrl={entry.videoPreview || entry.video || ""}
+                              embedUrl={(entry.videoPreview || entry.video) ? "" : youtubeEmbedUrl(entry.videoLink)}
+                              fileName={entry.videoName}
                               disabled={disabled}
-                              onChange={(event) => {
-                                const videoLink = event.target.value;
-                                if (videoLink.trim()) {
-                                  revokeBlobUrl(entry.videoPreview);
-                                  updateItem(entry.id, {
-                                    videoLink,
-                                    videoPreview: "",
-                                    videoFile: null,
-                                    apiType: "ytlink",
-                                    type: "YT",
-                                    duration: "YouTube",
-                                  });
-                                  return;
-                                }
-                                updateItem(entry.id, { videoLink, apiType: entry.video ? "video" : entry.apiType, type: entry.video ? "VIDEO" : entry.type });
-                              }}
+                              onPick={() => openVideoPicker(entry.id)}
+                              onRemove={() => clearItemVideo(entry.id)}
                             />
                           </div>
+                          <input
+                            className="ua-cfg-vh-input ua-cfg-yoga-link"
+                            placeholder="YouTube link · youtube.com/watch?v=…"
+                            value={asCopyString(entry.videoLink)}
+                            disabled={disabled}
+                            onChange={(event) => {
+                              const videoLink = event.target.value;
+                              if (videoLink.trim()) {
+                                revokeBlobUrl(entry.videoPreview);
+                                updateItem(entry.id, {
+                                  videoLink,
+                                  videoPreview: "",
+                                  videoFile: null,
+                                  apiType: "ytlink",
+                                  type: "YT",
+                                  duration: "YouTube",
+                                });
+                                return;
+                              }
+                              updateItem(entry.id, { videoLink, apiType: entry.video ? "video" : entry.apiType, type: entry.video ? "VIDEO" : entry.type });
+                            }}
+                          />
                         </div>
                       </div>
                     ) : (
