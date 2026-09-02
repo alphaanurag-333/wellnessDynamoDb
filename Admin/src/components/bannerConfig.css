@@ -99,15 +99,29 @@
 
 .updated-admin .ua-cfg-bn-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel.ua-cfg-panel,
-.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+.updated-admin .ua-cfg-bn .ua-cfg-bn-editor-panel.ua-cfg-panel {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  height: 100%;
+  height: auto;
+  max-height: none;
+  align-self: start;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  /* Match editor height; list scrolls inside instead of stretching the row */
+  height: 0;
+  min-height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-bn-editor-panel.is-new {
@@ -169,6 +183,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
 }
 
 .updated-admin .ua-cfg-bn-field {
@@ -544,9 +559,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: none;
-  height: 100%;
-  align-self: stretch;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-bn-live-panel .ua-cfg-panel__head {
@@ -555,19 +568,20 @@
 
 .updated-admin .ua-cfg-bn-live-panel .ua-users-pagination {
   flex-shrink: 0;
-  margin-top: auto;
+  margin-top: 0;
   padding-top: 10px;
   border-top: 1px solid #edf1f7;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live {
-  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 100%;
-  height: auto;
   gap: 6px;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-live__row {
@@ -886,9 +900,60 @@
   color: #16a34a;
 }
 
-.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__grid {
-  align-items: stretch;
-  padding-bottom: 8px;
+.updated-admin .ua-cfg-bn .ua-cfg-gl-card__check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-gl-card__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #5e6ad2;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__selection .ua-cfg-btn--danger {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #fff;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__selection .ua-cfg-btn--danger:hover:not(:disabled) {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-mv-gallery__selection .ua-cfg-btn--danger:disabled {
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-gl-card__delete:not(:disabled):not(.is-locked) {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.updated-admin .ua-cfg-bn .ua-cfg-gl-card__delete:disabled,
+.updated-admin .ua-cfg-bn .ua-cfg-gl-card__delete.is-locked {
+  color: #cbd5e1;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .updated-admin .ua-cfg-bn .ua-cfg-bn-ref-gallery__grid {
@@ -1087,6 +1152,12 @@
   .updated-admin .ua-cfg-bn-live-preview,
   .updated-admin .ua-cfg-preview-modal__frame .ua-cfg-bn-live-preview {
     grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cfg-bn .ua-cfg-bn-live-panel.ua-cfg-panel {
+    height: auto;
+    min-height: 0;
+    max-height: min(70vh, 640px);
   }
 
   .updated-admin .ua-cfg-bn-live-preview__pane--app {

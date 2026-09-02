@@ -21,7 +21,6 @@ import {
   BANNER_DESKTOP_SIZE,
   BANNER_MEDIA_CATEGORY,
   BANNER_MOBILE_SIZE,
-  BANNER_PAGE_SIZE,
   BANNER_PLACEMENTS,
   BANNER_TYPES,
   asCopyString,
@@ -37,7 +36,7 @@ import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { MediaPickerModal } from "./MediaPickerModal.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
-import { CfgSelect, ListPagination } from "./shared.jsx";
+import { CfgSelect } from "./shared.jsx";
 import { BannerLivePreview } from "./BannerLivePreview.jsx";
 import { useMediaPicker } from "./useMediaPicker.jsx";
 import "./bannerConfig.css";
@@ -95,6 +94,69 @@ function DropZone({ label, previewUrl, onUpload, className = "" }) {
   );
 }
 
+const GALLERY_TRASH_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+  </svg>
+);
+
+function galleryAssetTime(entry) {
+  const raw = entry?.createdAt || entry?.updatedAt;
+  if (!raw) return null;
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function isGalleryEntryLive(entry, banners = []) {
+  if (!entry) return false;
+  const on = (value) =>
+    value === true || value === 1 || value === "true" || value === "on" || value === "active";
+  if (on(entry.live) || on(entry.shown) || String(entry.status || "").toLowerCase() === "active") return true;
+  if (entry.source === "banner" && entry.bannerId) {
+    const banner = banners.find((row) => row.id === entry.bannerId);
+    if (!banner) return on(entry.live);
+    if (banner.status === "inactive" || banner.shown === false || banner.live === false) return false;
+    return on(banner.shown) || on(banner.live) || banner.status !== "inactive";
+  }
+  return false;
+}
+
+function inGalleryDateRange(entry, fromDate, toDate) {
+  if (!fromDate && !toDate) return true;
+  const time = galleryAssetTime(entry);
+  if (time == null) return true;
+  if (fromDate) {
+    const from = new Date(`${fromDate}T00:00:00`).getTime();
+    if (!Number.isNaN(from) && time < from) return false;
+  }
+  if (toDate) {
+    const to = new Date(`${toDate}T23:59:59.999`).getTime();
+    if (!Number.isNaN(to) && time > to) return false;
+  }
+  return true;
+}
+
+function galleryDeleteCopy(pending) {
+  if (!pending?.ids?.length) {
+    return { title: "Delete this image?", body: "This removes the image from the banner gallery." };
+  }
+  if (pending.ids.length === 1) {
+    const name = pending.title ? `“${pending.title}”` : `this ${pending.kind || "image"}`;
+    return {
+      title: `Delete ${name}?`,
+      body: pending.kind === "banner"
+        ? "This permanently removes the unmarked banner and its images."
+        : "This removes the image from the banner gallery. Live banners are not changed.",
+    };
+  }
+  return {
+    title: `Delete ${pending.ids.length} selected items?`,
+    body: "This permanently removes unmarked selected items. Live assets are not deleted.",
+  };
+}
+
 function LiveToggle({ label, on, disabled, ariaLabel, onToggle }) {
   return (
     <div className="ua-cfg-bn-live__surface">
@@ -130,7 +192,9 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
   const [pendingDelete, setPendingDelete] = useState(null);
   const [galleryQuery, setGalleryQuery] = useState("");
   const [galleryOwner, setGalleryOwner] = useState("All owners");
-  const [page, setPage] = useState(1);
+  const [galleryFromDate, setGalleryFromDate] = useState("");
+  const [galleryToDate, setGalleryToDate] = useState("");
+  const [gallerySelected, setGallerySelected] = useState([]);
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
   const [bannerMedia, setBannerMedia] = useState([]);
@@ -233,6 +297,8 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         category: BANNER_MEDIA_CATEGORY,
         search: galleryQuery.trim() || undefined,
         owner: galleryOwner === "All owners" ? undefined : galleryOwner,
+        from: galleryFromDate || undefined,
+        to: galleryToDate || undefined,
       });
       setBannerMedia(Array.isArray(result?.items) ? result.items : []);
     } catch (error) {
@@ -241,37 +307,31 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     } finally {
       setGalleryLoading(false);
     }
-  }, [galleryOwner, galleryQuery, onToast]);
+  }, [galleryFromDate, galleryOwner, galleryQuery, galleryToDate, onToast]);
 
   useEffect(() => {
     const timer = setTimeout(loadBannerGallery, 200);
     return () => clearTimeout(timer);
   }, [loadBannerGallery]);
 
+  useEffect(() => {
+    setGallerySelected([]);
+  }, [galleryFromDate, galleryOwner, galleryQuery, galleryToDate]);
+
   useEffect(() => () => {
     if (cropPending?.previewUrl) URL.revokeObjectURL(cropPending.previewUrl);
   }, [cropPending?.previewUrl]);
 
   const webLiveCount = items.filter((row) => row.shown && row.webOn !== false).length;
-  const pageCount = Math.max(1, Math.ceil((items.length || 0) / BANNER_PAGE_SIZE));
-  const safePage = Math.min(Math.max(1, page), pageCount);
-  const pageStart = (safePage - 1) * BANNER_PAGE_SIZE;
-  const pagedItems = items.slice(pageStart, pageStart + BANNER_PAGE_SIZE);
 
-  useEffect(() => {
-    setPage((current) => Math.min(Math.max(1, current), pageCount));
-  }, [pageCount]);
-
-  function goToPage(nextPage, totalItems = items.length) {
-    const pages = Math.max(1, Math.ceil((totalItems || 0) / BANNER_PAGE_SIZE));
-    setPage(Math.min(Math.max(1, nextPage), pages));
-    liveListRef.current?.scrollTo({ top: 0 });
+  function scrollBannerIntoView(id) {
+    if (!id || !liveListRef.current) return;
+    const row = liveListRef.current.querySelector(`[data-banner-id="${CSS.escape(String(id))}"]`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 
-  function goToItemPage(id, list = items) {
-    const index = list.findIndex((row) => row.id === id);
-    if (index < 0) return;
-    goToPage(Math.floor(index / BANNER_PAGE_SIZE) + 1, list.length);
+  function goToItemPage(id) {
+    window.requestAnimationFrame(() => scrollBannerIntoView(id));
   }
 
   function patch(next) {
@@ -441,11 +501,10 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         });
         setCreating(false);
         onToast("Banner added");
-        const next = await loadItems();
-        setPage(1);
+        await loadItems();
         if (created?.id) {
           selectItem(created);
-          goToItemPage(created.id, next);
+          goToItemPage(created.id);
         }
       } else {
         const saved = await adminUpdateBanner(null, editor.id, payload);
@@ -492,7 +551,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     const [row] = ordered.splice(index, 1);
     ordered.splice(nextIndex, 0, row);
     setItems(ordered);
-    goToPage(Math.floor(nextIndex / BANNER_PAGE_SIZE) + 1);
+    goToItemPage(row.id);
     try {
       const saved = await adminReorderBanners(null, ordered.map((entry) => entry.id));
       if (saved?.length) setItems(saved);
@@ -515,7 +574,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     if (next === previous || next.every((entry, i) => entry.id === previous[i]?.id)) return;
     setItems(next);
     const droppedIndex = next.findIndex((entry) => entry.id === fromId);
-    if (droppedIndex >= 0) goToItemPage(fromId, next);
+    if (droppedIndex >= 0) goToItemPage(fromId);
     try {
       const saved = await adminReorderBanners(null, next.map((entry) => entry.id));
       if (saved?.length) setItems(saved);
@@ -560,13 +619,26 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
   }
 
+  function toggleGallerySelect(id) {
+    setGallerySelected((prev) => (prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]));
+  }
+
   async function toggleGalleryLive(entry) {
-    if (!entry?.id || entry.source !== "library") return;
+    if (!entry?.id) return;
     setGalleryBusyId(entry.id);
     try {
-      const updated = await adminUpdateMediaAsset(null, entry.id, { live: !entry.live });
-      setBannerMedia((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
-      onToast(updated.live ? "Marked live in gallery" : "Unmarked in gallery");
+      if (entry.source === "library") {
+        const updated = await adminUpdateMediaAsset(null, entry.id, { live: !entry.live });
+        setBannerMedia((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+        onToast(updated.live ? "Marked live in gallery" : "Unmarked in gallery");
+        return;
+      }
+      const banner = itemsRef.current.find((row) => row.id === entry.bannerId);
+      if (!banner?.id) return;
+      const shown = !banner.shown;
+      const saved = await adminUpdateBanner(null, banner.id, { shown });
+      setItems((prev) => prev.map((row) => (row.id === saved.id ? saved : row)));
+      onToast(shown ? "Banner marked live" : "Banner unmarked");
     } catch (error) {
       onToast(error?.message || "Could not update gallery asset");
     } finally {
@@ -590,21 +662,101 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     }
   }
 
+  function requestDeleteGalleryItem(entry) {
+    if (!entry) return;
+    if (isGalleryEntryLive(entry, itemsRef.current)) {
+      onToast("Unmark live assets before delete");
+      return;
+    }
+    setPendingMediaDelete({
+      ids: [entry.id],
+      title: entry.title,
+      kind: entry.source === "banner" ? "banner" : "image",
+    });
+  }
+
+  function requestDeleteGallerySelected(entries) {
+    const ids = gallerySelected.filter((id) => {
+      const entry = entries.find((item) => item.id === id);
+      return entry && !isGalleryEntryLive(entry, itemsRef.current);
+    });
+    if (!ids.length) {
+      onToast("Unmark live assets before delete");
+      return;
+    }
+    setPendingMediaDelete({ ids, title: null, kind: "item" });
+  }
+
+  async function downloadGallerySelected(entries) {
+    const selected = gallerySelected
+      .map((id) => entries.find((item) => item.id === id))
+      .filter((entry) => entry?.url);
+    if (!selected.length) {
+      onToast("No file available to download");
+      return;
+    }
+    setGalleryBusyId("bulk-download");
+    try {
+      for (const entry of selected) {
+        await downloadMediaAsset(entry, entry.title);
+      }
+      onToast(selected.length === 1 ? "Download started" : `Downloading ${selected.length} files`);
+    } catch (error) {
+      onToast(error?.message || "Failed to download files");
+    } finally {
+      setGalleryBusyId("");
+    }
+  }
+
   async function confirmMediaDelete() {
-    if (!pendingMediaDelete?.id || pendingMediaDelete.source !== "library") {
+    const ids = pendingMediaDelete?.ids || [];
+    if (!ids.length) {
       setPendingMediaDelete(null);
       return;
     }
-    const id = pendingMediaDelete.id;
+    const single = ids.length === 1;
+    const libraryIds = [];
+    const bannerIds = new Set();
+    for (const id of ids) {
+      const fromGallery = filteredGallery.find((row) => row.id === id)
+        || bannerMedia.find((row) => row.id === id);
+      if (isGalleryEntryLive(fromGallery, itemsRef.current)) continue;
+      const library = bannerMedia.find((row) => row.id === id);
+      if (library) {
+        libraryIds.push(id);
+        continue;
+      }
+      const bannerMatch = String(id).match(/^banner-(.+)-(desktop|mobile)$/);
+      if (bannerMatch) {
+        const banner = itemsRef.current.find((row) => row.id === bannerMatch[1]);
+        if (banner && isGalleryEntryLive({ source: "banner", bannerId: banner.id, live: banner.shown }, itemsRef.current)) {
+          continue;
+        }
+        bannerIds.add(bannerMatch[1]);
+      }
+    }
+    if (!libraryIds.length && !bannerIds.size) {
+      onToast("Unmark live assets before delete");
+      return;
+    }
     setPendingMediaDelete(null);
-    setGalleryBusyId(id);
+    if (single) setGalleryBusyId(ids[0]);
     try {
-      await adminDeleteMediaAsset(null, id);
-      setBannerMedia((prev) => prev.filter((row) => row.id !== id));
-      onToast("Removed from banner gallery");
+      for (const id of libraryIds) {
+        await adminDeleteMediaAsset(null, id);
+      }
+      for (const id of bannerIds) {
+        await adminDeleteBanner(null, id);
+      }
+      setBannerMedia((prev) => prev.filter((row) => !libraryIds.includes(row.id)));
+      setGallerySelected([]);
+      if (bannerIds.size) await loadItems();
+      await loadBannerGallery();
+      onToast(single ? "Removed from banner gallery" : "Deleted selected items");
     } catch (error) {
-      onToast(error?.message || "Could not delete gallery asset");
-      loadBannerGallery();
+      onToast(error?.message || (single ? "Could not delete gallery asset" : "Could not delete some assets"));
+      await loadBannerGallery();
+      if (bannerIds.size) await loadItems();
     } finally {
       setGalleryBusyId("");
     }
@@ -615,8 +767,9 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     const seen = new Set();
     for (const entry of items) {
       const title = asCopyString(entry.title) || "Untitled banner";
-      const date = entry.updatedAt || entry.createdAt
-        ? new Date(entry.updatedAt || entry.createdAt).toLocaleDateString("en-GB", {
+      const stamp = entry.updatedAt || entry.createdAt;
+      const date = stamp
+        ? new Date(stamp).toLocaleDateString("en-GB", {
             day: "2-digit",
             month: "short",
             year: "numeric",
@@ -635,9 +788,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           title,
           owner: "Banner",
           date,
+          createdAt: stamp,
           size: "",
           versions: 1,
-          live: Boolean(entry.shown),
+          live: Boolean(entry.shown ?? entry.live),
+          shown: Boolean(entry.shown ?? entry.live),
+          status: entry.status,
           url: desktop,
           type: "image",
           category: BANNER_MEDIA_CATEGORY,
@@ -654,9 +810,12 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           title,
           owner: "Banner",
           date,
+          createdAt: stamp,
           size: "",
           versions: 1,
-          live: Boolean(entry.shown),
+          live: Boolean(entry.shown ?? entry.live),
+          shown: Boolean(entry.shown ?? entry.live),
+          status: entry.status,
           url: mobile,
           type: "image",
           category: BANNER_MEDIA_CATEGORY,
@@ -677,14 +836,18 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     [bannerMedia],
   );
 
-  const filteredGallery = useMemo(() => {
+  const allGallery = useMemo(() => {
     const map = new Map();
     for (const entry of [...galleryFromLibrary, ...galleryFromBanners]) {
       const key = entry.url || entry.id;
       if (!key || map.has(key)) continue;
       map.set(key, entry);
     }
-    let rows = Array.from(map.values());
+    return Array.from(map.values());
+  }, [galleryFromBanners, galleryFromLibrary]);
+
+  const filteredGallery = useMemo(() => {
+    let rows = allGallery;
     const query = galleryQuery.trim().toLowerCase();
     if (query) {
       rows = rows.filter((entry) =>
@@ -697,13 +860,20 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
     if (galleryOwner !== "All owners") {
       rows = rows.filter((entry) => entry.owner === galleryOwner);
     }
+    if (galleryFromDate || galleryToDate) {
+      rows = rows.filter((entry) => inGalleryDateRange(entry, galleryFromDate, galleryToDate));
+    }
     return rows;
-  }, [galleryFromBanners, galleryFromLibrary, galleryOwner, galleryQuery]);
+  }, [allGallery, galleryFromDate, galleryOwner, galleryQuery, galleryToDate]);
 
   const galleryOwners = useMemo(
-    () => galleryOwnersFromAssets(filteredGallery),
-    [filteredGallery],
+    () => galleryOwnersFromAssets(allGallery),
+    [allGallery],
   );
+  const gallerySelectedHasLive = gallerySelected.some((id) =>
+    isGalleryEntryLive(filteredGallery.find((entry) => entry.id === id), items),
+  );
+  const galleryDeleteMessage = galleryDeleteCopy(pendingMediaDelete);
 
   return (
     <div className="ua-cfg-bn">
@@ -931,8 +1101,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           )}
         >
           <div ref={liveListRef} className={`ua-cfg-bn-live${loading ? " is-loading" : ""}`}>
-            {pagedItems.map((entry, pageIndex) => {
-              const index = pageStart + pageIndex;
+            {items.map((entry, index) => {
               const typeLabel = optionLabel(entry.type, typeOptions, BANNER_TYPES);
               const onWebsite = Boolean(entry.shown) && entry.webOn !== false;
               const isDragging = dragId === entry.id;
@@ -940,6 +1109,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               return (
               <article
                 key={entry.id}
+                data-banner-id={entry.id}
                 className={[
                   "ua-cfg-bn-live__row",
                   entry.id === editor.id && !creating ? "is-selected" : "",
@@ -1031,14 +1201,6 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
             })}
             {!loading && !items.length ? <p className="ua-cfg-panel__sub">No banners yet.</p> : null}
           </div>
-          <ListPagination
-            page={safePage}
-            pages={pageCount}
-            total={items.length}
-            pageSize={BANNER_PAGE_SIZE}
-            onPageChange={goToPage}
-            label="Banner pagination"
-          />
         </Panel>
       </div>
 
@@ -1067,7 +1229,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       <Panel
         className="ua-cfg-bn-ref-gallery ua-cfg-gl"
         title="Banner gallery"
-        subtitle="Images uploaded for banners in this section. Use one in the editor, download, or upload new media. Deleting a library upload does not remove live banners."
+        subtitle="Assets uploaded for this section — filter by owner or date, reuse, download or delete. Live assets must be unmarked first."
         actions={(
           <button
             type="button"
@@ -1083,7 +1245,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
           <input
             type="search"
             className="ua-cfg-mv-gallery__search"
-            placeholder="Search banner media by name"
+            placeholder="Search media by name"
             value={galleryQuery}
             onChange={(event) => setGalleryQuery(event.target.value)}
           />
@@ -1096,94 +1258,146 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <option key={entry} value={entry}>{entry}</option>
             ))}
           </select>
+          <input
+            type="date"
+            className="ua-cfg-mv-gallery__date"
+            aria-label="From date"
+            value={galleryFromDate}
+            onChange={(event) => setGalleryFromDate(event.target.value)}
+          />
+          <input
+            type="date"
+            className="ua-cfg-mv-gallery__date"
+            aria-label="To date"
+            value={galleryToDate}
+            onChange={(event) => setGalleryToDate(event.target.value)}
+          />
         </div>
         <div className="ua-cfg-mv-gallery__bar">
           <span>
-            {galleryLoading && !items.length
-              ? "Loading banner gallery…"
-              : `${filteredGallery.length} banner image${filteredGallery.length === 1 ? "" : "s"}`}
+            {galleryLoading && !allGallery.length
+              ? "Loading…"
+              : allGallery.length
+                ? `${filteredGallery.length} of ${allGallery.length} items`
+                : "No items"}
           </span>
+          {gallerySelected.length ? (
+            <div className="ua-cfg-mv-gallery__selection">
+              <span>{gallerySelected.length} selected</span>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
+                disabled={galleryBusyId === "bulk-download"}
+                onClick={() => downloadGallerySelected(filteredGallery)}
+              >
+                Download
+              </button>
+              <button
+                type="button"
+                className="ua-cfg-btn ua-cfg-btn--danger ua-cfg-btn--sm"
+                disabled={gallerySelectedHasLive}
+                title={gallerySelectedHasLive ? "Unmark live assets before delete" : undefined}
+                onClick={() => requestDeleteGallerySelected(filteredGallery)}
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                className="ua-cfg-icon-btn"
+                aria-label="Clear selection"
+                onClick={() => setGallerySelected([])}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
         </div>
-        <div className="ua-cfg-mv-gallery__grid">
-          {filteredGallery.map((entry) => (
-            <article key={entry.id} className="ua-cfg-gl-card">
-              <div className="ua-cfg-gl-card__thumb is-image">
-                {entry.url ? (
-                  <img className="ua-cfg-gl-card__preview" src={entry.url} alt="" />
-                ) : (
-                  <span className="ua-cfg-gl-card__placeholder">Banner image</span>
-                )}
-                <span className="ua-cfg-gl-card__badge is-default">
-                  {entry.kind || BANNER_MEDIA_CATEGORY}
-                </span>
-              </div>
-              <div className="ua-cfg-gl-card__body">
-                <strong>{entry.title || "Untitled"}</strong>
-                <span>{entry.owner || "Admin"} · {entry.date || "—"}</span>
-                <span>
-                  {entry.source === "library"
-                    ? `${entry.size || "—"} · ${galleryVersionLabel(entry.versions)}`
-                    : "From live banner list"}
-                </span>
-              </div>
-              <div className={`ua-cfg-gl-card__live${entry.live ? " is-live" : ""}`}>
-                <span className={`ua-cfg-gl-card__status${entry.live ? " is-live" : ""}`}>
-                  {entry.source === "banner"
-                    ? (entry.live ? "On banner" : "Hidden")
-                    : (entry.live ? "Live" : "Not live")}
-                </span>
-                {entry.source === "library" ? (
+        <div className={`ua-cfg-mv-gallery__grid${galleryLoading ? " is-loading" : ""}`}>
+          {filteredGallery.map((entry) => {
+            const isSelected = gallerySelected.includes(entry.id);
+            const isLive = isGalleryEntryLive(entry, items);
+            const canDelete = !isLive && galleryBusyId !== entry.id;
+            return (
+              <article key={entry.id} className={`ua-cfg-gl-card${isSelected ? " is-selected" : ""}${isLive ? " is-live" : ""}`}>
+                <div className="ua-cfg-gl-card__thumb is-image">
+                  <label className="ua-cfg-gl-card__check">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleGallerySelect(entry.id)}
+                    />
+                  </label>
+                  {entry.url ? (
+                    <img className="ua-cfg-gl-card__preview" src={entry.url} alt="" />
+                  ) : (
+                    <span className="ua-cfg-gl-card__placeholder">Banner image</span>
+                  )}
+                  <span className="ua-cfg-gl-card__badge is-default">
+                    {entry.kind || BANNER_MEDIA_CATEGORY}
+                  </span>
+                </div>
+                <div className="ua-cfg-gl-card__body">
+                  <strong>{entry.title || "Untitled"}</strong>
+                  <span>{entry.owner || "Admin"} · {entry.date || "—"}</span>
+                  <span>
+                    {entry.source === "library"
+                      ? `${entry.size || "—"} · ${galleryVersionLabel(entry.versions)}`
+                      : "From live banner list"}
+                  </span>
+                </div>
+                <div className={`ua-cfg-gl-card__live${isLive ? " is-live" : ""}`}>
+                  <span className={`ua-cfg-gl-card__status${isLive ? " is-live" : ""}`}>
+                    {isLive ? "Live" : "Not live"}
+                  </span>
                   <button
                     type="button"
-                    className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                    aria-pressed={Boolean(entry.live)}
+                    className={`ua-toggle ua-toggle--sm${isLive ? " ua-toggle--on" : ""}`}
+                    aria-pressed={isLive}
                     disabled={galleryBusyId === entry.id}
                     onClick={() => toggleGalleryLive(entry)}
                   >
                     <span className="ua-toggle__knob" />
                   </button>
-                ) : null}
-              </div>
-              <div className="ua-cfg-gl-card__actions">
-                <button
-                  type="button"
-                  className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
-                  disabled={busy || !entry.url}
-                  onClick={() => useGalleryImage(entry)}
-                >
-                  Use
-                </button>
-                <button
-                  type="button"
-                  className="ua-cfg-icon-btn ua-cfg-gl-card__download"
-                  aria-label="Download"
-                  disabled={!entry.url || galleryBusyId === entry.id}
-                  onClick={() => downloadGalleryAsset(entry)}
-                >
-                  ↓
-                </button>
-                {entry.source === "library" ? (
+                </div>
+                <div className="ua-cfg-gl-card__actions">
                   <button
                     type="button"
-                    className="ua-cfg-icon-btn ua-cfg-gl-card__delete"
-                    aria-label="Delete"
-                    disabled={entry.live || galleryBusyId === entry.id}
-                    onClick={() => {
-                      if (entry.live) {
-                        onToast("Unmark live assets before delete");
-                        return;
-                      }
-                      setPendingMediaDelete(entry);
-                    }}
+                    className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm"
+                    disabled={busy || !entry.url}
+                    onClick={() => useGalleryImage(entry)}
                   >
-                    🗑
+                    Use
                   </button>
-                ) : null}
-              </div>
-            </article>
-          ))}
+                  <button
+                    type="button"
+                    className="ua-cfg-icon-btn ua-cfg-gl-card__download"
+                    aria-label="Download"
+                    disabled={!entry.url || galleryBusyId === entry.id}
+                    onClick={() => downloadGalleryAsset(entry)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    className={`ua-cfg-icon-btn ua-cfg-gl-card__delete${isLive ? " is-locked" : ""}`}
+                    aria-label={isLive ? "Unmark live before delete" : "Delete"}
+                    title={isLive ? "Unmark live assets before delete" : "Delete"}
+                    disabled={!canDelete}
+                    aria-disabled={!canDelete}
+                    onClick={() => requestDeleteGalleryItem(entry)}
+                  >
+                    {GALLERY_TRASH_ICON}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!galleryLoading && !filteredGallery.length ? (
-            <p className="ua-cfg-gl-section__empty">No banner media yet. Upload a banner or use + Upload media.</p>
+            <p className="ua-cfg-gl-section__empty">
+              {galleryQuery || galleryOwner !== "All owners" || galleryFromDate || galleryToDate
+                ? "No banner media match your filters."
+                : "No banner media yet. Upload a banner or use + Upload media."}
+            </p>
           ) : null}
         </div>
       </Panel>
@@ -1201,11 +1415,13 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
         cropHeight={BANNER_DESKTOP_SIZE.height}
         sizeHint={BANNER_DESKTOP_SIZE.label}
         onConfirm={(assets) => {
+          const ids = assets.map((asset) => asset.id).filter(Boolean);
           setBannerMedia((prev) => {
             const map = new Map(prev.map((entry) => [entry.id, entry]));
             for (const asset of assets) map.set(asset.id, asset);
             return Array.from(map.values());
           });
+          setGallerySelected(ids);
           onToast(`${assets.length} banner image${assets.length === 1 ? "" : "s"} ready`);
           loadBannerGallery();
         }}
@@ -1249,8 +1465,8 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
       <ConfirmDialog
         open={Boolean(pendingMediaDelete)}
         tag="Banner gallery"
-        title={`Delete “${pendingMediaDelete?.title || "this image"}”?`}
-        body="This removes the image from the banner gallery only. Live banners are not changed."
+        title={galleryDeleteMessage.title}
+        body={galleryDeleteMessage.body}
         confirmLabel="Delete"
         confirmTone="danger"
         onCancel={() => setPendingMediaDelete(null)}
