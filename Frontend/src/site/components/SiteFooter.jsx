@@ -41,7 +41,8 @@ const FOOTER_LEGAL_LINKS = [
   { slug: "privacy-policy", label: "Privacy Policy", to: "/privacy-policy" },
   { slug: "terms-and-conditions", label: "Terms of Service", to: "/terms-and-conditions" },
   { slug: "community-guideline", label: "Community Guidelines", to: "/community-guideline" },
-  // { slug: "contact-us", label: "Contact Us", to: "/contact-us" },
+  // { slug: "app-privacy-policy", label: "App Privacy Policy", to: "/app-privacy-policy", keepLabel: true },
+  // { slug: "app-terms-of-service", label: "App Terms & Conditions", to: "/app-terms-and-conditions", keepLabel: true },
 ];
 
 function footerNavClass({ isActive }) {
@@ -91,7 +92,9 @@ export function SiteFooter() {
 
     Promise.all([
       fetchStaticPageBySlugSafe("footer-text"),
-      ...FOOTER_LEGAL_LINKS.map((item) => fetchStaticPageBySlugSafe(item.slug)),
+      ...FOOTER_LEGAL_LINKS.map((item) =>
+        item.slug ? fetchStaticPageBySlugSafe(item.slug) : Promise.resolve(null)
+      ),
     ]).then(([footerPage, ...pages]) => {
       if (cancelled) return;
 
@@ -102,7 +105,10 @@ export function SiteFooter() {
       setLegalLinks(
         FOOTER_LEGAL_LINKS.map((item, index) => {
           const page = pages[index];
-          return { ...item, label: page?.title || item.label };
+          return {
+            ...item,
+            label: item.keepLabel ? item.label : page?.title || item.label,
+          };
         })
       );
     });

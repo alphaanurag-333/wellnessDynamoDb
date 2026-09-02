@@ -9223,6 +9223,56 @@ flex-shrink: 0;
   text-decoration: underline;
 }
 
+.delete-account-section .delete-account-layout {
+  margin-top: 8px;
+}
+
+.delete-account-copy ol {
+  margin: 0 0 1rem 1.15rem;
+}
+
+.delete-account-copy li {
+  margin-bottom: 0.45rem;
+}
+
+.delete-account-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 0 2px;
+  color: var(--text-body);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.delete-account-confirm input {
+  margin-top: 3px;
+  flex: 0 0 auto;
+}
+
+.delete-account-done {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.contact-footer .delete-account-secondary {
+  max-width: 300px;
+  margin-top: 10px;
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+  border: 1px solid var(--primary);
+}
+
+.contact-footer .delete-account-secondary:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  transform: none;
+  box-shadow: none;
+}
+
 /* VISERAL FAT SECTION */
 
 .visceral-section {

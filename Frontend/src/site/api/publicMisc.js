@@ -230,9 +230,11 @@ export async function submitContactInquiry(payload) {
   }
 }
 
-export async function fetchStaticPageBySlug(slug) {
+export async function fetchStaticPageBySlug(slug, params = {}) {
   try {
-    const { data } = await api.get(`/public/misc/pages/${encodeURIComponent(slug)}`);
+    const { data } = await api.get(`/public/misc/pages/${encodeURIComponent(slug)}`, {
+      params,
+    });
     return data;
   } catch (error) {
     normalizeApiError(error);

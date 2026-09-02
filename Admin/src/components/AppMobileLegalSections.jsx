@@ -10,6 +10,7 @@ function AppLegalPageSection({
   slug,
   defaultTitle,
   noun,
+  sitePath,
   fallbackBlocks,
   blocks,
   setBlocks,
@@ -21,7 +22,7 @@ function AppLegalPageSection({
     <LegalSectionsEditor
       slug={slug}
       defaultTitle={defaultTitle}
-      sitePath="the IRW app"
+      sitePath={sitePath}
       noun={noun}
       fallbackBlocks={fallbackBlocks}
       blocks={blocks}
@@ -37,7 +38,8 @@ export function AppPrivacyPolicySection(props) {
   return (
     <AppLegalPageSection
       slug="app-privacy-policy"
-      defaultTitle="Privacy Policy"
+      defaultTitle="App Privacy Policy"
+      sitePath="irwellness.in/app-privacy-policy"
       noun="privacy section"
       fallbackBlocks={APP_PRIVACY_POLICY_BLOCKS}
       {...props}
@@ -49,7 +51,8 @@ export function AppTermsOfServiceSection(props) {
   return (
     <AppLegalPageSection
       slug="app-terms-of-service"
-      defaultTitle="Terms of Service"
+      defaultTitle="App Terms and Conditions"
+      sitePath="irwellness.in/app-terms-and-conditions"
       noun="terms of service section"
       fallbackBlocks={APP_TERMS_OF_SERVICE_BLOCKS}
       {...props}
@@ -60,8 +63,9 @@ export function AppTermsOfServiceSection(props) {
 export function AppTermsConditionsSection(props) {
   return (
     <AppLegalPageSection
-      slug="app-terms-conditions"
-      defaultTitle="Terms & Conditions"
+      slug="app-terms-of-service"
+      defaultTitle="App Terms and Conditions"
+      sitePath="irwellness.in/app-terms-and-conditions"
       noun="terms section"
       fallbackBlocks={APP_TERMS_CONDITIONS_BLOCKS}
       {...props}
@@ -74,6 +78,7 @@ export function AppCommunityGuidelinesMobileSection(props) {
     <AppLegalPageSection
       slug="app-community-guidelines"
       defaultTitle="Community Guidelines"
+      sitePath="the IRW app"
       noun="guidelines section"
       fallbackBlocks={APP_COMMUNITY_GUIDELINES_BLOCKS}
       {...props}

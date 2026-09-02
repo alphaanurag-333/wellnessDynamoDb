@@ -3,7 +3,7 @@ import FinalCTA from "../components/FinalCTA.jsx";
 import { SiteLoader } from "../components/SiteLoader.jsx";
 import { fetchStaticPageBySlug, htmlFromStaticPage } from "../api/publicMisc.js";
 
-export function StaticPageView({ slug, fallbackTitle = "Page" }) {
+export function StaticPageView({ slug, fallbackTitle = "Page", platform }) {
   const [page, setPage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,7 +15,7 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
     setError(null);
     setPage(null);
 
-    fetchStaticPageBySlug(slug)
+    fetchStaticPageBySlug(slug, platform ? { platform } : undefined)
       .then((data) => {
         if (!cancelled) setPage(data?.page || null);
       })
@@ -29,7 +29,7 @@ export function StaticPageView({ slug, fallbackTitle = "Page" }) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, platform]);
 
   const title = page?.title || fallbackTitle;
   const html = htmlFromStaticPage(page);

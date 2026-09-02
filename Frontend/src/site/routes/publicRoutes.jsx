@@ -9,6 +9,7 @@ function lazyNamed(importer, exportName) {
 
 const HomePage = lazyNamed(() => import("../pages/HomePage.jsx"), "HomePage");
 const StaticPageView = lazyNamed(() => import("../pages/StaticPageView.jsx"), "StaticPageView");
+const DeleteAccountPage = lazyNamed(() => import("../pages/DeleteAccountPage.jsx"), "DeleteAccountPage");
 const ContactUsSection = lazy(() => import("../components/ContactUs.jsx"));
 const AboutUsSection = lazy(() => import("../components/AboutUsSection.jsx"));
 const ResourcesSection = lazy(() => import("../components/Resources.jsx"));
@@ -36,16 +37,45 @@ export const publicRouteTree = (
       path="/privacy-policy"
       element={<StaticPageView slug="privacy-policy" fallbackTitle="Privacy Policy" />}
     />
+    <Route path="/privacy" element={<Navigate to="/privacy-policy" replace />} />
     <Route
       path="/terms-and-conditions"
       element={<StaticPageView slug="terms-and-conditions" fallbackTitle="Terms and Conditions" />}
     />
+    <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
+    <Route path="/terms-of-service" element={<Navigate to="/terms-and-conditions" replace />} />
     <Route
       path="/community-guideline"
       element={<StaticPageView slug="community-guideline" fallbackTitle="Community Guidelines" />}
     />
     <Route path="/community-guidelines" element={<Navigate to="/community-guideline" replace />} />
-    <Route path="/terms" element={<Navigate to="/terms-and-conditions" replace />} />
+    <Route
+      path="/app-privacy-policy"
+      element={
+        <StaticPageView
+          slug="app-privacy-policy"
+          fallbackTitle="App Privacy Policy"
+          platform="app"
+        />
+      }
+    />
+    <Route
+      path="/app-terms-and-conditions"
+      element={
+        <StaticPageView
+          slug="app-terms-of-service"
+          fallbackTitle="App Terms and Conditions"
+          platform="app"
+        />
+      }
+    />
+    <Route path="/app/privacy-policy" element={<Navigate to="/app-privacy-policy" replace />} />
+    <Route path="/app/terms-and-conditions" element={<Navigate to="/app-terms-and-conditions" replace />} />
+    <Route path="/app-terms-of-service" element={<Navigate to="/app-terms-and-conditions" replace />} />
+    <Route path="/app-terms-conditions" element={<Navigate to="/app-terms-and-conditions" replace />} />
+    <Route path="/delete-account" element={<DeleteAccountPage />} />
+    <Route path="/delete" element={<Navigate to="/delete-account" replace />} />
+    <Route path="/account-deletion" element={<Navigate to="/delete-account" replace />} />
     {SITE_SECTION_ROUTE_PATHS.map((segment) => (
       <Route key={segment} path={segment} element={<HomePage />} />
     ))}

@@ -183,6 +183,7 @@ export const CONFIG_LEGAL_PUBLISH_SLUGS = {
   "web-fs-guidelines": ["community-guideline"],
   "app-dpa": ["app-dpa"],
   "app-terms-of-service": ["app-terms-of-service"],
+  "app-terms-conditions": ["app-terms-of-service"],
   "app-privacy-policy": ["app-privacy-policy"],
   "app-community-guidelines": ["app-community-guidelines"],
   "web-fs-contact": ["contact-us"],

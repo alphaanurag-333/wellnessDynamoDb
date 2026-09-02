@@ -5,7 +5,7 @@ const {
   assertValidPersonName,
   parseDateOfBirthIso,
 } = require("../../utils/personFieldValidation");
-const { generateOtp, getOtpExpiryDate, isOtpExpired, deliverOtp } = require("../../utils/otp");
+const { resolveOtp, getOtpExpiryDate, isOtpExpired, anyStaticOtpMatch, deliverOtp } = require("../../utils/otp");
 const {
   uploadFileFromRequest,
   uploadMulterField,
@@ -694,9 +694,11 @@ async function resolveUserByPhoneInput(phone, phoneCountryCode) {
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) throw new AppError("phone is required", 400);
   const cc = normalizeCountryCode(phoneCountryCode);
-  const user = await getUserByWhatsapp(cc, normalizedPhone);
-  if (!user) throw new AppError("User not found", 404);
-  return user;
+  const byWhatsapp = await getUserByWhatsapp(cc, normalizedPhone);
+  if (byWhatsapp) return byWhatsapp;
+  const byPhone = await getUserByPhone(cc, normalizedPhone);
+  if (!byPhone) throw new AppError("User not found", 404);
+  return byPhone;
 }
 
 async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
@@ -704,14 +706,22 @@ async function deleteUserAccountByPhoneOtp({ phone, phoneCountryCode, otp }) {
   const code = String(otp ?? "").trim();
   if (!code) throw new AppError("otp is required", 400);
 
-  if (!user.otp || !user.otpExpire) {
-    throw new AppError("No OTP requested. Send delete-account OTP first.", 400);
-  }
-  if (isOtpExpired(user.otpExpire)) {
-    throw new AppError("OTP has expired. Request a new code.", 400);
-  }
-  if (String(user.otp) !== code) {
-    throw new AppError("Invalid OTP", 401);
+  const staticOk = anyStaticOtpMatch(code, [
+    phone,
+    user.phone,
+    user.whatsappPhone,
+    getEffectiveWhatsapp(user).phone,
+  ]);
+  if (!staticOk) {
+    if (!user.otp || !user.otpExpire) {
+      throw new AppError("No OTP requested. Send delete-account OTP first.", 400);
+    }
+    if (isOtpExpired(user.otpExpire)) {
+      throw new AppError("OTP has expired. Request a new code.", 400);
+    }
+    if (String(user.otp) !== code) {
+      throw new AppError("Invalid OTP", 401);
+    }
   }
 
   await updateUser(user.id, { otp: null, otpExpire: null });
@@ -818,7 +828,7 @@ async function sendProfilePhoneChangeOtp(user, { phone, phoneCountryCode }) {
     await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
   }
 
-  const otp = generateOtp();
+  const otp = resolveOtp(normalizedPhone);
   const otpExpire = getOtpExpiryDate();
 
   await updateUser(user.id, {
@@ -844,14 +854,16 @@ async function verifyProfilePhoneChangeOtp(user, { phone, phoneCountryCode, otp 
   const code = String(otp ?? "").trim();
   if (!code) throw new AppError("otp is required", 400);
 
-  if (!user.otp || !user.otpExpire) {
-    throw new AppError("No OTP requested. Send phone-change OTP first.", 400);
-  }
-  if (isOtpExpired(user.otpExpire)) {
-    throw new AppError("OTP has expired. Request a new code.", 400);
-  }
-  if (String(user.otp) !== code) {
-    throw new AppError("Invalid OTP", 401);
+  if (!anyStaticOtpMatch(code, [normalizedPhone])) {
+    if (!user.otp || !user.otpExpire) {
+      throw new AppError("No OTP requested. Send phone-change OTP first.", 400);
+    }
+    if (isOtpExpired(user.otpExpire)) {
+      throw new AppError("OTP has expired. Request a new code.", 400);
+    }
+    if (String(user.otp) !== code) {
+      throw new AppError("Invalid OTP", 401);
+    }
   }
   if (
     normalizePhone(user.pendingPhone) !== normalizedPhone ||
@@ -909,7 +921,7 @@ async function sendProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCount
 
   await assertUniqueWhatsapp(cc, normalizedPhone, user.id);
 
-  const otp = generateOtp();
+  const otp = resolveOtp(normalizedPhone);
   const otpExpire = getOtpExpiryDate();
 
   await updateUser(user.id, {
@@ -935,14 +947,16 @@ async function verifyProfileWhatsappChangeOtp(user, { whatsappPhone, whatsappCou
   const code = String(otp ?? "").trim();
   if (!code) throw new AppError("otp is required", 400);
 
-  if (!user.otp || !user.otpExpire) {
-    throw new AppError("No OTP requested. Send WhatsApp-change OTP first.", 400);
-  }
-  if (isOtpExpired(user.otpExpire)) {
-    throw new AppError("OTP has expired. Request a new code.", 400);
-  }
-  if (String(user.otp) !== code) {
-    throw new AppError("Invalid OTP", 401);
+  if (!anyStaticOtpMatch(code, [normalizedPhone])) {
+    if (!user.otp || !user.otpExpire) {
+      throw new AppError("No OTP requested. Send WhatsApp-change OTP first.", 400);
+    }
+    if (isOtpExpired(user.otpExpire)) {
+      throw new AppError("OTP has expired. Request a new code.", 400);
+    }
+    if (String(user.otp) !== code) {
+      throw new AppError("Invalid OTP", 401);
+    }
   }
   if (
     normalizePhone(user.pendingWhatsappPhone) !== normalizedPhone ||
