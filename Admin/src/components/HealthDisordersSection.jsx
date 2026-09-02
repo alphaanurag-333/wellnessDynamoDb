@@ -6,6 +6,7 @@ import {
   adminUpdateHealthDisorder,
 } from "../api/healthDisorderApi.js";
 import { moveConfigListItem } from "../utils/configReorder.js";
+import { CfgInlineReadMore } from "./CfgInlineReadMore.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ListPagination } from "./shared.jsx";
 import { SectionSurfacePanel } from "./SectionSurfacePanel.jsx";
@@ -133,6 +134,8 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
   const [editingId, setEditingId] = useState(null);
   const [editSnapshot, setEditSnapshot] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
+  const [descLines, setDescLines] = useState(1);
 
   const activeCount = useMemo(
     () => items.filter((row) => row.status === "active").length,
@@ -168,6 +171,18 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 720px)");
+    const apply = () => setDescLines(media.matches ? 2 : 1);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    setExpandedIds(new Set());
+  }, [page]);
 
   useEffect(() => {
     if (!loading && page > pagination.pages) setPage(pagination.pages);
@@ -543,7 +558,22 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                                 </span>
                               ) : null}
                             </div>
-                            <p>{entry.description || "No description yet."}</p>
+                            <CfgInlineReadMore
+                              className="ua-cfg-hd-desc"
+                              buttonClassName="ua-cfg-hd-desc__btn"
+                              text={entry.description}
+                              empty="No description yet."
+                              expanded={expandedIds.has(entry.id)}
+                              lines={descLines}
+                              onToggle={() => {
+                                setExpandedIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(entry.id)) next.delete(entry.id);
+                                  else next.add(entry.id);
+                                  return next;
+                                });
+                              }}
+                            />
                             <div className="ua-cfg-hd-symptoms">
                               {(entry.symptoms || []).length
                                 ? entry.symptoms.map((symptom) => (

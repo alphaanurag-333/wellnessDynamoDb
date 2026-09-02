@@ -1983,7 +1983,7 @@ function LiveReportAnalysisTab({
           </div>
           {analysed ? (
             <div className="ua-cp-ip-nutrition__latest">
-              <span className="">Latest</span>
+              <span className="" style={{fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', color: 'rgb(43, 143, 91)', background: 'rgb(231, 246, 238)', padding: '3px 8px', borderRadius: '5px'}}>Latest</span>
               <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(selected.reportDate)}</span>
               {nutritionEditing ? (
                 <textarea

@@ -25,6 +25,7 @@ import { TRANSFORMATION_MEDIA_CATEGORY, TRANSFORMATION_PAGE_SIZE } from "../data
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { galleryVersionLabel } from "../data/galleryData.js";
+import { CfgInlineReadMore } from "./CfgInlineReadMore.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { MediaPickerModal } from "./MediaPickerModal.jsx";
@@ -298,6 +299,7 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
   const [galleryPickerOpen, setGalleryPickerOpen] = useState(false);
   const [galleryBusyId, setGalleryBusyId] = useState("");
   const [pendingMediaDelete, setPendingMediaDelete] = useState(null);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
@@ -364,6 +366,10 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
   useEffect(() => {
     loadItems();
   }, [loadItems]);
+
+  useEffect(() => {
+    setExpandedIds(new Set());
+  }, [page, query]);
 
   useEffect(() => () => {
     if (draft.oldPreview?.startsWith("blob:")) URL.revokeObjectURL(draft.oldPreview);
@@ -1117,7 +1123,22 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                       </>
                     ) : (
                       <>
-                        {asCopyString(entry.description) ? <p className="ua-cfg-tf-item__story">{asCopyString(entry.description)}</p> : null}
+                        {asCopyString(entry.description) ? (
+                          <CfgInlineReadMore
+                            className="ua-cfg-tf-item__story"
+                            text={asCopyString(entry.description)}
+                            lines={2}
+                            expanded={expandedIds.has(entry.id)}
+                            onToggle={() => {
+                              setExpandedIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(entry.id)) next.delete(entry.id);
+                                else next.add(entry.id);
+                                return next;
+                              });
+                            }}
+                          />
+                        ) : null}
                         {points.length ? (
                           <div className="ua-cfg-tf-chips">
                             {points.map((row) => (

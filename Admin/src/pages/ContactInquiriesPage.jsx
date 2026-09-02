@@ -278,7 +278,7 @@ export function ContactInquiriesPage() {
     <main className="content ua-page-enter ua-ci-page">
       <PageHeader
         title="Contact Inquiries"
-        subtitle="Messages sent from the website contact form."
+        // subtitle="Messages sent from the website contact form."
         meta={(
           <>
             <span className="page-head__count">{loading ? "…" : pagination.total}</span> inquiries

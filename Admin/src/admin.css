@@ -16340,6 +16340,9 @@
 .updated-admin .ua-cp-placeholder__sub {
   color: var(--muted);
   margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .updated-admin .ua-cp-placeholder__note {
@@ -27505,6 +27508,8 @@ scrollbar-width: thin;
   flex-direction: column;
   gap: 14px;
   padding: 4px 0 24px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cp-bms__head {
@@ -28908,9 +28913,15 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-bms-library-hint {
+  display: block;
   margin: 0;
+  max-width: 100%;
   font-size: 12px;
+  line-height: 1.45;
   color: #8a97ac;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .updated-admin .ua-tm-card {
@@ -29442,18 +29453,23 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .updated-admin .ua-cp-bms-content-card {
   display: grid;
-  grid-template-columns: 88px 1fr auto;
+  grid-template-columns: 88px minmax(0, 1fr) auto;
   gap: 14px;
-  align-items: center;
+  align-items: start;
   padding: 14px 16px;
   border-radius: 14px;
   background: #fff;
   border: 1px solid rgb(197, 208, 245);
   box-shadow: rgb(197, 208, 245) 0px 0px 0px 1px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-bms-content-card__thumb {
@@ -29461,6 +29477,12 @@ scrollbar-width: thin;
   height: 56px;
   border-radius: 10px;
   background: linear-gradient(135deg, #ebe8fd 0%, #d8d0f5 100%);
+}
+
+.updated-admin .ua-cp-bms-content-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .updated-admin .ua-cp-bms-content-card__meta {
@@ -29501,30 +29523,47 @@ scrollbar-width: thin;
   font-size: 15px;
   color: #16233f;
   margin-bottom: 2px;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .updated-admin .ua-cp-bms-content-card__source {
   font-size: 12px;
   color: #8a97ac;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .updated-admin .ua-cp-bms-content-card__action {
-  padding: 10px 16px;
+  width: auto;
+  min-width: 7.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px 14px;
   border-radius: 10px;
   border: 1px solid #dfe3f9;
   background: #fff;
   font-size: 13px;
   font-weight: 700;
   color: #5e6ad2;
+  text-align: center;
   cursor: pointer;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .updated-admin .ua-cp-bms-content-card__actions {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-end;
+  justify-content: flex-start;
   gap: 8px;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 0 auto;
+  justify-self: end;
+  align-self: start;
 }
 
 .updated-admin .ua-cp-bms-content-card__action--in {
@@ -29534,6 +29573,8 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-bms-content-card__action--drf {
+  width: auto;
+  min-width: 0;
   color: #0f766e;
   border-color: #99f6e4;
   background: #f0fdfa;
@@ -29561,6 +29602,96 @@ scrollbar-width: thin;
   border-radius: 999px;
   background: #ccfbf1;
   color: #0f766e;
+}
+
+@media (max-width: 820px) {
+  .updated-admin .ua-cp-bms-library-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .updated-admin .ua-cp-bms-library-toolbar__count {
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 560px) {
+  .updated-admin .ua-cp-bms-content-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-areas:
+      "thumb body"
+      "actions actions";
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__thumb {
+    grid-area: thumb;
+    width: 72px;
+    height: 48px;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__body {
+    grid-area: body;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__actions {
+    grid-area: actions;
+    width: 100%;
+    max-width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    justify-self: stretch;
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__action,
+  .updated-admin .ua-cp-bms-content-card__action--drf {
+    width: auto;
+    max-width: 100%;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .updated-admin .ua-cp-bms-content-card {
+    padding: 12px;
+    gap: 8px 10px;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+@media (max-width: 400px) {
+  .updated-admin .ua-cp-bms-content-card {
+    padding: 10px;
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .updated-admin .ua-cp-bms-content-card__thumb {
+    width: 64px;
+    height: 44px;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .updated-admin .ua-cp-bms-content-card__action,
+  .updated-admin .ua-cp-bms-content-card__action--drf {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
 }
 
 .updated-admin .ua-cp-bms-disabled {
@@ -38242,7 +38373,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-mv-guide {
   display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
+  grid-template-columns: 160px minmax(0, 1fr);
   gap: 14px 16px;
   align-items: center;
   min-width: 0;
@@ -38261,9 +38392,10 @@ scrollbar-width: thin;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  align-self: start;
+  align-self: center;
   width: 160px;
   height: auto;
+  min-width: 0;
   min-height: 0;
   aspect-ratio: 16 / 9;
   padding: 0;
@@ -38443,6 +38575,11 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-mv-guide__live {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
 .updated-admin .ua-cfg-mv-guide__duration {
   font-size: 12.5px;
   font-weight: 650;
@@ -38450,9 +38587,11 @@ scrollbar-width: thin;
   white-space: nowrap;
 }
 
-.updated-admin .ua-cfg-mv-guide__actions .ua-cfg-btn--outline {
-  color: #16233f;
-  border-color: #d5dce8;
+.updated-admin .ua-cfg-mv-guide__actions .ua-cfg-btn.ua-cfg-btn--outline,
+.updated-admin .ua-cfg-mv-link-modal__foot .ua-cfg-btn.ua-cfg-btn--outline {
+  color: #5e6ad2;
+  border: 1px solid #d7deea;
+  background: #fff;
 }
 
 .updated-admin .ua-cfg-mv-guide__side .ua-cfg-faq__shown {
@@ -38881,7 +39020,6 @@ scrollbar-width: thin;
   gap: 10px;
 }
 
-.updated-admin .ua-cfg-mv-link-modal__foot .ua-cfg-btn--outline,
 .updated-admin .ua-cfg-mv-upload-modal__foot .ua-cfg-btn--outline,
 .updated-admin .ua-cfg-setup-modal__foot .ua-cfg-btn--outline,
 .updated-admin .ua-cfg-nb-modal__foot .ua-cfg-btn--outline {
@@ -54306,7 +54444,7 @@ scrollbar-width: thin;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;
   object-position: center;
   display: block;
 }
@@ -60469,28 +60607,6 @@ scrollbar-width: thin;
     justify-items: start;
   }
 
-  .updated-admin .ua-cp-bms-content-card {
-    grid-template-columns: 72px 1fr;
-    grid-template-areas:
-      "thumb body"
-      "actions actions";
-  }
-
-  .updated-admin .ua-cp-bms-content-card__thumb {
-    grid-area: thumb;
-    width: 72px;
-  }
-
-  .updated-admin .ua-cp-bms-content-card__body {
-    grid-area: body;
-  }
-
-  .updated-admin .ua-cp-bms-content-card__actions,
-  .updated-admin .ua-cp-bms-content-card__action {
-    grid-area: actions;
-    width: 100%;
-  }
-
   .updated-admin .ua-cp-bms-chart {
     overflow-x: auto;
     padding-bottom: 4px;
@@ -62668,7 +62784,7 @@ scrollbar-width: thin;
   height: 100%;
   max-width: none;
   max-height: none;
-  object-fit: contain;
+  object-fit: fill;
 }
 
 /* Client review view: keep portrait photo framed after base rc-view media rules */
@@ -63110,7 +63226,7 @@ scrollbar-width: thin;
 
 
   .updated-admin .ua-cfg-mv-guide {
-    grid-template-columns: 128px minmax(0, 1fr);
+    grid-template-columns: 160px minmax(0, 1fr);
     align-items: start;
   }
 
@@ -69604,7 +69720,7 @@ scrollbar-width: thin;
 
 @container ua-cfg-mv (max-width: 820px) {
   .updated-admin .ua-cfg-mv-guide {
-    grid-template-columns: 128px minmax(0, 1fr);
+    grid-template-columns: 160px minmax(0, 1fr);
     align-items: start;
   }
 
@@ -70057,12 +70173,14 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-hd .ua-cfg-hd-chip {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: #f3f5f9;
   border: 1px solid #e2e8f0;
-  font-size: 11px;
-  color: #334155;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #475569;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms-editor {

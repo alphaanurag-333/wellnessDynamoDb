@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { PillTabs } from "../shared.jsx";
 import { FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import {
@@ -595,6 +596,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [mentalFilter, setMentalFilter] = useState("all");
   const [yogaFilter, setYogaFilter] = useState("all");
   const [exerciseFilter, setExerciseFilter] = useState("all");
+  const [pendingConfirm, setPendingConfirm] = useState(null);
 
   useEffect(() => {
     setHeartRateOn(user?.heartRateEnabled !== false);
@@ -772,6 +774,24 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  function requestToggleContent(kind, item) {
+    if (!item) return;
+    setPendingConfirm({
+      action: item.inApp ? "remove-app" : "add-app",
+      kind,
+      item,
+    });
+  }
+
+  function requestSetDailyReflection(item) {
+    if (!item) return;
+    setPendingConfirm({
+      action: item.forDailyReflection ? "clear-drf" : "set-drf",
+      kind: "mental",
+      item,
+    });
+  }
+
   async function toggleContent(kind, item) {
     if (!userId) return;
     if (item.inApp && item.assignmentId && !canDelete) return;
@@ -908,6 +928,42 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
 
   const activeTab = visibleTabs.some((t) => t.id === tab) ? tab : visibleTabs[0]?.id || "steps";
 
+  const pendingTitle = pendingConfirm?.item?.title || "";
+  const confirmCopy = (() => {
+    switch (pendingConfirm?.action) {
+      case "remove-app":
+        return {
+          title: pendingTitle ? `Remove “${pendingTitle}” from the user app?` : "Remove from user app?",
+          body: pendingConfirm?.item?.forDailyReflection
+            ? "This content will be removed from the client's app and will no longer play on Daily Reflection."
+            : "This content will no longer appear in this client's app.",
+          confirmLabel: "Remove",
+          confirmTone: "danger",
+        };
+      case "set-drf":
+        return {
+          title: pendingTitle ? `Use “${pendingTitle}” for Daily Reflection?` : "Use for Daily Reflection?",
+          body: "This audio will play on the Daily Reflection form in the client's app. Any currently selected Daily Reflection audio will be replaced.",
+          confirmLabel: "Use for Daily Reflection",
+          confirmTone: "primary",
+        };
+      case "clear-drf":
+        return {
+          title: pendingTitle ? `Remove “${pendingTitle}” from Daily Reflection?` : "Remove from Daily Reflection?",
+          body: "This audio will stay in the user app, but it will no longer play on the Daily Reflection form.",
+          confirmLabel: "Remove",
+          confirmTone: "danger",
+        };
+      default:
+        return {
+          title: pendingTitle ? `Add “${pendingTitle}” to the user app?` : "Add to user app?",
+          body: "This content will appear in this client's app.",
+          confirmLabel: "Add to app",
+          confirmTone: "primary",
+        };
+    }
+  })();
+
   return (
     <div className="ua-cp-section ua-cp-bms">
       <div className="ua-cp-bms__head">
@@ -1012,8 +1068,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           filter={mentalFilter}
           onFilterChange={setMentalFilter}
           filterOptions={mentalFilters}
-          onToggle={(item) => toggleContent("mental", item)}
-          onSetDailyReflection={setDailyReflectionAudio}
+          onToggle={(item) => requestToggleContent("mental", item)}
+          onSetDailyReflection={requestSetDailyReflection}
           showDailyReflection
           loading={libraryLoading.mental}
           busy={libraryBusy}
@@ -1028,7 +1084,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           filter={yogaFilter}
           onFilterChange={setYogaFilter}
           filterOptions={mentalFilters}
-          onToggle={(item) => toggleContent("yoga", item)}
+          onToggle={(item) => requestToggleContent("yoga", item)}
           loading={libraryLoading.yoga}
           busy={libraryBusy}
           emptyLabel="No yoga items yet. Add them in Config → Common."
@@ -1042,13 +1098,35 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           filter={exerciseFilter}
           onFilterChange={setExerciseFilter}
           filterOptions={mentalFilters}
-          onToggle={(item) => toggleContent("exercise", item)}
+          onToggle={(item) => requestToggleContent("exercise", item)}
           loading={libraryLoading.exercise}
           busy={libraryBusy}
           emptyLabel="No physical exercise items yet. Add them in Config → Common."
           hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app."
         />
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(pendingConfirm)}
+        title={confirmCopy.title}
+        body={confirmCopy.body}
+        cancelLabel="Cancel"
+        confirmLabel={confirmCopy.confirmLabel}
+        confirmTone={confirmCopy.confirmTone}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => {
+          const pending = pendingConfirm;
+          setPendingConfirm(null);
+          if (!pending?.item) return;
+          if (pending.action === "add-app" || pending.action === "remove-app") {
+            toggleContent(pending.kind, pending.item);
+            return;
+          }
+          if (pending.action === "set-drf" || pending.action === "clear-drf") {
+            setDailyReflectionAudio(pending.item);
+          }
+        }}
+      />
     </div>
   );
 }

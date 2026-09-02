@@ -464,7 +464,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
             {draft.type !== "none" ? (
               <div className="ua-cfg-cf-media">
                 <div className="ua-cfg-cf-media__cover">
-                  <span className="ua-cfg-cf-label">Cover image</span>
+                  <span className="ua-cfg-cf-label">Cover image 840pxx480px</span>
                   <CoverDrop
                     previewUrl={cover}
                     disabled={loading || busy}
@@ -490,7 +490,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
                     </div>
                   ) : (
                     <>
-                      <span className="ua-cfg-cf-label">Video file</span>
+                      <span className="ua-cfg-cf-label">Video file (25mb max)</span>
                       <VideoDrop
                         fileName={videoName}
                         hasExisting={Boolean(mapped?.video)}

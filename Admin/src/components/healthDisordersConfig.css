@@ -1,5 +1,5 @@
 /* Health disorders config — /configs/common-health-disorders
-   Width/overflow only. Other screens that reuse ua-cfg-hd* stay unchanged. */
+   Layout + type scale for this page only. Other screens that reuse ua-cfg-hd* stay unchanged. */
 
 .updated-admin .ua-cfg-detail--hd,
 .updated-admin .ua-cfg-detail--hd .ua-cfg-detail__body,
@@ -36,9 +36,13 @@
 .updated-admin .ua-cfg-hd .ua-cfg-panel__title,
 .updated-admin .ua-cfg-hd .ua-cfg-panel__sub,
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item strong,
-.updated-admin .ua-cfg-hd .ua-cfg-hd-item p,
 .updated-admin .ua-cfg-hd .ua-cfg-hd-chip {
   overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-item p {
+  overflow-wrap: break-word;
   word-break: break-word;
 }
 
@@ -97,6 +101,10 @@
   min-width: 0;
   width: auto;
   margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #12263f;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item__title-row .ua-cfg-hd-flag {
@@ -111,11 +119,67 @@
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
   grid-column: 1 / -1;
   grid-row: 2;
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-desc {
+  display: block !important;
+  -webkit-box-orient: unset !important;
+  -webkit-line-clamp: unset !important;
+  line-clamp: unset !important;
+  max-height: none !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  text-align: start;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-desc__btn {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #5e6ad2;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-desc__btn:hover {
+  text-decoration: underline;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-hd-symptoms {
   grid-column: 1 / -1;
   grid-row: 3;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-chip {
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  padding: 5px 10px;
+  color: #475569;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-hd-symptoms .ua-cfg-panel__sub {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.updated-admin .ua-cfg-hd .ua-cfg-rc-new__head strong {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #12263f;
 }
 
 .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions {
@@ -194,8 +258,13 @@
     width: 100%;
   }
 
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item {
+    overflow-x: hidden;
+  }
+
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__head {
     grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
   }
 
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity {
@@ -205,17 +274,48 @@
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item__title-row {
     grid-column: 1;
     grid-row: 1;
+    width: 100%;
   }
 
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
     grid-column: 1;
     grid-row: 2;
     width: 100%;
-    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__surfaces {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 10px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-tf-item__moves,
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__btns,
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__live {
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
     grid-row: 3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.45;
   }
 
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-hd-symptoms {
@@ -232,6 +332,80 @@
   .updated-admin .ua-cfg-hd .ua-cfg-hd-item {
     padding: 12px 10px;
   }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item__title-row > strong,
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
+    font-size: 13px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions,
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__surfaces {
+    gap: 6px 8px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions .ua-cfg-icon-btn {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions .ua-cfg-btn--sm {
+    height: 30px;
+    min-width: 3.75rem;
+    padding: 0 10px;
+  }
+}
+
+@container ua-cfg-bl (max-width: 640px) {
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item {
+    overflow-x: hidden;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item__title-row {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__surfaces {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px 10px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
+    grid-row: 3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-hd-symptoms {
+    grid-row: 4;
+  }
 }
 
 @media (max-width: 360px) {
@@ -241,6 +415,33 @@
   }
 
   .updated-admin .ua-cfg-hd .ua-cfg-panel {
-    padding: 12px 10px;
+    padding: 12px 8px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item {
+    padding: 10px 8px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item__title-row > strong {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__identity > p {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-chip {
+    font-size: 12.5px;
+    padding: 4px 8px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__live {
+    gap: 4px;
+  }
+
+  .updated-admin .ua-cfg-hd .ua-cfg-hd-item:not(.is-editing) .ua-cfg-bl-item__actions .ua-cfg-faq__shown {
+    font-size: 10px;
   }
 }

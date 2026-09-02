@@ -212,7 +212,7 @@ function PasswordChangeModal({ open, busy, onClose, onSubmit }) {
         />
         {error ? <p className="ua-profile-modal__form-error">{error}</p> : null}
         <div className="ua-cfg-mv-link-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
+          <button style={{color:"rgb(90, 107, 133)"}} type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy}>
             Cancel
           </button>
           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={handleSubmit}>
