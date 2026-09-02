@@ -545,7 +545,7 @@ export function ReferralTreePage() {
                           }}
                         >
                           <div className="ua-rt-cell-name" data-label="Referrer">
-                            <span className="ua-rt-ellipsis" title={fullName}>
+                            <span className="ua-rt-name ua-rt-ellipsis" title={fullName}>
                               {shortLabel(fullName, 32)}
                             </span>
                             {canOpenUser ? (
@@ -561,7 +561,9 @@ export function ReferralTreePage() {
                           <div className="ua-rt-mono" data-label="Code">
                             {row.referralCode || "—"}
                           </div>
-                          <div data-label="Tier">{tierLabel(row.userTier)}</div>
+                          <div className="ua-rt-tier ua-rt-ellipsis" data-label="Tier" title={tierLabel(row.userTier)}>
+                            {tierLabel(row.userTier)}
+                          </div>
                           <div className="ua-rt-direct" data-label="Direct">
                             {row.directCount}
                           </div>

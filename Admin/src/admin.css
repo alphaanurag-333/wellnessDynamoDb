@@ -8,7 +8,7 @@
   --border-soft: #eef1f6;
   --text: rgb(22, 35, 63);
   --muted: #8a97ac;
-  --muted-light: #9aa6b8;
+  --muted-light: rgb(138, 151, 172);
   --accent-blue: #5e6ad2;
   --accent-orange: #c2661d;
   --accent-gold: #b8860b;
@@ -3047,13 +3047,13 @@
 }
 
 .updated-admin .ua-prog-cat-modal__table-head {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted-light);
   border-bottom: 1px solid var(--border-soft);
-  background: #fbfcfe;
+  background: rgb(251, 252, 254);
 }
 
 .updated-admin .ua-prog-cat-modal__row {
@@ -24109,7 +24109,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-ac-roles-bar__head {
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
@@ -59234,6 +59234,7 @@ scrollbar-width: thin;
   max-width: 100%;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-supp-panel {
