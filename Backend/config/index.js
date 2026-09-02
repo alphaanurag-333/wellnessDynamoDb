@@ -30,6 +30,8 @@ function cronEnabled(name) {
 module.exports = {
   port: num("PORT", 5000),
   nodeEnv,
+  /** JSON / urlencoded body cap. Word-paste legal pages often exceed Express default 100kb. */
+  jsonBodyLimit: str("JSON_BODY_LIMIT", "5mb"),
 
   jwtSecret,
   jwtExpiresIn: str("JWT_EXPIRES_IN", "1h"),

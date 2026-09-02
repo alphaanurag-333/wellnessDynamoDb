@@ -9,6 +9,7 @@
 require("dotenv").config();
 
 const { createPage, getPageBySlug, updatePage, deletePage } = require("../models/staticPageModel");
+const COMMUNITY_GUIDELINES_HTML = require("./legalCopy/communityGuidelinesHtml");
 
 const EFFECTIVE_DATE = "July 4, 2026";
 const COMPANY_NAME = "Wellness";
@@ -171,82 +172,7 @@ const STATIC_PAGES = [
     title: "Community Guidelines",
     slug: "community-guideline",
     status: "active",
-    content: `
-      <p><strong>Last updated:</strong> ${EFFECTIVE_DATE}</p>
-      <p>${COMPANY_NAME} is more than a wellness app—it is a community of people working toward healthier, happier lives. These Community Guidelines explain how we expect members, coaches, and guests to interact so everyone feels safe, supported, and respected.</p>
-      <p>By participating in community spaces, group sessions, comments, testimonials, or coach-led discussions, you agree to follow these guidelines.</p>
-
-      <h2>1. Be Kind and Respectful</h2>
-      <ul>
-        <li>Treat every member with dignity, regardless of background, body type, fitness level, or health journey stage.</li>
-        <li>Use encouraging language. Celebrate progress without comparing or shaming others.</li>
-        <li>Disagree thoughtfully. Personal attacks, insults, and intimidation are not allowed.</li>
-      </ul>
-
-      <h2>2. Zero Tolerance for Harmful Behavior</h2>
-      <p>The following content and conduct are strictly prohibited:</p>
-      <ul>
-        <li>Hate speech, discrimination, or harassment based on race, religion, gender, disability, or any protected characteristic.</li>
-        <li>Bullying, threats, stalking, or repeated unwanted contact.</li>
-        <li>Sexually explicit, violent, or otherwise offensive material.</li>
-        <li>Spam, scams, pyramid schemes, or unauthorized advertising.</li>
-        <li>Sharing false medical claims intended to mislead or cause harm.</li>
-      </ul>
-
-      <h2>3. Share Wellness Information Responsibly</h2>
-      <ul>
-        <li>Personal experiences are welcome, but do not present them as guaranteed medical outcomes.</li>
-        <li>Do not diagnose, prescribe, or tell others to stop medication without professional guidance.</li>
-        <li>Recommendations should be supportive and general. Refer serious concerns to a qualified healthcare provider or ${COMPANY_NAME} support team.</li>
-        <li>Before-and-after photos or transformation stories should be honest and not edited to misrepresent results.</li>
-      </ul>
-
-      <h2>4. Protect Privacy</h2>
-      <ul>
-        <li>Do not share another person's contact details, health records, photos, or private messages without consent.</li>
-        <li>Keep coach conversations and member-only content confidential.</li>
-        <li>Be mindful when posting screenshots or group chat excerpts—remove personal identifiers when possible.</li>
-      </ul>
-
-      <h2>5. Coach and Member Interactions</h2>
-      <ul>
-        <li>Coaches are here to guide and motivate. Maintain professional boundaries in all communications.</li>
-        <li>Members should follow program instructions and communicate openly about challenges or limitations.</li>
-        <li>Off-platform solicitation, unauthorized paid services, or inappropriate personal requests are not permitted.</li>
-      </ul>
-
-      <h2>6. Authentic Participation</h2>
-      <ul>
-        <li>Use your real identity where required and avoid impersonation or fake accounts.</li>
-        <li>Do not manipulate ratings, testimonials, or community votes.</li>
-        <li>Report technical issues or content concerns honestly so our team can help quickly.</li>
-      </ul>
-
-      <h2>7. Enforcement</h2>
-      <p>Violations may result in:</p>
-      <ul>
-        <li>Content removal or editing</li>
-        <li>Temporary feature restrictions</li>
-        <li>Suspension or permanent removal from community spaces</li>
-        <li>Account termination for severe or repeated violations</li>
-      </ul>
-      <p>Our moderation team reviews reports based on these guidelines and applicable laws. Decisions are made to protect community safety and may not always be publicly disclosed due to privacy obligations.</p>
-
-      <h2>8. How to Report a Concern</h2>
-      <p>If you see behavior that violates these guidelines, please report it immediately:</p>
-      <ul>
-        <li>Use in-app report tools where available</li>
-        <li>Email <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a> with relevant details (screenshots, dates, usernames)</li>
-        <li>Call <a href="tel:${SUPPORT_PHONE.replace(/\s/g, "")}">${SUPPORT_PHONE}</a> for urgent safety concerns</li>
-      </ul>
-      <p>We aim to review reports within 2–3 business days. For emergencies, contact local authorities first.</p>
-
-      <h2>9. Updates to These Guidelines</h2>
-      <p>We may update these Community Guidelines as our platform grows. Changes will be posted on this page. Continued participation after updates means you accept the revised guidelines.</p>
-
-      <h2>10. Thank You</h2>
-      <p>Thank you for helping us build a positive, inclusive wellness community. Your respect, honesty, and support make ${COMPANY_NAME} a place where real transformation happens—together.</p>
-    `.trim(),
+    content: COMMUNITY_GUIDELINES_HTML,
   },
   {
     title: "Data Processing Agreement",
