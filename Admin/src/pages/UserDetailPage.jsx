@@ -122,12 +122,16 @@ export function UserDetailPage() {
       : ""
   ));
   const sectionHistory = useRef([]);
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
+  const loadedUserIdRef = useRef("");
 
   useEffect(() => {
     let cancelled = false;
     setLoadError("");
 
     if (!userId) {
+      loadedUserIdRef.current = "";
       setUser(null);
       setLoading(false);
       return undefined;
@@ -135,30 +139,37 @@ export function UserDetailPage() {
 
     // `/users/1` style ids were local seed profiles — never show them as live clients.
     if (isMockNumericId(userId)) {
+      loadedUserIdRef.current = "";
       setUser(null);
       setLoading(false);
       setLoadError("Demo profile URLs are disabled. Real clients use UUID ids from the API.");
       return undefined;
     }
 
-    setLoading(true);
-    setUser(null);
+    const keepExisting = loadedUserIdRef.current === userId;
+    if (!keepExisting) {
+      setLoading(true);
+      setUser(null);
+    }
 
     fetchUser(userId)
       .then((row) => {
         if (cancelled) return;
         if (!row) {
+          loadedUserIdRef.current = "";
           setLoadError("User not found");
           setUser(null);
           return;
         }
+        loadedUserIdRef.current = userId;
         setUser(profileFromListUser(row, userId));
       })
       .catch((err) => {
         if (cancelled) return;
+        loadedUserIdRef.current = "";
         setLoadError(err?.message || "Failed to load user");
         setUser(null);
-        onToast?.(err?.message || "Failed to load user");
+        onToastRef.current?.(err?.message || "Failed to load user");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -167,7 +178,7 @@ export function UserDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [onToast, userId]);
+  }, [userId]);
 
   const profileDefinition = useMemo(() => {
     const base = getClientProfileDefinition(user);
@@ -180,7 +191,10 @@ export function UserDetailPage() {
   }, [user, can]);
 
   const requestedSection = searchParams.get("section");
-  const allowedSectionIds = profileDefinition.menu.map((item) => item.id);
+  const allowedSectionIds = useMemo(
+    () => profileDefinition.menu.map((item) => item.id),
+    [profileDefinition.menu],
+  );
   const section =
     requestedSection && allowedSectionIds.includes(requestedSection)
       ? requestedSection

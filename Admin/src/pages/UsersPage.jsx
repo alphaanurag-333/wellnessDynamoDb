@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { matchPath, useLocation, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { ExportIcon } from "../components/NavIcons.jsx";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { CfgSelect, OrangeButton, PageHeader, PillTabs, ScopeChip, TableScroll } from "../components/shared.jsx";
@@ -60,7 +60,7 @@ function truncateUserName(name, max = USER_NAME_MAX_CHARS) {
   return `${text.slice(0, max)}...`;
 }
 
-function UserListAvatar({ name, profileImage, colorIndex }) {
+const UserListAvatar = memo(function UserListAvatar({ name, profileImage, colorIndex }) {
   const [broken, setBroken] = useState(false);
   const showPhoto = Boolean(profileImage) && !broken;
   return (
@@ -76,6 +76,13 @@ function UserListAvatar({ name, profileImage, colorIndex }) {
       )}
     </span>
   );
+});
+
+function matchOpenUserId(pathname) {
+  return matchPath(
+    { path: `${UPDATED_ADMIN_PATHS.users}/:userId`, end: true },
+    pathname,
+  )?.params?.userId || "";
 }
 
 function extraQueryForTypeTab(tabId, baseUserTier) {
@@ -235,9 +242,19 @@ function buildPageItems(current, total) {
 
 export function UsersPage() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const openUserId = matchOpenUserId(pathname);
   const { showToast: onToast } = useOutletContext();
   const { activeRole, can, dataScope, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
+  const listSearchRef = useRef(searchParams);
+  const profileWasOpenRef = useRef(Boolean(openUserId));
+  // Parent `/users` does not receive `:userId` from useParams — freeze list query from the URL instead.
+  if (!openUserId && !profileWasOpenRef.current) {
+    listSearchRef.current = searchParams;
+  }
+  profileWasOpenRef.current = Boolean(openUserId);
+  const listSearchParams = listSearchRef.current;
 
   const canCreate = can("console.cl.create");
   const canEdit = can("console.cl.edit");
@@ -267,7 +284,7 @@ export function UsersPage() {
     pages: 1,
   });
   const [teamMembers, setTeamMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !openUserId);
   const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -288,26 +305,35 @@ export function UsersPage() {
   const [exporting, setExporting] = useState(false);
   const [tabCounts, setTabCounts] = useState(EMPTY_TAB_COUNTS);
 
-  const typeTab = searchParams.get("tab") || "all";
+  const typeTab = listSearchParams.get("tab") || "all";
   const isArchivedTab = isAdminView && typeTab === "archived";
-  const tierFilter = searchParams.get("tier") || "";
-  const coachFilter = searchParams.get("coach") || "";
-  const subscriptionExpiryParam = Number(searchParams.get("subscriptionExpiry"));
+  const tierFilter = listSearchParams.get("tier") || "";
+  const coachFilter = listSearchParams.get("coach") || "";
+  const subscriptionExpiryParam = Number(listSearchParams.get("subscriptionExpiry"));
   const subscriptionExpiryDays =
     Number.isFinite(subscriptionExpiryParam) && subscriptionExpiryParam > 0
       ? Math.floor(subscriptionExpiryParam)
       : null;
-  const pageParam = Number(searchParams.get("page"));
+  const pageParam = Number(listSearchParams.get("page"));
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
   useEffect(() => {
+    if (openUserId) return;
     if (typeTab === "archived" && !isAdminView) {
-      const next = new URLSearchParams(searchParams);
+      const next = new URLSearchParams(listSearchParams);
       next.delete("tab");
       next.delete("page");
       setSearchParams(next, { replace: true });
     }
-  }, [isAdminView, searchParams, setSearchParams, typeTab]);
+  }, [isAdminView, listSearchParams, openUserId, setSearchParams, typeTab]);
+
+  useEffect(() => {
+    if (openUserId) return undefined;
+    const frozen = listSearchRef.current;
+    if (!frozen.toString() || frozen.toString() === searchParams.toString()) return undefined;
+    setSearchParams(frozen, { replace: true });
+    return undefined;
+  }, [openUserId, searchParams, setSearchParams]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -384,11 +410,18 @@ export function UsersPage() {
       : fetchUsers(params);
   }, [debouncedSearch, isArchivedTab, listQuery, useScopedUsers]);
 
+  const usersLenRef = useRef(0);
+  usersLenRef.current = users.length;
+
   useEffect(() => {
+    if (openUserId && usersLenRef.current > 0) return;
     let cancelled = false;
+    const showListSpinner = !openUserId && usersLenRef.current === 0;
     async function loadUsers() {
-      setLoading(true);
-      setLoadError("");
+      if (showListSpinner) {
+        setLoading(true);
+        setLoadError("");
+      }
       try {
         const userResult = await loadUsersPage(currentPage, PAGE_SIZE);
         if (cancelled) return;
@@ -419,9 +452,10 @@ export function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentPage, loadUsersPage, reloadNonce]);
+  }, [currentPage, loadUsersPage, openUserId, reloadNonce]);
 
   useEffect(() => {
+    if (openUserId) return undefined;
     let cancelled = false;
     async function loadTabCounts() {
       const fetchCount = async (tabId) => {
@@ -470,7 +504,7 @@ export function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [baseListQuery, isAdminView, reloadNonce, useScopedUsers]);
+  }, [baseListQuery, isAdminView, openUserId, reloadNonce, useScopedUsers]);
 
   useEffect(() => {
     if (typeTab === "all" || typeTab === "archived") return;
@@ -487,7 +521,8 @@ export function UsersPage() {
   }, [pagination.total, typeTab]);
 
   const setTypeTab = (tab) => {
-    const next = new URLSearchParams(searchParams);
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
     if (tab === "all") next.delete("tab");
     else next.set("tab", tab);
     next.delete("page");
@@ -495,7 +530,8 @@ export function UsersPage() {
   };
 
   const setTierFilter = (tier) => {
-    const next = new URLSearchParams(searchParams);
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
     if (!tier) next.delete("tier");
     else next.set("tier", tier);
     next.delete("page");
@@ -503,27 +539,31 @@ export function UsersPage() {
   };
 
   const clearCoachFilter = () => {
-    const next = new URLSearchParams(searchParams);
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
     next.delete("coach");
     next.delete("page");
     setSearchParams(next, { replace: true });
   };
 
   const clearSubscriptionExpiryFilter = () => {
-    const next = new URLSearchParams(searchParams);
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
     next.delete("subscriptionExpiry");
     next.delete("page");
     setSearchParams(next, { replace: true });
   };
 
   const setPage = (page) => {
-    const next = new URLSearchParams(searchParams);
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
     if (page <= 1) next.delete("page");
     else next.set("page", String(page));
     setSearchParams(next, { replace: true });
   };
 
   const clearFilters = () => {
+    if (openUserId) return;
     setSearch("");
     setStatusFilter("");
     setSearchParams({}, { replace: true });
@@ -863,7 +903,7 @@ export function UsersPage() {
     const path = archived
       ? `${UPDATED_ADMIN_PATHS.userDetail(id)}?archived=1`
       : UPDATED_ADMIN_PATHS.userDetail(id);
-    navigate(path);
+    navigate(path, { preventScrollReset: true });
   };
 
   const confirmDelete = async () => {
@@ -1134,7 +1174,7 @@ export function UsersPage() {
             )}
           </div>
 
-          {loading ? (
+          {loading && !openUserId ? (
             <BrandLoader variant="page" label={isArchivedTab ? "Loading archived users…" : "Loading clients…"} />
           ) : rows.length === 0 ? (
             <div className="ua-users-empty">

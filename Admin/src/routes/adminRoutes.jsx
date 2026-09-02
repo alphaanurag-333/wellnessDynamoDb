@@ -27,7 +27,7 @@ const CommitmentLettersPage = lazyNamed(
 );
 const AdminNotFoundPage = lazyNamed(() => import("../pages/AdminNotFoundPage.jsx"), "AdminNotFoundPage");
 const UsersLayout = lazyNamed(() => import("../pages/UsersLayout.jsx"), "UsersLayout");
-const UserDetailPage = lazyNamed(() => import("../pages/UserDetailPage.jsx"), "UserDetailPage");
+const UserDetailPage = lazyNamed(() => import("../pages/UsersLayout.jsx"), "UserDetailPage");
 const NotificationsPage = lazyNamed(() => import("../pages/NotificationsPage.jsx"), "NotificationsPage");
 const ContactInquiriesPage = lazyNamed(
   () => import("../pages/ContactInquiriesPage.jsx"),

@@ -10959,16 +10959,13 @@
 /* Ã¢â€â‚¬Ã¢â€â‚¬ Client profile (user detail) Ã¢â€â‚¬Ã¢â€â‚¬ */
 .updated-admin--client-profile .sidebar,
 .updated-admin--client-profile .header {
-  display: none;
+  /* Keep chrome in layout so opening a profile does not reflow the users list under the drawer. */
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .updated-admin--client-profile {
   background: #eef1f7;
-}
-
-.updated-admin--client-profile .main {
-  width: 100%;
-  min-width: 0;
 }
 
 .updated-admin--client-profile .page-shell {
@@ -62202,13 +62199,8 @@ scrollbar-width: thin;
 
   .updated-admin--client-profile .sidebar,
   .updated-admin--client-profile .header {
-    display: none !important;
-  }
-
-  .updated-admin--client-profile .main {
-    width: 100%;
-    max-width: 100%;
-    flex: 1 1 100%;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .updated-admin .ua-cp-drawer {

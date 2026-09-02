@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS, UPDATED_ADMIN_PATHS } from "./data/dashboardData.js";
 import { BrandLoader } from "./components/BrandLoader.jsx";
@@ -50,6 +50,7 @@ export function AdminLayout() {
 
   const isClientProfile = /^\/users\/[^/]+$/.test(pathname) && pathname !== UPDATED_ADMIN_PATHS.users;
   const appName = useAppSelector(selectAppName);
+  const outletContext = useMemo(() => ({ showToast }), [showToast]);
 
   useEffect(() => {
     if (isClientProfile) {
@@ -65,8 +66,11 @@ export function AdminLayout() {
   }, [appName, isClientProfile, pathname]);
 
   useEffect(() => {
-    const shell = document.querySelector(".updated-admin .page-shell");
-    shell?.scrollTo(0, 0);
+    const onUsers = pathname === UPDATED_ADMIN_PATHS.users || pathname.startsWith(`${UPDATED_ADMIN_PATHS.users}/`);
+    if (!onUsers) {
+      const shell = document.querySelector(".updated-admin .page-shell");
+      shell?.scrollTo(0, 0);
+    }
     setMobileNavOpen(false);
   }, [pathname]);
 
@@ -97,7 +101,7 @@ export function AdminLayout() {
 
           <div className="page-shell">
             <Suspense fallback={<BrandLoader variant="page" label="Loading…" />}>
-              <Outlet context={{ showToast }} />
+              <Outlet context={outletContext} />
             </Suspense>
           </div>
         </div>
