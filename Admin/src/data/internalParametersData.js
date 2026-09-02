@@ -111,8 +111,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "8.4", tone: "bad", note: "Consistently in the diabetic range and rising over the last three draws. This reflects a sustained glucose load over ~3 months and points to worsening insulin resistance rather than a one-off spike. Prioritise glycemic control before addressing lipids." },
             { value: "6.5", tone: "bad", note: "Consistently in the diabetic range and rising over the last three draws. This reflects a sustained glucose load over ~3 months and points to worsening insulin resistance rather than a one-off spike. Prioritise glycemic control before addressing lipids." },
-            { value: "9.1", tone: "bad", note: "Rebound after a brief improvement — likely due to inconsistent meal timing and higher post-dinner carbs. Reinforce low-GI dinners and post-meal walks." },
-            { value: "10.2", tone: "bad", note: "Trending upward again; insulin resistance remains the primary driver. Consider tightening carb portions and reviewing sleep quality." },
+            { value: "10.2", tone: "bad", note: "Rebound after a brief improvement — likely due to inconsistent meal timing and higher post-dinner carbs. Reinforce low-GI dinners and post-meal walks." },
+            { value: "9.1", tone: "bad", note: "Trending upward again; insulin resistance remains the primary driver. Consider tightening carb portions and reviewing sleep quality." },
           ],
         },
         {
@@ -132,8 +132,8 @@ export const INTERNAL_PARAMS = {
           rr: "70–100 mg/dl",
           readings: [
             { value: "131.67", tone: "bad", note: "Fasting sugar is elevated, suggesting the liver is releasing glucose overnight (dawn effect / hepatic insulin resistance). A protein + fibre bedtime snack and morning walk usually help this marker first." },
-            { value: "—", tone: "neutral", note: "" },
-            { value: "—", tone: "neutral", note: "" },
+            { value: "214.1", tone: "bad", note: "Fasting sugar is elevated, suggesting the liver is releasing glucose overnight (dawn effect / hepatic insulin resistance). A protein + fibre bedtime snack and morning walk usually help this marker first." },
+            { value: "196", tone: "bad", note: "Fasting sugar is elevated, suggesting the liver is releasing glucose overnight (dawn effect / hepatic insulin resistance). A protein + fibre bedtime snack and morning walk usually help this marker first." },
             { value: "—", tone: "neutral", note: "" },
           ],
         },
@@ -144,8 +144,8 @@ export const INTERNAL_PARAMS = {
           readings: [
             { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
-            { value: "—", tone: "neutral", note: "" },
-            { value: "—", tone: "neutral", note: "" },
+            { value: "349.5", tone: "bad", note: "Post-prandial readings are very high — meals are spiking sugar sharply. Focus on lowering the glycemic load of lunch and dinner and adding a 15-min post-meal walk." },
+            { value: "348", tone: "bad", note: "Post-prandial readings are very high — meals are spiking sugar sharply. Focus on lowering the glycemic load of lunch and dinner and adding a 15-min post-meal walk." },
           ],
         },
         {
@@ -154,7 +154,29 @@ export const INTERNAL_PARAMS = {
           rr: "1.9–23 μIU/ml",
           readings: [
             { value: "13.1", tone: "neutral", note: "" },
+            { value: "15.61", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+          ],
+        },
+        {
+          name: "PP Insulin",
+          optimal: "<30 µIU/ml",
+          rr: "9.3–53.8 µIU/ml",
+          readings: [
+            { value: "—", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+            { value: "41.69", tone: "neutral", note: "" },
+            { value: "—", tone: "neutral", note: "" },
+          ],
+        },
+        {
+          name: "C-peptide",
+          optimal: "1.1 – 2.1 ng/ml",
+          rr: "1.10–4.40 ng/dl",
+          readings: [
+            { value: "3.97", tone: "neutral", note: "" },
+            { value: "3.24", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],
@@ -165,7 +187,7 @@ export const INTERNAL_PARAMS = {
           rr: "—",
           readings: [
             { value: "4.23", tone: "bad", note: "Markedly elevated, confirming significant insulin resistance. This is the single most important metric to bring down and should improve with weight loss, low-GI eating and activity." },
-            { value: "—", tone: "neutral", note: "" },
+            { value: "8.25", tone: "bad", note: "Markedly elevated, confirming significant insulin resistance. This is the single most important metric to bring down and should improve with weight loss, low-GI eating and activity." },
             { value: "—", tone: "neutral", note: "" },
             { value: "—", tone: "neutral", note: "" },
           ],

@@ -19,6 +19,11 @@ import {
   patchOnboardingStep,
 } from "../../api/onboardingApi.js";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import {
+  applyMergedPanelsToReportAnalysis,
+  findLatestAnalysedReport,
+  mergeAnalysedReportsToPanels,
+} from "../../utils/labReportPanels.js";
 
 const GOAL_PRESET_CATEGORIES = {
   "Fat Loss": ["Cardiac", "Diabetes", "Lipid Profile", "HbA1c", "CBC", "Hematology", "Metabolic"],
@@ -229,45 +234,6 @@ function addDaysIso(value, days) {
   if (Number.isNaN(date.getTime())) return "";
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
-}
-
-function storedAnalysisToPanels(analysis) {
-  const dateLabel = analysis?.dateLabel || "—";
-  return {
-    dates: [dateLabel],
-    panels: (analysis?.panels || []).map((panel) => ({
-      title: panel.title,
-      rows: (panel.rows || []).map((row) => ({
-        name: row.name,
-        optimal: row.optimal || "—",
-        rr: row.rr || "—",
-        readings: [{ value: row.value ?? "—", tone: row.tone || "neutral", note: row.note || "" }],
-      })),
-    })),
-  };
-}
-
-function uiToStoredAnalysis({ panels, dateLabel, bloodSummary, protocolItems, nutritionSummary }) {
-  return {
-    dateLabel: dateLabel || "—",
-    panels: (panels || []).map((panel) => ({
-      title: panel.title,
-      rows: (panel.rows || []).map((row) => {
-        const reading = row.readings?.[0] || {};
-        return {
-          name: row.name,
-          optimal: row.optimal,
-          rr: row.rr,
-          value: reading.value ?? "—",
-          tone: reading.tone || "neutral",
-          note: reading.note || "",
-        };
-      }),
-    })),
-    bloodSummary,
-    protocolItems,
-    nutritionSummary,
-  };
 }
 
 function reportAiStatusText(report) {
@@ -1328,7 +1294,11 @@ function AiReadingCell({ reading, editing, onChange }) {
 
   return (
     <td className="ua-cp-ip-ai__reading">
-      <div className={`ua-cp-ip-ai__val ua-cp-ip-ai__val--${reading.tone}`}>{reading.value}</div>
+      <div
+        className={`ua-cp-ip-ai__val ua-cp-ip-ai__val--${reading.tone}${reading.value === "—" ? " ua-cp-ip-ai__val--empty" : ""}`}
+      >
+        {reading.value}
+      </div>
       {reading.note ? <div className="ua-cp-ip-ai__note">{reading.note}</div> : null}
     </td>
   );
@@ -1625,36 +1595,36 @@ function LiveReportAnalysisTab({
   }, [reports, selectedId]);
 
   const selected = reports.find((report) => report.id === selectedId) || reports[0];
-  const analysis = selected?.aiAnalysis;
-  const hasAnalysis = Boolean(analysis?.panels?.length);
-  const analysed = hasAnalysis;
-  const ui = storedAnalysisToPanels(analysis);
+  const latestAnalysed = findLatestAnalysedReport(reports);
+  const latestAnalysis = latestAnalysed?.aiAnalysis;
+  const merged = useMemo(() => mergeAnalysedReportsToPanels(reports), [reports]);
+  const analysed = merged.dates.length > 0;
   const older = reports.filter(
-    (report) => report.id !== selected?.id && report.aiStatus === "analysed" && report.aiAnalysis
+    (report) => report.id !== latestAnalysed?.id && report.aiStatus === "analysed" && report.aiAnalysis
   );
 
   const [aiDraft, setAiDraft] = useState(null);
   const [aiEditing, setAiEditing] = useState(false);
-  const [bloodSummary, setBloodSummary] = useState(analysis?.bloodSummary || []);
+  const [bloodSummary, setBloodSummary] = useState(latestAnalysis?.bloodSummary || []);
   const [summaryDraft, setSummaryDraft] = useState("");
   const [summaryEditing, setSummaryEditing] = useState(false);
-  const [protocolItems, setProtocolItems] = useState(analysis?.protocolItems || []);
+  const [protocolItems, setProtocolItems] = useState(latestAnalysis?.protocolItems || []);
   const [protocolDraft, setProtocolDraft] = useState([]);
   const [protocolEditing, setProtocolEditing] = useState(false);
-  const [nutritionLatest, setNutritionLatest] = useState(analysis?.nutritionSummary || "");
+  const [nutritionLatest, setNutritionLatest] = useState(latestAnalysis?.nutritionSummary || "");
   const [nutritionDraft, setNutritionDraft] = useState("");
   const [nutritionEditing, setNutritionEditing] = useState(false);
 
   useEffect(() => {
     setAiDraft(null);
     setAiEditing(false);
-    setBloodSummary(analysis?.bloodSummary || []);
+    setBloodSummary(latestAnalysis?.bloodSummary || []);
     setSummaryEditing(false);
-    setProtocolItems(analysis?.protocolItems || []);
+    setProtocolItems(latestAnalysis?.protocolItems || []);
     setProtocolEditing(false);
-    setNutritionLatest(analysis?.nutritionSummary || "");
+    setNutritionLatest(latestAnalysis?.nutritionSummary || "");
     setNutritionEditing(false);
-  }, [selected?.id, selected?.aiAnalysedAt, selected?.updatedAt]);
+  }, [latestAnalysed?.id, latestAnalysed?.aiAnalysedAt, latestAnalysed?.updatedAt]);
 
   if (!selected) {
     const name = clientName || "The client";
@@ -1678,7 +1648,7 @@ function LiveReportAnalysisTab({
     );
   }
 
-  const panels = aiEditing && aiDraft ? aiDraft : ui.panels;
+  const panels = aiEditing && aiDraft ? aiDraft : merged.panels;
 
   function updateReading(panelIdx, rowIdx, readingIdx, nextReading) {
     setAiDraft((prev) => {
@@ -1688,8 +1658,20 @@ function LiveReportAnalysisTab({
     });
   }
 
-  async function persist(nextAnalysis, toast) {
-    await onSaveAnalysis(selected.id, { aiAnalysis: nextAnalysis });
+  async function persistLatest(nextAnalysis, toast) {
+    if (!latestAnalysed) return;
+    await onSaveAnalysis(latestAnalysed.id, { aiAnalysis: nextAnalysis });
+    onToast?.(toast);
+  }
+
+  async function persistMergedPanels(nextPanels, toast) {
+    for (let colIdx = 0; colIdx < merged.reportIds.length; colIdx += 1) {
+      const reportId = merged.reportIds[colIdx];
+      const report = reports.find((item) => item.id === reportId);
+      if (!report) continue;
+      const nextAnalysis = applyMergedPanelsToReportAnalysis(report, nextPanels, colIdx);
+      await onSaveAnalysis(reportId, { aiAnalysis: nextAnalysis });
+    }
     onToast?.(toast);
   }
 
@@ -1784,7 +1766,7 @@ function LiveReportAnalysisTab({
             <div className="ua-cp-ip-ai__head">
               <div>
                 <strong>⚡ AI interpretation</strong>
-                <span>value + interpretation from the client-uploaded report</span>
+                <span>value + interpretation per date</span>
               </div>
               <EditActions
                 editing={aiEditing}
@@ -1797,14 +1779,7 @@ function LiveReportAnalysisTab({
                   setAiEditing(false);
                 }}
                 onSave={async () => {
-                  const next = uiToStoredAnalysis({
-                    panels: aiDraft || panels,
-                    dateLabel: analysis.dateLabel,
-                    bloodSummary,
-                    protocolItems,
-                    nutritionSummary: nutritionLatest,
-                  });
-                  await persist(next, "AI interpretation saved");
+                  await persistMergedPanels(aiDraft || panels, "AI interpretation saved");
                   setAiDraft(null);
                   setAiEditing(false);
                 }}
@@ -1816,15 +1791,15 @@ function LiveReportAnalysisTab({
                   <tr>
                     <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">Parameter</th>
                     <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">Optimal</th>
-                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">RR · lab</th>
-                    {ui.dates.map((d) => <th key={d}>{d}</th>)}
+                    <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">RR · PharmEasy</th>
+                    {merged.dates.map((d) => <th key={d}>{d}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {panels.map((panel, panelIdx) => (
                     <Fragment key={panel.title}>
                       <tr className="ua-cp-ip-ai__cat">
-                        <td colSpan={3 + ui.dates.length}>{panel.title}</td>
+                        <td colSpan={3 + merged.dates.length}>{panel.title}</td>
                       </tr>
                       {panel.rows.map((row, rowIdx) => (
                         <tr key={row.name}>
@@ -1863,13 +1838,12 @@ function LiveReportAnalysisTab({
                 onCancel={() => setSummaryEditing(false)}
                 onSave={async () => {
                   const nextSummary = summaryDraft.split("\n").map((s) => s.trim()).filter(Boolean);
-                  await persist(uiToStoredAnalysis({
-                    panels,
-                    dateLabel: analysis.dateLabel,
+                  await persistLatest({
+                    ...latestAnalysis,
                     bloodSummary: nextSummary,
                     protocolItems,
                     nutritionSummary: nutritionLatest,
-                  }), "Blood report summary saved");
+                  }, "Blood report summary saved");
                   setBloodSummary(nextSummary);
                   setSummaryEditing(false);
                 }}
@@ -1895,7 +1869,7 @@ function LiveReportAnalysisTab({
             <div className="ua-cp-ip-protocol__head">
               <div>
                 <strong>Protocol · nutritionist recommendation</strong>
-                <span>AI-generated · {formatDisplayDate(selected.reportDate)}</span>
+                <span>AI-generated · {formatDisplayDate(latestAnalysed?.reportDate)}</span>
               </div>
               <EditActions
                 editing={protocolEditing}
@@ -1906,13 +1880,12 @@ function LiveReportAnalysisTab({
                 onCancel={() => setProtocolEditing(false)}
                 onSave={async () => {
                   const nextItems = protocolDraft.map((s) => s.trim()).filter(Boolean);
-                  await persist(uiToStoredAnalysis({
-                    panels,
-                    dateLabel: analysis.dateLabel,
+                  await persistLatest({
+                    ...latestAnalysis,
                     bloodSummary,
                     protocolItems: nextItems,
                     nutritionSummary: nutritionLatest,
-                  }), "Protocol saved");
+                  }, "Protocol saved");
                   setProtocolItems(nextItems);
                   setProtocolEditing(false);
                 }}
@@ -1968,13 +1941,12 @@ function LiveReportAnalysisTab({
                 onCancel={() => setNutritionEditing(false)}
                 onSave={async () => {
                   const nextText = nutritionDraft.trim();
-                  await persist(uiToStoredAnalysis({
-                    panels,
-                    dateLabel: analysis.dateLabel,
+                  await persistLatest({
+                    ...latestAnalysis,
                     bloodSummary,
                     protocolItems,
                     nutritionSummary: nextText,
-                  }), "Nutrition summary saved");
+                  }, "Nutrition summary saved");
                   setNutritionLatest(nextText);
                   setNutritionEditing(false);
                 }}
@@ -1984,7 +1956,7 @@ function LiveReportAnalysisTab({
           {analysed ? (
             <div className="ua-cp-ip-nutrition__latest">
               <span className="" style={{fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', color: 'rgb(43, 143, 91)', background: 'rgb(231, 246, 238)', padding: '3px 8px', borderRadius: '5px'}}>Latest</span>
-              <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(selected.reportDate)}</span>
+              <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(latestAnalysed?.reportDate)}</span>
               {nutritionEditing ? (
                 <textarea
                   className="ua-cfg-dp-add__content ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"

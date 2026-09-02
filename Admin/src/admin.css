@@ -17923,6 +17923,12 @@ scrollbar-width: thin;
   color: #e5484d;
 }
 
+.updated-admin .ua-cp-ip-ai__val--empty {
+  color: #b0b8c9;
+  font-weight: 600;
+  text-align: center;
+}
+
 .updated-admin .ua-cp-ip-ai__note {
   margin-top: 6px;
   padding: 8px 10px;
