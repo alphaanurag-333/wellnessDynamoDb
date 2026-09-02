@@ -912,7 +912,7 @@ export function BannerSection({ editor, setEditor, items, setItems, onToast, sur
               <label className="ua-cfg-bn-field">
                 <span>
                   Placement
-                  <em className="ua-cfg-bn-ratio">{placement.ratio}</em>
+                  <em style={{height:"14px"}} className="ua-cfg-bn-ratio">{placement.ratio}</em>
                 </span>
                 <CfgSelect
                   className="ua-cfg-bn-select"
