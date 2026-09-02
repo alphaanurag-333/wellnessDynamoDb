@@ -1811,11 +1811,11 @@ export function RecipesSection({
                       <>
                         <p>{asCopyString(entry.description)}</p>
                         {showSpecs ? <SpecChips specs={entry.videoSpecification} /> : null}
-                        {persist && entry.videoLink ? (
+                        {/* {persist && entry.videoLink ? (
                           <a className="ua-cfg-rc-link" href={entry.videoLink} target="_blank" rel="noreferrer">
                             {entry.videoLink}
                           </a>
-                        ) : null}
+                        ) : null} */}
                       </>
                     )}
                   </div>

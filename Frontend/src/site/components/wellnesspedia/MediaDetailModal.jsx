@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../../media.js";
 import { youtubeEmbedUrl } from "../../../utils/youtubeEmbed.js";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import "./MediaDetailModal.css";
 
 function resolveSpecs(item) {
   if (Array.isArray(item?.specifications) && item.specifications.length) {

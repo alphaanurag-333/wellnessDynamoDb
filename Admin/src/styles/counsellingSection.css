@@ -20,7 +20,10 @@
 .updated-admin .ua-cp-counselling__head .ua-cp-placeholder__sub {
   margin-top: 6px;
   max-width: 56ch;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.5;
+  color: #7b8798;
 }
 
 .updated-admin .ua-cp-counselling__card,

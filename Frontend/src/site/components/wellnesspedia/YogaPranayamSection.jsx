@@ -13,6 +13,7 @@ import { buildContentCategoryChips } from "./categoryUtils.js";
 import ContentCarouselSkeleton from "./ContentCarouselSkeleton.jsx";
 import FilterChips from "./FilterChips.jsx";
 import MediaDetailModal from "./MediaDetailModal.jsx";
+import "./YogaPranayamSection.css";
 
 function mapYoga(row) {
   if (!row) return null;
@@ -52,7 +53,7 @@ function YogaCard({ item, onOpen }) {
       </div>
       <div className="wp-yoga-card__body">
         <h3 className="wp-yoga-card__title">{item.title}</h3>
-        {item.description ? <p className="wp-yoga-card__desc">{item.description}</p> : null}
+        <p className="wp-yoga-card__desc">{item.description || "\u00A0"}</p>
       </div>
     </button>
   );

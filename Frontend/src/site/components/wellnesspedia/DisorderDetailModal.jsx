@@ -1,4 +1,5 @@
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
+import "./DisorderDetailModal.css";
 
 export default function DisorderDetailModal({ open, onClose, item }) {
   if (!open || !item) return null;
@@ -32,7 +33,7 @@ export default function DisorderDetailModal({ open, onClose, item }) {
           {item.description ? (
             <section className="wp-disorder-modal__section" aria-label="Overview">
               <p className="wp-disorder-modal__label">Overview</p>
-              <p className="wp-disorder-modal__desc" style={{textAlign: "justify"}}>{item.description}</p>
+              <p className="wp-disorder-modal__desc">{item.description}</p>
             </section>
           ) : null}
 

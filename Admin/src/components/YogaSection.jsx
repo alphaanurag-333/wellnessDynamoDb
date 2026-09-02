@@ -1525,11 +1525,11 @@ export function YogaSection({
                     ) : (
                       <>
                         <p>{asCopyString(entry.description)}</p>
-                        {entry.videoLink ? (
+                        {/* {entry.videoLink ? (
                           <a className="ua-cfg-rc-link" href={entry.videoLink} target="_blank" rel="noreferrer">
                             {entry.videoLink}
                           </a>
-                        ) : null}
+                        ) : null} */}
                       </>
                     )}
                   </div>

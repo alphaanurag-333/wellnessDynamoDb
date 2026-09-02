@@ -320,7 +320,7 @@ export function CounsellingSection({ user, onToast }) {
       ) : null}
 
       {scheduledSession ? (
-        <div className="ua-cp-counselling__card ua-cp-counselling__card--scheduled">
+        <div style={{marginTop:"5px"}} className=" ua-cp-counselling__card ua-cp-counselling__card--scheduled">
           <div className="ua-cp-counselling__card-head">
             <span className="ua-cp-counselling__status ua-cp-counselling__status--scheduled">
               Scheduled session

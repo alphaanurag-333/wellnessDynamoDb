@@ -1,0 +1,115 @@
+/* Yoga & Pranayam cards */
+
+.wellnesspedia-page .wp-content-swiper .swiper-slide .wp-yoga-card {
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-height: 100%;
+  height: auto;
+}
+
+.wellnesspedia-page .wp-yoga-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  padding: 10px;
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.wellnesspedia-page .wp-yoga-card:hover {
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.wellnesspedia-page .wp-yoga-card__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.wellnesspedia-page .wp-yoga-card__media img,
+.wellnesspedia-page .wp-yoga-card__placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.wellnesspedia-page .wp-yoga-card__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.35);
+}
+
+.wellnesspedia-page .wp-yoga-card__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.55rem 0.1rem 0;
+}
+
+.wellnesspedia-page .wp-yoga-card__title {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-family-base);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /* min-height: calc(1.25em * 2); */
+}
+
+.wellnesspedia-page .wp-yoga-card__desc {
+  margin: 0;
+  margin-top: auto;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.4em * 2);
+}
+
+@media (max-width: 640px) {
+  .wellnesspedia-page .wp-yoga-card__media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .wellnesspedia-page .wp-yoga-card__title {
+    font-size: 1.05rem;
+  }
+
+  .wellnesspedia-page .wp-yoga-card__desc {
+    font-size: 0.8rem;
+  }
+}
