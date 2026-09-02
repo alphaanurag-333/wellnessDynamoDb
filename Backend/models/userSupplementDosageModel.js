@@ -9,6 +9,8 @@ const { docClient } = require("../config/db");
 
 const TABLE = "UserSupplementDosage";
 const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+const DAY_PARTS = ["morning", "afternoon", "evening"];
+const DAY_PART_SET = new Set(DAY_PARTS);
 const PERIOD_ORDER = [
   "morning",
   "afternoon",
@@ -30,7 +32,10 @@ const PERIOD_ORDER = [
   "before_evening_snacks",
 ];
 const PERIODS = new Set(PERIOD_ORDER);
-const MAX_PERIODS = 7; // up to 3 day-parts + up to 4 meal timings
+const MEAL_TIMINGS = PERIOD_ORDER.filter((id) => !DAY_PART_SET.has(id));
+const MEAL_TIMING_SET = new Set(MEAL_TIMINGS);
+const COMPOSITE_PERIOD_SEP = "__";
+const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const MEAL_RELATIONS = new Set(["before", "after"]);
 const STATUSES = new Set(["active", "stopped"]);
 
@@ -38,6 +43,36 @@ const PERIOD_ORDER_INDEX = PERIOD_ORDER.reduce((acc, id, index) => {
   acc[id] = index;
   return acc;
 }, {});
+
+function parseCompositePeriod(period) {
+  const raw = String(period || "").trim().toLowerCase();
+  const sep = raw.indexOf(COMPOSITE_PERIOD_SEP);
+  if (sep <= 0) return null;
+  const dayPart = raw.slice(0, sep);
+  const mealTiming = raw.slice(sep + COMPOSITE_PERIOD_SEP.length);
+  if (!DAY_PART_SET.has(dayPart) || !MEAL_TIMING_SET.has(mealTiming)) return null;
+  return { dayPart, mealTiming };
+}
+
+function composePeriod(dayPart, mealTiming) {
+  return `${dayPart}${COMPOSITE_PERIOD_SEP}${mealTiming}`;
+}
+
+function isValidPeriod(period) {
+  const raw = String(period || "").trim().toLowerCase();
+  return PERIODS.has(raw) || Boolean(parseCompositePeriod(raw));
+}
+
+function periodSortIndex(period) {
+  const composite = parseCompositePeriod(period);
+  if (composite) {
+    return (
+      (PERIOD_ORDER_INDEX[composite.dayPart] ?? 0) * 1000
+      + (PERIOD_ORDER_INDEX[composite.mealTiming] ?? 0)
+    );
+  }
+  return PERIOD_ORDER_INDEX[period] ?? 999999;
+}
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -72,12 +107,14 @@ function addDaysToDate(isoDate, days) {
 }
 
 function defaultMealRelationForPeriod(period) {
+  const composite = parseCompositePeriod(period);
+  const id = composite?.mealTiming || String(period || "");
   if (
-    period === "morning"
-    || period === "afternoon"
-    || period === "evening"
-    || period.startsWith("before_")
-    || period.startsWith("empty_stomach")
+    id === "morning"
+    || id === "afternoon"
+    || id === "evening"
+    || id.startsWith("before_")
+    || id.startsWith("empty_stomach")
   ) {
     return "before";
   }
@@ -101,7 +138,7 @@ function normalizePeriods(periods) {
 
   for (const row of periods) {
     const period = String(row.period || "").trim().toLowerCase();
-    if (!PERIODS.has(period)) {
+    if (!isValidPeriod(period)) {
       const err = new Error("Invalid dosage timing");
       err.name = "ValidationError";
       throw err;
@@ -133,7 +170,7 @@ function normalizePeriods(periods) {
   }
 
   normalized.sort(
-    (a, b) => (PERIOD_ORDER_INDEX[a.period] ?? 999) - (PERIOD_ORDER_INDEX[b.period] ?? 999)
+    (a, b) => periodSortIndex(a.period) - periodSortIndex(b.period)
   );
   return normalized;
 }
@@ -325,6 +362,11 @@ async function stopUserSupplementDosage(id) {
 module.exports = {
   PERIODS,
   PERIOD_ORDER,
+  DAY_PARTS,
+  DAY_PART_SET,
+  MEAL_TIMINGS,
+  MEAL_TIMING_SET,
+  COMPOSITE_PERIOD_SEP,
   MAX_PERIODS,
   MEAL_RELATIONS,
   createUserSupplementDosage,
@@ -338,4 +380,9 @@ module.exports = {
   computeDosageMetrics,
   addDaysToDate,
   normalizeCreatedByRole,
+  parseCompositePeriod,
+  composePeriod,
+  isValidPeriod,
+  periodSortIndex,
+  defaultMealRelationForPeriod,
 };

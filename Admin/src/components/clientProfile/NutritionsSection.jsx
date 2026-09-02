@@ -17,6 +17,8 @@ import { createDraftOrder, formatSupplementOption } from "../../data/userDetailD
 
 const MAX_TIMINGS = 4;
 const MAX_DAY_PARTS = 3;
+const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
+const COMPOSITE_PERIOD_SEP = "__";
 
 const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -48,33 +50,57 @@ const PERIOD_LABEL = Object.fromEntries(
 
 function mealRelationForPeriod(periodId) {
   const id = String(periodId || "");
+  const mealTiming = id.includes(COMPOSITE_PERIOD_SEP)
+    ? id.slice(id.indexOf(COMPOSITE_PERIOD_SEP) + COMPOSITE_PERIOD_SEP.length)
+    : id;
   if (
-    id === "morning"
-    || id === "afternoon"
-    || id === "evening"
-    || id.startsWith("before_")
-    || id.startsWith("empty_stomach")
+    mealTiming === "morning"
+    || mealTiming === "afternoon"
+    || mealTiming === "evening"
+    || mealTiming.startsWith("before_")
+    || mealTiming.startsWith("empty_stomach")
   ) {
     return "before";
   }
   return "after";
 }
 
-function mealRelationFromMealTimings(mealTimingIds) {
-  if (!mealTimingIds.length) return null;
-  const relations = mealTimingIds.map(mealRelationForPeriod);
-  if (relations.every((row) => row === "before")) return "before";
-  if (relations.every((row) => row === "after")) return "after";
-  return relations[0];
+function composePeriod(dayPart, mealTiming) {
+  return `${dayPart}${COMPOSITE_PERIOD_SEP}${mealTiming}`;
+}
+
+function parseCompositePeriod(period) {
+  const raw = String(period || "");
+  const sep = raw.indexOf(COMPOSITE_PERIOD_SEP);
+  if (sep <= 0) return null;
+  const dayPart = raw.slice(0, sep);
+  const mealTiming = raw.slice(sep + COMPOSITE_PERIOD_SEP.length);
+  if (!PERIOD_LABEL[dayPart] || !PERIOD_LABEL[mealTiming]) return null;
+  return { dayPart, mealTiming };
+}
+
+function plannedPeriodCount(dayPartIds, mealTimingIds) {
+  if (dayPartIds.length && mealTimingIds.length) {
+    return dayPartIds.length * mealTimingIds.length;
+  }
+  return dayPartIds.length || mealTimingIds.length;
 }
 
 function buildDosagePeriods(dayPartIds, mealTimingIds, quantity) {
+  if (dayPartIds.length && mealTimingIds.length) {
+    return dayPartIds.flatMap((dayPart) => (
+      mealTimingIds.map((mealTiming) => ({
+        period: composePeriod(dayPart, mealTiming),
+        quantity,
+        mealRelation: mealRelationForPeriod(mealTiming),
+      }))
+    ));
+  }
   if (dayPartIds.length) {
-    const sharedMealRelation = mealRelationFromMealTimings(mealTimingIds);
     return dayPartIds.map((period) => ({
       period,
       quantity,
-      mealRelation: sharedMealRelation || mealRelationForPeriod(period),
+      mealRelation: mealRelationForPeriod(period),
     }));
   }
   return mealTimingIds.map((period) => ({
@@ -84,9 +110,35 @@ function buildDosagePeriods(dayPartIds, mealTimingIds, quantity) {
   }));
 }
 
+function mergeDosagePeriods(existingPeriods, nextPeriods) {
+  const byPeriod = new Map();
+  for (const row of existingPeriods || []) {
+    const period = String(row?.period || "").trim();
+    if (!period) continue;
+    byPeriod.set(period, {
+      period,
+      quantity: Number(row.quantity) || 1,
+      mealRelation: row.mealRelation === "before" ? "before" : "after",
+    });
+  }
+  for (const row of nextPeriods || []) {
+    const period = String(row?.period || "").trim();
+    if (!period) continue;
+    byPeriod.set(period, {
+      period,
+      quantity: Number(row.quantity) || 1,
+      mealRelation: row.mealRelation === "before" ? "before" : "after",
+    });
+  }
+  return [...byPeriod.values()];
+}
+
 function formatPeriodCardLabel(period) {
+  const composite = parseCompositePeriod(period.period);
+  if (composite) {
+    return `${PERIOD_LABEL[composite.dayPart]} · ${PERIOD_LABEL[composite.mealTiming]}`;
+  }
   const label = PERIOD_LABEL[period.period] || period.period;
-  // Legacy morning/afternoon/evening rows still carry mealRelation in the label
   if (["morning", "afternoon", "evening"].includes(period.period)) {
     return `${label} · ${period.mealRelation === "before" ? "before meal" : "after meal"}`;
   }
@@ -647,7 +699,7 @@ export function NutritionsSection({ user, onToast }) {
   const [timingOpen, setTimingOpen] = useState(false);
   const dayPartRef = useRef(null);
   const timingRef = useRef(null);
-  const selectedPeriodCount = addDayParts.length || addPeriods.length;
+  const selectedPeriodCount = plannedPeriodCount(addDayParts, addPeriods);
 
   const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
@@ -946,21 +998,42 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   async function addDosageCard() {
-    const periods = buildDosagePeriods(addDayParts, addPeriods, addQty);
-    if (!addSupp || !periods.length) return;
+    const nextPeriods = buildDosagePeriods(addDayParts, addPeriods, addQty);
+    if (!addSupp || !nextPeriods.length) return;
+
+    const existing = activeDosages.find((row) => row.supplementId === addSupp);
+    const periods = existing
+      ? mergeDosagePeriods(existing.periods, nextPeriods)
+      : nextPeriods;
+
+    if (periods.length > MAX_PERIODS) {
+      const existingCount = existing?.periods?.length || 0;
+      const remaining = Math.max(0, MAX_PERIODS - existingCount);
+      onToast?.(
+        remaining === 0
+          ? `This nutrition already has ${MAX_PERIODS} timings (max). Remove some before adding more.`
+          : `Only ${remaining} more timing${remaining === 1 ? "" : "s"} allowed (max ${MAX_PERIODS} per nutrition).`,
+      );
+      return;
+    }
+
     setSaving(true);
     try {
-      const existing = activeDosages.find((row) => row.supplementId === addSupp);
       if (existing) {
         await stopUserSupplementDosage(userId, existing.id);
       }
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
-        startDate: addStart || todayIsoDate(),
+        startDate: existing?.startDate || addStart || todayIsoDate(),
         periods,
       });
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
-      onToast(`Added ${name} ×${periods.length}`);
+      const addedCount = nextPeriods.length;
+      onToast(
+        existing
+          ? `Updated ${name} · +${addedCount} timing${addedCount === 1 ? "" : "s"} (${periods.length} total)`
+          : `Added ${name} ×${addedCount}`,
+      );
       setAddDayParts([]);
       setAddPeriods([]);
       setDayPartOpen(false);
@@ -1161,7 +1234,7 @@ export function NutritionsSection({ user, onToast }) {
       ) : (
         <>
           <p className="ua-cp-dosage-hint">
-            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Duration is calculated from pack size.
+            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Max {MAX_PERIODS} timings per nutrition (including when you add again to merge). Duration is calculated from pack size.
           </p>
           <div className="ua-cp-dosage-add">
             {/* 1. Nutrition (one select) */}
@@ -1203,7 +1276,14 @@ export function NutritionsSection({ user, onToast }) {
                   </div>
                   {DAY_PART_OPTIONS.map((t) => {
                     const checked = addDayParts.includes(t.id);
-                    const atLimit = addDayParts.length >= MAX_DAY_PARTS && !checked;
+                    const nextCount = plannedPeriodCount(
+                      checked ? addDayParts.filter((id) => id !== t.id) : [...addDayParts, t.id],
+                      addPeriods,
+                    );
+                    const atLimit = !checked && (
+                      addDayParts.length >= MAX_DAY_PARTS
+                      || nextCount > MAX_PERIODS
+                    );
                     return (
                       <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
                         <input
@@ -1250,7 +1330,14 @@ export function NutritionsSection({ user, onToast }) {
                   </div>
                   {MEAL_TIMING_OPTIONS.map((t) => {
                     const checked = addPeriods.includes(t.id);
-                    const atLimit = addPeriods.length >= MAX_TIMINGS && !checked;
+                    const nextCount = plannedPeriodCount(
+                      addDayParts,
+                      checked ? addPeriods.filter((id) => id !== t.id) : [...addPeriods, t.id],
+                    );
+                    const atLimit = !checked && (
+                      addPeriods.length >= MAX_TIMINGS
+                      || nextCount > MAX_PERIODS
+                    );
                     return (
                       <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
                         <input
