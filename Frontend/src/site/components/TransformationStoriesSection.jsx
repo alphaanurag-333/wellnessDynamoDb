@@ -8,21 +8,57 @@ import { SiteLoader } from "./SiteLoader.jsx";
 
 const PAGE_SIZE = 10;
 
+function fieldKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function findDataPoint(points, keys) {
+  return (Array.isArray(points) ? points : []).find((row) => {
+    const key = fieldKey(row?.field) || fieldKey(row?.label);
+    return keys.has(key);
+  });
+}
+
+function parsePositiveNumber(value) {
+  const match = String(value ?? "").replace(/,/g, "").match(/\d+(\.\d+)?/);
+  if (!match) return null;
+  const num = Number(match[0]);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
+/**
+ * Prefer admin data-point values. If that point exists but is empty, treat as unset
+ * (do not fall back to old defaulted timeTaken/inchesLost = 1).
+ */
+function resolveOptionalMetric(row, fieldName, pointKeys) {
+  const point = findDataPoint(row?.dataPoints, pointKeys);
+  if (point) {
+    const raw = String(point.value ?? "").trim();
+    if (!raw) return null;
+    return parsePositiveNumber(raw);
+  }
+  if (row?.[fieldName] == null || row?.[fieldName] === "") return null;
+  return parsePositiveNumber(row[fieldName]);
+}
+
 function parseTags(achievements, timeTaken, inchesLost) {
   const tags = String(achievements || "")
     .split(/[,|\n]+/)
     .map((part) => part.trim())
     .filter(Boolean)
+    .filter((part) => !/^\d+(\.\d+)?\s*(month|months|inch|inches)(\s+lost)?$/i.test(part))
     .slice(0, 3);
 
-  const months = Number(timeTaken);
-  if (Number.isFinite(months) && months > 0) {
-    tags.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+  if (timeTaken != null) {
+    tags.push(`${timeTaken} ${timeTaken === 1 ? "Month" : "Months"}`);
   }
 
-  const inches = Number(inchesLost);
-  if (Number.isFinite(inches) && inches > 0) {
-    tags.push(`${inches} ${inches === 1 ? "Inch Lost" : "Inches Lost"}`);
+  if (inchesLost != null) {
+    tags.push(`${inchesLost} ${inchesLost === 1 ? "Inch Lost" : "Inches Lost"}`);
   }
 
   return tags;
@@ -39,14 +75,26 @@ function mapTransformation(row) {
 
   if (!id || !name || !description || !oldImage || !newImage) return null;
 
+  const timeTaken = resolveOptionalMetric(
+    row,
+    "timeTaken",
+    new Set(["duration", "time_taken", "months"])
+  );
+  const inchesLost = resolveOptionalMetric(
+    row,
+    "inchesLost",
+    new Set(["inches_lost", "inches", "waist"])
+  );
+
   return {
     id,
     name,
     description,
     oldImage,
     newImage,
-    tags: parseTags(row.achievements, row.timeTaken, row.inchesLost),
-    timeTaken: row.timeTaken,
+    tags: parseTags(row.achievements, timeTaken, inchesLost),
+    timeTaken,
+    inchesLost,
   };
 }
 
@@ -87,10 +135,10 @@ function TransformationStoryCard({ item }) {
       <div className="transformation-story-card__body">
         <h3>{item.name}</h3>
         <p>{item.description}</p>
-        {item.timeTaken ? (
+        {item.timeTaken != null ? (
           <div className="transformation-story-card__meta">
             <Clock3 size={16} aria-hidden />
-            <span>{item.timeTaken} {Number(item.timeTaken) === 1 ? "month" : "months"} journey</span>
+            <span>{item.timeTaken} {item.timeTaken === 1 ? "month" : "months"} journey</span>
           </div>
         ) : null}
       </div>

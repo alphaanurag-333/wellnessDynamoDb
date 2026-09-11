@@ -28,7 +28,7 @@ export function parseFirstNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-export function parseDurationMonths(value, fallback = 1) {
+export function parseDurationMonths(value, fallback = null) {
   const num = parseFirstNumber(value);
   if (!Number.isFinite(num)) return fallback;
   return Math.min(120, Math.max(1, Math.round(num)));
@@ -56,10 +56,13 @@ export function pointsToTransformationFields(points = []) {
   });
   const extraValues = extras.map((row) => String(row.value || "").trim()).filter(Boolean);
   const name = String(namePoint?.value || "").trim();
+  const durationRaw = String(durationPoint?.value || "").trim();
+  const inchesRaw = String(inchesPoint?.value || "").trim();
   return {
     name,
-    timeTaken: parseDurationMonths(durationPoint?.value, 1),
-    inchesLost: parseInchesLost(inchesPoint?.value),
+    // Only send duration/inches when admin actually filled them — never invent "1".
+    timeTaken: durationRaw ? parseDurationMonths(durationRaw, null) : null,
+    inchesLost: inchesRaw ? parseInchesLost(inchesRaw) : null,
     achievements: extraValues.join(", ") || name || "Transformation",
     dataPoints: points,
   };

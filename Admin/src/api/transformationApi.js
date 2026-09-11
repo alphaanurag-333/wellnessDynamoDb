@@ -17,7 +17,11 @@ export function mapTransformation(row) {
     name: String(row.name || "").trim(),
     description: String(row.description || "").trim(),
     achievements: String(row.achievements || "").trim(),
-    timeTaken: Number.isFinite(Number(row.timeTaken)) ? Number(row.timeTaken) : 1,
+    timeTaken: row.timeTaken == null || row.timeTaken === ""
+      ? null
+      : Number.isFinite(Number(row.timeTaken))
+        ? Number(row.timeTaken)
+        : null,
     inchesLost: row.inchesLost == null || row.inchesLost === "" ? null : Number(row.inchesLost),
     oldImage: row.oldImage || "",
     newImage: row.newImage || "",
@@ -36,7 +40,9 @@ function appendFields(form, fields) {
   if (fields.name !== undefined) form.append("name", String(fields.name || "").trim());
   if (fields.description !== undefined) form.append("description", String(fields.description || "").trim());
   if (fields.achievements !== undefined) form.append("achievements", String(fields.achievements || "").trim());
-  if (fields.timeTaken !== undefined) form.append("timeTaken", String(fields.timeTaken));
+  if (fields.timeTaken !== undefined) {
+    form.append("timeTaken", fields.timeTaken == null ? "" : String(fields.timeTaken));
+  }
   if (fields.inchesLost !== undefined) {
     form.append("inchesLost", fields.inchesLost == null ? "" : String(fields.inchesLost));
   }

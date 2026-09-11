@@ -26,6 +26,9 @@ const INCHES_LOST_MIN = 1;
 const INCHES_LOST_MAX = 50;
 
 function normalizeTimeTaken(value) {
+  if (value === undefined || value === null || String(value).trim() === "") {
+    return null;
+  }
   const num = Number(value);
   if (!Number.isFinite(num) || !Number.isInteger(num) || num < TIME_TAKEN_MIN || num > TIME_TAKEN_MAX) {
     throw new AppError(
@@ -95,10 +98,6 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const achievements = String(req.body.achievements || "").trim();
   const description = String(req.body.description || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const order =
-    req.body.order !== undefined && req.body.order !== ""
-      ? normalizeOrderValue(req.body.order)
-      : 0;
   const dataPoints = parseDataPoints(req.body.dataPoints ?? []);
   const uploadedOld = await uploadMulterField(req, "oldImage", S3_FOLDER);
   const uploadedNew = await uploadMulterField(req, "newImage", S3_FOLDER);
@@ -116,6 +115,7 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
   const appVisible =
     req.body.appVisible !== undefined ? normalizeVisibleFlag(req.body.appVisible, true) : true;
 
+  // New transformations always appear at the top of the list.
   const transformation = await createTransformation({
     name,
     timeTaken,
@@ -125,10 +125,10 @@ exports.createTransformationController = asyncHandler(async (req, res) => {
     newImage,
     description,
     dataPoints,
-    order,
     status,
     webVisible,
     appVisible,
+    placeAtTop: true,
   });
 
   return res.status(201).json({

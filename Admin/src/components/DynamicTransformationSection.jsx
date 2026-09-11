@@ -469,7 +469,8 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
         ...mapped,
         description: draft.description.trim(),
         status: "active",
-        order: pagination.total + 1,
+        // Lower order = higher in list; 0 keeps new rows at the top.
+        order: 0,
       }, { oldImage: draft.oldFile, newImage: draft.newFile });
       clearDraftImage("old");
       clearDraftImage("new");

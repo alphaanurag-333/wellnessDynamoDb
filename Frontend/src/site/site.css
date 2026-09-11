@@ -3732,8 +3732,8 @@ line-height: 1.55;
 }
 
 .contact-section .contact-intro {
-  max-width: 100%;
-  margin-bottom: 0;
+  max-width: 760px;
+  margin: 0 auto 4px;
 }
 
 .contact-section .contact-intro .wellness-toolkit__description {
@@ -3864,6 +3864,9 @@ line-height: 1.55;
 
 .contact-layout--form-only {
   grid-template-columns: minmax(0, 1fr);
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .contact-layout .contact-card {
@@ -8035,7 +8038,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   width: 55px;
   height: 55px;
   border-radius: 50%;
-  object-fit: contain;
+  object-fit: cover;
   border: 3px solid var(--primary-light);
   flex-shrink: 0;
 }

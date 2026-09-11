@@ -73,6 +73,15 @@ function sortByOrderAsc(a, b) {
   return bTime - aTime;
 }
 
+/** Place a new row above the current top item (lower order = higher in list). */
+async function resolveTopOrder(status = "active") {
+  const data = await listTransformations({ page: 1, limit: 1, status: normalizeStatus(status) });
+  const top = data.transformations?.[0];
+  if (!top) return ORDER_MIN;
+  const topOrder = normalizeOrder(top.order, ORDER_MIN);
+  return topOrder > ORDER_MIN ? topOrder - 1 : ORDER_MIN;
+}
+
 async function createTransformation({
   name,
   timeTaken,
@@ -82,16 +91,24 @@ async function createTransformation({
   newImage,
   description,
   dataPoints = [],
-  order = 0,
+  order,
   status = "active",
   webVisible = true,
   appVisible = true,
+  placeAtTop = true,
 }) {
   const now = new Date().toISOString();
+  const nextStatus = normalizeStatus(status);
+  const nextOrder =
+    placeAtTop || order === undefined || order === null || order === ""
+      ? await resolveTopOrder(nextStatus)
+      : normalizeOrder(order);
   const item = {
     id: uuidv4(),
     name: String(name || "").trim(),
-    timeTaken: Number(timeTaken),
+    timeTaken: timeTaken == null || timeTaken === "" || !Number.isFinite(Number(timeTaken))
+      ? null
+      : Number(timeTaken),
     inchesLost: inchesLost == null || inchesLost === "" || !Number.isFinite(Number(inchesLost))
       ? null
       : Number(inchesLost),
@@ -100,8 +117,8 @@ async function createTransformation({
     newImage: normalizeImageField(newImage, "newImage"),
     description: String(description || "").trim(),
     dataPoints: normalizeDataPoints(dataPoints),
-    order: normalizeOrder(order),
-    status: normalizeStatus(status),
+    order: nextOrder,
+    status: nextStatus,
     webVisible: normalizeVisibleFlag(webVisible, true),
     appVisible: normalizeVisibleFlag(appVisible, true),
     createdAt: now,
