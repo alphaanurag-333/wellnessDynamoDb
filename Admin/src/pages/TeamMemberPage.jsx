@@ -568,30 +568,54 @@ function buildClientCards(member) {
   const maintenance = member.clientStats?.maintenance ?? 0;
   const other = member.clientStats?.other ?? 0;
   const awc = member.awcCount ?? 0;
+  const trainee = member.traineeCount ?? 0;
   const share = (part) => (total ? pct(part, total) : null);
+  const isWc =
+    member?.primaryRoleKey === "wc" ||
+    member?.accountRoleKey === "wellness_coach";
+  const isAwc =
+    member?.primaryRoleKey === "awc" ||
+    member?.accountRoleKey === "assistant_wellness_coach";
 
-  return [
+  const cards = [
     { key: "total", label: "Total users", count: total, pct: null, bar: 100, sub: "All assigned", tone: "blue" },
     { key: "seek", label: "Seek users", count: seek, pct: share(seek), bar: share(seek) || 0, sub: "Free tier", tone: "amber" },
     { key: "heal", label: "Heal users", count: heal, pct: share(heal), bar: share(heal) || 0, sub: "Paid programs", tone: "green" },
     { key: "other", label: "Eagles", count: other, pct: share(other), bar: share(other) || 0, sub: "Corporate & family", tone: "purple" },
     { key: "maintenance", label: "Maintenance", count: maintenance, pct: share(maintenance), bar: share(maintenance) || 0, sub: "Post-heal upkeep", tone: "orange" },
     { key: "pwc", label: "PWC", count: pwc, pct: share(pwc), bar: share(pwc) || 0, sub: "Consults booked", tone: "navy" },
-    { key: "awc", label: "AWCs", count: awc, pct: total ? pct(awc, total) : null, bar: total ? pct(awc, total) : 0, sub: "Assistant coaches", tone: "ink" },
   ];
+  if (isWc) {
+    cards.push({ key: "awc", label: "AWCs", count: awc, pct: total ? pct(awc, total) : null, bar: total ? pct(awc, total) : 0, sub: "Assistant coaches", tone: "ink" });
+  }
+  if (isWc || isAwc) {
+    cards.push({ key: "trainee", label: "Trainees", count: trainee, pct: total ? pct(trainee, total) : null, bar: total ? pct(trainee, total) : 0, sub: "Assigned trainees", tone: "gold" });
+  }
+  return cards;
 }
 
 /** Map a Clients & team card to the users/teams URL it should open. */
-function clientCardHref(cardKey, member, { awcRoleId } = {}) {
+function clientCardHref(cardKey, member, { awcRoleId, traineeRoleId } = {}) {
   const coachId = String(member?.id || "").trim();
   const isWc =
     member?.primaryRoleKey === "wc" ||
     member?.accountRoleKey === "wellness_coach";
+  const isAwc =
+    member?.primaryRoleKey === "awc" ||
+    member?.accountRoleKey === "assistant_wellness_coach";
 
   if (cardKey === "awc") {
     if (!isWc) return UPDATED_ADMIN_PATHS.teams;
     const params = new URLSearchParams();
     params.set("role", awcRoleId || "awc");
+    params.set("parent", coachId);
+    return `${UPDATED_ADMIN_PATHS.teams}?${params}`;
+  }
+
+  if (cardKey === "trainee") {
+    if (!isWc && !isAwc) return UPDATED_ADMIN_PATHS.teams;
+    const params = new URLSearchParams();
+    params.set("role", traineeRoleId || "trainee");
     params.set("parent", coachId);
     return `${UPDATED_ADMIN_PATHS.teams}?${params}`;
   }
@@ -748,6 +772,13 @@ export function TeamMemberPage() {
       return base === "awc" || r.roleKey === "awc";
     });
     return role?.id || "awc";
+  }, [teamRoles]);
+  const traineeRoleId = useMemo(() => {
+    const role = teamRoles.find((r) => {
+      const base = resolveBaseUiRoleKey(r, teamRoles) || r.roleKey;
+      return base === "trainee" || r.roleKey === "trainee";
+    });
+    return role?.id || "trainee";
   }, [teamRoles]);
 
   async function handleCopyReferralCode() {
@@ -1291,7 +1322,11 @@ export function TeamMemberPage() {
             <div className="ua-tm-section-head__title">Clients & team</div>
             <div className="ua-tm-section-head__hint">
               {member.clientCount ?? 0} <font style={{color:"rgb(154, 166, 184)", fontWeight:"400"}}>
-                clients assigned — tap a card to view them</font>
+                clients assigned
+                {Number(member.traineeCount) > 0
+                  ? ` · ${member.traineeCount} trainee${Number(member.traineeCount) === 1 ? "" : "s"}`
+                  : ""}
+                {" — tap a card to view them"}</font>
             </div>
           </div>
           <div className="ua-tm-stat-grid">
@@ -1300,7 +1335,7 @@ export function TeamMemberPage() {
                 key={card.key}
                 type="button"
                 className={`ua-tm-stat ua-tm-stat--${card.tone}`}
-                onClick={() => navigate(clientCardHref(card.key, member, { awcRoleId }))}
+                onClick={() => navigate(clientCardHref(card.key, member, { awcRoleId, traineeRoleId }))}
               >
                 <div className="ua-tm-stat__label" style={{color:"black"}}>{card.label}</div>
                 <div className="ua-tm-stat__value">

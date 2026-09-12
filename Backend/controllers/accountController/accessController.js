@@ -77,6 +77,67 @@ const TEAM_DESCENDANT_ROLES = {
   assistant_wellness_coach: new Set(["trainee"]),
 };
 
+async function countChildAccounts(parentId, roleKey) {
+  const parentAccountId = String(parentId || "").trim();
+  if (!parentAccountId || !roleKey) return 0;
+  const result = await listAccounts({
+    parentAccountId,
+    roleKey,
+    page: 1,
+    limit: 1,
+  });
+  return result.pagination?.total || 0;
+}
+
+async function listAssistantsForCoach(coachId) {
+  const parentAccountId = String(coachId || "").trim();
+  if (!parentAccountId) return { accounts: [], total: 0 };
+  const result = await listAccounts({
+    parentAccountId,
+    roleKey: "assistant_wellness_coach",
+    page: 1,
+    limit: 200,
+  });
+  const accounts = result.accounts || [];
+  return {
+    accounts,
+    total: result.pagination?.total ?? accounts.length,
+  };
+}
+
+/** Trainees report to an AWC. For a WC, count trainees under every assigned AWC. */
+async function countTraineesForAccount(accountId, accountRoleKey, assistants) {
+  const id = String(accountId || "").trim();
+  if (!id) return 0;
+  if (accountRoleKey === "assistant_wellness_coach") {
+    return countChildAccounts(id, "trainee");
+  }
+  if (accountRoleKey !== "wellness_coach") return 0;
+  const awcs = Array.isArray(assistants) ? assistants : (await listAssistantsForCoach(id)).accounts;
+  let total = 0;
+  for (const assistant of awcs) {
+    total += await countChildAccounts(assistant.id, "trainee");
+  }
+  return total;
+}
+
+async function listNestedTraineesForWellnessCoach(coachId, { search, page, limit } = {}) {
+  const { accounts: assistants } = await listAssistantsForCoach(coachId);
+  const accounts = [];
+  for (const assistant of assistants) {
+    const trainees = await listAccounts({
+      status: "active",
+      search,
+      roleKey: "trainee",
+      parentAccountId: assistant.id,
+      page: 1,
+      limit: 200,
+    });
+    accounts.push(...(trainees.accounts || []));
+  }
+  return paginateAccounts(accounts, page, limit);
+}
+
 const WC_REQUESTABLE_ROLES = new Set(["assistant_wellness_coach"]);
 
 function actorDisplayName(req) {
@@ -408,12 +469,38 @@ async function canViewTeamAccount(req, account, primaryRole) {
   return false;
 }
 
-async function collectScopedTeamAccounts(req, { search, accountRoleFilter } = {}) {
+async function collectScopedTeamAccounts(req, { search, accountRoleFilter, parentAccountId } = {}) {
+  const viewerId = String(req.auth.sub || "");
+  const requestedParent = String(parentAccountId || "").trim();
+
+  // WC opening an AWC profile card: only that assistant's reports (usually trainees).
+  if (
+    requestedParent &&
+    requestedParent !== viewerId &&
+    actorAccountRole(req) === "wellness_coach"
+  ) {
+    const parent = await getAccountById(requestedParent);
+    const parentIsOwnAwc =
+      parent?.roleKeys?.includes("assistant_wellness_coach") &&
+      teamParentId(parent, "assistant_wellness_coach") === viewerId;
+    if (parentIsOwnAwc) {
+      const nested = await listAccounts({
+        status: "active",
+        search,
+        roleKey: accountRoleFilter,
+        parentAccountId: requestedParent,
+        page: 1,
+        limit: 200,
+      });
+      return nested.accounts || [];
+    }
+  }
+
   const direct = await listAccounts({
     status: "active",
     search,
     roleKey: accountRoleFilter,
-    parentAccountId: req.auth.sub,
+    parentAccountId: viewerId,
     page: 1,
     limit: 200,
   });
@@ -954,21 +1041,30 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
 
   let result;
   if (visibleRoles === null) {
-    result = await listAccounts({
-      status: "active",
-      search,
-      roleKey: accountRoleFilter,
-      parentAccountId: scopedParentId,
-      page: listPage,
-      limit: listLimit,
-    });
+    const parentIsWcForTrainees =
+      scopedParentId &&
+      accountRoleFilter === "trainee" &&
+      (await getAccountById(scopedParentId))?.roleKeys?.includes("wellness_coach");
+    result = parentIsWcForTrainees
+      ? await listNestedTraineesForWellnessCoach(scopedParentId, {
+          search,
+          page: listPage,
+          limit: listLimit,
+        })
+      : await listAccounts({
+          status: "active",
+          search,
+          roleKey: accountRoleFilter,
+          parentAccountId: scopedParentId,
+          page: listPage,
+          limit: listLimit,
+        });
   } else {
     result = {
       accounts: await collectScopedTeamAccounts(req, {
         search,
         accountRoleFilter,
-        // When WC opens AWCs for their own profile, parent is themselves (already scoped).
-        // Ignore a mismatched parent filter from the URL.
+        parentAccountId: parentAccountIdFilter,
       }),
     };
   }
@@ -1030,6 +1126,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       : roleKeys.map((k) => ACCOUNT_TO_UI_ROLE[k] || k).join(", ");
     let clientCount = null;
     let awcCount = null;
+    let traineeCount = null;
     let parentName = null;
     let parentAccountId =
       pub.parentAccountId ||
@@ -1040,18 +1137,17 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       if (primaryAccountRole === "wellness_coach") {
         const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 1, scope: "all" });
         clientCount = clients.pagination?.total || 0;
-        const children = await listAccounts({
-          parentAccountId: pub.id,
-          roleKey: "assistant_wellness_coach",
-          page: 1,
-          limit: 1,
-        });
-        awcCount = children.pagination?.total || 0;
-        meta = `${clientCount} client${clientCount === 1 ? "" : "s"} · ${awcCount} AWC${awcCount === 1 ? "" : "s"}`;
+        const children = await listAssistantsForCoach(pub.id);
+        awcCount = children.total;
+        traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole, children.accounts);
+        meta = `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")} · ${formatCountLabel(traineeCount, "trainee", "trainees")}`;
       } else if (
         primaryAccountRole === "assistant_wellness_coach" ||
         primaryAccountRole === "trainee"
       ) {
+        if (primaryAccountRole === "assistant_wellness_coach") {
+          traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
+        }
         const parentId = parentAccountId;
         if (parentId) {
           const parent = await getAccountById(parentId);
@@ -1103,6 +1199,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       parentName,
       clientCount,
       awcCount,
+      traineeCount,
       grantedCount,
       totalSlots: TOTAL_PERM_SLOTS,
       hasOverrides: overrides !== undefined,
@@ -1229,6 +1326,7 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
 
   let clientCount = 0;
   let awcCount = 0;
+  let traineeCount = 0;
   let parentName = null;
   const clientStats = {
     total: 0,
@@ -1252,13 +1350,15 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
         else if (tier === "maintenance") clientStats.maintenance += 1;
         else clientStats.other += 1;
       }
-      const children = await listAccounts({
-        parentAccountId: pub.id,
-        roleKey: "assistant_wellness_coach",
-        page: 1,
-        limit: 1,
-      });
-      awcCount = children.pagination?.total || 0;
+      const children = await listAssistantsForCoach(pub.id);
+      awcCount = children.total;
+      traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole, children.accounts);
+    } catch {
+      /* ignore */
+    }
+  } else if (primaryAccountRole === "assistant_wellness_coach") {
+    try {
+      traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
     } catch {
       /* ignore */
     }
@@ -1321,10 +1421,11 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       parentName,
       clientCount,
       awcCount,
+      traineeCount,
       clientStats,
       meta:
         primaryAccountRole === "wellness_coach"
-          ? `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")}`
+          ? `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")} · ${formatCountLabel(traineeCount, "trainee", "trainees")}`
           : parentName
             ? `under ${parentName}`
             : ROLE_KEY_META[uiRole]?.name || uiRole,
