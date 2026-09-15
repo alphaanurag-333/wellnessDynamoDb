@@ -622,6 +622,11 @@ function clientCardHref(cardKey, member, { awcRoleId, traineeRoleId } = {}) {
 
   const params = new URLSearchParams();
   if (coachId && isWc) params.set("coach", coachId);
+  if (coachId && isAwc) {
+    params.set("awc", coachId);
+    const parentId = String(member?.parentAccountId || "").trim();
+    if (parentId) params.set("coach", parentId);
+  }
 
   switch (cardKey) {
     case "seek":

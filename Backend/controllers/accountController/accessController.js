@@ -21,7 +21,10 @@ const {
   assignedMembershipRoleId,
   toPublicAccount,
 } = require("../../models/accountModel");
-const { listUsersByParentCoachId } = require("../../models/userModel");
+const {
+  listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
+} = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const {
   getConsolePermissionCatalog,
@@ -1147,16 +1150,26 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       ) {
         if (primaryAccountRole === "assistant_wellness_coach") {
           traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
+          if (parentAccountId) {
+            const assigned = await loadAssistantClientStats(pub.id, parentAccountId);
+            clientCount = assigned.clientCount;
+          }
         }
         const parentId = parentAccountId;
         if (parentId) {
           const parent = await getAccountById(parentId);
           parentName = parent?.name || null;
-          meta = parentName
-            ? `under ${parentName}`
-            : primaryAccountRole === "trainee"
-              ? "Trainee"
-              : "Assistant";
+          if (primaryAccountRole === "assistant_wellness_coach") {
+            meta = [
+              parentName ? `under ${parentName}` : "Assistant",
+              formatCountLabel(clientCount || 0, "client", "clients"),
+              formatCountLabel(traineeCount || 0, "trainee", "trainees"),
+            ].join(" · ");
+          } else {
+            meta = parentName
+              ? `under ${parentName}`
+              : "Trainee";
+          }
         }
       } else if (primaryAccountRole === "support") {
         meta = pub.designation || "Support";
@@ -1223,6 +1236,51 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
 function formatCountLabel(count, singular, plural) {
   const n = Number(count) || 0;
   return `${n} ${n === 1 ? singular : plural}`;
+}
+
+function emptyClientStats() {
+  return {
+    total: 0,
+    seek: 0,
+    heal: 0,
+    consultancy_only: 0,
+    maintenance: 0,
+    other: 0,
+  };
+}
+
+function fillClientStatsFromUsers(users, clientStats = emptyClientStats()) {
+  const rows = Array.isArray(users) ? users : [];
+  for (const u of rows) {
+    const tier = String(u.userTier || "seek").toLowerCase();
+    if (tier === "seek") clientStats.seek += 1;
+    else if (tier === "heal") clientStats.heal += 1;
+    else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
+    else if (tier === "maintenance") clientStats.maintenance += 1;
+    else clientStats.other += 1;
+  }
+  return clientStats;
+}
+
+/** Clients assigned to an AWC live on User.assignedCoachId (not parentCoachId). */
+async function loadAssistantClientStats(assistantId, parentCoachId) {
+  const stats = emptyClientStats();
+  const coachId = String(parentCoachId || "").trim();
+  const awcId = String(assistantId || "").trim();
+  if (!awcId || !coachId) {
+    return { clientCount: 0, clientStats: stats, users: [] };
+  }
+  const clients = await listUsersByAssignedCoachId(awcId, {
+    parentCoachId: coachId,
+    page: 1,
+    limit: 200,
+    userTier: "all",
+  });
+  const users = clients.users || [];
+  const clientCount = clients.pagination?.total || users.length;
+  fillClientStatsFromUsers(users, stats);
+  stats.total = clientCount;
+  return { clientCount, clientStats: stats, users };
 }
 
 async function buildMemberContent(accountOrPublic) {
@@ -1328,28 +1386,14 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
   let awcCount = 0;
   let traineeCount = 0;
   let parentName = null;
-  const clientStats = {
-    total: 0,
-    seek: 0,
-    heal: 0,
-    consultancy_only: 0,
-    maintenance: 0,
-    other: 0,
-  };
+  let clientStats = emptyClientStats();
   if (primaryAccountRole === "wellness_coach") {
     try {
       const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 200, scope: "all" });
       const users = clients.users || [];
       clientCount = clients.pagination?.total || users.length;
+      fillClientStatsFromUsers(users, clientStats);
       clientStats.total = clientCount;
-      for (const u of users) {
-        const tier = String(u.userTier || "seek").toLowerCase();
-        if (tier === "seek") clientStats.seek += 1;
-        else if (tier === "heal") clientStats.heal += 1;
-        else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
-        else if (tier === "maintenance") clientStats.maintenance += 1;
-        else clientStats.other += 1;
-      }
       const children = await listAssistantsForCoach(pub.id);
       awcCount = children.total;
       traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole, children.accounts);
@@ -1358,6 +1402,13 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
     }
   } else if (primaryAccountRole === "assistant_wellness_coach") {
     try {
+      const awcParentId =
+        pub.parentAccountId || membership?.parentAccountId || null;
+      if (awcParentId) {
+        const assigned = await loadAssistantClientStats(pub.id, awcParentId);
+        clientCount = assigned.clientCount;
+        clientStats = assigned.clientStats;
+      }
       traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
     } catch {
       /* ignore */
@@ -1426,6 +1477,12 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       meta:
         primaryAccountRole === "wellness_coach"
           ? `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")} · ${formatCountLabel(traineeCount, "trainee", "trainees")}`
+          : primaryAccountRole === "assistant_wellness_coach"
+            ? [
+                parentName ? `under ${parentName}` : "Assistant",
+                formatCountLabel(clientCount, "client", "clients"),
+                formatCountLabel(traineeCount, "trainee", "trainees"),
+              ].join(" · ")
           : parentName
             ? `under ${parentName}`
             : ROLE_KEY_META[uiRole]?.name || uiRole,

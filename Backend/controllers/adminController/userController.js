@@ -12,8 +12,10 @@ const {
   listUsers,
   listArchivedUsers,
   listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
   isPresentablePicsEnabled,
 } = require("../../models/userModel");
+const { getAccountById, getMembership } = require("../../models/accountModel");
 const {
   parseUserFields,
   enrichUser,
@@ -55,6 +57,7 @@ exports.listUsersController = asyncHandler(async (req, res) => {
     userTier,
     assignmentStatus,
     parentCoachId,
+    assignedCoachId,
     clientCategory,
     excludeUserTier,
     excludeClientCategory,
@@ -67,29 +70,51 @@ exports.listUsersController = asyncHandler(async (req, res) => {
       pagination: { page, limit, total: 0, pages: 1 },
     });
   }
-  const data = parentCoachId
-    ? await listUsersByParentCoachId(parentCoachId, {
-        page,
-        limit,
-        search,
-        userTier: userTier || "all",
-        clientCategory,
-        excludeUserTier,
-        excludeClientCategory,
-        subscriptionExpiryUserIds,
-      })
-    : await listUsers({
-        page,
-        limit,
-        status,
-        search,
-        userTier,
-        assignmentStatus,
-        clientCategory,
-        excludeUserTier,
-        excludeClientCategory,
-        subscriptionExpiryUserIds,
-      });
+
+  const assigneeId = String(assignedCoachId || "").trim();
+  let ownerCoachId = String(parentCoachId || "").trim();
+  if (assigneeId && !ownerCoachId) {
+    const assistant = await getAccountById(assigneeId);
+    ownerCoachId =
+      String(assistant?.parentAccountId || "").trim() ||
+      String(getMembership(assistant, "assistant_wellness_coach")?.parentAccountId || "").trim();
+  }
+
+  let data;
+  if (assigneeId && ownerCoachId) {
+    data = await listUsersByAssignedCoachId(assigneeId, {
+      parentCoachId: ownerCoachId,
+      page,
+      limit,
+      search,
+      userTier: userTier || "all",
+      subscriptionExpiryUserIds,
+    });
+  } else if (ownerCoachId) {
+    data = await listUsersByParentCoachId(ownerCoachId, {
+      page,
+      limit,
+      search,
+      userTier: userTier || "all",
+      clientCategory,
+      excludeUserTier,
+      excludeClientCategory,
+      subscriptionExpiryUserIds,
+    });
+  } else {
+    data = await listUsers({
+      page,
+      limit,
+      status,
+      search,
+      userTier,
+      assignmentStatus,
+      clientCategory,
+      excludeUserTier,
+      excludeClientCategory,
+      subscriptionExpiryUserIds,
+    });
+  }
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
   return res.status(200).json({ status: true, users, pagination: data.pagination });
 });

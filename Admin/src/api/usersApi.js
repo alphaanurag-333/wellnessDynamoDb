@@ -621,6 +621,7 @@ export async function fetchUsers({
   userTier,
   assignmentStatus,
   parentCoachId,
+  assignedCoachId,
   clientCategory,
   excludeUserTier,
   excludeClientCategory,
@@ -634,6 +635,7 @@ export async function fetchUsers({
   if (userTier) q.set("userTier", userTier);
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
   if (parentCoachId) q.set("parentCoachId", String(parentCoachId).trim());
+  if (assignedCoachId) q.set("assignedCoachId", String(assignedCoachId).trim());
   if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
   if (excludeUserTier) q.set("excludeUserTier", String(excludeUserTier).trim());
   if (excludeClientCategory) q.set("excludeClientCategory", String(excludeClientCategory).trim());
