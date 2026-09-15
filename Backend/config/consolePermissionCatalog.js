@@ -210,6 +210,73 @@ const ACCOUNT_TO_UI_ROLE = Object.fromEntries(
   Object.entries(UI_TO_ACCOUNT_ROLE).map(([ui, acc]) => [acc, ui])
 );
 
+const CONFIG_FEATURE_IDS = ["ct", "bn", "cf", "rp"];
+const CONFIG_PERM_SLUG_RE = /^console\.(ct|bn|cf|rp)\./;
+const REV_PERM_SLUG_RE = /^console\.rev\./;
+
+/** Admin (null grants) and any baseline that includes a Configs feature. */
+function defaultRoleAllowsConfigs(uiKey) {
+  if (!uiKey || !Object.prototype.hasOwnProperty.call(DEFAULT_CONSOLE_GRANTS, uiKey)) {
+    return true;
+  }
+  const grants = DEFAULT_CONSOLE_GRANTS[uiKey];
+  if (grants == null) return true;
+  return CONFIG_FEATURE_IDS.some((fid) => Array.isArray(grants[fid]) && grants[fid].length > 0);
+}
+
+function stripConfigPermissionSlugs(permissions) {
+  return (Array.isArray(permissions) ? permissions : []).filter(
+    (slug) => !CONFIG_PERM_SLUG_RE.test(String(slug || "")),
+  );
+}
+
+function navSectionsForUiRole(uiKey, role) {
+  const fromRole = Array.isArray(role?.navSections)
+    ? role.navSections.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const fallback = [...(DEFAULT_NAV_SECTIONS[uiKey] || [])];
+  const source = fromRole.length ? fromRole : fallback;
+  if (defaultRoleAllowsConfigs(uiKey)) return [...source];
+  return source.filter((id) => id !== "configs");
+}
+
+/**
+ * Keep a seeded system role aligned with its baseline: add new default slugs,
+ * drop Configs (and WC revenue analytics) leftovers, and keep nav in sync.
+ */
+function alignSeededConsoleRole(role, roleKey) {
+  const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS[roleKey]);
+  const baselineNav = DEFAULT_NAV_SECTIONS[roleKey] || [];
+  const currentPerms = Array.isArray(role?.permissions) ? role.permissions : [];
+  const currentNav = Array.isArray(role?.navSections) ? role.navSections : [];
+  const nextPerms = [
+    ...new Set([
+      ...currentPerms.filter((slug) => {
+        const value = String(slug || "");
+        if (CONFIG_PERM_SLUG_RE.test(value)) return false;
+        if (roleKey === "wc" && REV_PERM_SLUG_RE.test(value)) return false;
+        return true;
+      }),
+      ...baselinePerms,
+    ]),
+  ];
+  const nextNav = [
+    ...new Set([
+      ...currentNav.filter((id) => id !== "configs"),
+      ...baselineNav,
+    ]),
+  ];
+  return { permissions: nextPerms, navSections: nextNav };
+}
+
+function sameStringSet(left, right) {
+  const a = Array.isArray(left) ? left.map(String) : [];
+  const b = Array.isArray(right) ? right.map(String) : [];
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((item) => set.has(item));
+}
+
 function getConsolePermissionCatalog() {
   return {
     scope: "CONSOLE",
@@ -243,5 +310,10 @@ module.exports = {
   isValidConsolePermission,
   grantsMapToPermissions,
   permissionsToGrantsMap,
+  defaultRoleAllowsConfigs,
+  stripConfigPermissionSlugs,
+  navSectionsForUiRole,
+  alignSeededConsoleRole,
+  sameStringSet,
   getConsolePermissionCatalog,
 };

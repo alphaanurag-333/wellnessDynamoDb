@@ -52,6 +52,54 @@ export function sectionsFromPermissions(permissions) {
   return sections;
 }
 
+export function baselineNavForRole(roleId) {
+  return [...(DEFAULT_VIEWS[roleId] || [])];
+}
+
+const CONFIG_PERM_SLUG_RE = /^console\.(ct|bn|cf|rp)\./i;
+const ROLES_WITHOUT_CONFIGS = new Set(["wc", "awc", "trainee", "support"]);
+
+/** Drop Configs slugs for system roles whose Access Control baseline excludes them. */
+export function stripConfigPermissionSlugsForRole(permissions, roleId) {
+  const list = Array.isArray(permissions) ? permissions : [];
+  if (!ROLES_WITHOUT_CONFIGS.has(roleId)) return list;
+  return list.filter((slug) => !CONFIG_PERM_SLUG_RE.test(String(slug || "")));
+}
+
+/** Keep sections that Access Control has ticked open. */
+export function intersectNavSections(permissionSections, tickList) {
+  const sections = permissionSections instanceof Set
+    ? new Set(permissionSections)
+    : sectionsFromPermissions(permissionSections);
+  if (!Array.isArray(tickList) || tickList.length === 0) return sections;
+  const allowed = new Set(tickList);
+  for (const id of [...sections]) {
+    if (!allowed.has(id)) sections.delete(id);
+  }
+  return sections;
+}
+
+/**
+ * Live left-nav: granted permissions ∩ Access Control section ticks.
+ * Admin view always opens every operational section.
+ */
+export function resolveLiveNavSections({
+  permissions,
+  tickList,
+  roleId,
+  isAdminView = false,
+  includeAccess = false,
+} = {}) {
+  if (isAdminView) return defaultAdminNavSections({ includeAccess });
+  const fromPerms = sectionsFromPermissions(permissions);
+  const ticks = Array.isArray(tickList) && tickList.length
+    ? tickList
+    : baselineNavForRole(roleId);
+  const sections = intersectNavSections(fromPerms, ticks);
+  if (includeAccess) sections.add("access");
+  return sections;
+}
+
 /** Admin always opens every operational section; Access Control is Super Admin only. */
 export function defaultAdminNavSections({ includeAccess = false } = {}) {
   const sections = new Set(DEFAULT_VIEWS.admin || []);

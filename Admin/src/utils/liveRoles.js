@@ -3,6 +3,7 @@ import { VIEW_AS_ROLES } from "../data/dashboardData.js";
 import {
   ALL_CONSOLE_PERMISSIONS,
   baselineDataScopeForRole,
+  baselineNavForRole,
   baselinePermissionsForRole,
   grantsToPermissions,
 } from "./permissions.js";
@@ -11,6 +12,37 @@ const SYSTEM_UI_IDS = new Set(VIEW_AS_ROLES.map((role) => role.id));
 
 /** Staff team UI keys — excludes admin (Access Control only). */
 export const SYSTEM_TEAM_UI_KEYS = new Set(["wc", "awc", "trainee", "support"]);
+
+/** UI roles that report to a given staff persona (not including the persona itself). */
+export const STAFF_HIERARCHY_BELOW = {
+  wc: ["awc", "trainee"],
+  awc: ["trainee"],
+};
+
+/** Live-roles picker: the signed-in persona plus everyone who reports to them. */
+export function liveRoleIdsForSession(sessionUi, accountRoleKeys = []) {
+  const allowed = new Set();
+  const keys = [
+    sessionUi,
+    ...(Array.isArray(accountRoleKeys) ? accountRoleKeys : []),
+  ]
+    .map((key) => ROLE_KEY_TO_UI[key] || key)
+    .filter(Boolean);
+  for (const key of keys) {
+    allowed.add(key);
+    for (const child of STAFF_HIERARCHY_BELOW[key] || []) allowed.add(child);
+  }
+  return allowed;
+}
+
+/** WC/AWC may preview their own console and roles that report to them, same as Admin View-as. */
+export function canPreviewLiveRole(sessionUi, roleId) {
+  const from = ROLE_KEY_TO_UI[sessionUi] || sessionUi;
+  const to = ROLE_KEY_TO_UI[roleId] || roleId;
+  if (!from || !to) return false;
+  if (from === to) return true;
+  return (STAFF_HIERARCHY_BELOW[from] || []).includes(to);
+}
 
 export function accessRoleViewId(role) {
   if (!role) return null;
@@ -97,6 +129,9 @@ export function toViewAsMenuRole(role) {
     persona: personaForAccessRole(role),
     dataScope: String(role.dataScope || baselineDataScopeForRole(id) || "assigned").toLowerCase(),
     permissions: permissionsFromAccessRole(role),
+    navSections: Array.isArray(role.navSections) && role.navSections.length
+      ? [...role.navSections]
+      : baselineNavForRole(id),
     system,
   };
 }
@@ -107,5 +142,6 @@ export function staticViewAsMenuRoles() {
     persona: role.id,
     dataScope: baselineDataScopeForRole(role.id),
     permissions: baselinePermissionsForRole(role.id),
+    navSections: baselineNavForRole(role.id),
   }));
 }

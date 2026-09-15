@@ -106,7 +106,7 @@ async function buildAuthPayload(account, activeRoleKey) {
   if (!roleKey || !isRoleEligibleForActivation(account, roleKey)) {
     throw new AppError("Selected role is not available for this account", 403);
   }
-  const { permissions, isSuperAdmin, roleId, dataScope } = await resolveAccountPermissions(
+  const { permissions, isSuperAdmin, roleId, dataScope, navSections } = await resolveAccountPermissions(
     account,
     roleKey
   );
@@ -119,6 +119,7 @@ async function buildAuthPayload(account, activeRoleKey) {
     roleId: roleId || null,
     permissions,
     dataScope,
+    navSections: Array.isArray(navSections) ? navSections : [],
   };
 }
 
@@ -132,6 +133,7 @@ async function sendAccountAuthResponse(res, statusCode, account, activeRoleKey, 
     roles: payload.roles,
     permissions: payload.permissions,
     dataScope: payload.dataScope,
+    navSections: payload.navSections,
     // Account-level flag (for UI / View As). Session powers follow JWT active role.
     isSuperAdmin: Boolean(account.isSuperAdmin),
   };
@@ -323,7 +325,7 @@ exports.getAccountMe = asyncHandler(async (req, res) => {
     }
   }
 
-  const { permissions, isSuperAdmin, dataScope } = await resolveAccountPermissions(
+  const { permissions, isSuperAdmin, dataScope, navSections } = await resolveAccountPermissions(
     account,
     activeRole
   );
@@ -334,6 +336,7 @@ exports.getAccountMe = asyncHandler(async (req, res) => {
     roles: listEligibleRoleKeys(account),
     permissions,
     dataScope,
+    navSections: Array.isArray(navSections) ? navSections : [],
     isSuperAdmin: Boolean(account.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
   return res.json({
@@ -415,7 +418,7 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
 
   const updated = await updateAccount(account.id, updates);
   const activeRole = req.auth?.role;
-  const { permissions, isSuperAdmin, dataScope } = await resolveAccountPermissions(
+  const { permissions, isSuperAdmin, dataScope, navSections } = await resolveAccountPermissions(
     updated,
     activeRole
   );
@@ -426,6 +429,7 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
     roles: listEligibleRoleKeys(updated),
     permissions,
     dataScope,
+    navSections: Array.isArray(navSections) ? navSections : [],
     isSuperAdmin: Boolean(updated.isSuperAdmin || (activeRole === "admin" && isSuperAdmin)),
   };
 
@@ -444,6 +448,7 @@ exports.getAccountPermissions = asyncHandler(async (req, res) => {
     status: true,
     activeRole,
     permissions: resolved.permissions,
+    navSections: Array.isArray(resolved.navSections) ? resolved.navSections : [],
     permissionMap: resolved.permissionMap,
     isSuperAdmin: activeRole === "admin" ? Boolean(resolved.isSuperAdmin) : false,
   });

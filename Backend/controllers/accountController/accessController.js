@@ -33,6 +33,8 @@ const {
   DEFAULT_CONSOLE_GRANTS,
   DEFAULT_NAV_SECTIONS,
   ROLE_KEY_META,
+  alignSeededConsoleRole,
+  sameStringSet,
   UI_TO_ACCOUNT_ROLE,
   ACCOUNT_TO_UI_ROLE,
   TOTAL_PERM_SLOTS,
@@ -443,6 +445,15 @@ function visibleTeamRoleKeys(req) {
   return TEAM_DESCENDANT_ROLES[actorAccountRole(req)] || new Set();
 }
 
+/** Live-roles picker: own role plus reporting line. Members directory stays descendants-only. */
+function visibleLiveRoleKeys(req) {
+  const descendants = visibleTeamRoleKeys(req);
+  if (descendants === null) return null;
+  const actor = actorAccountRole(req);
+  if (!actor) return descendants;
+  return new Set([actor, ...descendants]);
+}
+
 function teamParentId(account, primaryRole) {
   const fromAccount = String(account?.parentAccountId || "").trim();
   if (fromAccount) return fromAccount;
@@ -638,7 +649,8 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
     limit: 100,
   });
 
-  const visibleRoles = visibleTeamRoleKeys(req);
+  const visibleRoles = visibleLiveRoleKeys(req);
+  const actorRole = actorAccountRole(req);
   const scopedRoles = [];
   for (const role of roles) {
     if (visibleRoles === null) {
@@ -652,10 +664,12 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
   const enriched = [];
   for (const role of scopedRoles) {
     let count = 0;
+    const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
     if (visibleRoles === null) {
       count = await memberCountForConsoleRole(role);
+    } else if (accountRole && accountRole === actorRole) {
+      count = 1;
     } else {
-      const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
       const scoped = await collectScopedTeamAccounts(req, { accountRoleFilter: accountRole });
       for (const acc of scoped) {
         const pub = typeof acc.password === "undefined" ? acc : toPublicAccount(acc);
@@ -1873,55 +1887,18 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
           dataScope: meta.dataScope,
         });
       }
-    } else if (roleKey === "wc") {
-      // Revenue analytics is admin-only — strip legacy rev grants from seeded WC roles.
-      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.wc);
-      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
-      const revSlugRe = /^console\.rev\./;
-      const nextPerms = [
-        ...new Set([
-          ...currentPerms.filter((slug) => !revSlugRe.test(String(slug))),
-          ...baselinePerms,
-        ]),
-      ];
-      const permsChanged =
-        nextPerms.length !== currentPerms.length
-        || nextPerms.some((slug) => !currentPerms.includes(slug))
-        || currentPerms.some((slug) => !nextPerms.includes(slug));
-      if (permsChanged) {
-        role = await updateRole(role.id, { permissions: nextPerms });
-      }
-    } else if (roleKey === "support") {
-      // Keep Support aligned with the current baseline (additive for new slugs, drop removed defaults).
-      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.support);
-      const baselineNav = DEFAULT_NAV_SECTIONS.support || [];
+    } else {
+      // WC / AWC / Trainee / Support: add new baseline slugs, drop Configs leftovers
+      // (and WC revenue analytics). Matches Access Control defaults.
+      const aligned = alignSeededConsoleRole(role, roleKey);
       const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
       const currentNav = Array.isArray(role.navSections) ? role.navSections : [];
-      const configSlugRe = /^console\.(ct|bn|cf|rp)\./;
-      const nextPerms = [
-        ...new Set([
-          ...currentPerms.filter((slug) => !configSlugRe.test(String(slug))),
-          ...baselinePerms,
-        ]),
-      ];
-      const nextNav = [
-        ...new Set([
-          ...currentNav.filter((id) => id !== "configs"),
-          ...baselineNav,
-        ]),
-      ];
-      const permsChanged =
-        nextPerms.length !== currentPerms.length
-        || nextPerms.some((slug) => !currentPerms.includes(slug))
-        || currentPerms.some((slug) => !nextPerms.includes(slug));
-      const navChanged =
-        nextNav.length !== currentNav.length
-        || nextNav.some((id) => !currentNav.includes(id))
-        || currentNav.some((id) => !nextNav.includes(id));
+      const permsChanged = !sameStringSet(aligned.permissions, currentPerms);
+      const navChanged = !sameStringSet(aligned.navSections, currentNav);
       if (permsChanged || navChanged) {
         role = await updateRole(role.id, {
-          permissions: nextPerms,
-          navSections: nextNav,
+          permissions: aligned.permissions,
+          navSections: aligned.navSections,
         });
       }
     }

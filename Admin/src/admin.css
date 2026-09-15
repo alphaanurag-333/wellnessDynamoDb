@@ -183,6 +183,8 @@
   text-transform: uppercase;
   margin-top: 1px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .sidebar__nav {
@@ -1212,9 +1214,12 @@
   border: 1px solid #dcdff7;
   border-radius: 7px;
   padding: 3px 9px; */
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
   background: rgb(236, 238, 252);
   color: rgb(94, 106, 210);
   font-size: 11px;
@@ -1230,16 +1235,31 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  /* background: var(--brand-green); */
+  background: #eef1f6;
   color: #fff;
   font-weight: 700;
   font-size: 13px;
+  line-height: 1;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(16, 35, 63, 0.18);
   overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.updated-admin .header__avatar--fallback {
+  background: var(--brand-green);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.updated-admin .header__avatar-initial {
+  color: inherit;
+  font-weight: 750;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .updated-admin .header__avatar-img {
