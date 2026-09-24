@@ -97,6 +97,7 @@ function extraQueryForTypeTab(tabId, baseUserTier) {
     return {
       clientCategory: "individual",
       excludeUserTier: "maintenance",
+      hasProgram: true,
     };
   }
   return {};
@@ -482,7 +483,8 @@ export function UsersPage() {
           return 0;
         }
       };
-      const [individual, team, app, archived] = await Promise.all([
+      const [all, individual, team, app, archived] = await Promise.all([
+        fetchCount("all"),
         fetchCount("individual"),
         fetchCount("team"),
         fetchCount("app"),
@@ -494,7 +496,7 @@ export function UsersPage() {
       ]);
       if (!cancelled) {
         setTabCounts({
-          all: individual + team + app,
+          all,
           individual,
           team,
           app,
@@ -660,7 +662,7 @@ export function UsersPage() {
     if (isAdminView) {
       tabs.push({
         id: "archived",
-        label: "Archived",
+        label: "Archived users",
         count: tabCounts.archived ?? (typeTab === "archived" ? pagination.total : 0),
       });
     }

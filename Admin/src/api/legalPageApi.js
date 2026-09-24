@@ -112,7 +112,10 @@ export function htmlFromLegalBlocks(blocks = []) {
     .map((row) => {
       const body = String(row.body || "").trim();
       if (!body) return "";
-      if (row.id === "intro" || row.id === "copyright" || row.id === "secondary") return body;
+      if (row.id === "intro" || row.id === "copyright" || row.id === "secondary") {
+        if (/<[a-z][\s\S]*>/i.test(body)) return body;
+        return `<p>${escapeHtml(body)}</p>`;
+      }
       const heading = row.title ? `<h2>${escapeHtml(row.title)}</h2>` : "";
       return `${heading}\n${body}`.trim();
     })

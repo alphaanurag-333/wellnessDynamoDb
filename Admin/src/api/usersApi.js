@@ -625,6 +625,7 @@ export async function fetchUsers({
   clientCategory,
   excludeUserTier,
   excludeClientCategory,
+  hasProgram,
   subscriptionExpiryDays,
 } = {}) {
   const q = new URLSearchParams();
@@ -639,6 +640,9 @@ export async function fetchUsers({
   if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
   if (excludeUserTier) q.set("excludeUserTier", String(excludeUserTier).trim());
   if (excludeClientCategory) q.set("excludeClientCategory", String(excludeClientCategory).trim());
+  if (hasProgram === true || hasProgram === "true" || hasProgram === 1 || hasProgram === "1") {
+    q.set("hasProgram", "true");
+  }
   if (subscriptionExpiryDays) q.set("subscriptionExpiryDays", String(subscriptionExpiryDays));
 
   try {

@@ -61,6 +61,7 @@ exports.listUsersController = asyncHandler(async (req, res) => {
     clientCategory,
     excludeUserTier,
     excludeClientCategory,
+    hasProgram,
   } = req.query;
   const subscriptionExpiryUserIds = await resolveSubscriptionExpiryUserIds(req.query);
   if (Array.isArray(subscriptionExpiryUserIds) && subscriptionExpiryUserIds.length === 0) {
@@ -99,6 +100,7 @@ exports.listUsersController = asyncHandler(async (req, res) => {
       clientCategory,
       excludeUserTier,
       excludeClientCategory,
+      hasProgram,
       subscriptionExpiryUserIds,
     });
   } else {
@@ -112,6 +114,7 @@ exports.listUsersController = asyncHandler(async (req, res) => {
       clientCategory,
       excludeUserTier,
       excludeClientCategory,
+      hasProgram,
       subscriptionExpiryUserIds,
     });
   }

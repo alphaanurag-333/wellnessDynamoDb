@@ -8104,6 +8104,69 @@ background-image: url("../site/images/birthday-card-bg.png");
   padding: 0 var(--container-padding);
 }
 
+.video-testimonials-skeleton {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 18px;
+  width: 100%;
+}
+
+.video-card-wrap--skeleton {
+  min-width: 0;
+}
+
+.video-card--skeleton,
+.video-card__name--skeleton {
+  background: linear-gradient(90deg, #f3e7de 25%, #faf4ef 50%, #f3e7de 75%);
+  background-size: 200% 100%;
+  animation: video-skel-shine 1.2s ease-in-out infinite;
+}
+
+.video-card--skeleton {
+  pointer-events: none;
+  cursor: default;
+  border-color: rgba(232, 136, 79, 0.12);
+  box-shadow: none;
+}
+
+.video-card__name--skeleton {
+  display: block;
+  height: 0.9rem;
+  width: 72%;
+  margin: 0 auto;
+  border-radius: 999px;
+}
+
+@keyframes video-skel-shine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (max-width: 1199px) {
+  .video-testimonials-skeleton {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 991px) {
+  .video-testimonials-skeleton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .video-testimonials-skeleton {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 575px) {
+  .video-testimonials-skeleton {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .videoTestimonialsSwiper .swiper-slide {
   display: flex;
   height: auto;
@@ -10846,7 +10909,7 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
     max-width: 390px;
     height: auto;
     aspect-ratio: 9 / 10;
-  }
+}
 .success-content {
     margin-left: 25px;
   }
@@ -11541,7 +11604,7 @@ gap: 45px;
     max-width: 360px;
     height: auto;
     aspect-ratio: 9 / 10;
-  }
+}
 .transformation-list {
     flex-wrap: wrap;
     justify-content: center;

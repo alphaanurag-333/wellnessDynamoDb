@@ -120,9 +120,10 @@ export function SiteFooter() {
 
   const logoSrc = brandLogoUrl || defaultLogo;
   const year = new Date().getFullYear();
+  // Prefer App Config (Admin → Footer setting / app_footer_text), then CMS footer-text page.
   const copyrightLine =
-    cmsCopyright || footerCopyright || `© ${year} ${appName}. All rights reserved.`;
-  const creditLine = cmsCredit || footerCredit;
+    footerCopyright || cmsCopyright || `© ${year} ${appName}. All rights reserved.`;
+  const creditLine = footerCredit || cmsCredit;
 
   return (
     <footer className="site-footer">
