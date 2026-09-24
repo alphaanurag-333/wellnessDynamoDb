@@ -44,6 +44,13 @@ const ANSWER_TYPE_OPTIONS = MEDICAL_ANSWER_TYPES.map((entry) => ({
 }));
 
 const ICON_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/jpg";
+const ICON_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/jpg"]);
+
+function isAllowedIconFile(file) {
+  if (!(file instanceof File)) return false;
+  if (ICON_TYPES.has(file.type)) return true;
+  return /\.(jpe?g|png|gif|webp)$/i.test(file.name || "");
+}
 
 function isImageIcon(value) {
   const raw = String(value || "").trim();
@@ -79,17 +86,18 @@ function matchesQuery(list, query) {
   return list.options.some((entry) => asCopyString(entry.label).toLowerCase().includes(query));
 }
 
-function IconPicker({ previewUrl, disabled, onPick, onClear, label = "Upload icon" }) {
+function IconPicker({ previewUrl, disabled, onPick, onClear, label = "Upload icon", highlight = false }) {
   const inputRef = useRef(null);
   const filled = Boolean(previewUrl);
 
   return (
-    <div className={`ua-cfg-dd-icon-pick${filled ? " has-image" : ""}`}>
+    <div className={`ua-cfg-dd-icon-pick${filled ? " has-image" : ""}${highlight ? " needs-icon" : ""}`}>
       <button
         type="button"
         className="ua-cfg-dd-icon-pick__btn"
         disabled={disabled}
         aria-label={label}
+        title={label}
         onClick={() => inputRef.current?.click()}
       >
         {filled ? <img src={previewUrl} alt="" /> : <span>+</span>}
@@ -205,11 +213,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
         });
         return { ...list, options };
       })
-      .filter((list) => (
-        list.slug === "health-concern"
-        || list.slug === "medical-questions"
-        || list.options.length > 0
-      ) && matchesQuery(list, query));
+      .filter((list) => matchesQuery(list, query));
   }, [lists, filter, query]);
 
   const optionCount = lists.reduce((sum, list) => sum + list.options.length, 0);
@@ -258,6 +262,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           { title: label, description: label },
           addIconFile,
         );
+        if (!created?.id) throw new Error("Health concern was not created");
         setLists((prev) =>
           prev.map((row) =>
             row.slug === "health-concern"
@@ -285,6 +290,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
           answerType: answerTypeDrafts[list.id] || "yes_no_text",
           shown: true,
         });
+        if (!created?.id) throw new Error("Medical question was not created");
         setLists((prev) =>
           prev.map((row) =>
             row.slug === "medical-questions"
@@ -576,7 +582,14 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const draftValue = asCopyString(drafts[list.id]);
             const draftValidation = validateDropdownLabel(draftValue, { slug: list.slug, options: source.options });
             const addIconReady = !supportsIcons || addIconFiles[list.id] instanceof File;
-            const canAdd = draftValidation.ok && addIconReady;
+            const needsIconHint = supportsIcons && Boolean(draftValue.trim()) && draftValidation.ok && !addIconReady;
+            const addHint = draftValue.trim() && !draftValidation.ok
+              ? draftValidation.message
+              : needsIconHint
+                ? "Upload an icon with +"
+                : "";
+            // Label must be valid; missing icon is handled on click with toast + inline hint.
+            const canSubmitAdd = draftValidation.ok;
             return (
               <section
                 key={list.id}
@@ -615,6 +628,10 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                                 label="Change icon"
                                 onPick={(file) => {
                                   if (!file) return;
+                                  if (!isAllowedIconFile(file)) {
+                                    onToast("Use a JPG, PNG, GIF, or WebP icon");
+                                    return;
+                                  }
                                   if (String(editIconPreview).startsWith("blob:")) URL.revokeObjectURL(editIconPreview);
                                   setEditIconFile(file);
                                   setEditIconPreview(URL.createObjectURL(file));
@@ -661,6 +678,13 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             )}
                             <div className="ua-cfg-dd-row__copy">
                               <strong className="ua-cfg-dd-row__label">{asCopyString(entry.label)}</strong>
+                              {supportsAnswerType ? (
+                                <span className="ua-cfg-dd-row__meta">
+                                  {ANSWER_TYPE_OPTIONS.find((opt) => opt.value === entry.answerType)?.label
+                                    || asCopyString(entry.answerType)
+                                    || "Text"}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         )}
@@ -723,14 +747,20 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                     </p>
                   )}
                 </div>
-                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}`}>
+                <div className={`ua-cfg-dd-add${supportsIcons ? " has-icon" : ""}${supportsAnswerType ? " has-type" : ""}${needsIconHint ? " needs-icon" : ""}`}>
                   {supportsIcons ? (
                     <IconPicker
                       previewUrl={addIconPreviews[list.id]}
                       disabled={busy}
                       label="Upload icon"
+                      highlight={needsIconHint}
                       onPick={(file) => {
-                        if (file) setAddIcon(list.id, file);
+                        if (!file) return;
+                        if (!isAllowedIconFile(file)) {
+                          onToast("Use a JPG, PNG, GIF, or WebP icon");
+                          return;
+                        }
+                        setAddIcon(list.id, file);
                       }}
                       onClear={addIconPreviews[list.id] ? () => setAddIcon(list.id, null) : undefined}
                     />
@@ -747,21 +777,32 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                         [list.id]: sanitizeDropdownText(event.target.value, labelMax),
                       }))}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter" && canAdd) addOption(list);
+                        if (event.key === "Enter" && canSubmitAdd) addOption(list);
                       }}
                     />
-                    {draftValue.trim() && !draftValidation.ok ? (
+                    {addHint ? (
                       <CharHint
                         value={draftValue}
                         max={labelMax}
-                        error={draftValidation.message}
+                        error={addHint}
                       />
                     ) : null}
                   </label>
+                  {supportsAnswerType ? (
+                    <CfgSelect
+                      className="ua-cfg-dd-select"
+                      options={ANSWER_TYPE_OPTIONS}
+                      value={answerTypeDrafts[list.id] || "yes_no_text"}
+                      disabled={busy}
+                      onChange={(value) => setAnswerTypeDrafts((prev) => ({ ...prev, [list.id]: value }))}
+                      ariaLabel="Answer type"
+                    />
+                  ) : null}
                   <button
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-dd-add__btn"
-                    disabled={busy || !canAdd}
+                    disabled={busy || !canSubmitAdd}
+                    title={needsIconHint ? "Upload an icon first" : undefined}
                     onClick={() => addOption(list)}
                   >
                     Add

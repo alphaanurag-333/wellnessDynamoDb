@@ -55733,10 +55733,30 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: none;
-  overflow: visible;
+  max-height: min(320px, 42vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 0;
+  scrollbar-gutter: stable;
+}
+
+.updated-admin .ua-cfg-dd-card--wide .ua-cfg-dd-card__list {
+  max-height: min(380px, 48vh);
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar-thumb {
+  background: #c5cddb;
+  border-radius: 999px;
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .updated-admin .ua-cfg-dd-field {
@@ -56006,6 +56026,8 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-dd-add.has-type {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  align-items: start;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add__input {
@@ -56155,6 +56177,11 @@ scrollbar-width: thin;
   border: 0;
   background: transparent;
   overflow: visible;
+}
+
+.updated-admin .ua-cfg-dd-icon-pick.needs-icon .ua-cfg-dd-icon-pick__btn {
+  border-color: #e11d48;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.15);
 }
 
 .updated-admin .ua-cfg-dd-icon-pick__btn {
@@ -67587,7 +67614,12 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add,
-.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type,
+.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  align-items: start;
+}
+
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-supp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
