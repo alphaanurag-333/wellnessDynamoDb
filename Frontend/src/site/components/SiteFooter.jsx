@@ -165,8 +165,10 @@ export function SiteFooter() {
   const copyrightLine = resolveCopyright(footerCopyright || cmsCopyright, year);
   const creditLine = footerCredit || cmsCredit;
   const whatsappHref = toWhatsAppHref(contact.phone);
-  const mailHref = toMailHref(contact.email);
-
+  //const mailHref = toMailHref(contact.email);
+const mailHref = contact?.email
+  ? `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contact.email)}`
+  : "";
   return (
     <footer className="site-footer">
       <div className="site-footer__accent" aria-hidden="true" />
@@ -225,7 +227,7 @@ export function SiteFooter() {
           <div className="site-footer__column site-footer__contact">
             <p className="site-footer__heading">Contact Us</p>
 
-            {whatsappHref ? (
+            {/* {whatsappHref ? (
               <div className="site-footer__contact-row">
                 <span className="site-footer__contact-icon" aria-hidden="true">
                   <FaWhatsapp size={16} />
@@ -238,14 +240,29 @@ export function SiteFooter() {
                   Chat on Whatsapp
                 </a>
               </div>
-            ) : null}
+            ) : null} */}
+            {whatsappHref ? (
+  <div className="site-footer__contact-row">
+    <span className="site-footer__contact-icon" aria-hidden="true">
+  <FaWhatsapp size={18} color="#25D366" />
+</span>
+
+    <a
+      href={whatsappHref}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Chat on WhatsApp
+    </a>
+  </div>
+) : null}
 
             {mailHref ? (
               <div className="site-footer__contact-row">
                 <span className="site-footer__contact-icon" aria-hidden="true">
                   <Mail size={16} />
                 </span>
-                <a href={mailHref}>{contact.email}</a>
+                <a  target="_blank" href={mailHref}>{contact.email}</a>
               </div>
             ) : null}
 
