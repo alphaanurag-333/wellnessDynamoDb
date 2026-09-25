@@ -2542,7 +2542,7 @@ color: var(--text-body);
 
 .methodology__header p {
   margin: 16px auto 0;
-  max-width: 749px;
+  max-width: max-content;
   color: var(--text-body);
   font-family: var(--font-family-base);
   font-size: var(--font-size-body);
@@ -2602,7 +2602,7 @@ color: var(--text-body);
   flex-direction: column;
   align-items: stretch;
   flex: 1 1 auto;
-  padding: 0 20px 24px;
+  padding: 5px 20px 24px;
   text-align: center;
   position: relative;
   margin-bottom: 0;
@@ -8208,12 +8208,13 @@ background-image: url("../site/images/birthday-card-bg.png");
 }
 
 .real-healing-disclaimer {
-  margin: 22px auto 0;
-  max-width: 52rem;
+  margin: 15px auto 0;
+  max-width: max-content;
+  /* max-width: 52rem; */
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.60rem;
   line-height: 1.5;
-  color: var(--text-muted);
+  color: var(--text-body);
 }
 
 .real-healing-header {
@@ -10621,7 +10622,8 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
     margin-bottom: 10px;
 }
 .custimesmainsixe {
-    max-width: 100%;
+    /* max-width: 100%; */
+    max-width: max-content;
     margin: 0 auto;
     font-size: clamp(0.95rem, 2vw, 1.2rem);
     line-height: 1.6;
