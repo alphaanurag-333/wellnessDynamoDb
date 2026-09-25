@@ -183,6 +183,8 @@
   text-transform: uppercase;
   margin-top: 1px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .sidebar__nav {
@@ -1212,9 +1214,12 @@
   border: 1px solid #dcdff7;
   border-radius: 7px;
   padding: 3px 9px; */
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: inline-block;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
   background: rgb(236, 238, 252);
   color: rgb(94, 106, 210);
   font-size: 11px;
@@ -1230,16 +1235,31 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  /* background: var(--brand-green); */
+  background: #eef1f6;
   color: #fff;
   font-weight: 700;
   font-size: 13px;
+  line-height: 1;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(16, 35, 63, 0.18);
   overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.updated-admin .header__avatar--fallback {
+  background: var(--brand-green);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+
+.updated-admin .header__avatar-initial {
+  color: inherit;
+  font-weight: 750;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .updated-admin .header__avatar-img {
@@ -17909,6 +17929,12 @@ scrollbar-width: thin;
   color: #e5484d;
 }
 
+.updated-admin .ua-cp-ip-ai__val--empty {
+  color: #b0b8c9;
+  font-weight: 600;
+  text-align: center;
+}
+
 .updated-admin .ua-cp-ip-ai__note {
   margin-top: 6px;
   padding: 8px 10px;
@@ -28141,6 +28167,14 @@ scrollbar-width: thin;
 
 .updated-admin .ua-tm-stat--ink .ua-tm-stat__bar > span {
   background: #5b8def;
+}
+
+.updated-admin .ua-tm-stat--gold {
+  background: #fdf8ec;
+}
+
+.updated-admin .ua-tm-stat--gold .ua-tm-stat__bar > span {
+  background: #b8860b;
 }
 
 .updated-admin .ua-tm-content-list {
@@ -46675,9 +46709,9 @@ scrollbar-width: thin;
   width: min(220px, 100%);
   max-height: none;
   min-height: 0;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 1 / 1;
   margin: 0 auto 16px;
-  border-radius: 14px;
+  border-radius: 50%;
   background: #f8fafc;
 }
 
@@ -46714,6 +46748,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pt .ua-cfg-rc-cover,
 .updated-admin .ua-cfg-pt .ua-cfg-rc-cover-wrap {
   border-radius: 50%;
+  overflow: hidden;
 }
 
 .updated-admin .ua-cfg-pt .ua-cfg-rc-cover--pick em {
@@ -46754,12 +46789,36 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-pt .ua-cfg-rc-item,
 .updated-admin .ua-cfg-pt .ua-cfg-pt-item.ua-cfg-rc-item {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 18px 72px minmax(0, 1fr);
   align-items: start;
   gap: 12px 14px;
   padding: 12px 14px;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   overflow: visible;
+}
+
+.updated-admin .ua-cfg-pt .ua-cfg-rc-item > .ua-cfg-faq__drag {
+  width: 18px;
+  height: 28px;
+  margin-top: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0c9d6;
+  cursor: grab;
+  user-select: none;
+}
+
+.updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-dragging {
+  opacity: 0.55;
+}
+
+.updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-drag-over {
+  border-color: #a5b4fc;
+  background: #eef2ff;
 }
 
 .updated-admin .ua-cfg-pt .ua-cfg-rc-cover-wrap,
@@ -46805,12 +46864,32 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-pt-item__identity strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   font-size: 14px;
   font-weight: 700;
   color: #16233f;
   line-height: 1.3;
   overflow-wrap: anywhere;
+}
+
+.updated-admin .ua-cfg-pt-item__identity .ua-cfg-faq__num {
+  flex: 0 0 auto;
+  height: auto;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cfg-pt-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.updated-admin .ua-cfg-pt-item__meta .ua-cfg-panel__sub {
+  margin: 0;
 }
 
 .updated-admin .ua-cfg-pt-item__copy,
@@ -46863,6 +46942,13 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-pt-item__actions .ua-cfg-tf-item__moves {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
 .updated-admin .ua-cfg-pt-item__live,
 .updated-admin .ua-cfg-pt-item__btns {
   display: flex;
@@ -46890,7 +46976,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-editing {
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: 18px 72px minmax(0, 1fr);
   align-items: start;
 }
 
@@ -53000,6 +53086,18 @@ scrollbar-width: thin;
   grid-column: 1 / -1;
 }
 
+.updated-admin .ua-cfg-rp-new-category__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-rp-new-category__row .ua-cfg-vh-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-rp-select {
   width: 100%;
   min-width: 0;
@@ -55711,10 +55809,30 @@ scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 0;
-  max-height: none;
-  overflow: visible;
+  max-height: min(320px, 42vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 0;
+  scrollbar-gutter: stable;
+}
+
+.updated-admin .ua-cfg-dd-card--wide .ua-cfg-dd-card__list {
+  max-height: min(380px, 48vh);
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar-thumb {
+  background: #c5cddb;
+  border-radius: 999px;
+}
+
+.updated-admin .ua-cfg-dd-card__list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .updated-admin .ua-cfg-dd-field {
@@ -55984,6 +56102,8 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-dd-add.has-type {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  align-items: start;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add__input {
@@ -56133,6 +56253,11 @@ scrollbar-width: thin;
   border: 0;
   background: transparent;
   overflow: visible;
+}
+
+.updated-admin .ua-cfg-dd-icon-pick.needs-icon .ua-cfg-dd-icon-pick__btn {
+  border-color: #e11d48;
+  box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.15);
 }
 
 .updated-admin .ua-cfg-dd-icon-pick__btn {
@@ -61769,7 +61894,7 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-pt-item.ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-editing {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: 18px 72px minmax(0, 1fr);
     align-items: start;
   }
 
@@ -67579,7 +67704,12 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add,
-.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type,
+.updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-type {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  align-items: start;
+}
+
 .updated-admin .ua-cfg-dd .ua-cfg-dd-add.has-supp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -68834,6 +68964,99 @@ scrollbar-width: thin;
   }
 }
 
+@container ua-cfg-pt (max-width: 900px) {
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-item,
+  .updated-admin .ua-cfg-pt .ua-cfg-pt-item.ua-cfg-rc-item,
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-editing {
+    display: grid;
+    grid-template-columns: 18px 64px minmax(0, 1fr);
+    grid-template-areas:
+      "drag photo identity"
+      ". actions actions"
+      "copy copy copy";
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-item > .ua-cfg-faq__drag {
+    grid-area: drag;
+    margin-top: 18px;
+  }
+
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-cover-wrap,
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-cover {
+    grid-area: photo;
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    min-height: 64px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__body,
+  .updated-admin .ua-cfg-pt-item__head {
+    display: contents;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity {
+    grid-area: identity;
+    flex: none;
+    width: auto;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity strong {
+    flex-wrap: wrap;
+  }
+
+  .updated-admin .ua-cfg-pt-item__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__meta .ua-cfg-panel__sub {
+    white-space: normal;
+  }
+
+  .updated-admin .ua-cfg-pt-item__actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-pt-item__live,
+  .updated-admin .ua-cfg-pt-item__actions .ua-cfg-tf-item__moves,
+  .updated-admin .ua-cfg-pt-item__btns {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    width: auto;
+    max-width: 100%;
+    gap: 6px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__btns > .ua-cfg-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__copy,
+  .updated-admin .ua-cfg-pt-item__body > p {
+    grid-area: copy;
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 @container ua-cfg-pt (max-width: 640px) {
   .updated-admin .ua-cfg-pt .ua-cfg-panel__actions,
   .updated-admin .ua-cfg-pt .ua-cfg-panel__actions .ua-cfg-pt-add,
@@ -68920,37 +69143,91 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-pt-item.ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-editing {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 18px 56px minmax(0, 1fr);
+    grid-template-areas:
+      "drag photo identity"
+      "actions actions actions"
+      "copy copy copy";
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-item > .ua-cfg-faq__drag {
+    grid-area: drag;
+    margin-top: 14px;
   }
 
   .updated-admin .ua-cfg-pt .ua-cfg-rc-cover-wrap,
   .updated-admin .ua-cfg-pt .ua-cfg-rc-cover {
-    width: 64px;
-    height: 64px;
-    min-width: 64px;
-    min-height: 64px;
+    grid-area: photo;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
   }
 
-  .updated-admin .ua-cfg-pt-item__head,
-  .updated-admin .ua-cfg-pt-item__actions,
-  .updated-admin .ua-cfg-pt-item__live,
-  .updated-admin .ua-cfg-pt-item__btns {
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-cover--pick em {
+    display: none;
+  }
+
+  .updated-admin .ua-cfg-pt-item__body,
+  .updated-admin .ua-cfg-pt-item__head {
+    display: contents;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity {
+    grid-area: identity;
+    flex: none;
+    width: auto;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity strong {
     flex-wrap: wrap;
   }
 
-  .updated-admin .ua-cfg-pt-item__identity,
-  .updated-admin .ua-cfg-pt-item__actions {
-    flex: 1 1 100%;
-    justify-content: flex-start;
+  .updated-admin .ua-cfg-pt-item__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
+  .updated-admin .ua-cfg-pt-item__actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-pt-item__live,
+  .updated-admin .ua-cfg-pt-item__actions .ua-cfg-tf-item__moves,
   .updated-admin .ua-cfg-pt-item__btns {
-    flex: 1 1 12rem;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    width: auto;
+    max-width: 100%;
+    gap: 6px;
   }
 
   .updated-admin .ua-cfg-pt-item__btns > .ua-cfg-btn {
-    flex: 1 1 calc(50% - 8px);
+    flex: 0 0 auto;
     width: auto;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__copy,
+  .updated-admin .ua-cfg-pt-item__body > p {
+    grid-area: copy;
+    width: 100%;
+    min-width: 0;
   }
 }
 
@@ -69039,37 +69316,91 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-pt-item.ua-cfg-rc-item,
   .updated-admin .ua-cfg-pt .ua-cfg-rc-item.is-editing {
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 18px 56px minmax(0, 1fr);
+    grid-template-areas:
+      "drag photo identity"
+      "actions actions actions"
+      "copy copy copy";
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-item > .ua-cfg-faq__drag {
+    grid-area: drag;
+    margin-top: 14px;
   }
 
   .updated-admin .ua-cfg-pt .ua-cfg-rc-cover-wrap,
   .updated-admin .ua-cfg-pt .ua-cfg-rc-cover {
-    width: 64px;
-    height: 64px;
-    min-width: 64px;
-    min-height: 64px;
+    grid-area: photo;
+    width: 56px;
+    height: 56px;
+    min-width: 56px;
+    min-height: 56px;
   }
 
-  .updated-admin .ua-cfg-pt-item__head,
-  .updated-admin .ua-cfg-pt-item__actions,
-  .updated-admin .ua-cfg-pt-item__live,
-  .updated-admin .ua-cfg-pt-item__btns {
+  .updated-admin .ua-cfg-pt .ua-cfg-rc-cover--pick em {
+    display: none;
+  }
+
+  .updated-admin .ua-cfg-pt-item__body,
+  .updated-admin .ua-cfg-pt-item__head {
+    display: contents;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity {
+    grid-area: identity;
+    flex: none;
+    width: auto;
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__identity strong {
     flex-wrap: wrap;
   }
 
-  .updated-admin .ua-cfg-pt-item__identity,
-  .updated-admin .ua-cfg-pt-item__actions {
-    flex: 1 1 100%;
-    justify-content: flex-start;
+  .updated-admin .ua-cfg-pt-item__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 
+  .updated-admin .ua-cfg-pt-item__actions {
+    grid-area: actions;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .updated-admin .ua-cfg-pt-item__live,
+  .updated-admin .ua-cfg-pt-item__actions .ua-cfg-tf-item__moves,
   .updated-admin .ua-cfg-pt-item__btns {
-    flex: 1 1 12rem;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    width: auto;
+    max-width: 100%;
+    gap: 6px;
   }
 
   .updated-admin .ua-cfg-pt-item__btns > .ua-cfg-btn {
-    flex: 1 1 calc(50% - 8px);
+    flex: 0 0 auto;
     width: auto;
+    min-width: 0;
+    height: 32px;
+    padding: 0 10px;
+  }
+
+  .updated-admin .ua-cfg-pt-item__copy,
+  .updated-admin .ua-cfg-pt-item__body > p {
+    grid-area: copy;
+    width: 100%;
+    min-width: 0;
   }
 }
 

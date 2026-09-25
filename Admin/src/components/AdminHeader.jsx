@@ -18,7 +18,8 @@ export function AdminHeader({
   const { activeRole, account } = useViewAs();
   const storedProfile = useAppSelector(selectAdminProfile);
   const profileAccount = storedProfile || account;
-  const avatarInitial = userInitials(profileAccount?.name || activeRole.name).charAt(0) || "A";
+  const profileName = String(profileAccount?.name || "").trim() || "Profile";
+  const avatarInitial = userInitials(profileName) || "A";
   const profileImage = profileAccount?.profileImage || null;
 
   function handleBack() {
@@ -65,19 +66,25 @@ export function AdminHeader({
         <div className="header__profile">
           <span
             className="header__profile-badge"
+            title={profileName}
             style={{
               color: activeRole.color,
               background: activeRole.bg,
               borderColor: `${activeRole.color}33`,
             }}
           >
-            {activeRole.name}
+            {profileName}
           </span>
-          <button type="button" className="header__avatar" aria-label="My profile" onClick={onOpenProfile}>
+          <button
+            type="button"
+            className={`header__avatar${profileImage ? "" : " header__avatar--fallback"}`}
+            aria-label="My profile"
+            onClick={onOpenProfile}
+          >
             {profileImage ? (
               <img className="header__avatar-img" src={profileImage} alt="" />
             ) : (
-              avatarInitial
+              <span className="header__avatar-initial">{avatarInitial}</span>
             )}
           </button>
         </div>

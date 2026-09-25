@@ -5,7 +5,7 @@ import "../site.css";
 
 export function SiteNotFoundPage() {
   return (
-    <div>
+    <div className="site-shell">
       <a href="#main-content" className="visually-hidden-focusable">
         Skip to main content
       </a>

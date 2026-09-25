@@ -58,8 +58,8 @@ export const TOTAL_PERM_SLOTS = PERM_CATALOG.reduce((n, row) => n + row[3].lengt
 
 /**
  * Role id → section ids openable in left nav.
- * Access Control defaults only; the live console derives nav from granted
- * permissions (see utils/permissions.js).
+ * Access Control defaults; live console opens a section only when the role
+ * has a grant inside it AND the section tick is on (see utils/permissions.js).
  */
 export const DEFAULT_VIEWS = {
   admin: ["dashboard", "users", "teams", "calendar", "pending", "sop", "configs", "referral-tree", "contact-inquiries"],
@@ -384,6 +384,20 @@ export function toggleGrant(grants, parents, roleId, featureId, action) {
   if (ordered.length) map[featureId] = ordered;
   else delete map[featureId];
 
+  next[roleId] = map;
+  return next;
+}
+
+/** Drop every grant in a nav section (used when the section tick is turned off). */
+export function clearSectionGrants(grants, parents, roleId, sectionId) {
+  if (roleId === "admin") return grants;
+  const next = cloneGrants(grants);
+  if (next[roleId] == null) next[roleId] = copyRoleGrants(grants, roleId);
+  const map = { ...next[roleId] };
+  for (const row of PERM_CATALOG) {
+    if (row[4] !== sectionId) continue;
+    delete map[row[2]];
+  }
   next[roleId] = map;
   return next;
 }

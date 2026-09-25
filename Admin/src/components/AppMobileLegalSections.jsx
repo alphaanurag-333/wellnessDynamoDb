@@ -5,6 +5,7 @@ import {
   APP_TERMS_CONDITIONS_BLOCKS,
   APP_TERMS_OF_SERVICE_BLOCKS,
 } from "../data/configDetailData.js";
+import { MEDICAL_DISCLAIMER_BLOCKS } from "../data/medicalDisclaimerConfigData.js";
 
 function AppLegalPageSection({
   slug,
@@ -81,6 +82,19 @@ export function AppCommunityGuidelinesMobileSection(props) {
       sitePath="the IRW app"
       noun="guidelines section"
       fallbackBlocks={APP_COMMUNITY_GUIDELINES_BLOCKS}
+      {...props}
+    />
+  );
+}
+
+export function AppMedicalDisclaimerSection(props) {
+  return (
+    <AppLegalPageSection
+      slug="app-medical-disclaimer"
+      defaultTitle="Medical Disclaimer"
+      sitePath="irwellness.in/app-medical-disclaimer"
+      noun="disclaimer section"
+      fallbackBlocks={MEDICAL_DISCLAIMER_BLOCKS}
       {...props}
     />
   );

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getLegalPage, saveLegalPage } from "../api/legalPageApi.js";
+import { syncAppFooterTextFromBlocks } from "../api/footerApi.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import {
   liveVersionText,
@@ -223,6 +224,9 @@ export function LegalBlocksSection({
         blocks: stateRef.current.blocks,
       });
       applySavedBlocksRef.current(saved.blocks);
+      if (persistSlug === "footer-text") {
+        await syncAppFooterTextFromBlocks(saved.blocks);
+      }
       return saved;
     });
   }, [pageTitle, persistEnabled, persistSlug, registerPublishHandler]);

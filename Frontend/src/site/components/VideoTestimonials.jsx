@@ -8,7 +8,8 @@ import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchVideoTestimonials } from "../api/publicMisc.js";
-import { SiteLoader } from "./SiteLoader.jsx";
+
+const SKELETON_COUNT = 5;
 
 function mapVideoTestimonial(row) {
   if (!row) return null;
@@ -96,6 +97,19 @@ function VideoTestimonialCard({ item, isPlaying, onPlay }) {
   );
 }
 
+function VideoTestimonialsSkeleton() {
+  return (
+    <div className="video-testimonials-skeleton" aria-hidden="true">
+      {Array.from({ length: SKELETON_COUNT }, (_, index) => (
+        <div key={index} className="video-card-wrap video-card-wrap--skeleton">
+          <div className="video-card video-card--skeleton" />
+          <span className="video-card__name video-card__name--skeleton" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function VideoTestimonials() {
   const [items, setItems] = useState(null);
   const [playingId, setPlayingId] = useState(null);
@@ -123,21 +137,14 @@ export default function VideoTestimonials() {
   if (items === null) {
     return (
       <section
-        className="video-slider-section pt-3"
+        className="video-slider-section video-slider-section--loading"
         aria-busy="true"
         aria-label="Loading video testimonials"
       >
-        
-        <div className="transformation-header">
-          <div className="header-left">
-            <h2>Voice of Healing : Unfiltered</h2>
-          </div>
-        </div>
-        <SiteLoader variant="inline" label="Loading video testimonials" />
-        {/* <div className="container">
+        <div className="container">
           <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
-          <p className="site-testimonials__loading">Loading video testimonials…</p>
-        </div> */}
+          <VideoTestimonialsSkeleton />
+        </div>
       </section>
     );
   }
@@ -149,7 +156,7 @@ export default function VideoTestimonials() {
   const enableLoop = items.length > 5 && !playingId;
 
   return (
-    <section className="video-slider-section pt-3" aria-label="Video testimonials">
+    <section className="video-slider-section" aria-label="Video testimonials">
       <div className="container">
         <h2 className="voice-title">Voice of Healing : Unfiltered</h2>
         <Swiper

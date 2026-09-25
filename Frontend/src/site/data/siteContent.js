@@ -22,27 +22,31 @@ export const ABOUT_SECTION = {
 export const SERVICES_SECTION = {
   id: "services",
   // eyebrow: "What We Offer",
-  title: "Holistic Programs for Real Results",
+  title: "Holistic Wellness Programs for Sustainable Results",
   items: [
     {
       icon: "consult",
-      title: "1:1 Consultations",
-      description: "Personalized plans from certified wellness coaches tailored to your goals and lifestyle.",
+      title: "1:1 Wellness Coaching",
+      description:
+        "Work closely with an IRW Wellness Coach for personalised guidance, regular reviews and consistent support aligned with your health and wellness goals.",
     },
     {
       icon: "challenge",
-      title: "21-Day Metabolic Challenge",
-      description: "Structured guidance to reset habits, boost energy, and build momentum with daily accountability.",
+      title: "Health & Lifestyle Assessment",
+      description:
+        "Understand the factors influencing your wellbeing through a structured review of your health history, nutrition, lifestyle, activity, sleep, stress and available health reports.",
     },
     {
       icon: "recipe",
-      title: "Healthy Recipes",
-      description: "Nutritious, easy-to-follow recipes and video guides designed for gut health and metabolic balance.",
+      title: "Daily Tracking & Progress",
+      description:
+        "Track meals, water intake, activity, body measurements and wellness progress through the IRW platform to stay aware, accountable and consistent.",
     },
     {
       icon: "community",
       title: "Community Support",
-      description: "Stay motivated with peers, celebrations, and expert-led discussions in our wellness community.",
+      description:
+        "Stay motivated through a supportive wellness community where shared experiences, expert guidance, encouragement and accountability help you stay on track.",
     },
   ],
 };

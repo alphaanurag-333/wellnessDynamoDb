@@ -1,21 +1,10 @@
-import { useSelector } from "react-redux";
-import defaultLogo from "../../assets/logo/defaultlogo.png";
-import dummyAppImage from "../images/apk.png";
-import {
-  selectAppDisplayName,
-  selectApkLogoLightUrl,
-  selectLoginBrandLogoUrl,
-} from "../../store/appConfigSelectors.js";
+import appPreviewImage from "../images/irw-personalised-wellness-mobile-app.webp";
 import { AppDownloadButtons } from "./AppDownloadButtons.jsx";
 
-export default function AppHeroSection() {
-  const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
-  const apkLogoUrl = useSelector(selectApkLogoLightUrl);
-  const appName = useSelector(selectAppDisplayName) || "India Redefining Wellness";
-  const logoSrc = brandLogoUrl || defaultLogo;
-  const appPreviewSrc = dummyAppImage;
-  // const appPreviewSrc = apkLogoUrl || dummyAppImage;
+const APP_PREVIEW_ALT =
+  "IRW personalised wellness mobile app for nutrition, activity and progress tracking";
 
+export default function AppHeroSection() {
   return (
     <section className="app-hero" aria-labelledby="app-hero-title">
       <div className="app-hero__glow app-hero__glow--orange" aria-hidden />
@@ -29,22 +18,19 @@ export default function AppHeroSection() {
 
       <div className="site-container app-hero__grid">
         <div className="app-hero__copy">
-          {/* <div className="app-hero__brand">
-            <img src={logoSrc} alt={appName} />
-            <p>Your Wellness Partner</p>
-          </div> */}
-
           <h2 id="app-hero-title" className="app-hero__title">
-            <span>
-              Transform <em>Today</em>
-            </span>
-            <span>
-              Thrive <em className="is-blue">Tomorrow</em>
-            </span>
+            Transform <em>Today.</em> Thrive <em className="is-blue">Tomorrow.</em>
           </h2>
 
           <p className="app-hero__sub">
             Your all-in-one companion for a healthier, stronger and happier you.
+          </p>
+
+          <p className="app-hero__body">
+            Take your personalised wellness journey wherever you go with the IRW
+            app—track your daily habits, nutrition, progress and wellness
+            activities while staying connected with your IRW guidance and
+            support.
           </p>
 
           <AppDownloadButtons tone="dark" appleFirst />
@@ -53,8 +39,12 @@ export default function AppHeroSection() {
         <div className="app-hero__visual">
           <img
             className="app-hero__image"
-            src={appPreviewSrc}
-            alt="India Redefining Wellness app preview"
+            src={appPreviewImage}
+            alt={APP_PREVIEW_ALT}
+            width={1024}
+            height={1536}
+            loading="lazy"
+            decoding="async"
           />
         </div>
       </div>

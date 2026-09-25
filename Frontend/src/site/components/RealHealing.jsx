@@ -1,12 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchRealPeopleTestimonials } from "../api/publicMisc.js";
-import InlineReadMore from "./InlineReadMore.jsx";
 import { SiteLoader } from "./SiteLoader.jsx";
+
+const SECTION_SUBHEADING =
+  "First-hand wellness journeys from IRW members across Fat loss, Type 2 Diabetes, Thyroid health, PMOS, Gut health, Metabolic Wellbeing and many more.";
+
+const SECTION_DISCLAIMER =
+  "Individual results vary. Client experiences shown are personal outcomes and should not be interpreted as guaranteed results. Health and medication-related decisions should be made in consultation with an appropriately qualified healthcare professional.";
 
 function HealingStars({ rating }) {
   const value = Math.min(5, Math.max(0, Number(rating) || 0));
@@ -38,20 +44,31 @@ function healthConcernLabel(row) {
   return title ? String(title).toUpperCase() : "WELLNESS";
 }
 
-function memberSinceLabel(row) {
-  const year = row?.memberSinceYear ?? row?.user?.memberSinceYear;
-  if (year) return `Member since ${year}`;
-
-  if (row?.createdAt) {
-    const createdYear = new Date(row.createdAt).getFullYear();
-    if (Number.isFinite(createdYear)) return `Member since ${createdYear}`;
-  }
-
-  return "Community member";
+function locationLabel(row) {
+  const location = String(
+    row?.location ||
+      row?.city ||
+      row?.user?.city ||
+      row?.user?.location ||
+      row?.user?.addressCity ||
+      "",
+  ).trim();
+  return location || "";
 }
 
 function avatarPath(row) {
   return row?.userAvatar || row?.profileImage || row?.user?.profileImage || "";
+}
+
+function firstName(fullName) {
+  const first = String(fullName || "").trim().split(/\s+/)[0];
+  return first || "their";
+}
+
+function storyLinkLabel(name) {
+  const first = firstName(name);
+  const possessive = /s$/i.test(first) ? `${first}'` : `${first}'s`;
+  return `Read ${possessive} Story`;
 }
 
 function mapHealingTestimonial(row) {
@@ -70,13 +87,41 @@ function mapHealingTestimonial(row) {
     name,
     review,
     category: healthConcernLabel(row),
-    memberSince: memberSinceLabel(row),
+    location: locationLabel(row),
+    storyLabel: storyLinkLabel(name),
     stars: row.stars ?? row.rating ?? 5,
     image: imagePath ? mediaUrl(imagePath) : DEFAULT_IMAGE_SRC,
   };
 }
 
 function RealHealingCard({ item, expanded, onToggle }) {
+  const reviewRef = useRef(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = reviewRef.current;
+    if (!el) return undefined;
+
+    const measure = () => {
+      if (expanded) return;
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    };
+
+    measure();
+    const frame = window.requestAnimationFrame(measure);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(el);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [item.review, expanded]);
+
+  const showToggle = overflows || expanded;
+
   return (
     <article className={`real-healing-card${expanded ? " real-healing-card--expanded" : ""}`}>
       <div className="real-healing-top">
@@ -84,13 +129,32 @@ function RealHealingCard({ item, expanded, onToggle }) {
         <span className="real-healing-tag">{item.category}</span>
       </div>
 
-      <InlineReadMore
-        text={`\u201c${item.review}\u201d`}
-        expanded={expanded}
-        onToggle={() => onToggle(item.id)}
-        lines={2}
-        className="real-healing-review"
-      />
+      <p
+        ref={reviewRef}
+        className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}
+      >
+        {`\u201c${item.review}\u201d`}
+      </p>
+
+      {showToggle ? (
+        <button
+          type="button"
+          className="real-healing-more"
+          onClick={() => onToggle(item.id)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Show Less" : item.storyLabel}
+          {expanded ? (
+            <ArrowUpRight size={14} aria-hidden />
+          ) : (
+            <ArrowRight size={14} aria-hidden />
+          )}
+        </button>
+      ) : (
+        <span className="real-healing-more real-healing-more--spacer" aria-hidden>
+          {item.storyLabel}
+        </span>
+      )}
 
       <div className="real-healing-bottom">
         <div className="real-healing-profile">
@@ -101,8 +165,10 @@ function RealHealingCard({ item, expanded, onToggle }) {
             onError={handleMediaImageError}
           />
           <div>
-            <h4>{item.name}</h4>
-            <span>{item.memberSince}</span>
+            <h3 className="real-healing-profile__name">{item.name}</h3>
+            {item.location ? (
+              <span className="real-healing-profile__meta">{item.location}</span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -123,7 +189,6 @@ export default function RealHealingSlider() {
     const swiper = swiperRef.current;
     if (!swiper) return;
 
-    // Grow swiper to fit expanded card — clear any fixed height Swiper applied.
     requestAnimationFrame(() => {
       if (swiper.el) {
         swiper.el.style.height = expandedId ? "auto" : "";
@@ -169,7 +234,8 @@ export default function RealHealingSlider() {
         <div className="site-container">
           <div className="transformation-header">
             <div className="header-left">
-              <h2>Real People : Real Healing</h2>
+              <h2>Real People. Real Healing.</h2>
+              <p>{SECTION_SUBHEADING}</p>
             </div>
           </div>
           <SiteLoader variant="inline" label="Loading stories" />
@@ -182,13 +248,42 @@ export default function RealHealingSlider() {
     return null;
   }
 
+  const showNav = items.length > 1;
+
   return (
     <section
       className={`real-healing-section${expandedId ? " real-healing-section--expanded" : ""}`}
       aria-label="Real people real healing"
     >
       <div className="site-container">
-        <h2 className="healing-title">Real People : Real Healing</h2>
+        <div className="transformation-header real-healing-header">
+          <div className="header-left">
+            <h2 className="healing-title">Real People. Real Healing.</h2>
+            <p className="real-healing-subheading">{SECTION_SUBHEADING}</p>
+          </div>
+
+          {showNav ? (
+            <div className="leadership-slider__nav" aria-label="Story navigation">
+              <button
+                type="button"
+                className="leadership-slider__navBtn"
+                aria-label="Previous story"
+                onClick={() => swiperRef.current?.slidePrev()}
+              >
+                <ChevronLeft size={22} />
+              </button>
+              <button
+                type="button"
+                className="leadership-slider__navBtn"
+                aria-label="Next story"
+                onClick={() => swiperRef.current?.slideNext()}
+              >
+                <ChevronRight size={22} />
+              </button>
+            </div>
+          ) : null}
+        </div>
+
         <Swiper
           modules={[Autoplay]}
           slidesPerView={1}
@@ -227,6 +322,8 @@ export default function RealHealingSlider() {
             </SwiperSlide>
           ))}
         </Swiper>
+
+        <p className="real-healing-disclaimer">{SECTION_DISCLAIMER}</p>
       </div>
     </section>
   );

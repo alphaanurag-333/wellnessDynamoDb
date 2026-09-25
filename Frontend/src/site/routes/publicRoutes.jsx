@@ -50,6 +50,11 @@ export const publicRouteTree = (
     />
     <Route path="/community-guidelines" element={<Navigate to="/community-guideline" replace />} />
     <Route
+      path="/medical-disclaimer"
+      element={<StaticPageView slug="medical-disclaimer" fallbackTitle="Medical Disclaimer" />}
+    />
+    <Route path="/disclaimer" element={<Navigate to="/medical-disclaimer" replace />} />
+    <Route
       path="/app-privacy-policy"
       element={
         <StaticPageView
@@ -69,8 +74,19 @@ export const publicRouteTree = (
         />
       }
     />
+    <Route
+      path="/app-medical-disclaimer"
+      element={
+        <StaticPageView
+          slug="app-medical-disclaimer"
+          fallbackTitle="Medical Disclaimer"
+          platform="app"
+        />
+      }
+    />
     <Route path="/app/privacy-policy" element={<Navigate to="/app-privacy-policy" replace />} />
     <Route path="/app/terms-and-conditions" element={<Navigate to="/app-terms-and-conditions" replace />} />
+    <Route path="/app/medical-disclaimer" element={<Navigate to="/app-medical-disclaimer" replace />} />
     <Route path="/app-terms-of-service" element={<Navigate to="/app-terms-and-conditions" replace />} />
     <Route path="/app-terms-conditions" element={<Navigate to="/app-terms-and-conditions" replace />} />
     <Route path="/delete-account" element={<DeleteAccountPage />} />

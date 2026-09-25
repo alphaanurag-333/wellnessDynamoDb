@@ -145,20 +145,17 @@ function parseAppFooterText(text) {
 
     return {
       brandLine: brandLine || "",
-      copyright,
+      copyright: copyright || segments[0] || "",
       credit,
     };
   }
 
-  if (/©|copyright/i.test(raw)) {
-    return { brandLine: "", copyright: raw, credit: "" };
-  }
-
-  if (/powered by/i.test(raw)) {
+  // Admin → Configs → Footer setting stores a single copyright line in app_footer_text.
+  if (/powered by/i.test(raw) && !/©|copyright/i.test(raw)) {
     return { brandLine: "", copyright: "", credit: raw };
   }
 
-  return { brandLine: raw, copyright: "", credit: "" };
+  return { brandLine: "", copyright: raw, credit: "" };
 }
 
 export function useSiteConfig() {

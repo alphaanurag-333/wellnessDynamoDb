@@ -464,7 +464,7 @@ export function DynamicCofounderSection({ record, setRecord, onToast }) {
             {draft.type !== "none" ? (
               <div className="ua-cfg-cf-media">
                 <div className="ua-cfg-cf-media__cover">
-                  <span className="ua-cfg-cf-label">Cover image 840pxx480px</span>
+                  <span className="ua-cfg-cf-label">Cover image 840px x 480px</span>
                   <CoverDrop
                     previewUrl={cover}
                     disabled={loading || busy}

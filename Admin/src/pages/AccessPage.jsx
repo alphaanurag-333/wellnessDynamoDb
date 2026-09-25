@@ -50,6 +50,7 @@ import {
   roleHas,
   sectionStats,
   toggleGrant,
+  clearSectionGrants,
   vsParentDelta,
 } from "../data/accessData.js";
 
@@ -974,6 +975,7 @@ function RolesPermissionsTab({ onToast }) {
       onToast("Admin sections are locked");
       return;
     }
+    const currentlyOpen = (stateRef.current.views[role.id] || []).includes(sectionId);
     setViews((v) => {
       const cur = new Set(v[role.id] || []);
       if (cur.has(sectionId)) cur.delete(sectionId);
@@ -982,6 +984,13 @@ function RolesPermissionsTab({ onToast }) {
       stateRef.current.views = next;
       return next;
     });
+    if (currentlyOpen) {
+      setGrants((g) => {
+        const next = clearSectionGrants(g, stateRef.current.parents, role.id, sectionId);
+        stateRef.current.grants = next;
+        return next;
+      });
+    }
     scheduleSave();
   }
 
@@ -2163,7 +2172,7 @@ function SimulatorTab() {
   const role = roleList.find((r) => r.id === roleId) || roleList[0];
   const roleName = role?.name || "this role";
   const granted = role ? countGranted(grants, parents, role.id) : 0;
-  const navOpen = role ? views[role.id] || DEFAULT_VIEWS[role.id] || [] : [];
+  const simSections = role ? sectionStats(grants, parents, role.id, views) : [];
   const selectOptions = roleList.map((r) => ({
     value: r.id,
     label: `${r.name} (role baseline)`,
@@ -2214,7 +2223,10 @@ function SimulatorTab() {
         <h3 className="ua-sim-panel__title">Left navigation they would see</h3>
         <div className="ua-sim-nav">
           {AC_SECTIONS.map((sec) => {
-            const open = navOpen.includes(sec.id);
+            const stat = simSections.find((row) => row.id === sec.id);
+            const open = Boolean(
+              stat?.open && (role?.id === "admin" || (stat?.granted || 0) > 0),
+            );
             return (
               <span key={sec.id} className={`ua-sim-nav__pill${open ? " is-on" : ""}`}>
                 {sec.label}

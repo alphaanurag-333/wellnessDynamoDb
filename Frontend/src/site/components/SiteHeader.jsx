@@ -7,6 +7,7 @@ import {
   selectLoginBrandLogoUrl,
 } from "../../store/appConfigSelectors.js";
 import { ChevronDown } from "lucide-react";
+import { HEALTH_SOLUTION_LINKS } from "../data/siteNav.js";
 import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
 
 export function SiteHeader() {
@@ -111,40 +112,15 @@ export function SiteHeader() {
                 </button>
 
                 <div className="site-header__dropdown-menu">
-                  <NavLink
-                    to="/fat-loss"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                   Fat Loss
-                  </NavLink>
-
-                  <NavLink
-                    to="/diabetes-reversal"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                    Diabetes Reversal
-                  </NavLink>
-
-                  <NavLink
-                    to="/pcod-pcos-reversal"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                    PCOD / PCOS Reversal
-                  </NavLink>
-
-                  <NavLink
-                    to="/thyroid"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                    Thyroid Care
-                  </NavLink>
-
-                  <NavLink
-                    to="/gut-health"
-                    className={({ isActive }) => (isActive ? "active" : "")}
-                  >
-                    Gut Health
-                  </NavLink>
+                  {HEALTH_SOLUTION_LINKS.map((link) => (
+                    <NavLink
+                      key={link.to}
+                      to={link.to}
+                      className={({ isActive }) => (isActive ? "active" : "")}
+                    >
+                      {link.label}
+                    </NavLink>
+                  ))}
                 </div>
               </div>
 
@@ -252,45 +228,16 @@ export function SiteHeader() {
             </summary>
 
             <div className="mobile-submenu">
-              <NavLink
-                to="/fat-loss"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Fat Loss
-              </NavLink>
-
-              <NavLink
-                to="/diabetes-reversal"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Diabetes Reversal
-              </NavLink>
-
-              <NavLink
-                to="/pcod-pcos-reversal"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                PCOD / PCOS reversal
-              </NavLink>
-
-              <NavLink
-                to="/thyroid"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Thyroid Care
-              </NavLink>
-
-              <NavLink
-                to="/gut-health"
-                className={({ isActive }) => (isActive ? "active" : "")}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Gut Health
-              </NavLink>
+              {HEALTH_SOLUTION_LINKS.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className={({ isActive }) => (isActive ? "active" : "")}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </NavLink>
+              ))}
             </div>
           </details>
 

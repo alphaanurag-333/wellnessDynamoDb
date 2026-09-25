@@ -317,6 +317,24 @@ function applyUserListExclusions(users, excludeUserTiers, excludeClientCategorie
   return next;
 }
 
+/** True when query asks to keep only users with a purchased or assigned program. */
+function parseHasProgramFlag(value) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
+/** Assigned program row and/or completed purchase counts as having a program. */
+function userHasActiveProgram(user) {
+  if (!user) return false;
+  if (Boolean(user.programPurchased)) return true;
+  return Boolean(String(user.assignedProgramId || "").trim());
+}
+
+function applyHasProgramFilter(users, hasProgram) {
+  if (!hasProgram) return users;
+  return users.filter(userHasActiveProgram);
+}
+
 function normalizeProfileImageField(value) {
   if (value == null || String(value).trim() === "") return null;
   const objectKey = normalizeStoredMedia(String(value).trim());
@@ -828,6 +846,7 @@ async function listUsersByParentCoachId(
     clientCategory,
     excludeUserTier,
     excludeClientCategory,
+    hasProgram,
     subscriptionExpiryUserIds,
   } = {}
 ) {
@@ -840,6 +859,7 @@ async function listUsersByParentCoachId(
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const excludeUserTiers = parseExcludeUserTiers(excludeUserTier);
   const excludeClientCategories = parseExcludeClientCategories(excludeClientCategory);
+  const requireProgram = parseHasProgramFlag(hasProgram);
   const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
   const normalizedScope = String(scope || "all").toLowerCase().trim();
@@ -899,6 +919,7 @@ async function listUsersByParentCoachId(
     rows = rows.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
   }
   rows = applyUserListExclusions(rows, excludeUserTiers, excludeClientCategories);
+  rows = applyHasProgramFilter(rows, requireProgram);
 
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));
@@ -1455,6 +1476,7 @@ async function listUsers({
   clientCategory,
   excludeUserTier,
   excludeClientCategory,
+  hasProgram,
   subscriptionExpiryUserIds,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
@@ -1463,6 +1485,7 @@ async function listUsers({
   const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
   const excludeUserTiers = parseExcludeUserTiers(excludeUserTier);
   const excludeClientCategories = parseExcludeClientCategories(excludeClientCategory);
+  const requireProgram = parseHasProgramFlag(hasProgram);
   const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
     ? new Set(
         subscriptionExpiryUserIds
@@ -1504,6 +1527,7 @@ async function listUsers({
       );
     }
     users = applyUserListExclusions(users, excludeUserTiers, excludeClientCategories);
+    users = applyHasProgramFilter(users, requireProgram);
 
     const searchFilter = buildContainsFilter(USER_LIST_SEARCH_FIELDS, search);
     const normalizedSearch = String(searchFilter.search || "").trim().toLowerCase();
@@ -1524,7 +1548,8 @@ async function listUsers({
     || normalizedAssignment
     || normalizedCategory
     || excludeUserTiers.size
-    || excludeClientCategories.size,
+    || excludeClientCategories.size
+    || requireProgram,
   );
   const searchFilter = buildContainsFilter(USER_LIST_SEARCH_FIELDS, search);
 
@@ -1557,6 +1582,7 @@ async function listUsers({
     users = users.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
   }
   users = applyUserListExclusions(users, excludeUserTiers, excludeClientCategories);
+  users = applyHasProgramFilter(users, requireProgram);
 
   if (needsPostFilter) {
     const paged = paginateItems(users, page, limit, 200);

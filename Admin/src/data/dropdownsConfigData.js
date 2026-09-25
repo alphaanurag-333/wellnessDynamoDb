@@ -126,12 +126,12 @@ export const DROPDOWN_PAGE_ORDER = [
 ];
 
 export const HEALTH_CONCERN_OPTION_ORDER = [
-  "Fat loss",
-  "Diabetes reversal",
-  "Thyroid",
-  "PCOD / PCOS",
+  "Fat Loss & Weight Management",
+  "Diabetes Reversal",
+  "Thyroid Care",
+  "PCOD / PCOS Reversal",
   "Hypertension",
-  "Gut health",
+  "Gut Health",
 ];
 
 export const MEDICAL_QUESTION_OPTION_ORDER = [

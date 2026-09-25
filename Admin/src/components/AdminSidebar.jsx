@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { NavIcon } from "./NavIcons.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import {
@@ -39,9 +39,8 @@ function CollapseIcon({ collapsed }) {
 }
 
 function ViewAsRolePicker({ collapsed }) {
-  const navigate = useNavigate();
   const { viewAs, setViewAs, activeRole, availableUiRoles, sessionUi, isSuperAdmin } = useViewAs();
-  const canPreviewRoles = isSuperAdmin || sessionUi === "admin";
+  const canPreviewRoles = isSuperAdmin || sessionUi === "admin" || sessionUi === "wc" || sessionUi === "awc";
   const [open, setOpen] = useState(false);
   const roles = availableUiRoles?.length ? availableUiRoles : VIEW_AS_ROLES;
   const staffTotal = roles.reduce((sum, role) => sum + (Number(role.live) || 0), 0);
@@ -61,10 +60,6 @@ function ViewAsRolePicker({ collapsed }) {
 
   const pickRole = async (role) => {
     setOpen(false);
-    if (!role.switchable && !canPreviewRoles) {
-      navigate(UPDATED_ADMIN_PATHS.access);
-      return;
-    }
     try {
       await setViewAs(role.id);
     } catch {
@@ -157,10 +152,27 @@ function ViewAsRolePicker({ collapsed }) {
 
 const NAV_COLLAPSED_KEY = "ua-nav-collapsed";
 
+const ROLE_CONSOLE_LABELS = {
+  admin: "ADMIN CONSOLE",
+  wc: "WC CONSOLE",
+  awc: "AWC CONSOLE",
+  trainee: "TRAINEE CONSOLE",
+  support: "SUPPORT CONSOLE",
+};
+
+function sidebarConsoleLabel(activeRole, isSuperAdmin) {
+  const roleId = String(activeRole?.id || "").trim();
+  if (isSuperAdmin && roleId === "admin") return "SUPER ADMIN";
+  if (ROLE_CONSOLE_LABELS[roleId]) return ROLE_CONSOLE_LABELS[roleId];
+  const name = String(activeRole?.name || "Role").trim().toUpperCase();
+  return name.endsWith("CONSOLE") ? name : `${name} CONSOLE`;
+}
+
 export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
-  const { viewAs, isSuperAdmin, navSections } = useViewAs();
+  const { isSuperAdmin, isAdminView, navSections, activeRole } = useViewAs();
   const adminLogoUrl = useAppSelector(selectAdminLogoUrl);
   const brandName = useAppSelector(selectAppName);
+  const consoleLabel = sidebarConsoleLabel(activeRole, isSuperAdmin);
 
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -186,13 +198,17 @@ export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
     setCollapsed((value) => !value);
   }
 
-  // A section appears as soon as Access Control grants any permission inside it.
+  // A section appears when Access Control grants a permission inside it AND
+  // the section tick is on. adminOnly items stay on the Admin console unless
+  // that role was explicitly given the section (Access is Super Admin only).
   const visibleNav = useMemo(
     () =>
-      NAV_ITEMS.filter(
-        (item) => navSections.has(item.id) || (item.visibleWith && navSections.has(item.visibleWith)),
-      ),
-    [navSections],
+      NAV_ITEMS.filter((item) => {
+        if (item.id === "access") return navSections.has("access");
+        if (item.adminOnly && !isAdminView && !navSections.has(item.id)) return false;
+        return navSections.has(item.id) || (item.visibleWith && navSections.has(item.visibleWith));
+      }),
+    [isAdminView, navSections],
   );
 
   return (
@@ -224,8 +240,8 @@ export function AdminSidebar({ onLogout, mobileOpen = false, onCloseMobile }) {
           {!collapsed ? (
             <div className="sidebar__brand-text">
               <div className="sidebar__brand-name" title={brandName}>{brandName}</div>
-              <div className="sidebar__brand-sub">
-                {isSuperAdmin && viewAs === "admin" ? "SUPER ADMIN" : "ADMIN CONSOLE"}
+              <div className="sidebar__brand-sub" title={consoleLabel}>
+                {consoleLabel}
               </div>
             </div>
           ) : null}

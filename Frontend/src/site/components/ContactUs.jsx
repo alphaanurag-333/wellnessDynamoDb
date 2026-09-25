@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Country } from "country-state-city";
-import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import FinalCTA from "./FinalCTA";
-import { fetchStaticPageBySlug, splitHtmlSections, submitContactInquiry } from "../api/publicMisc.js";
-import { useSiteConfig } from "../hooks/useSiteConfig.js";
+import { fetchStaticPageBySlug, submitContactInquiry } from "../api/publicMisc.js";
 import ContactCountryDialSelect from "./ContactCountryDialSelect.jsx";
 import {
   DEFAULT_ISO,
@@ -46,41 +44,7 @@ function FieldHint({ id, error, hint, counter }) {
   return null;
 }
 
-function mapsUrl(address) {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-}
-
-function isEmailDetail(label, value) {
-  return /email|mail/i.test(String(label || "")) || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
-}
-
-function isPhoneDetail(label) {
-  return /phone|mobile|whatsapp|tel/i.test(String(label || ""));
-}
-
-function detailHref(label, value) {
-  const text = String(value || "").trim();
-  if (!text) return null;
-  if (isEmailDetail(label, text)) return { href: `mailto:${text}` };
-  if (isPhoneDetail(label)) {
-    const digits = text.replace(/[^\d+]/g, "");
-    if (!digits) return null;
-    if (/whatsapp/i.test(String(label || ""))) {
-      return { href: `https://wa.me/${digits.replace(/^\+/, "")}`, external: true };
-    }
-    return { href: `tel:${digits}` };
-  }
-  return null;
-}
-
-function DetailIcon({ label, value }) {
-  if (isEmailDetail(label, value)) return <Mail size={18} />;
-  if (isPhoneDetail(label)) return <Phone size={18} />;
-  return <MapPin size={18} />;
-}
-
 export default function ContactUsSection() {
-  const { contact } = useSiteConfig();
   const [formData, setFormData] = useState(INITIAL_CONTACT_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -238,135 +202,14 @@ export default function ContactUsSection() {
     ? "9876543210"
     : "Phone number";
 
-  const locations = (contact.locations || []).filter((row) => String(row.address || "").trim());
-  const details = (contact.details || []).filter((row) => String(row.value || "").trim());
-  const hasContactDetails = Boolean(locations.length || details.length);
-  const { introHtml, sections: replySections } = splitHtmlSections(page?.content);
-
   return (
     <section className="wellness-toolkit wellnesspedia-page contact-section">
-      {/* <div className=" contact-hero pt-3 pb-0" style={{ minHeight: "auto" }}>
-        <div
-          className="contact-hero-content"
-          style={{ width: "100%", height: "auto" }}
-        >
-          
-
-          <h1 className="wellness__title ">
-            Contact Our
-            <span> Wellness Team</span>
-          </h1>
-
-          <p className="contact-description" style={{ maxWidth: "99%" }}>
-            Expert guidance for your wellness journey. Reach out to our
-            specialists for personalized clinical support.
-          </p>
-        </div>
-      </div> */}
-
       <div className="site-container">
         <div className="wellness-toolkit__content pt-2 contact-intro">
-          <h2 className="wellness__title mb-0">
-            {page?.title || (
-              <>
-                {/* Contact Our
-                <span> Wellness Team</span> */}
-              </>
-            )}
-          </h2>
-          {introHtml ? (
-            <div
-              className="wellness-toolkit__description static-page-content"
-              dangerouslySetInnerHTML={{ __html: introHtml }}
-            />
-          ) : page?.content ? null : (
-            <p className="wellness-toolkit__description">
-              {/* Expert guidance for your wellness journey. Reach out to our
-              specialists for personalized clinical support. */}
-            </p>
-          )}
+          <h2 className="wellness__title mb-0">{page?.title || "Contact Us"}</h2>
         </div>
 
-        {replySections.length ? (
-          <div className="contact-reply-list">
-            {replySections.map((section, index) => (
-              <aside key={`${section.title || "reply"}-${index}`} className="contact-reply">
-                <span className="contact-reply__icon" aria-hidden="true">
-                  <Clock size={18} strokeWidth={2} />
-                </span>
-                <div className="contact-reply__copy">
-                  {section.title ? (
-                    <h3 className="contact-reply__title">{section.title}</h3>
-                  ) : null}
-                  {section.html ? (
-                    <div
-                      className="contact-reply__body static-page-content"
-                      dangerouslySetInnerHTML={{ __html: section.html }}
-                    />
-                  ) : null}
-                </div>
-              </aside>
-            ))}
-          </div>
-        ) : null}
-
-        <div className={`contact-layout${hasContactDetails ? "" : " contact-layout--form-only"}`}>
-          {hasContactDetails ? (
-          <aside className="contact-card contact-card--details">
-            <h3 className="contact-office__heading">Get in touch</h3>
-            <div className="contact-office" aria-label="Contact details">
-              {locations.map((location) => (
-                <a
-                  key={location.id}
-                  className="contact-office__row"
-                  href={mapsUrl(location.address)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span className="contact-office__icon" aria-hidden="true">
-                    <MapPin size={18} />
-                  </span>
-                  <span>
-                    {location.name ? <strong>{location.name}</strong> : null}
-                    <em>{location.address}</em>
-                  </span>
-                </a>
-              ))}
-              {details.map((row) => {
-                const link = detailHref(row.label, row.value);
-                const content = (
-                  <>
-                    <span className="contact-office__icon" aria-hidden="true">
-                      <DetailIcon label={row.label} value={row.value} />
-                    </span>
-                    <span>
-                      {row.label ? <strong>{row.label}</strong> : null}
-                      <em>{row.value}</em>
-                    </span>
-                  </>
-                );
-                if (link?.href) {
-                  return (
-                    <a
-                      key={row.id}
-                      className="contact-office__row"
-                      href={link.href}
-                      {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    >
-                      {content}
-                    </a>
-                  );
-                }
-                return (
-                  <div key={row.id} className="contact-office__row contact-office__row--static">
-                    {content}
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
-          ) : null}
-
+        <div className="contact-layout contact-layout--form-only">
           <div className="contact-card contact-card--form">
             <h3 className="contact-office__heading">Send a message</h3>
             <form onSubmit={handleSubmit} noValidate>

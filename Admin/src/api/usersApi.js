@@ -621,9 +621,11 @@ export async function fetchUsers({
   userTier,
   assignmentStatus,
   parentCoachId,
+  assignedCoachId,
   clientCategory,
   excludeUserTier,
   excludeClientCategory,
+  hasProgram,
   subscriptionExpiryDays,
 } = {}) {
   const q = new URLSearchParams();
@@ -634,9 +636,13 @@ export async function fetchUsers({
   if (userTier) q.set("userTier", userTier);
   if (assignmentStatus) q.set("assignmentStatus", assignmentStatus);
   if (parentCoachId) q.set("parentCoachId", String(parentCoachId).trim());
+  if (assignedCoachId) q.set("assignedCoachId", String(assignedCoachId).trim());
   if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
   if (excludeUserTier) q.set("excludeUserTier", String(excludeUserTier).trim());
   if (excludeClientCategory) q.set("excludeClientCategory", String(excludeClientCategory).trim());
+  if (hasProgram === true || hasProgram === "true" || hasProgram === 1 || hasProgram === "1") {
+    q.set("hasProgram", "true");
+  }
   if (subscriptionExpiryDays) q.set("subscriptionExpiryDays", String(subscriptionExpiryDays));
 
   try {

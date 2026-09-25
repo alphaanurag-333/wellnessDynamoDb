@@ -5,7 +5,7 @@ import {
   adminListRealPeopleTestimonials,
   adminUpdateRealPeopleTestimonial,
 } from "../api/realPeopleTestimonialApi.js";
-import { adminListHealthConcerns } from "../api/healthConcernApi.js";
+import { adminListHealthConcerns, adminCreateHealthConcern } from "../api/healthConcernApi.js";
 import {
   TESTIMONIAL_PAGE_SIZE,
   healthConcernIdOptions,
@@ -24,6 +24,7 @@ const EMPTY_DRAFT = {
   review: "",
   stars: 5,
   healthConcernId: "",
+  location: "",
   points: [],
   imageFile: null,
   imagePreview: "",
@@ -216,6 +217,8 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
   const [pendingDelete, setPendingDelete] = useState(null);
   const [cropPending, setCropPending] = useState(null);
   const [concernOptions, setConcernOptions] = useState([]);
+  const [newConcernTitle, setNewConcernTitle] = useState("");
+  const [creatingConcern, setCreatingConcern] = useState(false);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -349,6 +352,41 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
     }
   }
 
+  async function createConcernCategory() {
+    const title = String(newConcernTitle || "").trim();
+    if (!title) {
+      onToast("Enter a category name (e.g. Fat Loss, Diabetes Reversal)");
+      return;
+    }
+    setCreatingConcern(true);
+    try {
+      const created = await adminCreateHealthConcern(null, {
+        title,
+        description: title,
+        status: "active",
+      });
+      await loadLookups();
+      if (created?.id) {
+        setDraft((prev) => ({ ...prev, healthConcernId: created.id }));
+        if (editingId) {
+          setItems((prev) =>
+            prev.map((row) =>
+              row.id === editingId
+                ? { ...row, healthConcernId: created.id, healthConcernTitle: created.title }
+                : row,
+            ),
+          );
+        }
+      }
+      setNewConcernTitle("");
+      onToast(`Category “${created?.title || title}” added`);
+    } catch (error) {
+      onToast(error?.message || "Could not create category");
+    } finally {
+      setCreatingConcern(false);
+    }
+  }
+
   async function addItem() {
     const name = draft.name.trim();
     const review = draft.review.trim();
@@ -357,7 +395,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
       return;
     }
     if (!draft.healthConcernId) {
-      onToast("Pick a health concern from Configs → Dropdowns");
+      onToast("Pick a health concern, or create a new category below");
       return;
     }
     if (!(draft.imageFile instanceof File)) {
@@ -371,6 +409,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
         review,
         stars: draft.stars,
         healthConcernId: draft.healthConcernId,
+        location: draft.location,
         dataPoints: draft.points,
         status: "active",
       }, draft.imageFile);
@@ -407,6 +446,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
         review,
         stars: item.stars,
         healthConcernId: item.healthConcernId,
+        location: item.location || "",
         dataPoints: item.dataPoints || [],
       });
       patchItem(item.id, saved);
@@ -497,7 +537,7 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
       />
       <Panel
         title="Real People Real Healing"
-        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · health concern from Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}
+        subtitle={loading ? "Loading testimonials…" : `${pagination.total} total · ${liveCount} live on this page · create health categories here or in Dropdowns${canReorder ? " · use arrows to reorder" : ""}`}
         actions={(
           <button
             type="button"
@@ -551,6 +591,36 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                       onChange={(value) => setDraft((prev) => ({ ...prev, healthConcernId: value }))}
                     />
                   </label>
+                  <label className="ua-cfg-rp-field">
+                    <span>Location</span>
+                    <input
+                      className="ua-cfg-vh-input"
+                      placeholder="City / location"
+                      value={asCopyString(draft.location)}
+                      disabled={busy}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, location: event.target.value }))}
+                    />
+                  </label>
+                  <div className="ua-cfg-rp-field ua-cfg-rp-field--wide ua-cfg-rp-new-category">
+                    <span>Add new category</span>
+                    <div className="ua-cfg-rp-new-category__row">
+                      <input
+                        className="ua-cfg-vh-input"
+                        placeholder="e.g. Fat Loss, Diabetes Reversal, PMOS"
+                        value={newConcernTitle}
+                        disabled={busy || creatingConcern}
+                        onChange={(event) => setNewConcernTitle(event.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                        disabled={busy || creatingConcern}
+                        onClick={createConcernCategory}
+                      >
+                        {creatingConcern ? "Adding…" : "Add category"}
+                      </button>
+                    </div>
+                  </div>
                   <div className="ua-cfg-rp-new__story-col">
                     <span className="ua-cfg-rp-new__story-label">Review</span>
                     <textarea
@@ -581,7 +651,9 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                     </div>
                   </div>
                   {!concernOptions.length ? (
-                    <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">Add health concerns in Configs → Dropdowns first.</p>
+                    <p className="ua-cfg-panel__sub ua-cfg-rp-field--wide">
+                      No categories yet — add one above (Fat Loss, Diabetes Reversal, etc.).
+                    </p>
                   ) : null}
                 </div>
               </div>
@@ -648,6 +720,14 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                                 disabled={busy}
                                 onChange={(value) => patchItem(entry.id, { healthConcernId: value })}
                               />
+                              <input
+                                className="ua-cfg-vh-input"
+                                placeholder="Location"
+                                value={asCopyString(entry.location)}
+                                disabled={busy}
+                                aria-label="Location"
+                                onChange={(event) => patchItem(entry.id, { location: event.target.value })}
+                              />
                               <CfgSelect
                                 className="ua-cfg-rp-select ua-cfg-select--sm"
                                 options={STAR_OPTIONS}
@@ -662,6 +742,9 @@ export function DynamicRealPeopleSection({ items, setItems, editor, setEditor, o
                               <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
                                 {asCopyString(entry.healthConcernTitle) || concernLabel(entry.healthConcernId) || "Uncategorized"}
                               </span>
+                              {asCopyString(entry.location) ? (
+                                <span className="ua-cfg-rc-pill">{asCopyString(entry.location)}</span>
+                              ) : null}
                               <span className="ua-cfg-cr-stars" aria-label={`${entry.stars} stars`}>
                                 {"★★★★★".slice(0, Math.max(1, Math.min(5, entry.stars || 5)))}
                               </span>

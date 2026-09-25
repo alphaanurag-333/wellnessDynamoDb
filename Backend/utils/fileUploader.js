@@ -41,14 +41,84 @@ const allowedTypes = [
   "application/x-zip-compressed",
 ];
 
+/** Extension → MIME when clients send octet-stream / blank Content-Type (common on mobile). */
+const EXT_TO_MIME = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".mp4": "video/mp4",
+  ".m4v": "video/mp4",
+  ".mov": "video/quicktime",
+  ".avi": "video/x-msvideo",
+  ".webm": "video/webm",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".pdf": "application/pdf",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".xls": "application/vnd.ms-excel",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".txt": "text/plain",
+  ".zip": "application/zip",
+};
+
+const GENERIC_MIMES = new Set([
+  "",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "octet-stream",
+]);
+
 const uploadLimits = { fileSize: MULTER_MAX_FILE_SIZE_BYTES };
 
-function fileFilter(req, file, cb) {
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new AppError("Unsupported file type", 400), false);
+function normalizeMime(value) {
+  return String(value || "").toLowerCase().trim();
+}
+
+function mimeFromFilename(filename) {
+  const ext = path.extname(String(filename || "")).toLowerCase();
+  return EXT_TO_MIME[ext] || "";
+}
+
+function resolveUploadMime(file) {
+  const mime = normalizeMime(file?.mimetype);
+  if (allowedTypes.includes(mime)) return mime;
+
+  // Clients (esp. apps) often send .mp4 as binary/octet-stream — trust known extension.
+  if (GENERIC_MIMES.has(mime)) {
+    const inferred = mimeFromFilename(file?.originalname);
+    if (inferred && allowedTypes.includes(inferred)) return inferred;
   }
+
+  return "";
+}
+
+function fileFilter(req, file, cb) {
+  const resolved = resolveUploadMime(file);
+  if (resolved) {
+    // Fix Content-Type for S3 / downstream so video/mp4 is stored correctly.
+    file.mimetype = resolved;
+    cb(null, true);
+    return;
+  }
+
+  const mime = normalizeMime(file?.mimetype);
+  const name = String(file?.originalname || "file").trim() || "file";
+  cb(
+    new AppError(
+      `Unsupported file type${mime ? ` (${mime})` : ""} for ${name}. Allowed: images (jpg/png/gif/webp/svg), video (mp4/mov/avi/webm), audio, PDF, Office docs, txt, zip.`,
+      400
+    ),
+    false
+  );
 }
 
 function createUploader(folderName = "") {
@@ -87,3 +157,4 @@ function createMemoryUploader() {
 
 module.exports = createUploader;
 module.exports.createMemoryUploader = createMemoryUploader;
+module.exports.resolveUploadMime = resolveUploadMime;

@@ -14,6 +14,7 @@ const {
   normalizeLogDate,
   normalizePeriod,
 } = require("../../models/userSupplementDosageLogModel");
+const { parseCompositePeriod } = require("../../models/userSupplementDosageModel");
 
 const PERIOD_COLORS = {
   morning: "#F5A623",
@@ -57,6 +58,26 @@ const PERIOD_LABELS = {
   before_evening_snacks: "Before Evening Snacks",
 };
 
+function resolvePeriodLabel(period) {
+  if (PERIOD_LABELS[period]) return PERIOD_LABELS[period];
+  const composite = parseCompositePeriod(period);
+  if (composite) {
+    const day = PERIOD_LABELS[composite.dayPart] || composite.dayPart;
+    const meal = PERIOD_LABELS[composite.mealTiming] || composite.mealTiming;
+    return `${day} · ${meal}`;
+  }
+  return period;
+}
+
+function resolvePeriodColor(period) {
+  if (PERIOD_COLORS[period]) return PERIOD_COLORS[period];
+  const composite = parseCompositePeriod(period);
+  if (composite) {
+    return PERIOD_COLORS[composite.dayPart] || PERIOD_COLORS[composite.mealTiming] || "#F5A623";
+  }
+  return "#F5A623";
+}
+
 function handleValidationError(err) {
   if (err?.name === "ValidationError") {
     throw new AppError(err.message, 400);
@@ -93,9 +114,9 @@ async function hydrateDosageForUser(dosage, todayLogs, logDate) {
     todayCompletion,
     periods: (dosage.periods || []).map((row) => ({
       ...row,
-      label: PERIOD_LABELS[row.period] || row.period,
+      label: resolvePeriodLabel(row.period),
       completed: todayCompletion[row.period] === true,
-      color: PERIOD_COLORS[row.period] || "#F5A623",
+      color: resolvePeriodColor(row.period),
     })),
   };
 }

@@ -97,6 +97,7 @@ function extraQueryForTypeTab(tabId, baseUserTier) {
     return {
       clientCategory: "individual",
       excludeUserTier: "maintenance",
+      hasProgram: true,
     };
   }
   return {};
@@ -309,6 +310,7 @@ export function UsersPage() {
   const isArchivedTab = isAdminView && typeTab === "archived";
   const tierFilter = listSearchParams.get("tier") || "";
   const coachFilter = listSearchParams.get("coach") || "";
+  const awcFilter = listSearchParams.get("awc") || "";
   const subscriptionExpiryParam = Number(listSearchParams.get("subscriptionExpiry"));
   const subscriptionExpiryDays =
     Number.isFinite(subscriptionExpiryParam) && subscriptionExpiryParam > 0
@@ -378,8 +380,9 @@ export function UsersPage() {
     status: mapUiStatusToApi(statusFilter),
     userTier: mapUiTierToApi(tierFilter),
     parentCoachId: coachFilter || undefined,
+    assignedCoachId: awcFilter || undefined,
     subscriptionExpiryDays: subscriptionExpiryDays || undefined,
-  }), [coachFilter, debouncedSearch, statusFilter, subscriptionExpiryDays, tierFilter]);
+  }), [awcFilter, coachFilter, debouncedSearch, statusFilter, subscriptionExpiryDays, tierFilter]);
 
   const listQuery = useMemo(() => {
     const extra = extraQueryForTypeTab(typeTab, baseListQuery.userTier);
@@ -480,7 +483,8 @@ export function UsersPage() {
           return 0;
         }
       };
-      const [individual, team, app, archived] = await Promise.all([
+      const [all, individual, team, app, archived] = await Promise.all([
+        fetchCount("all"),
         fetchCount("individual"),
         fetchCount("team"),
         fetchCount("app"),
@@ -492,7 +496,7 @@ export function UsersPage() {
       ]);
       if (!cancelled) {
         setTabCounts({
-          all: individual + team + app,
+          all,
           individual,
           team,
           app,
@@ -542,6 +546,15 @@ export function UsersPage() {
     if (openUserId) return;
     const next = new URLSearchParams(listSearchParams);
     next.delete("coach");
+    next.delete("awc");
+    next.delete("page");
+    setSearchParams(next, { replace: true });
+  };
+
+  const clearAwcFilter = () => {
+    if (openUserId) return;
+    const next = new URLSearchParams(listSearchParams);
+    next.delete("awc");
     next.delete("page");
     setSearchParams(next, { replace: true });
   };
@@ -649,7 +662,7 @@ export function UsersPage() {
     if (isAdminView) {
       tabs.push({
         id: "archived",
-        label: "Archived",
+        label: "Archived users",
         count: tabCounts.archived ?? (typeTab === "archived" ? pagination.total : 0),
       });
     }
@@ -1080,6 +1093,15 @@ export function UsersPage() {
               Coach: {teamMembers.find((m) => String(m.id) === String(coachFilter))?.name || coachFilter}
             </span>
             <button type="button" className="ua-coach-filter__clear" title="Clear coach filter" onClick={clearCoachFilter}>×</button>
+          </div>
+        ) : null}
+
+        {awcFilter ? (
+          <div className="ua-coach-filter">
+            <span className="ua-coach-filter__label">
+              AWC: {teamMembers.find((m) => String(m.id) === String(awcFilter))?.name || awcFilter}
+            </span>
+            <button type="button" className="ua-coach-filter__clear" title="Clear AWC filter" onClick={clearAwcFilter}>×</button>
           </div>
         ) : null}
 

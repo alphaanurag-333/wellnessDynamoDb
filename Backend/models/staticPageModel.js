@@ -81,7 +81,12 @@ async function getPageBySlugWithAliases(slug) {
 
 function compactHtml(value) {
   return String(value || "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<\/?o:p[^>]*>/gi, "")
+    .replace(/\s*mso-[a-z-]+:[^;"]+;?/gi, "")
+    .replace(/\sclass="Mso[a-zA-Z0-9]+"/gi, "")
     .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
     .trim();
 }
 

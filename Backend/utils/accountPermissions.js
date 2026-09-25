@@ -10,8 +10,12 @@ const {
   isValidConsolePermission,
   grantsMapToPermissions,
   DEFAULT_CONSOLE_GRANTS,
+  DEFAULT_NAV_SECTIONS,
   ROLE_KEY_META,
   parseConsoleSlug,
+  defaultRoleAllowsConfigs,
+  stripConfigPermissionSlugs,
+  navSectionsForUiRole,
 } = require("../config/consolePermissionCatalog");
 const { listAccessPolicies, policyAppliesToTarget } = require("../models/accessPolicyModel");
 
@@ -120,6 +124,7 @@ async function resolveAccountPermissions(account, activeRoleKey) {
       roleId: null,
       permissionMap: null,
       dataScope: "assigned",
+      navSections: [],
     };
   }
 
@@ -135,6 +140,7 @@ async function resolveAccountPermissions(account, activeRoleKey) {
       roleId: membership?.roleId || null,
       permissionMap: null,
       dataScope: "all",
+      navSections: [...(DEFAULT_NAV_SECTIONS.admin || [])],
     };
   }
 
@@ -170,12 +176,20 @@ async function resolveAccountPermissions(account, activeRoleKey) {
   }
   permissions = applyConsoleOverrides(permissions, membership?.permissionOverrides);
 
+  const uiKey = ROLE_KEY_TO_UI[roleKey];
+  // System roles whose baseline excludes Configs must not inherit leftover
+  // catalog slugs from old seeds, member overrides, or allow-policies.
+  if (uiKey && !defaultRoleAllowsConfigs(uiKey)) {
+    permissions = stripConfigPermissionSlugs(permissions);
+  }
+
   return {
     permissions,
     isSuperAdmin: false,
     roleId: membership?.roleId || null,
     permissionMap: null,
     dataScope: String(role?.dataScope || consoleDataScopeForRoleKey(roleKey)).toLowerCase(),
+    navSections: navSectionsForUiRole(uiKey, role),
   };
 }
 

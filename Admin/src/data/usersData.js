@@ -22,9 +22,9 @@ export const TIER_OPTIONS = [
 
 export const USER_TYPE_TAB_DEFS = [
   { id: "", label: "All users" },
-  { id: "individual", label: "Program clients" },
-  { id: "team", label: "Eagles" },
-  { id: "app", label: "Maintenance" },
+  { id: "individual", label: "Active program clients" },
+  { id: "team", label: "Eagle users" },
+  { id: "app", label: "Maintenance users" },
 ];
 
 const AVATAR_COLORS = ["#34a56a", "#5e6ad2", "#0d9488", "#ec7a45", "#c2661d", "#7c8aa5"];

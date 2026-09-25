@@ -330,7 +330,7 @@ export function ProgramTestimonialsSection({ stories, setStories, gallery, setGa
                   type="text"
                   className="ua-cfg-pt-field__input"
                   value={asCopyString(selected.headline)}
-                  placeholder="Down 18 kg on Fat Loss"
+                  placeholder="e.g. Down 18 kg on Fat Loss & Weight Management"
                   onChange={(event) => updateSelected({ headline: event.target.value })}
                 />
               </label>

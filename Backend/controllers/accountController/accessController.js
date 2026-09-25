@@ -21,7 +21,10 @@ const {
   assignedMembershipRoleId,
   toPublicAccount,
 } = require("../../models/accountModel");
-const { listUsersByParentCoachId } = require("../../models/userModel");
+const {
+  listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
+} = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 const {
   getConsolePermissionCatalog,
@@ -30,6 +33,8 @@ const {
   DEFAULT_CONSOLE_GRANTS,
   DEFAULT_NAV_SECTIONS,
   ROLE_KEY_META,
+  alignSeededConsoleRole,
+  sameStringSet,
   UI_TO_ACCOUNT_ROLE,
   ACCOUNT_TO_UI_ROLE,
   TOTAL_PERM_SLOTS,
@@ -76,6 +81,67 @@ const TEAM_DESCENDANT_ROLES = {
   wellness_coach: new Set(["assistant_wellness_coach", "trainee"]),
   assistant_wellness_coach: new Set(["trainee"]),
 };
+
+async function countChildAccounts(parentId, roleKey) {
+  const parentAccountId = String(parentId || "").trim();
+  if (!parentAccountId || !roleKey) return 0;
+  const result = await listAccounts({
+    parentAccountId,
+    roleKey,
+    page: 1,
+    limit: 1,
+  });
+  return result.pagination?.total || 0;
+}
+
+async function listAssistantsForCoach(coachId) {
+  const parentAccountId = String(coachId || "").trim();
+  if (!parentAccountId) return { accounts: [], total: 0 };
+  const result = await listAccounts({
+    parentAccountId,
+    roleKey: "assistant_wellness_coach",
+    page: 1,
+    limit: 200,
+  });
+  const accounts = result.accounts || [];
+  return {
+    accounts,
+    total: result.pagination?.total ?? accounts.length,
+  };
+}
+
+/** Trainees report to an AWC. For a WC, count trainees under every assigned AWC. */
+async function countTraineesForAccount(accountId, accountRoleKey, assistants) {
+  const id = String(accountId || "").trim();
+  if (!id) return 0;
+  if (accountRoleKey === "assistant_wellness_coach") {
+    return countChildAccounts(id, "trainee");
+  }
+  if (accountRoleKey !== "wellness_coach") return 0;
+  const awcs = Array.isArray(assistants) ? assistants : (await listAssistantsForCoach(id)).accounts;
+  let total = 0;
+  for (const assistant of awcs) {
+    total += await countChildAccounts(assistant.id, "trainee");
+  }
+  return total;
+}
+
+async function listNestedTraineesForWellnessCoach(coachId, { search, page, limit } = {}) {
+  const { accounts: assistants } = await listAssistantsForCoach(coachId);
+  const accounts = [];
+  for (const assistant of assistants) {
+    const trainees = await listAccounts({
+      status: "active",
+      search,
+      roleKey: "trainee",
+      parentAccountId: assistant.id,
+      page: 1,
+      limit: 200,
+    });
+    accounts.push(...(trainees.accounts || []));
+  }
+  return paginateAccounts(accounts, page, limit);
+}
 
 const WC_REQUESTABLE_ROLES = new Set(["assistant_wellness_coach"]);
 
@@ -379,6 +445,15 @@ function visibleTeamRoleKeys(req) {
   return TEAM_DESCENDANT_ROLES[actorAccountRole(req)] || new Set();
 }
 
+/** Live-roles picker: own role plus reporting line. Members directory stays descendants-only. */
+function visibleLiveRoleKeys(req) {
+  const descendants = visibleTeamRoleKeys(req);
+  if (descendants === null) return null;
+  const actor = actorAccountRole(req);
+  if (!actor) return descendants;
+  return new Set([actor, ...descendants]);
+}
+
 function teamParentId(account, primaryRole) {
   const fromAccount = String(account?.parentAccountId || "").trim();
   if (fromAccount) return fromAccount;
@@ -408,12 +483,38 @@ async function canViewTeamAccount(req, account, primaryRole) {
   return false;
 }
 
-async function collectScopedTeamAccounts(req, { search, accountRoleFilter } = {}) {
+async function collectScopedTeamAccounts(req, { search, accountRoleFilter, parentAccountId } = {}) {
+  const viewerId = String(req.auth.sub || "");
+  const requestedParent = String(parentAccountId || "").trim();
+
+  // WC opening an AWC profile card: only that assistant's reports (usually trainees).
+  if (
+    requestedParent &&
+    requestedParent !== viewerId &&
+    actorAccountRole(req) === "wellness_coach"
+  ) {
+    const parent = await getAccountById(requestedParent);
+    const parentIsOwnAwc =
+      parent?.roleKeys?.includes("assistant_wellness_coach") &&
+      teamParentId(parent, "assistant_wellness_coach") === viewerId;
+    if (parentIsOwnAwc) {
+      const nested = await listAccounts({
+        status: "active",
+        search,
+        roleKey: accountRoleFilter,
+        parentAccountId: requestedParent,
+        page: 1,
+        limit: 200,
+      });
+      return nested.accounts || [];
+    }
+  }
+
   const direct = await listAccounts({
     status: "active",
     search,
     roleKey: accountRoleFilter,
-    parentAccountId: req.auth.sub,
+    parentAccountId: viewerId,
     page: 1,
     limit: 200,
   });
@@ -548,7 +649,8 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
     limit: 100,
   });
 
-  const visibleRoles = visibleTeamRoleKeys(req);
+  const visibleRoles = visibleLiveRoleKeys(req);
+  const actorRole = actorAccountRole(req);
   const scopedRoles = [];
   for (const role of roles) {
     if (visibleRoles === null) {
@@ -562,10 +664,12 @@ exports.listAccessRoles = asyncHandler(async (req, res) => {
   const enriched = [];
   for (const role of scopedRoles) {
     let count = 0;
+    const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
     if (visibleRoles === null) {
       count = await memberCountForConsoleRole(role);
+    } else if (accountRole && accountRole === actorRole) {
+      count = 1;
     } else {
-      const accountRole = await resolveAccountRoleKeyFromConsoleRole(role);
       const scoped = await collectScopedTeamAccounts(req, { accountRoleFilter: accountRole });
       for (const acc of scoped) {
         const pub = typeof acc.password === "undefined" ? acc : toPublicAccount(acc);
@@ -954,21 +1058,30 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
 
   let result;
   if (visibleRoles === null) {
-    result = await listAccounts({
-      status: "active",
-      search,
-      roleKey: accountRoleFilter,
-      parentAccountId: scopedParentId,
-      page: listPage,
-      limit: listLimit,
-    });
+    const parentIsWcForTrainees =
+      scopedParentId &&
+      accountRoleFilter === "trainee" &&
+      (await getAccountById(scopedParentId))?.roleKeys?.includes("wellness_coach");
+    result = parentIsWcForTrainees
+      ? await listNestedTraineesForWellnessCoach(scopedParentId, {
+          search,
+          page: listPage,
+          limit: listLimit,
+        })
+      : await listAccounts({
+          status: "active",
+          search,
+          roleKey: accountRoleFilter,
+          parentAccountId: scopedParentId,
+          page: listPage,
+          limit: listLimit,
+        });
   } else {
     result = {
       accounts: await collectScopedTeamAccounts(req, {
         search,
         accountRoleFilter,
-        // When WC opens AWCs for their own profile, parent is themselves (already scoped).
-        // Ignore a mismatched parent filter from the URL.
+        parentAccountId: parentAccountIdFilter,
       }),
     };
   }
@@ -1030,6 +1143,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       : roleKeys.map((k) => ACCOUNT_TO_UI_ROLE[k] || k).join(", ");
     let clientCount = null;
     let awcCount = null;
+    let traineeCount = null;
     let parentName = null;
     let parentAccountId =
       pub.parentAccountId ||
@@ -1040,27 +1154,36 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       if (primaryAccountRole === "wellness_coach") {
         const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 1, scope: "all" });
         clientCount = clients.pagination?.total || 0;
-        const children = await listAccounts({
-          parentAccountId: pub.id,
-          roleKey: "assistant_wellness_coach",
-          page: 1,
-          limit: 1,
-        });
-        awcCount = children.pagination?.total || 0;
-        meta = `${clientCount} client${clientCount === 1 ? "" : "s"} · ${awcCount} AWC${awcCount === 1 ? "" : "s"}`;
+        const children = await listAssistantsForCoach(pub.id);
+        awcCount = children.total;
+        traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole, children.accounts);
+        meta = `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")} · ${formatCountLabel(traineeCount, "trainee", "trainees")}`;
       } else if (
         primaryAccountRole === "assistant_wellness_coach" ||
         primaryAccountRole === "trainee"
       ) {
+        if (primaryAccountRole === "assistant_wellness_coach") {
+          traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
+          if (parentAccountId) {
+            const assigned = await loadAssistantClientStats(pub.id, parentAccountId);
+            clientCount = assigned.clientCount;
+          }
+        }
         const parentId = parentAccountId;
         if (parentId) {
           const parent = await getAccountById(parentId);
           parentName = parent?.name || null;
-          meta = parentName
-            ? `under ${parentName}`
-            : primaryAccountRole === "trainee"
-              ? "Trainee"
-              : "Assistant";
+          if (primaryAccountRole === "assistant_wellness_coach") {
+            meta = [
+              parentName ? `under ${parentName}` : "Assistant",
+              formatCountLabel(clientCount || 0, "client", "clients"),
+              formatCountLabel(traineeCount || 0, "trainee", "trainees"),
+            ].join(" · ");
+          } else {
+            meta = parentName
+              ? `under ${parentName}`
+              : "Trainee";
+          }
         }
       } else if (primaryAccountRole === "support") {
         meta = pub.designation || "Support";
@@ -1103,6 +1226,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       parentName,
       clientCount,
       awcCount,
+      traineeCount,
       grantedCount,
       totalSlots: TOTAL_PERM_SLOTS,
       hasOverrides: overrides !== undefined,
@@ -1126,6 +1250,51 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
 function formatCountLabel(count, singular, plural) {
   const n = Number(count) || 0;
   return `${n} ${n === 1 ? singular : plural}`;
+}
+
+function emptyClientStats() {
+  return {
+    total: 0,
+    seek: 0,
+    heal: 0,
+    consultancy_only: 0,
+    maintenance: 0,
+    other: 0,
+  };
+}
+
+function fillClientStatsFromUsers(users, clientStats = emptyClientStats()) {
+  const rows = Array.isArray(users) ? users : [];
+  for (const u of rows) {
+    const tier = String(u.userTier || "seek").toLowerCase();
+    if (tier === "seek") clientStats.seek += 1;
+    else if (tier === "heal") clientStats.heal += 1;
+    else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
+    else if (tier === "maintenance") clientStats.maintenance += 1;
+    else clientStats.other += 1;
+  }
+  return clientStats;
+}
+
+/** Clients assigned to an AWC live on User.assignedCoachId (not parentCoachId). */
+async function loadAssistantClientStats(assistantId, parentCoachId) {
+  const stats = emptyClientStats();
+  const coachId = String(parentCoachId || "").trim();
+  const awcId = String(assistantId || "").trim();
+  if (!awcId || !coachId) {
+    return { clientCount: 0, clientStats: stats, users: [] };
+  }
+  const clients = await listUsersByAssignedCoachId(awcId, {
+    parentCoachId: coachId,
+    page: 1,
+    limit: 200,
+    userTier: "all",
+  });
+  const users = clients.users || [];
+  const clientCount = clients.pagination?.total || users.length;
+  fillClientStatsFromUsers(users, stats);
+  stats.total = clientCount;
+  return { clientCount, clientStats: stats, users };
 }
 
 async function buildMemberContent(accountOrPublic) {
@@ -1229,36 +1398,32 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
 
   let clientCount = 0;
   let awcCount = 0;
+  let traineeCount = 0;
   let parentName = null;
-  const clientStats = {
-    total: 0,
-    seek: 0,
-    heal: 0,
-    consultancy_only: 0,
-    maintenance: 0,
-    other: 0,
-  };
+  let clientStats = emptyClientStats();
   if (primaryAccountRole === "wellness_coach") {
     try {
       const clients = await listUsersByParentCoachId(pub.id, { page: 1, limit: 200, scope: "all" });
       const users = clients.users || [];
       clientCount = clients.pagination?.total || users.length;
+      fillClientStatsFromUsers(users, clientStats);
       clientStats.total = clientCount;
-      for (const u of users) {
-        const tier = String(u.userTier || "seek").toLowerCase();
-        if (tier === "seek") clientStats.seek += 1;
-        else if (tier === "heal") clientStats.heal += 1;
-        else if (tier === "consultancy_only") clientStats.consultancy_only += 1;
-        else if (tier === "maintenance") clientStats.maintenance += 1;
-        else clientStats.other += 1;
+      const children = await listAssistantsForCoach(pub.id);
+      awcCount = children.total;
+      traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole, children.accounts);
+    } catch {
+      /* ignore */
+    }
+  } else if (primaryAccountRole === "assistant_wellness_coach") {
+    try {
+      const awcParentId =
+        pub.parentAccountId || membership?.parentAccountId || null;
+      if (awcParentId) {
+        const assigned = await loadAssistantClientStats(pub.id, awcParentId);
+        clientCount = assigned.clientCount;
+        clientStats = assigned.clientStats;
       }
-      const children = await listAccounts({
-        parentAccountId: pub.id,
-        roleKey: "assistant_wellness_coach",
-        page: 1,
-        limit: 1,
-      });
-      awcCount = children.pagination?.total || 0;
+      traineeCount = await countTraineesForAccount(pub.id, primaryAccountRole);
     } catch {
       /* ignore */
     }
@@ -1321,10 +1486,17 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       parentName,
       clientCount,
       awcCount,
+      traineeCount,
       clientStats,
       meta:
         primaryAccountRole === "wellness_coach"
-          ? `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")}`
+          ? `${formatCountLabel(clientCount, "client", "clients")} · ${formatCountLabel(awcCount, "AWC", "AWCs")} · ${formatCountLabel(traineeCount, "trainee", "trainees")}`
+          : primaryAccountRole === "assistant_wellness_coach"
+            ? [
+                parentName ? `under ${parentName}` : "Assistant",
+                formatCountLabel(clientCount, "client", "clients"),
+                formatCountLabel(traineeCount, "trainee", "trainees"),
+              ].join(" · ")
           : parentName
             ? `under ${parentName}`
             : ROLE_KEY_META[uiRole]?.name || uiRole,
@@ -1715,55 +1887,18 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
           dataScope: meta.dataScope,
         });
       }
-    } else if (roleKey === "wc") {
-      // Revenue analytics is admin-only — strip legacy rev grants from seeded WC roles.
-      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.wc);
-      const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
-      const revSlugRe = /^console\.rev\./;
-      const nextPerms = [
-        ...new Set([
-          ...currentPerms.filter((slug) => !revSlugRe.test(String(slug))),
-          ...baselinePerms,
-        ]),
-      ];
-      const permsChanged =
-        nextPerms.length !== currentPerms.length
-        || nextPerms.some((slug) => !currentPerms.includes(slug))
-        || currentPerms.some((slug) => !nextPerms.includes(slug));
-      if (permsChanged) {
-        role = await updateRole(role.id, { permissions: nextPerms });
-      }
-    } else if (roleKey === "support") {
-      // Keep Support aligned with the current baseline (additive for new slugs, drop removed defaults).
-      const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS.support);
-      const baselineNav = DEFAULT_NAV_SECTIONS.support || [];
+    } else {
+      // WC / AWC / Trainee / Support: add new baseline slugs, drop Configs leftovers
+      // (and WC revenue analytics). Matches Access Control defaults.
+      const aligned = alignSeededConsoleRole(role, roleKey);
       const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
       const currentNav = Array.isArray(role.navSections) ? role.navSections : [];
-      const configSlugRe = /^console\.(ct|bn|cf|rp)\./;
-      const nextPerms = [
-        ...new Set([
-          ...currentPerms.filter((slug) => !configSlugRe.test(String(slug))),
-          ...baselinePerms,
-        ]),
-      ];
-      const nextNav = [
-        ...new Set([
-          ...currentNav.filter((id) => id !== "configs"),
-          ...baselineNav,
-        ]),
-      ];
-      const permsChanged =
-        nextPerms.length !== currentPerms.length
-        || nextPerms.some((slug) => !currentPerms.includes(slug))
-        || currentPerms.some((slug) => !nextPerms.includes(slug));
-      const navChanged =
-        nextNav.length !== currentNav.length
-        || nextNav.some((id) => !currentNav.includes(id))
-        || currentNav.some((id) => !nextNav.includes(id));
+      const permsChanged = !sameStringSet(aligned.permissions, currentPerms);
+      const navChanged = !sameStringSet(aligned.navSections, currentNav);
       if (permsChanged || navChanged) {
         role = await updateRole(role.id, {
-          permissions: nextPerms,
-          navSections: nextNav,
+          permissions: aligned.permissions,
+          navSections: aligned.navSections,
         });
       }
     }

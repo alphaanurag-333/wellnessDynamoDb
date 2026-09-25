@@ -2251,6 +2251,26 @@ function renderPreviewBody(item, surface, previewState) {
           empty="No guidelines are shown yet."
         />
       );
+    case "web-fs-medical-disclaimer":
+      return (
+        <LegalBlocksPreview
+          blocks={previewState.medicalDisclaimerBlocks ?? []}
+          surface={surface}
+          item={item}
+          title="Medical Disclaimer"
+          url="irwellness.in/medical-disclaimer"
+          empty="No disclaimer sections are shown yet."
+        />
+      );
+    case "app-medical-disclaimer":
+      return (
+        <LegalTextPreview
+          title="Medical Disclaimer"
+          blocks={previewState.appMedicalDisclaimerBlocks ?? []}
+          surface={surface}
+          item={item}
+        />
+      );
     case "app-compliance": {
       const compliance = previewState.complianceSettings ?? {};
       const enabled = Boolean(compliance.enabled);

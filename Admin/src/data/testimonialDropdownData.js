@@ -28,7 +28,7 @@ export function parseFirstNumber(value) {
   return Number.isFinite(num) ? num : null;
 }
 
-export function parseDurationMonths(value, fallback = 1) {
+export function parseDurationMonths(value, fallback = null) {
   const num = parseFirstNumber(value);
   if (!Number.isFinite(num)) return fallback;
   return Math.min(120, Math.max(1, Math.round(num)));
@@ -56,10 +56,13 @@ export function pointsToTransformationFields(points = []) {
   });
   const extraValues = extras.map((row) => String(row.value || "").trim()).filter(Boolean);
   const name = String(namePoint?.value || "").trim();
+  const durationRaw = String(durationPoint?.value || "").trim();
+  const inchesRaw = String(inchesPoint?.value || "").trim();
   return {
     name,
-    timeTaken: parseDurationMonths(durationPoint?.value, 1),
-    inchesLost: parseInchesLost(inchesPoint?.value),
+    // Only send duration/inches when admin actually filled them — never invent "1".
+    timeTaken: durationRaw ? parseDurationMonths(durationRaw, null) : null,
+    inchesLost: inchesRaw ? parseInchesLost(inchesRaw) : null,
     achievements: extraValues.join(", ") || name || "Transformation",
     dataPoints: points,
   };
@@ -75,20 +78,29 @@ export function pointsToPayload(points = []) {
 }
 
 export function defaultDraftPoints(options = []) {
-  const preferred = ["client_name", "duration", "inches_lost"];
+  const preferred = ["client_name", "duration", "inches", "inches_lost"];
   const picked = [];
   for (const key of preferred) {
     const match = options.find((row) => fieldKey(row.value) === key || fieldKey(row.label) === key);
-    if (match) picked.push(match);
+    if (match && !picked.some((row) => fieldKey(row.value) === fieldKey(match.value))) {
+      picked.push(match);
+    }
   }
   const source = picked.length ? picked : options.slice(0, 2);
-  return source.map((row) => ({
-    id: `dp-${row.value}`,
-    field: row.value,
-    label: row.label,
-    value: "",
-    source: "AUTO",
-  }));
+  return source.map((row) => {
+    const key = fieldKey(row.value) || fieldKey(row.label);
+    const isInches = INCHES_FIELDS.has(key);
+    const label = isInches
+      ? String(row.label || "Inches").replace(/\s*lost\s*/gi, " ").replace(/\s+/g, " ").trim() || "Inches"
+      : row.label;
+    return {
+      id: `dp-${row.value}`,
+      field: isInches && key === "inches_lost" ? "inches" : row.value,
+      label,
+      value: "",
+      source: "AUTO",
+    };
+  });
 }
 
 export function healthConcernIdOptions(concerns = []) {

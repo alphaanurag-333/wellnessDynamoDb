@@ -19,9 +19,10 @@ import {
   baselinePermissionsForRole,
   defaultAdminNavSections,
   hasConsolePermission,
-  sectionsFromPermissions,
+  resolveLiveNavSections,
+  stripConfigPermissionSlugsForRole,
 } from "../utils/permissions.js";
-import { staticViewAsMenuRoles, toViewAsMenuRole } from "../utils/liveRoles.js";
+import { canPreviewLiveRole, liveRoleIdsForSession, staticViewAsMenuRoles, toViewAsMenuRole } from "../utils/liveRoles.js";
 import { loadAppConfig } from "../store/loadAppConfig.js";
 import { clearAdminProfile, setAdminProfile } from "../store/slices/adminProfileSlice.js";
 
@@ -67,8 +68,10 @@ function sessionPermissions(account) {
   const activeUi = ROLE_KEY_TO_UI[activeKey] || account.activeRoleUi;
   if (activeKey === "admin" || activeUi === "admin") return [...ALL_CONSOLE_PERMISSIONS];
   const granted = Array.isArray(account.permissions) ? account.permissions : [];
-  if (granted.some((slug) => String(slug).startsWith("console."))) return granted;
-  return baselinePermissionsForRole(activeUi || "wc");
+  const list = granted.some((slug) => String(slug).startsWith("console."))
+    ? granted
+    : baselinePermissionsForRole(activeUi || "wc");
+  return stripConfigPermissionSlugsForRole(list, activeUi || "wc");
 }
 
 export function ViewAsProvider({ children }) {
@@ -226,7 +229,12 @@ export function ViewAsProvider({ children }) {
       const roleMeta = liveMenuRoles.find((r) => r.id === roleId)
         || staticViewAsMenuRoles().find((r) => r.id === roleId);
       const canPreview = accountIsAdminRole(auth?.account);
-      if (roleMeta && roleMeta.switchable === false && !canPreview) {
+      const activeUi = auth?.account
+        ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi || null
+        : null;
+      const previewHierarchy = canPreviewLiveRole(activeUi, roleId);
+
+      if (roleMeta && roleMeta.switchable === false && !canPreview && !previewHierarchy) {
         setViewAsLocal(roleId);
         return { redirectedToAccess: true };
       }
@@ -236,12 +244,12 @@ export function ViewAsProvider({ children }) {
         return { localOnly: true };
       }
 
-      const activeUi = auth?.account
-        ? ROLE_KEY_TO_UI[auth.account.activeRole] || auth.account.activeRoleUi || null
-        : null;
-
-      // Admin accounts preview other personas without switching JWT — keeps admin APIs available.
-      if (accountIsSuperAdmin(auth.account) || (canPreview && activeUi === "admin")) {
+      // Admin and WC/AWC preview personas without switching JWT — keeps their APIs available.
+      if (
+        accountIsSuperAdmin(auth.account)
+        || (canPreview && activeUi === "admin")
+        || previewHierarchy
+      ) {
         setViewAsLocal(roleId);
         return { previewOnly: true };
       }
@@ -283,12 +291,11 @@ export function ViewAsProvider({ children }) {
   }, [liveMenuRoles]);
 
   const availableUiRoles = useMemo(() => {
-    if (isSuperAdmin) return catalogRoles;
-    const roles = auth?.account?.roles;
-    if (!Array.isArray(roles) || roles.length === 0) return catalogRoles;
-    const allowed = new Set(roles.map((k) => ROLE_KEY_TO_UI[k] || k));
-    return catalogRoles.filter((r) => allowed.has(r.id) || r.switchable === false);
-  }, [auth, catalogRoles, isSuperAdmin]);
+    if (isSuperAdmin || sessionUi === "admin") return catalogRoles;
+    const allowed = liveRoleIdsForSession(sessionUi, auth?.account?.roles);
+    if (!allowed.size) return catalogRoles;
+    return catalogRoles.filter((role) => allowed.has(role.id));
+  }, [auth, catalogRoles, isSuperAdmin, sessionUi]);
 
   const activeRole = useMemo(
     () =>
@@ -330,13 +337,19 @@ export function ViewAsProvider({ children }) {
    */
   const permissions = useMemo(() => {
     if (isAdminView) return [...ALL_CONSOLE_PERMISSIONS];
-    if (!isPreviewingRole) return sessionPermissions(auth?.account);
-    if (Array.isArray(activeRole?.permissions) && activeRole.permissions.length) {
-      return activeRole.permissions;
+    let list;
+    if (!isPreviewingRole) {
+      list = sessionPermissions(auth?.account);
+    } else if (Array.isArray(activeRole?.permissions) && activeRole.permissions.length) {
+      list = activeRole.permissions;
+    } else {
+      list = baselinePermissionsForRole(activeRole?.persona || viewAs);
     }
-    const persona = activeRole?.persona || viewAs;
-    return baselinePermissionsForRole(persona);
-  }, [activeRole, auth?.account, isAdminView, isPreviewingRole, viewAs]);
+    return stripConfigPermissionSlugsForRole(
+      list,
+      (isPreviewingRole ? activeRole?.id : sessionUi) || viewAs,
+    );
+  }, [activeRole, auth?.account, isAdminView, isPreviewingRole, sessionUi, viewAs]);
 
   const can = useCallback(
     (slug) => (isAdminView ? Boolean(slug) : hasConsolePermission(permissions, slug)),
@@ -345,10 +358,18 @@ export function ViewAsProvider({ children }) {
 
   const navSections = useMemo(() => {
     if (isAdminView) return defaultAdminNavSections({ includeAccess: hasFullAccess });
-    const sections = sectionsFromPermissions(permissions);
-    if (hasFullAccess) sections.add("access");
-    return sections;
-  }, [permissions, hasFullAccess, isAdminView]);
+    const tickList = isPreviewingRole
+      ? (activeRole?.navSections || [])
+      : (Array.isArray(auth?.account?.navSections) && auth.account.navSections.length
+        ? auth.account.navSections
+        : (activeRole?.navSections || []));
+    return resolveLiveNavSections({
+      permissions,
+      tickList,
+      roleId: activeRole?.persona || viewAs,
+      includeAccess: hasFullAccess,
+    });
+  }, [activeRole, auth?.account?.navSections, hasFullAccess, isAdminView, isPreviewingRole, permissions, viewAs]);
 
   const viewAsPersona = activeRole?.persona || viewAs;
 

@@ -12,6 +12,8 @@ import {
   programTestimonialLabel,
   resolveProgramSelectValue,
 } from "../data/programTestimonialsConfigData.js";
+import { formatRecipeDate } from "../data/recipesConfigData.js";
+import { asCopyString } from "../data/bannerConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { ImageCropModal } from "./ImageCropModal.jsx";
 import { CfgSelect } from "./shared.jsx";
@@ -222,7 +224,7 @@ function StoryFormModal({
                   type="text"
                   className="ua-cfg-pt-field__input"
                   value={draft.name}
-                  placeholder="Down 18 kg on Fat Loss"
+                  placeholder="e.g. Down 18 kg on Fat Loss & Weight Management"
                   disabled={busy}
                   onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
                 />
@@ -281,6 +283,64 @@ function StoryFormModal({
   );
 }
 
+function TestimonialViewModal({ entry, options, onClose, onEdit }) {
+  if (!entry) return null;
+  const photo = entry.imagePreview || entry.profileImage;
+  const name = asCopyString(entry.name) || "Untitled client";
+  const program = programTestimonialLabel(entry.program, options) || "Program";
+  return (
+    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
+      <div
+        className="ua-cfg-rc-view ua-cfg-rc-view--sheet ua-cfg-pt-view"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-labelledby="pt-view-title"
+      >
+        <div className="ua-cfg-rc-view__head">
+          <div>
+            <p className="ua-cfg-rc-view__tag">Program testimonial</p>
+            <h3 id="pt-view-title">{name}</h3>
+            <p>
+              {program}
+              <span className={`ua-cfg-pt-view__status${entry.live ? " is-live" : ""}`}>
+                {entry.live ? "Live" : "Hidden"}
+              </span>
+            </p>
+          </div>
+          <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
+        </div>
+        <div className="ua-cfg-pt-view__body">
+          {photo ? (
+            <div className="ua-cfg-rc-view__media ua-cfg-rc-view__media--photo">
+              <img src={photo} alt="" />
+            </div>
+          ) : (
+            <div className="ua-cfg-rc-view__media">
+              <div className="ua-cfg-rc-view__media-empty">No photo</div>
+            </div>
+          )}
+          {asCopyString(entry.description) ? (
+            <p className="ua-cfg-rc-view__copy">{asCopyString(entry.description)}</p>
+          ) : null}
+        </div>
+        <div className="ua-cfg-rc-view__foot">
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose}>Close</button>
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--primary"
+            onClick={() => {
+              onEdit(entry.id);
+              onClose();
+            }}
+          >
+            Edit testimonial
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function sortStories(list, mode, options) {
   const copy = [...list];
   if (mode === "name-asc") {
@@ -306,6 +366,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
   const [sortMode, setSortMode] = useState("manual");
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
@@ -326,6 +387,11 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
   const editing = useMemo(
     () => (editingId ? stories.find((entry) => entry.id === editingId) || null : null),
     [editingId, stories],
+  );
+
+  const viewing = useMemo(
+    () => (viewingId ? stories.find((entry) => entry.id === viewingId) || null : null),
+    [viewingId, stories],
   );
 
   const editingIndex = useMemo(() => {
@@ -425,9 +491,29 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
     onToast("Client photo attached");
   }
 
+  async function replacePhoto(id, file) {
+    if (!(file instanceof File)) return;
+    setBusy(true);
+    try {
+      const saved = await adminUpdateProgramTestimonial(null, id, {}, file);
+      patchItem(id, { ...saved, imagePreview: "" });
+    } catch (error) {
+      onToast(error?.message || "Could not update photo");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openCreateForm() {
     setEditingId(null);
+    setViewingId(null);
     setCreating(true);
+  }
+
+  function openEditForm(id) {
+    setViewingId(null);
+    setCreating(false);
+    setEditingId(id);
   }
 
   function closeCreateForm() {
@@ -580,6 +666,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
     try {
       await adminDeleteProgramTestimonial(null, item.id);
       if (editingId === item.id) setEditingId(null);
+      if (viewingId === item.id) setViewingId(null);
       if (creating) setCreating(false);
       onToast("Story removed");
       await loadItems();
@@ -597,7 +684,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         subtitle={
           loading
             ? "Loading stories…"
-            : `Drag to reorder · toggle to hide without deleting · ${liveCount} live · click a row to edit`
+            : `Drag to reorder · toggle to hide without deleting · ${liveCount} live`
         }
         actions={(
           <div className="ua-cfg-pt-list-actions">
@@ -616,7 +703,7 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
         )}
       >
         {orderedStories.length ? (
-          <div className={`ua-cfg-pt-list${loading ? " is-loading" : ""}`}>
+          <div className={`ua-cfg-rc-list ua-cfg-pt-list${loading ? " is-loading" : ""}`}>
             {orderedStories.map((entry, index) => {
               const isEditing = editingId === entry.id;
               const isDragging = dragId === entry.id;
@@ -624,10 +711,12 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
               const orderIndex = stories.findIndex((row) => row.id === entry.id);
               const canMoveUp = canReorder && orderIndex > 0;
               const canMoveDown = canReorder && orderIndex >= 0 && orderIndex < stories.length - 1;
+              const photo = entry.imagePreview || entry.profileImage;
+              const name = asCopyString(entry.name).trim() || "Untitled";
               return (
-                <div
+                <article
                   key={entry.id}
-                  className={`ua-cfg-pt-row${isEditing ? " is-selected" : ""}${isDragging ? " is-dragging" : ""}${isOver ? " is-drag-over" : ""}`}
+                  className={`ua-cfg-rc-item ua-cfg-pt-item${isEditing ? " is-editing" : ""}${isDragging ? " is-dragging" : ""}${isOver ? " is-drag-over" : ""}`}
                   onDragOver={(event) => {
                     if (!canReorder) return;
                     event.preventDefault();
@@ -654,63 +743,104 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
                   >
                     ⠿
                   </span>
-                  <button
-                    type="button"
-                    className="ua-cfg-pt-row__main"
-                    onClick={() => {
-                      setCreating(false);
-                      setEditingId(entry.id);
-                    }}
-                  >
-                    <span className="ua-cfg-faq__num">#{index + 1}</span>
-                    <strong>{String(entry.name || "").trim() || "Untitled"}</strong>
-                    <span className="ua-cfg-pt-row__tag">
-                      {programTestimonialLabel(entry.program, concernOptions) || "Program"}
-                    </span>
-                  </button>
-                  <div className="ua-cfg-pt-row__controls">
-                    <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
-                      {entry.live ? "LIVE" : "HIDDEN"}
-                    </span>
+                  <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
-                      className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
-                      aria-pressed={entry.live}
-                      aria-label={`${String(entry.name || "story")} ${entry.live ? "on" : "off"}`}
+                      className={`ua-cfg-rc-cover ua-cfg-rc-cover--pick${photo ? " is-on" : ""}`}
                       disabled={busy}
-                      onClick={() => toggleLive(entry)}
+                      aria-label={photo ? `Replace photo for ${name}` : `Add photo for ${name}`}
+                      onClick={() => openPicker((croppedFile) => replacePhoto(entry.id, croppedFile))}
                     >
-                      <span className="ua-toggle__knob" />
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-cfg-icon-btn"
-                      aria-label="Move up"
-                      disabled={!canMoveUp || busy}
-                      onClick={() => moveItem(entry.id, -1)}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-cfg-icon-btn"
-                      aria-label="Move down"
-                      disabled={!canMoveDown || busy}
-                      onClick={() => moveItem(entry.id, 1)}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="ua-cfg-icon-btn"
-                      aria-label={`Remove ${String(entry.name || "story")}`}
-                      disabled={busy}
-                      onClick={() => setPendingDelete(entry)}
-                    >
-                      ×
+                      {photo ? <img className="ua-cfg-rc-cover__img" src={photo} alt="" /> : <span aria-hidden="true">📷</span>}
+                      <em>{photo ? "Replace" : "Photo"}</em>
                     </button>
                   </div>
-                </div>
+                  <div className="ua-cfg-pt-item__body">
+                    <div className="ua-cfg-pt-item__head">
+                      <div className="ua-cfg-pt-item__identity">
+                        <strong>
+                          <span className="ua-cfg-faq__num">#{index + 1}</span>
+                          {name}
+                        </strong>
+                        <div className="ua-cfg-pt-item__meta">
+                          <span className="ua-cfg-rc-pill ua-cfg-rc-pill--cat">
+                            {programTestimonialLabel(entry.program, concernOptions) || "Program"}
+                          </span>
+                          <p className="ua-cfg-panel__sub">{formatRecipeDate(entry.updatedAt)}</p>
+                        </div>
+                      </div>
+                      <div className="ua-cfg-pt-item__actions">
+                        <div className="ua-cfg-pt-item__live">
+                          <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
+                            {entry.live ? "LIVE" : "HIDDEN"}
+                          </span>
+                          <button
+                            type="button"
+                            className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
+                            aria-pressed={entry.live}
+                            aria-label={`${name} ${entry.live ? "on" : "off"}`}
+                            disabled={busy}
+                            onClick={() => toggleLive(entry)}
+                          >
+                            <span className="ua-toggle__knob" />
+                          </button>
+                        </div>
+                        <div className="ua-cfg-tf-item__moves">
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label="Move up"
+                            disabled={!canMoveUp || busy}
+                            title={canReorder ? "Move up" : "Switch to Manual order to reorder"}
+                            onClick={() => moveItem(entry.id, -1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label="Move down"
+                            disabled={!canMoveDown || busy}
+                            title={canReorder ? "Move down" : "Switch to Manual order to reorder"}
+                            onClick={() => moveItem(entry.id, 1)}
+                          >
+                            ↓
+                          </button>
+                        </div>
+                        <div className="ua-cfg-pt-item__btns">
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => setViewingId(entry.id)}
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                            disabled={busy}
+                            onClick={() => openEditForm(entry.id)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            aria-label={`Remove ${name}`}
+                            disabled={busy}
+                            onClick={() => setPendingDelete(entry)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    {asCopyString(entry.description) ? (
+                      <p className="ua-cfg-pt-item__copy">{asCopyString(entry.description)}</p>
+                    ) : null}
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -753,6 +883,13 @@ export function DynamicProgramTestimonialsSection({ stories, setStories, onToast
           onRequestPickPhoto={openPicker}
         />
       ) : null}
+
+      <TestimonialViewModal
+        entry={viewing}
+        options={concernOptions}
+        onClose={() => setViewingId(null)}
+        onEdit={openEditForm}
+      />
 
       <ImageCropModal
         open={Boolean(cropPending)}

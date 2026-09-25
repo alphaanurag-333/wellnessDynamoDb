@@ -21,6 +21,7 @@ const { typesEquivalent } = require("../utils/programTestimonialType");
 const TABLE = "ProgramTestimonials";
 const STATUS = new Set(["active", "inactive"]);
 const TYPES = new Set([
+  "fat_loss",
   "diabetes_reversal",
   "pcod_pcos_reversal",
   "thyroid_care",
@@ -30,6 +31,7 @@ const SORT_ORDER_MIN = 0;
 const SORT_ORDER_MAX = 100000;
 
 const TYPE_LABELS = {
+  fat_loss: "Fat Loss & Weight Management",
   diabetes_reversal: "Diabetes Reversal",
   pcod_pcos_reversal: "PCOD / PCOS Reversal",
   thyroid_care: "Thyroid Care",
@@ -92,7 +94,13 @@ function toPublicProgramTestimonial(item) {
   const row = withLegacyId(normalizeMediaItemFromStorage(item));
   if (!row) return null;
   if (row.profileImage) row.profileImage = resolvePublicUrl(row.profileImage);
-  if (row.type) row.typeLabel = TYPE_LABELS[row.type] || row.type;
+  if (row.type) {
+    row.typeLabel =
+      TYPE_LABELS[row.type]
+      || TYPE_LABELS[`${row.type}_reversal`]
+      || TYPE_LABELS[`${row.type}_care`]
+      || row.type;
+  }
   return row;
 }
 
