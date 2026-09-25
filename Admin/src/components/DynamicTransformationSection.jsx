@@ -46,6 +46,7 @@ const EMPTY_DRAFT = {
 const TF_CROP_WIDTH = 400;
 const TF_CROP_HEIGHT = 500;
 const TF_CROP_RATIO = "4:5";
+const INCHES_HINT_KEYS = new Set(["inches_lost", "inches", "waist"]);
 
 const GALLERY_TRASH_ICON = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -202,14 +203,21 @@ function DataPointEditor({ points, options, busy, onChange }) {
           <span>Value</span>
           <span />
         </div>
-        {points.map((entry) => (
+        {points.map((entry) => {
+          const isInches = INCHES_HINT_KEYS.has(fieldKey(entry.field) || fieldKey(entry.label));
+          return (
           <div key={entry.id} className="ua-cfg-tf-table__row">
-            <span>{asCopyString(entry.label)}</span>
+            <span>
+              {asCopyString(entry.label)}
+              {isInches ? (
+                <em className="ua-cfg-tf-hint"> — site shows “X inches” unless you type Lost</em>
+              ) : null}
+            </span>
             <div className="ua-cfg-tf-table__value">
               <input
                 type="text"
                 value={asCopyString(entry.value)}
-                placeholder={asCopyString(entry.label)}
+                placeholder={isInches ? "e.g. 9.5  (add Lost only if needed)" : asCopyString(entry.label)}
                 disabled={busy}
                 onChange={(event) => onChange((prev) => prev.map((row) => (
                   row.id === entry.id ? { ...row, value: event.target.value, source: "EDIT" } : row
@@ -226,7 +234,8 @@ function DataPointEditor({ points, options, busy, onChange }) {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

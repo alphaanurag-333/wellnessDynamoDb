@@ -10,6 +10,7 @@ import {
   AppContentSection,
   AppComplianceSection,
   AppCommunityGuidelinesMobileSection,
+  AppMedicalDisclaimerSection,
   AppPrivacyPolicySection,
   AppSubscriptionFySection,
   AppTermsConditionsSection,
@@ -53,6 +54,7 @@ import {
   LocationsSection,
   LogoSlotsSection,
   MeasurementVideoSection,
+  MedicalDisclaimerSection,
   MedicalQuestionnairePanel,
   NutritionBankSection,
   OnboardingVideoSection,
@@ -72,6 +74,7 @@ import { FEATURE_FLAGS } from "../data/featureFlagsData.js";
 import { PRIVACY_BLOCKS } from "../data/privacyConfigData.js";
 import { TOS_BLOCKS } from "../data/tosConfigData.js";
 import { GUIDELINE_BLOCKS } from "../data/guidelinesConfigData.js";
+import { MEDICAL_DISCLAIMER_BLOCKS } from "../data/medicalDisclaimerConfigData.js";
 import { CONTACT_PAGE_BLOCKS } from "../data/contactConfigData.js";
 import { FOOTER_TEXT_BLOCKS } from "../data/footerTextConfigData.js";
 import { createDefaultLogoSlots } from "../data/logoConfigData.js";
@@ -1287,10 +1290,12 @@ const PUBLISH_CONFIGS = new Set([
   "app-terms-of-service",
   "app-privacy-policy",
   "app-community-guidelines",
+  "app-medical-disclaimer",
   "app-compliance",
   "web-fs-tos",
   "web-fs-privacy",
   "web-fs-guidelines",
+  "web-fs-medical-disclaimer",
   "web-fs-social",
   "web-fs-contact",
   "web-fs-text",
@@ -1362,6 +1367,7 @@ export function ConfigDetailPage() {
   const [appPrivacyBlocks, setAppPrivacyBlocks] = useState(APP_PRIVACY_POLICY_BLOCKS);
   const [appTermsBlocks, setAppTermsBlocks] = useState(APP_TERMS_CONDITIONS_BLOCKS);
   const [appGuidelinesBlocks, setAppGuidelinesBlocks] = useState(APP_COMMUNITY_GUIDELINES_BLOCKS);
+  const [appMedicalDisclaimerBlocks, setAppMedicalDisclaimerBlocks] = useState(MEDICAL_DISCLAIMER_BLOCKS);
   const [complianceSettings, setComplianceSettings] = useState({
     enabled: true,
     names: "GDPR, HIPAA",
@@ -1395,6 +1401,7 @@ export function ConfigDetailPage() {
   const [privacyBlocks, setPrivacyBlocks] = useState(PRIVACY_BLOCKS);
   const [tosBlocks, setTosBlocks] = useState(TOS_BLOCKS);
   const [guidelineBlocks, setGuidelineBlocks] = useState(GUIDELINE_BLOCKS);
+  const [medicalDisclaimerBlocks, setMedicalDisclaimerBlocks] = useState(MEDICAL_DISCLAIMER_BLOCKS);
   const [contactDetails, setContactDetails] = useState([]);
   const [contactPageBlocks, setContactPageBlocks] = useState(CONTACT_PAGE_BLOCKS);
   const [footerTextBlocks, setFooterTextBlocks] = useState(FOOTER_TEXT_BLOCKS);
@@ -1573,6 +1580,10 @@ export function ConfigDetailPage() {
           setAppTermsBlocks(saved.blocks);
         } else if (current.id === "app-community-guidelines" && saved?.blocks?.length) {
           setAppGuidelinesBlocks(saved.blocks);
+        } else if (current.id === "web-fs-medical-disclaimer" && saved?.blocks?.length) {
+          setMedicalDisclaimerBlocks(saved.blocks);
+        } else if (current.id === "app-medical-disclaimer" && saved?.blocks?.length) {
+          setAppMedicalDisclaimerBlocks(saved.blocks);
         } else if (current.id === "web-fs-contact" && saved?.blocks?.length) {
           setContactPageBlocks(saved.blocks);
         } else if (current.id === "web-fs-text" && saved?.blocks?.length) {
@@ -1670,6 +1681,10 @@ export function ConfigDetailPage() {
             ? appTermsBlocks.some((entry) => entry.shown)
           : item.id === "app-community-guidelines"
             ? appGuidelinesBlocks.some((entry) => entry.shown)
+          : item.id === "web-fs-medical-disclaimer"
+            ? medicalDisclaimerBlocks.some((entry) => entry.shown)
+          : item.id === "app-medical-disclaimer"
+            ? appMedicalDisclaimerBlocks.some((entry) => entry.shown)
           : isLegalPrivacyConfigId(item.id)
             ? privacyBlocks.some((entry) => entry.shown)
           : isLegalTosConfigId(item.id)
@@ -1734,6 +1749,10 @@ export function ConfigDetailPage() {
                 ? tosBlocks.some((entry) => entry.shown)
               : isLegalGuidelinesConfigId(item.id)
                 ? guidelineBlocks.some((entry) => entry.shown)
+              : item.id === "web-fs-medical-disclaimer"
+                ? medicalDisclaimerBlocks.some((entry) => entry.shown)
+              : item.id === "app-medical-disclaimer"
+                ? appMedicalDisclaimerBlocks.some((entry) => entry.shown)
               : item.id === "web-fs-contact"
                 ? contactDetails.some((entry) => entry.live)
                   || contactPageBlocks.some((entry) => entry.shown)
@@ -2026,6 +2045,26 @@ export function ConfigDetailPage() {
           <AppCommunityGuidelinesMobileSection
             blocks={appGuidelinesBlocks}
             setBlocks={setAppGuidelinesBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "web-fs-medical-disclaimer":
+        return (
+          <MedicalDisclaimerSection
+            blocks={medicalDisclaimerBlocks}
+            setBlocks={setMedicalDisclaimerBlocks}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-medical-disclaimer":
+        return (
+          <AppMedicalDisclaimerSection
+            blocks={appMedicalDisclaimerBlocks}
+            setBlocks={setAppMedicalDisclaimerBlocks}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}
@@ -2492,6 +2531,7 @@ export function ConfigDetailPage() {
           appPrivacyBlocks,
           appTermsBlocks,
           appGuidelinesBlocks,
+          appMedicalDisclaimerBlocks,
           complianceSettings,
           measurementGuide,
           measurementParams,
@@ -2519,6 +2559,7 @@ export function ConfigDetailPage() {
           privacyBlocks,
           tosBlocks,
           guidelineBlocks,
+          medicalDisclaimerBlocks,
           contactDetails,
           contactPageBlocks,
           footerTextBlocks,

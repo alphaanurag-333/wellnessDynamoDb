@@ -71,6 +71,12 @@ function sanitizeHealthConcernId(value) {
   return id;
 }
 
+function sanitizeLocation(value) {
+  const location = String(value || "").trim();
+  if (location.length > 80) throw new Error("location cannot exceed 80 characters");
+  return location;
+}
+
 function normalizeProfileImageField(value) {
   if (value == null || String(value).trim() === "") return "";
   const objectKey = normalizeStoredMedia(String(value).trim());
@@ -106,6 +112,7 @@ function sanitizeUpdateField(key, value) {
   if (field === "review" || field === "content") return sanitizeReview(value);
   if (field === "stars" || field === "rating") return sanitizeStars(value);
   if (field === "healthConcernId") return sanitizeHealthConcernId(value);
+  if (field === "location" || field === "city") return sanitizeLocation(value);
   if (field === "status") return normalizeStatus(value);
   if (field === "order") return normalizeOrder(value);
   if (field === "webVisible" || field === "appVisible") return normalizeVisibleFlag(value, true);
@@ -170,6 +177,8 @@ async function createRealPeopleTestimonial({
   profileImage,
   profile_image,
   healthConcernId,
+  location,
+  city,
   dataPoints = [],
   status = "active",
   webVisible = true,
@@ -192,6 +201,7 @@ async function createRealPeopleTestimonial({
     review: sanitizeReview(review ?? content),
     profileImage: imageKey,
     healthConcernId: sanitizeHealthConcernId(healthConcernId),
+    location: sanitizeLocation(location ?? city),
     dataPoints: normalizeDataPoints(dataPoints),
     status: normalizeStatus(status, "active"),
     webVisible: normalizeVisibleFlag(webVisible, true),

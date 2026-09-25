@@ -20,6 +20,11 @@ const SLUG_ALIASES = {
   "app-community-guideline": ["app-community-guidelines"],
   "app-compliance": ["app-compliance-notice"],
   "app-compliance-notice": ["app-compliance"],
+  "medical-disclaimer": ["medical-disclaimer-page", "disclaimer"],
+  "medical-disclaimer-page": ["medical-disclaimer"],
+  "disclaimer": ["medical-disclaimer"],
+  "app-medical-disclaimer": ["app-medical-disclaimer-page"],
+  "app-medical-disclaimer-page": ["app-medical-disclaimer"],
 };
 
 function slugifyBlockId(value) {

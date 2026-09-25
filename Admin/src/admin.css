@@ -53022,6 +53022,18 @@ scrollbar-width: thin;
   grid-column: 1 / -1;
 }
 
+.updated-admin .ua-cfg-rp-new-category__row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-rp-new-category__row .ua-cfg-vh-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .updated-admin .ua-cfg-rp-select {
   width: 100%;
   min-width: 0;

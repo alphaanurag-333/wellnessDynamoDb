@@ -78,20 +78,29 @@ export function pointsToPayload(points = []) {
 }
 
 export function defaultDraftPoints(options = []) {
-  const preferred = ["client_name", "duration", "inches_lost"];
+  const preferred = ["client_name", "duration", "inches", "inches_lost"];
   const picked = [];
   for (const key of preferred) {
     const match = options.find((row) => fieldKey(row.value) === key || fieldKey(row.label) === key);
-    if (match) picked.push(match);
+    if (match && !picked.some((row) => fieldKey(row.value) === fieldKey(match.value))) {
+      picked.push(match);
+    }
   }
   const source = picked.length ? picked : options.slice(0, 2);
-  return source.map((row) => ({
-    id: `dp-${row.value}`,
-    field: row.value,
-    label: row.label,
-    value: "",
-    source: "AUTO",
-  }));
+  return source.map((row) => {
+    const key = fieldKey(row.value) || fieldKey(row.label);
+    const isInches = INCHES_FIELDS.has(key);
+    const label = isInches
+      ? String(row.label || "Inches").replace(/\s*lost\s*/gi, " ").replace(/\s+/g, " ").trim() || "Inches"
+      : row.label;
+    return {
+      id: `dp-${row.value}`,
+      field: isInches && key === "inches_lost" ? "inches" : row.value,
+      label,
+      value: "",
+      source: "AUTO",
+    };
+  });
 }
 
 export function healthConcernIdOptions(concerns = []) {

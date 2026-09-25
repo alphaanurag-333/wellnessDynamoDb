@@ -2,7 +2,13 @@ export const FOOTER_COLUMNS = [
   {
     id: "ft-programs",
     heading: "Programs",
-    links: ["Fat Loss", "Diabetes Reversal", "Thyroid Care", "PCOD"],
+    links: [
+      "Fat Loss & Weight Management",
+      "Diabetes Reversal",
+      "PCOD / PCOS Reversal",
+      "Thyroid Care",
+      "Gut Health",
+    ],
     live: true,
   },
   {

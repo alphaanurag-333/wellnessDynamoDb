@@ -85,6 +85,10 @@ export const AppCommunityGuidelinesMobileSection = named(
   () => import("../components/AppMobileLegalSections.jsx"),
   "AppCommunityGuidelinesMobileSection",
 );
+export const AppMedicalDisclaimerSection = named(
+  () => import("../components/AppMobileLegalSections.jsx"),
+  "AppMedicalDisclaimerSection",
+);
 export const AppComplianceSection = named(
   () => import("../components/AppComplianceSection.jsx"),
   "AppComplianceSection",
@@ -100,6 +104,10 @@ export const TermsAndConditionsSection = named(
 export const CommunityGuidelinesSection = named(
   () => import("../components/CommunityGuidelinesSection.jsx"),
   "CommunityGuidelinesSection",
+);
+export const MedicalDisclaimerSection = named(
+  () => import("../components/MedicalDisclaimerSection.jsx"),
+  "MedicalDisclaimerSection",
 );
 export const LegalSectionsEditor = named(
   () => import("../components/LegalSectionsEditor.jsx"),

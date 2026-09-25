@@ -65,7 +65,12 @@ export default function ProgramPage({
             <div className="program-about__wrapper">
               {image ? (
                 <div className="program-about__media">
-                  <img src={image} alt={imageAlt || title} />
+                  <img
+                    src={image}
+                    alt={imageAlt || title}
+                    loading="lazy"
+                    decoding="async"
+                  />
                 </div>
               ) : null}
               <div className="program-about__content">

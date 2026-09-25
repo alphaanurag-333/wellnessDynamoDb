@@ -10,6 +10,7 @@ require("dotenv").config();
 
 const { createPage, getPageBySlug, updatePage, deletePage } = require("../models/staticPageModel");
 const COMMUNITY_GUIDELINES_HTML = require("./legalCopy/communityGuidelinesHtml");
+const MEDICAL_DISCLAIMER_HTML = require("./legalCopy/medicalDisclaimerHtml");
 
 const EFFECTIVE_DATE = "July 4, 2026";
 const COMPANY_NAME = "Wellness";
@@ -175,6 +176,12 @@ const STATIC_PAGES = [
     content: COMMUNITY_GUIDELINES_HTML,
   },
   {
+    title: "Medical Disclaimer",
+    slug: "medical-disclaimer",
+    status: "active",
+    content: MEDICAL_DISCLAIMER_HTML,
+  },
+  {
     title: "Data Processing Agreement",
     slug: "app-dpa",
     status: "active",
@@ -263,6 +270,12 @@ const STATIC_PAGES = [
       </ul>
       <p>Report issues: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
     `.trim(),
+  },
+  {
+    title: "Medical Disclaimer",
+    slug: "app-medical-disclaimer",
+    status: "active",
+    content: MEDICAL_DISCLAIMER_HTML,
   },
   {
     title: "Compliance",
@@ -365,6 +378,9 @@ const LEGAL_RESET_SLUGS = [
   "privacy",
   "community-guideline",
   "community-guidelines",
+  "medical-disclaimer",
+  "medical-disclaimer-page",
+  "disclaimer",
   "app-dpa",
   "dpa",
   "data-processing-agreement",
@@ -374,6 +390,7 @@ const LEGAL_RESET_SLUGS = [
   "app-privacy",
   "app-community-guidelines",
   "app-community-guideline",
+  "app-medical-disclaimer",
   "app-compliance",
 ];
 
@@ -385,10 +402,12 @@ function applySharedLegalCopy() {
   const privacy = pageBySlug("privacy-policy")?.content;
   const terms = pageBySlug("terms-and-conditions")?.content;
   const guidelines = pageBySlug("community-guideline")?.content;
+  const medicalDisclaimer = pageBySlug("medical-disclaimer")?.content;
   for (const row of STATIC_PAGES) {
     if (row.slug === "app-privacy-policy" && privacy) row.content = privacy;
     if (row.slug === "app-terms-of-service" && terms) row.content = terms;
     if (row.slug === "app-community-guidelines" && guidelines) row.content = guidelines;
+    if (row.slug === "app-medical-disclaimer" && medicalDisclaimer) row.content = medicalDisclaimer;
   }
 }
 

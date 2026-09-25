@@ -10,6 +10,15 @@ export const SITE_NAV_LINKS = [
   { label: "Contact", to: SITE_SECTION_PATHS.contact },
 ];
 
+/** Shared Health Solutions / Programs links (header dropdown + footer). */
+export const HEALTH_SOLUTION_LINKS = [
+  { label: "Fat Loss & Weight Management", to: "/fat-loss" },
+  { label: "Diabetes Reversal", to: "/diabetes-reversal" },
+  { label: "PCOD / PCOS Reversal", to: "/pcod-pcos-reversal" },
+  { label: "Thyroid Care", to: "/thyroid" },
+  { label: "Gut Health", to: "/gut-health" },
+];
+
 export const FOOTER_NAV_GROUPS = [
   {
     title: "Explore",

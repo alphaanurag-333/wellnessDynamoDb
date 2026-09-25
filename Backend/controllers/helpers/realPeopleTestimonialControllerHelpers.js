@@ -39,6 +39,12 @@ function validateHealthConcernId(healthConcernId) {
   return id;
 }
 
+function validateLocation(location) {
+  const value = String(location ?? "").trim();
+  if (value.length > 80) throw new AppError("location cannot exceed 80 characters", 400);
+  return value;
+}
+
 function validateStatus(status) {
   const value = String(status || "").trim().toLowerCase();
   if (!["active", "inactive"].includes(value)) {
@@ -56,5 +62,6 @@ module.exports = {
   validateReview,
   validateStars,
   validateHealthConcernId,
+  validateLocation,
   validateStatus,
 };

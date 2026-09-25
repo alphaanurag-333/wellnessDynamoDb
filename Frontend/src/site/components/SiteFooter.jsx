@@ -1,13 +1,26 @@
 import { Fragment, useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { FaApple, FaFacebookF, FaGooglePlay, FaInstagram, FaLink, FaLinkedinIn, FaPinterest, FaYoutube } from "react-icons/fa";
+import {
+  FaApple,
+  FaFacebookF,
+  FaGooglePlay,
+  FaInstagram,
+  FaLink,
+  FaLinkedinIn,
+  FaPinterest,
+  FaWhatsapp,
+  FaYoutube,
+} from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
-import { Mail, MessageCircle, Phone } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 import defaultLogo from "../../assets/logo/defaultlogo.png";
 import { selectLoginBrandLogoUrl } from "../../store/appConfigSelectors.js";
 import { fetchStaticPageBySlugSafe, footerCopyFromStaticPage } from "../api/publicMisc.js";
+import { HEALTH_SOLUTION_LINKS } from "../data/siteNav.js";
 import { useSiteConfig } from "../hooks/useSiteConfig.js";
+
+const BRAND_NAME = "India Redefining Wellness";
 
 const SOCIAL_ICONS = {
   facebook: FaFacebookF,
@@ -21,13 +34,7 @@ const SOCIAL_ICONS = {
   link: FaLink,
 };
 
-const FOOTER_PROGRAM_LINKS = [
-  { label: "Fat Loss", to: "/fat-loss" },
-  { label: "Diabetes Reversal", to: "/diabetes-reversal" },
-  { label: "PCOD / PCOS Reversal", to: "/pcod-pcos-reversal" },
-  { label: "Thyroid Care", to: "/thyroid" },
-  { label: "Gut Health", to: "/gut-health" },
-];
+const FOOTER_PROGRAM_LINKS = HEALTH_SOLUTION_LINKS;
 
 const FOOTER_EXPLORE_LINKS = [
   { label: "Home", to: "/" },
@@ -37,16 +44,51 @@ const FOOTER_EXPLORE_LINKS = [
   { label: "Contact Us", to: "/contact-us" },
 ];
 
+/** Order matches SEO footer recommendation. */
 const FOOTER_LEGAL_LINKS = [
   { slug: "privacy-policy", label: "Privacy Policy", to: "/privacy-policy" },
-  { slug: "terms-and-conditions", label: "Terms of Service", to: "/terms-and-conditions" },
+  { slug: "terms-and-conditions", label: "Terms and Conditions", to: "/terms-and-conditions", keepLabel: true },
+  { slug: "medical-disclaimer", label: "Medical Disclaimer", to: "/medical-disclaimer" },
   { slug: "community-guideline", label: "Community Guidelines", to: "/community-guideline" },
-  // { slug: "app-privacy-policy", label: "App Privacy Policy", to: "/app-privacy-policy", keepLabel: true },
-  // { slug: "app-terms-of-service", label: "App Terms & Conditions", to: "/app-terms-and-conditions", keepLabel: true },
 ];
 
-function footerNavClass({ isActive }) {
-  return isActive ? "site-footer__nav-link is-active" : "site-footer__nav-link";
+function digitsOnly(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function toWhatsAppHref(phone) {
+  const digits = digitsOnly(phone);
+  if (!digits) return "";
+  const withCountry =
+    digits.startsWith("91") && digits.length >= 12
+      ? digits
+      : digits.length === 10
+        ? `91${digits}`
+        : digits;
+  return `https://wa.me/${withCountry}`;
+}
+
+function toMailHref(email) {
+  const address = String(email || "").trim();
+  return address ? `mailto:${address}` : "";
+}
+
+function socialAriaLabel(networkLabel) {
+  const network = String(networkLabel || "social media").trim() || "social media";
+  return `${BRAND_NAME} on ${network}`;
+}
+
+function resolveCopyright(preferred, year) {
+  const raw = String(preferred || "").trim();
+  if (!raw) {
+    return `© ${year} ${BRAND_NAME}. All rights reserved.`;
+  }
+  if (/IR\s*Wellness/i.test(raw) && !/India Redefining Wellness/i.test(raw)) {
+    const expanded = raw.replace(/IR\s*Wellness/gi, BRAND_NAME);
+    if (/all rights reserved/i.test(expanded)) return expanded;
+    return `${expanded.replace(/\.\s*$/, "")}. All rights reserved.`;
+  }
+  return raw;
 }
 
 function FooterBrandText({ text }) {
@@ -71,9 +113,9 @@ function FooterLinkList({ links }) {
     <ul className="site-footer__link-list">
       {links.map((link) => (
         <li key={link.to}>
-          <NavLink to={link.to} className={footerNavClass} end={link.to === "/"}>
+          <Link to={link.to} className="site-footer__nav-link">
             {link.label}
-          </NavLink>
+          </Link>
         </li>
       ))}
     </ul>
@@ -82,7 +124,7 @@ function FooterLinkList({ links }) {
 
 export function SiteFooter() {
   const brandLogoUrl = useSelector(selectLoginBrandLogoUrl);
-  const { appName, footerText, footerCopyright, footerCredit, contact, social } = useSiteConfig();
+  const { footerText, footerCopyright, footerCredit, contact, social } = useSiteConfig();
   const [legalLinks, setLegalLinks] = useState(FOOTER_LEGAL_LINKS);
   const [cmsCopyright, setCmsCopyright] = useState("");
   const [cmsCredit, setCmsCredit] = useState("");
@@ -93,7 +135,7 @@ export function SiteFooter() {
     Promise.all([
       fetchStaticPageBySlugSafe("footer-text"),
       ...FOOTER_LEGAL_LINKS.map((item) =>
-        item.slug ? fetchStaticPageBySlugSafe(item.slug) : Promise.resolve(null)
+        item.slug ? fetchStaticPageBySlugSafe(item.slug) : Promise.resolve(null),
       ),
     ]).then(([footerPage, ...pages]) => {
       if (cancelled) return;
@@ -109,7 +151,7 @@ export function SiteFooter() {
             ...item,
             label: item.keepLabel ? item.label : page?.title || item.label,
           };
-        })
+        }),
       );
     });
 
@@ -120,10 +162,10 @@ export function SiteFooter() {
 
   const logoSrc = brandLogoUrl || defaultLogo;
   const year = new Date().getFullYear();
-  // Prefer App Config (Admin → Footer setting / app_footer_text), then CMS footer-text page.
-  const copyrightLine =
-    footerCopyright || cmsCopyright || `© ${year} ${appName}. All rights reserved.`;
+  const copyrightLine = resolveCopyright(footerCopyright || cmsCopyright, year);
   const creditLine = footerCredit || cmsCredit;
+  const whatsappHref = toWhatsAppHref(contact.phone);
+  const mailHref = toMailHref(contact.email);
 
   return (
     <footer className="site-footer">
@@ -131,19 +173,27 @@ export function SiteFooter() {
 
       <div className="site-container">
         <div className="site-footer__grid">
-          <div className="site-footer__brand d-flex gap-2">
-            <Link to="/" className="site-footer__brand-head">
+          <div className="site-footer__brand">
+            <Link
+              to="/"
+              className="site-footer__brand-head"
+              aria-label={`${BRAND_NAME} — Home`}
+            >
+              <img
+                src={logoSrc}
+                alt=""
+                className="site-footer__brand-logo"
+              />
+              <span className="site-footer__brand-name">{BRAND_NAME}</span>
+            </Link>
 
-              <img src={logoSrc} alt={appName} className="site-footer__brand-logo" />
-               </Link>
-              <h3 className="site-footer__brand-name">{appName}
-                <br/>
-                <FooterBrandText text={footerText} />
-                {/* <br/> */}
-                 {social.length > 0 ? (
-              <div className="site-footer__social mt-1" aria-label="Social media links">
+            <FooterBrandText text={footerText} />
+
+            {social.length > 0 ? (
+              <div className="site-footer__social" aria-label="Social media links">
                 {social.map((item) => {
                   const Icon = SOCIAL_ICONS[item.icon] || FaLink;
+                  const label = socialAriaLabel(item.label);
 
                   return (
                     <a
@@ -151,8 +201,8 @@ export function SiteFooter() {
                       href={item.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={item.label}
-                      title={item.label}
+                      aria-label={label}
+                      title={label}
                     >
                       {Icon ? <Icon aria-hidden="true" /> : null}
                     </a>
@@ -160,74 +210,45 @@ export function SiteFooter() {
                 })}
               </div>
             ) : null}
-              </h3>
-             
-           
-
-            {/* <FooterBrandText text={footerText} /> */}
-
-            {/* {social.length > 0 ? (
-              <div className="site-footer__social" aria-label="Social media links">
-                {social.map((item) => {
-                  const Icon = SOCIAL_ICONS[item.icon] || FaLink;
-
-                  return (
-                    <a
-                      key={item.key}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={item.label}
-                      title={item.label}
-                    >
-                      {Icon ? <Icon aria-hidden="true" /> : null}
-                    </a>
-                  );
-                })}
-              </div>
-            ) : null} */}
           </div>
 
           <nav className="site-footer__column" aria-label="Wellness programs">
-            <h4 className="site-footer__heading">Programs</h4>
+            <p className="site-footer__heading">Programs</p>
             <FooterLinkList links={FOOTER_PROGRAM_LINKS} />
           </nav>
 
           <nav className="site-footer__column" aria-label="Explore pages">
-            <h4 className="site-footer__heading">Explore</h4>
+            <p className="site-footer__heading">Explore</p>
             <FooterLinkList links={FOOTER_EXPLORE_LINKS} />
           </nav>
 
           <div className="site-footer__column site-footer__contact">
-            <h4 className="site-footer__heading">Contact Us</h4>
+            <p className="site-footer__heading">Contact Us</p>
 
-
-            {contact.phone ? (
-
-              <div className="site-footer__contact-row ">
+            {whatsappHref ? (
+              <div className="site-footer__contact-row">
                 <span className="site-footer__contact-icon" aria-hidden="true">
-                  <MessageCircle size={16}/>
+                  <FaWhatsapp size={16} />
                 </span>
-                <a href={`https://wa.me/91${contact.phone.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer" className="border-bottom border-1 "><span>Chat on WhatsApp</span></a>
+                <a
+                  href={whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Chat on Whatsapp
+                </a>
               </div>
             ) : null}
 
-{contact?.email && (
-  <div className="site-footer__contact-row">
-    <span className="site-footer__contact-icon" aria-hidden="true">
-      <Mail size={16} />
-    </span>
+            {mailHref ? (
+              <div className="site-footer__contact-row">
+                <span className="site-footer__contact-icon" aria-hidden="true">
+                  <Mail size={16} />
+                </span>
+                <a href={mailHref}>{contact.email}</a>
+              </div>
+            ) : null}
 
-    <a
-      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contact.email)}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="border-bottom"
-    >
-      {contact?.email}
-    </a>
-  </div>
-)}
             {(contact.details || [])
               .filter((row) => !/phone|mobile|email|mail|whatsapp|tel/i.test(row.label))
               .map((row) => (
@@ -235,30 +256,33 @@ export function SiteFooter() {
                   <span className="site-footer__contact-icon" aria-hidden="true">
                     <Phone size={16} />
                   </span>
-                  <p>{row.label}: {row.value}</p>
+                  <p>
+                    {row.label}: {row.value}
+                  </p>
                 </div>
               ))}
           </div>
         </div>
 
         <div className="site-footer__bottom">
-         
-
           <nav className="site-footer__bottom-links" aria-label="Legal links">
             {legalLinks.map((link, index) => (
               <Fragment key={link.to}>
                 {index > 0 ? (
-                  <span className="site-footer__bottom-dot" aria-hidden="true">
-                    ·
+                  <span className="site-footer__bottom-sep" aria-hidden="true">
+                    |
                   </span>
                 ) : null}
-                <Link to={link.to} className="text-dark">{link.label}</Link>
+                <Link to={link.to}>{link.label}</Link>
               </Fragment>
             ))}
           </nav>
+
           <div className="site-footer__bottom-meta">
-            <p className="text-dark">{copyrightLine}</p>
-            {/* {creditLine ? <p className="site-footer__credit text-dark fw-semibold">{creditLine}</p> : null} */}
+            <p>{copyrightLine}</p>
+            {creditLine ? (
+              <p className="site-footer__credit">{creditLine}</p>
+            ) : null}
           </div>
         </div>
       </div>

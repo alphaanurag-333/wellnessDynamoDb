@@ -224,7 +224,7 @@ function StoryFormModal({
                   type="text"
                   className="ua-cfg-pt-field__input"
                   value={draft.name}
-                  placeholder="Down 18 kg on Fat Loss"
+                  placeholder="e.g. Down 18 kg on Fat Loss & Weight Management"
                   disabled={busy}
                   onChange={(event) => setDraft((prev) => ({ ...prev, name: event.target.value }))}
                 />

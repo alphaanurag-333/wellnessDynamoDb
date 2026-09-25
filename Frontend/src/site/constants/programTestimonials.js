@@ -1,4 +1,9 @@
 export const PROGRAM_TESTIMONIAL_TYPES = {
+  fat_loss: {
+    label: "Fat Loss & Weight Management",
+    sectionTitle: "Success Stories",
+    sectionSubtitle: "Hear from people who transformed their weight and energy with our program",
+  },
   diabetes_reversal: {
     label: "Diabetes Reversal",
     sectionTitle: "Success Stories",
