@@ -71,7 +71,9 @@ export function ChallengeBanner() {
 }
 
 export function CommunitySection() {
-  const { community, appName } = useSiteConfig();
+  const { community, appName, mobileApp } = useSiteConfig();
+  const ctaHref = community?.ctaHref || mobileApp?.primaryUrl || "/contact-us";
+  const ctaLabel = community?.ctaLabel || "Join in the App";
 
   return (
     <section className="site-section site-section--muted site-community" aria-labelledby="community-title">
@@ -79,8 +81,10 @@ export function CommunitySection() {
         <h2 id="community-title" className="site-heading site-heading--center">
           {appName} Community
         </h2>
-        <p className="site-subtext site-subtext--center">{community.description}</p>
-        <SiteButton href="#">{community.ctaLabel}</SiteButton>
+        <p className="site-subtext site-subtext--center">
+          {community?.description || "Connect with like-minded members for tips, motivation, and daily wellness inspiration."}
+        </p>
+        <SiteButton href={ctaHref}>{ctaLabel}</SiteButton>
       </div>
     </section>
   );

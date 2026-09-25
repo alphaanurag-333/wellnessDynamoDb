@@ -9,8 +9,11 @@ import FinalCTA from "../components/FinalCTA.jsx";
 import ChampionSlider from "../components/ChampionSlider.jsx";
 import RealHealingSlider from "../components/RealHealing.jsx";
 import TransformationStoriesSection from "../components/TransformationStoriesSection.jsx";
+import { HOME_SEO, usePageSeo } from "../hooks/usePageSeo.js";
 
 export function HomePage() {
+  usePageSeo(HOME_SEO);
+
   return (
     <div className="home-page">
       <SiteHero />

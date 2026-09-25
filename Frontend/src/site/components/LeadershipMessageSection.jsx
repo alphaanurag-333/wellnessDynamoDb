@@ -330,8 +330,16 @@ export function LeadershipNotesSlider({
             syncHeights();
             if (!showNav) return;
             setTimeout(() => {
-              swiper.params.navigation.prevEl = prevRef.current;
-              swiper.params.navigation.nextEl = nextRef.current;
+              if (!swiper?.navigation || !prevRef.current || !nextRef.current) return;
+              const navParams =
+                swiper.params.navigation && typeof swiper.params.navigation === "object"
+                  ? swiper.params.navigation
+                  : {};
+              swiper.params.navigation = {
+                ...navParams,
+                prevEl: prevRef.current,
+                nextEl: nextRef.current,
+              };
               swiper.navigation.destroy();
               swiper.navigation.init();
               swiper.navigation.update();

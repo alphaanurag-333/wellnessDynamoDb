@@ -20,11 +20,6 @@ function AppConfigSync() {
   }, [dispatch]);
 
   useEffect(() => {
-    const name = config?.app_name?.trim() || "Wellness";
-    document.title = name;
-  }, [config?.app_name]);
-
-  useEffect(() => {
     const path = config?.favicon?.trim();
     if (!path) return;
     const href = mediaUrl(path);
@@ -44,7 +39,7 @@ export default function App() {
   return (
     <>
       <AppConfigSync />
-      <Suspense fallback={<SiteLoader variant="overlay" />}>
+      <Suspense fallback={<SiteLoader variant="page" />}>
         <Routes>
           {publicRouteTree}
           <Route path="/admin" element={<Navigate to="/" replace />} />

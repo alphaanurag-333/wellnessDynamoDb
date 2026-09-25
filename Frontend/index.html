@@ -3,7 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IR Wellness</title>
+    <title>Personalised Wellness &amp; Functional Nutrition | IRW</title>
+    <meta
+      name="description"
+      content="India Redefining Wellness (IRW) offers personalised wellness, functional nutrition and 1:1 guidance for weight, diabetes, thyroid, PMOS and gut health."
+    />
+    <link rel="canonical" href="https://irwellness.in/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="India Redefining Wellness" />
+    <meta property="og:title" content="Personalised Wellness &amp; Functional Nutrition | IRW" />
+    <meta
+      property="og:description"
+      content="India Redefining Wellness (IRW) offers personalised wellness, functional nutrition and 1:1 guidance for weight, diabetes, thyroid, PMOS and gut health."
+    />
+    <meta property="og:url" content="https://irwellness.in/" />
+    <meta property="og:image" content="https://irwellness.in/og-image.png" />
+    <meta property="og:locale" content="en_IN" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Personalised Wellness &amp; Functional Nutrition | IRW" />
+    <meta
+      name="twitter:description"
+      content="India Redefining Wellness (IRW) offers personalised wellness, functional nutrition and 1:1 guidance for weight, diabetes, thyroid, PMOS and gut health."
+    />
+    <meta name="twitter:image" content="https://irwellness.in/og-image.png" />
+
+    <!--
+      Organisation JSON-LD — confirm sameAs / email / telephone before launch.
+      Sources used: LinkedIn company page + public site contact patterns.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://irwellness.in/#organization",
+            "name": "India Redefining Wellness",
+            "alternateName": ["IRW", "IR Wellness"],
+            "url": "https://irwellness.in/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://irwellness.in/organization-logo.png"
+            },
+            "email": "info@irwellness.in",
+            "telephone": "+91-93721-09740",
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer service",
+              "email": "info@irwellness.in",
+              "telephone": "+91-93721-09740",
+              "availableLanguage": ["English", "Hindi"]
+            },
+            "sameAs": [
+              "https://www.facebook.com/indiaredefiningwellness",
+              "https://www.instagram.com/india_redefining_wellness/",
+              "https://www.youtube.com/@indiaredefiningwellness",
+              "https://www.linkedin.com/company/india-redefining-wellness"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://irwellness.in/#website",
+            "url": "https://irwellness.in/",
+            "name": "India Redefining Wellness",
+            "alternateName": "IRW",
+            "publisher": { "@id": "https://irwellness.in/#organization" },
+            "inLanguage": "en-IN"
+          }
+        ]
+      }
+    </script>
     <style>
       html, body, #root { min-height: 100%; margin: 0; }
       #root { min-height: 100dvh; }
@@ -109,19 +181,11 @@
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://irwellness.in" crossorigin />
+    <link rel="dns-prefetch" href="https://irwellness.in" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
-    />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
     />
   </head>
   <body>
@@ -148,16 +212,5 @@
       </div>
     </div>
     <script type="module" src="/src/main.jsx"></script>
-    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js"
-      integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r"
-      crossorigin="anonymous"
-    ></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js"
-      integrity="sha384-G/EV+4j2dNv+tEPo3++6LCgdCROaejBqfUeNjuKAiuXbjrxilcCdDz6ZAVfHWe1Y"
-      crossorigin="anonymous"
-    ></script>
   </body>
 </html>

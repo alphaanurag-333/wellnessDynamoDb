@@ -325,12 +325,12 @@ export function useSiteConfig() {
       services: SERVICES_SECTION,
       challenge,
       consultation,
-      // community: {
-      //   ...COMMUNITY_CTA,
-      //   ctaHref: mobileApp.primaryUrl,
-      //   ctaLabel: "Join in the App",
-      //   description: `Be part of the ${appName} community — programs, recipes, and coach support in one place.`,
-      // },
+      community: {
+        ...COMMUNITY_CTA,
+        ctaHref: mobileApp.primaryUrl || COMMUNITY_CTA.ctaHref,
+        ctaLabel: "Join in the App",
+        description: `Be part of the ${appName} community — programs, recipes, and coach support in one place.`,
+      },
       contact,
       testimonials: TESTIMONIALS_SECTION,
       stats,

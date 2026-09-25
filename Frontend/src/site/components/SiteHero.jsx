@@ -28,6 +28,7 @@ function toHeroSlide(banner) {
 
 export function SiteHero() {
   const [slides, setSlides] = useState(null);
+  const [swiperInstance, setSwiperInstance] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +59,29 @@ export function SiteHero() {
       cancelled = true;
     };
   }, []);
+
+  // Pause autoplay when the hero is off-screen (helps INP / main-thread work).
+  useEffect(() => {
+    if (!swiperInstance || typeof IntersectionObserver === "undefined") return undefined;
+
+    const el = swiperInstance.el;
+    if (!el) return undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!swiperInstance.autoplay) return;
+        if (entry?.isIntersecting) {
+          swiperInstance.autoplay.start();
+        } else {
+          swiperInstance.autoplay.stop();
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [swiperInstance]);
 
   if (slides === null) {
     return (
@@ -96,8 +120,9 @@ export function SiteHero() {
       }}
       modules={[Autoplay, Pagination, EffectFade]}
       className="heroSwiper"
+      onSwiper={setSwiperInstance}
     >
-      {slides.map((slide) => (
+      {slides.map((slide, index) => (
         <SwiperSlide key={slide.id}>
           <div className="slide-flash" />
           <div className="hero-bg">
@@ -105,6 +130,17 @@ export function SiteHero() {
               src={slide.image}
               alt={slide.title || "Banner"}
               className="hero-bg-image"
+              width={1905}
+              height={640}
+              decoding={index === 0 ? "sync" : "async"}
+              loading={index === 0 ? "eager" : "lazy"}
+              ref={
+                index === 0
+                  ? (el) => {
+                      if (el) el.setAttribute("fetchpriority", "high");
+                    }
+                  : undefined
+              }
               onError={handleMediaImageError}
             />
           </div>

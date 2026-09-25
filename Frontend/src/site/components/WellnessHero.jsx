@@ -24,6 +24,10 @@ export default function WellnessHero() {
                 src={heroImage}
                 alt="Wellness Clinic"
                 className="wellness-hero__image"
+                width={800}
+                height={600}
+                loading="lazy"
+                decoding="async"
               />
 
               <div className="wellness-hero__stat-card">
@@ -65,6 +69,10 @@ export default function WellnessHero() {
               src={heroImage}
               alt="Wellness Clinic"
               className="wellness-hero__image"
+              width={800}
+              height={600}
+              loading="lazy"
+              decoding="async"
             />
 
             <div className="wellness-hero__stat-card">
