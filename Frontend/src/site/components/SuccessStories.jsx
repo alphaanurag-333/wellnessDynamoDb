@@ -135,10 +135,10 @@ const SuccessStories = () => {
               </button>
             </div>
           </div> */}
- <div className="transformation-header">
+ <div className="transformation-header mb-0">
           <div className="header-left">
             <h2>Our Success Stories</h2>
-            <p>Explore clinically guided programs and real outcomes.</p>
+            {/* <p>Explore clinically guided programs and real outcomes.</p> */}
           </div>
 
 
@@ -161,6 +161,7 @@ const SuccessStories = () => {
               </button>
             </div>
         </div>
+         <p className="real-healing-subheading mb-2 mt-0">Explore clinically guided programs and real outcomes.</p>
           <Swiper
             modules={[Autoplay]}
             slidesPerView={5}

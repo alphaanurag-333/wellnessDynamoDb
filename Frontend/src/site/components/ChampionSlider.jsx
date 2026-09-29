@@ -174,12 +174,12 @@ export default function ChampionSlider() {
   return (
     <section className="champion-section monthly-champions paddingmanage pt-3 pb-3" aria-label="Monthly champions">
       <div className="site-container">
-        <div className="monthly-champions__header">
+        {/* <div className="monthly-champions__header"> */}
           {/* <span className="monthly-champions__badge">Community Pride</span> */}
-          <h2 className="monthly-champions__title">
+          {/* <h2 className="monthly-champions__title">
             Champion of the <span>Month</span>
-          </h2>
-        </div>
+          </h2> */}
+        {/* </div> */}
 
         <Swiper
           className={`monthly-champions__slider monthly-champions__slider--count-${Math.min(count, 3)}`}

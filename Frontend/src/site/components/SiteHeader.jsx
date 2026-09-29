@@ -154,7 +154,7 @@ export function SiteHeader() {
 
             {/* CTA */}
             <BookConsultationButton className="site-header__cta">
-              Book a consultation
+              Book a Consultation
             </BookConsultationButton>
 
             {/* Mobile Button */}
@@ -270,7 +270,7 @@ export function SiteHeader() {
           className="mobile-cta"
           onClick={() => setMobileMenuOpen(false)}
         >
-          Book a consultation
+          Book a Consultation
         </BookConsultationButton>
       </div>
     </>

@@ -186,10 +186,11 @@ const mailHref = contact?.email
                 alt=""
                 className="site-footer__brand-logo"
               />
-              <span className="site-footer__brand-name">{BRAND_NAME}</span>
-            </Link>
+              <span className="site-footer__brand-name">{BRAND_NAME}
+                <FooterBrandText text={footerText} />
+             
 
-            <FooterBrandText text={footerText} />
+            
 
             {social.length > 0 ? (
               <div className="site-footer__social" aria-label="Social media links">
@@ -212,6 +213,8 @@ const mailHref = contact?.email
                 })}
               </div>
             ) : null}
+             </span>
+            </Link>
           </div>
 
           <nav className="site-footer__column" aria-label="Wellness programs">

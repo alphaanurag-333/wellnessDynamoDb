@@ -334,14 +334,14 @@ export default function TransformationStoriesSection() {
       {hasTransformations ? (
         <section className="transformation-section pb-3" aria-label="Real transformations">
           <div className="site-container">
-            <div className="transformation-header mb-2">
+            <div className="transformation-header mb-0">
               <div className="header-left">
                 <h2>Transformations</h2>
-                <p>Real Transformations. Measurable Progress.</p>
+                {/* <p>Real Transformations. Measurable Progress.</p> */}
               </div>
 
               {hasTransformations ? (
-                <div className="leadership-slider__nav">
+                <div className="leadership-slider__nav mb-0">
                   <button
                     onClick={() => swiperRef.current?.slidePrev()}
                     type="button"
@@ -363,7 +363,12 @@ export default function TransformationStoriesSection() {
                   </button>
                 </div>
               ) : null}
+
+        
             </div>
+                  <p className="real-healing-subheading mb-2 mt-0">
+  Real Transformations. Measurable Progress.
+</p>
 
             {initialLoading ? (
               <SiteLoader variant="inline" label="Loading transformations" />

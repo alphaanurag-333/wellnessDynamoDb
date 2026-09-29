@@ -29,7 +29,7 @@ export default function ProgramPage({
               <p className="program-hero__description">{description}</p>
             ) : null}
             <BookConsultationButton className="program-hero__cta">
-              Book a consultation
+              Book a Consultation
             </BookConsultationButton>
           </div>
         </div>

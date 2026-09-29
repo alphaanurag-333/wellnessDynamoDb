@@ -14,8 +14,8 @@ export const SITE_NAV_LINKS = [
 export const HEALTH_SOLUTION_LINKS = [
   { label: "Fat Loss & Weight Management", to: "/fat-loss" },
   { label: "Diabetes Reversal", to: "/diabetes-reversal" },
-  { label: "PCOD / PCOS Reversal", to: "/pcod-pcos-reversal" },
-  { label: "Thyroid Care", to: "/thyroid" },
+  { label: "PMOS (PCOS/PCOD) Wellness", to: "/pcod-pcos-reversal" },
+  { label: "Thyroid Wellness", to: "/thyroid" },
   { label: "Gut Health", to: "/gut-health" },
 ];
 

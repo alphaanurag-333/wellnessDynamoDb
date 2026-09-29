@@ -2602,7 +2602,7 @@ color: var(--text-body);
   flex-direction: column;
   align-items: stretch;
   flex: 1 1 auto;
-  padding: 5px 20px 24px;
+  padding: 8px 20px 24px;
   text-align: center;
   position: relative;
   margin-bottom: 0;
@@ -3449,7 +3449,8 @@ transition: var(--transition);
 
 .site-footer__brand-head {
   display: flex;
-  align-items: center;
+    align-items: flex-start;
+  /* align-items: center; */
   gap: 12px;
   margin-bottom: 0;
   text-decoration: none;
@@ -7018,7 +7019,8 @@ box-shadow: var(--shadow-sm);
 }
 
 .header-left h2 {
-  margin: 0 0 14px;
+  /* margin: 0 0 14px; */
+  margin: 0 0 5px;
   color: var(--text-heading);
   font-size: var(--font-size-h2);
   font-weight: var(--fw-bold);
@@ -10919,7 +10921,7 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
   /* Fill the inset frame so banner isn't visually narrower than the card */
   .home-page > .swiper.heroSwiper .swiper-slide img,
   .home-page > .swiper.heroSwiper .swiper-slide .hero-bg-image {
-    object-fit: fill;
+    object-fit: cover;
     object-position: center center;
   }
 
@@ -12042,7 +12044,7 @@ gap: 45px;
     line-height: 1.1;
   }
 .final-cta__description {
-    margin-top: 24px;
+    margin-top: 10px;
     font-size: 16px;
   }
 .final-cta__button {
@@ -12255,8 +12257,8 @@ border-radius: 18px;
     margin-bottom: var(--space-3);
   }
 .leadership-slider__navBtn {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
   }
 .leadership-slider .swiper-pagination {
     gap: 12px;
@@ -13392,7 +13394,8 @@ bottom: -18px;
   }
   .wellness-hero__image{
     height: auto;
-    max-height: 360px;
+    /* max-height: 360px; */
+        max-height: 220px;
     aspect-ratio: 4 / 5;
   }
   .wellness-hero__stat-card{
@@ -13914,9 +13917,20 @@ bottom: -18px;
         margin-top: 20px;
     }
     .wellness-hero__stat-card p {
-          font-size: 0.72rem;
-          line-height: 1.35;
+          font-size: 0.62rem;
+          line-height: 1.15;
     }
+    .wellness-hero__stat-card h4 {
+      font-size: 0.95rem;
+    }
+    .wellness-hero__stat-icon {
+      width: 24px;
+    height: 24px;
+    }
+    .wellness-hero__stat-card h4 {
+      margin: 0 0 3px;
+    }
+    
     .site-cards:not(.site-stats__card) {
       padding: 1rem !important;
     }
@@ -14508,7 +14522,8 @@ bottom: -18px;
 
 .wellnesspedia-page .wp-disorder-card ul {
   margin: 0;
-  padding-left: 1.1rem;
+  /* padding-left: 1.1rem; */
+  padding-left: 0rem;
   color: #475569;
   font-size: 0.88rem;
   line-height: 1.55;
@@ -16571,3 +16586,5 @@ button.program-hero__cta {
   cursor: pointer;
   font: inherit;
 }
+
+

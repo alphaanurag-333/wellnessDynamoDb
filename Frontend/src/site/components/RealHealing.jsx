@@ -256,33 +256,40 @@ export default function RealHealingSlider() {
       aria-label="Real people real healing"
     >
       <div className="site-container">
-        <div className="transformation-header real-healing-header">
-          <div className="header-left">
-            <h2 className="healing-title">Real People. Real Healing.</h2>
-            <p className="real-healing-subheading">{SECTION_SUBHEADING}</p>
-          </div>
+       <div className="mb-0 transformation-header real-healing-header">
+  <div className="header-left">
+    <h2>Real People. Real Healing.</h2>
+  </div>
 
-          {showNav ? (
-            <div className="leadership-slider__nav" aria-label="Story navigation">
-              <button
-                type="button"
-                className="leadership-slider__navBtn"
-                aria-label="Previous story"
-                onClick={() => swiperRef.current?.slidePrev()}
-              >
-                <ChevronLeft size={22} />
-              </button>
-              <button
-                type="button"
-                className="leadership-slider__navBtn"
-                aria-label="Next story"
-                onClick={() => swiperRef.current?.slideNext()}
-              >
-                <ChevronRight size={22} />
-              </button>
-            </div>
-          ) : null}
-        </div>
+  {showNav ? (
+    <div
+      className="leadership-slider__nav mb-0"
+      aria-label="Story navigation"
+    >
+      <button
+        type="button"
+        className="leadership-slider__navBtn"
+        aria-label="Previous story"
+        onClick={() => swiperRef.current?.slidePrev()}
+      >
+        <ChevronLeft size={22} />
+      </button>
+
+      <button
+        type="button"
+        className="leadership-slider__navBtn"
+        aria-label="Next story"
+        onClick={() => swiperRef.current?.slideNext()}
+      >
+        <ChevronRight size={22} />
+      </button>
+    </div>
+  ) : null}
+</div>
+
+<p className="real-healing-subheading mb-2 mt-0">
+  {SECTION_SUBHEADING}
+</p>
 
         <Swiper
           modules={[Autoplay]}
