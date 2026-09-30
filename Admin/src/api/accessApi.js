@@ -74,6 +74,18 @@ export async function attachAccessPolicy(id, payload) {
   }
 }
 
+export async function detachAccessPolicy(id, attachmentId) {
+  try {
+    const { data } = await api.delete(
+      `/account/access/policies/${encodeURIComponent(id)}/attachments/${encodeURIComponent(attachmentId)}`,
+      { headers: authHeader() },
+    );
+    return data.policy;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function createAccessRole(payload) {
   try {
     const { data } = await api.post("/account/access/roles", payload, { headers: authHeader() });

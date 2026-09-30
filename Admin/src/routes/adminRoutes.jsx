@@ -44,6 +44,13 @@ function AdminRoot() {
   );
 }
 
+function RequireConsolePermission({ slug, children }) {
+  const { can, bootstrapping } = useViewAs();
+  if (bootstrapping) return <BrandLoader />;
+  if (!can(slug)) return <Navigate to={UPDATED_ADMIN_PATHS.dashboard} replace />;
+  return children;
+}
+
 function ProtectedShell() {
   const { isAuthenticated, bootstrapping } = useViewAs();
 
@@ -71,14 +78,42 @@ export const adminRouteTree = (
         <Route path=":userId" element={<UserDetailPage />} />
       </Route>
       <Route path="access" element={<AccessPage />} />
-      <Route path="teams" element={<TeamsPage />} />
-      <Route path="teams/:memberId" element={<TeamMemberPage />} />
+      <Route
+        path="teams"
+        element={
+          <RequireConsolePermission slug="console.tm.view">
+            <TeamsPage />
+          </RequireConsolePermission>
+        }
+      />
+      <Route
+        path="teams/:memberId"
+        element={
+          <RequireConsolePermission slug="console.tm.view">
+            <TeamMemberPage />
+          </RequireConsolePermission>
+        }
+      />
       <Route path="calendar" element={<CalendarPage />} />
       <Route path="configs" element={<ConfigsPage />} />
       <Route path="configs/:configId" element={<ConfigDetailPage />} />
       <Route path="pending" element={<PendingPage />} />
-      <Route path="sop" element={<SopPage />} />
-      <Route path="contact-inquiries" element={<ContactInquiriesPage />} />
+      <Route
+        path="sop"
+        element={
+          <RequireConsolePermission slug="console.sop.view">
+            <SopPage />
+          </RequireConsolePermission>
+        }
+      />
+      <Route
+        path="contact-inquiries"
+        element={
+          <RequireConsolePermission slug="console.ci.view">
+            <ContactInquiriesPage />
+          </RequireConsolePermission>
+        }
+      />
       <Route path="referral-tree" element={<ReferralTreePage />} />
       <Route path="my-content" element={<MyContentPage />} />
       <Route path="my-content/letters/:coachId" element={<CommitmentLettersPage />} />

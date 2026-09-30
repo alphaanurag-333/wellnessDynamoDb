@@ -300,6 +300,30 @@ export function countGranted(grants, parents, roleId) {
   return n;
 }
 
+export function sectionIdForFeature(featureId) {
+  return PERM_CATALOG.find((row) => row[2] === featureId)?.[4] || null;
+}
+
+/** The section stays in the left nav while its entry view (or any action) is granted. */
+export function sectionHasEntryGrant(grants, roleId, sectionId) {
+  if (roleId === "admin" || grants?.[roleId] == null) return true;
+  const map = grants[roleId] || {};
+  return PERM_CATALOG.filter((row) => row[4] === sectionId).some((row) => {
+    const actions = map[row[2]] || [];
+    if (!actions.length) return false;
+    return row[3].includes("view") ? actions.includes("view") : true;
+  });
+}
+
+export function syncSectionTick(views, roleId, sectionId, open) {
+  const next = { ...views };
+  const cur = new Set(next[roleId] || []);
+  if (open) cur.add(sectionId);
+  else cur.delete(sectionId);
+  next[roleId] = [...cur];
+  return next;
+}
+
 export function sectionStats(grants, parents, roleId, views) {
   return AC_SECTIONS.map((sec) => {
     const features = PERM_CATALOG.filter((r) => r[4] === sec.id);
@@ -397,6 +421,33 @@ export function clearSectionGrants(grants, parents, roleId, sectionId) {
   for (const row of PERM_CATALOG) {
     if (row[4] !== sectionId) continue;
     delete map[row[2]];
+  }
+  next[roleId] = map;
+  return next;
+}
+
+/** Put a role's baseline grants back when a section tick is turned on again. */
+export function restoreSectionGrants(grants, roleId, sectionId) {
+  if (roleId === "admin") return grants;
+  const next = cloneGrants(grants);
+  if (next[roleId] == null) next[roleId] = copyRoleGrants(grants, roleId);
+  const map = { ...(next[roleId] || {}) };
+  const baseline = DEFAULT_GRANTS[roleId];
+  const features = PERM_CATALOG.filter((row) => row[4] === sectionId);
+  if (baseline && typeof baseline === "object") {
+    for (const row of features) {
+      const featureId = row[2];
+      const acts = baseline[featureId];
+      if (!Array.isArray(acts) || !acts.length) continue;
+      const allowed = new Set(row[3]);
+      const ordered = acts.filter((action) => allowed.has(action));
+      if (ordered.length) map[featureId] = ordered;
+    }
+  }
+  const hasAny = features.some((row) => Array.isArray(map[row[2]]) && map[row[2]].length);
+  if (!hasAny) {
+    const entry = features.find((row) => row[3].includes("view"));
+    if (entry) map[entry[2]] = ["view"];
   }
   next[roleId] = map;
   return next;

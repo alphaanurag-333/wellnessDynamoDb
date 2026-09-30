@@ -241,31 +241,22 @@ function navSectionsForUiRole(uiKey, role) {
 }
 
 /**
- * Keep a seeded system role aligned with its baseline: add new default slugs,
- * drop Configs (and WC revenue analytics) leftovers, and keep nav in sync.
+ * Existing system roles keep the Access Control matrix an admin saved.
+ * Seeding only drops slugs those roles are not allowed to hold (Configs, and
+ * Wellness Coach revenue). It must not put removed defaults such as Teams back.
  */
 function alignSeededConsoleRole(role, roleKey) {
-  const baselinePerms = grantsMapToPermissions(DEFAULT_CONSOLE_GRANTS[roleKey]);
-  const baselineNav = DEFAULT_NAV_SECTIONS[roleKey] || [];
   const currentPerms = Array.isArray(role?.permissions) ? role.permissions : [];
   const currentNav = Array.isArray(role?.navSections) ? role.navSections : [];
-  const nextPerms = [
-    ...new Set([
-      ...currentPerms.filter((slug) => {
-        const value = String(slug || "");
-        if (CONFIG_PERM_SLUG_RE.test(value)) return false;
-        if (roleKey === "wc" && REV_PERM_SLUG_RE.test(value)) return false;
-        return true;
-      }),
-      ...baselinePerms,
-    ]),
-  ];
-  const nextNav = [
-    ...new Set([
-      ...currentNav.filter((id) => id !== "configs"),
-      ...baselineNav,
-    ]),
-  ];
+  const allowConfigs = defaultRoleAllowsConfigs(roleKey);
+  const nextPerms = currentPerms.filter((slug) => {
+    const value = String(slug || "");
+    if (!isValidConsolePermission(value)) return false;
+    if (!allowConfigs && CONFIG_PERM_SLUG_RE.test(value)) return false;
+    if (roleKey === "wc" && REV_PERM_SLUG_RE.test(value)) return false;
+    return true;
+  });
+  const nextNav = currentNav.filter((id) => allowConfigs || id !== "configs");
   return { permissions: nextPerms, navSections: nextNav };
 }
 

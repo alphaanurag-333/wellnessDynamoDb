@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { hasPermission } = require("../../utils/permissions");
 const { normalizeRoleKey } = require("../../config/accountRoles");
 const {
   createSop,
@@ -47,10 +48,12 @@ const VIDEO_MIME = new Set([
   "video/x-msvideo",
 ]);
 
-function assertAdminOnly(req) {
+function assertCanUploadFile(req, file) {
+  if (!file) return;
   const role = normalizeRoleKey(req.auth?.role);
   if (req.auth?.isSuperAdmin || role === "admin") return;
-  throw new AppError("Only Admin can upload or manage SOPs", 403);
+  if (hasPermission(req.auth, "console.sop.upload")) return;
+  throw new AppError("You do not have permission to upload SOP files", 403);
 }
 
 function resolveStaffRoleKey(req) {
@@ -234,7 +237,6 @@ exports.getSopByIdController = asyncHandler(async (req, res) => {
 });
 
 exports.createSopController = asyncHandler(async (req, res) => {
-  assertAdminOnly(req);
 
   const title = String(req.body.title || "").trim();
   const category = normalizeCategory(req.body.category, "onboarding");
@@ -247,6 +249,9 @@ exports.createSopController = asyncHandler(async (req, res) => {
   const status = normalizeStatus(req.body.status, "active");
   const author = resolveAuthor(req);
   const file = pickUploadedFile(req);
+  const coverFileEarly = pickThumbnailFile(req);
+  assertCanUploadFile(req, file);
+  assertCanUploadFile(req, coverFileEarly);
 
   if (!ALLOWED_CATEGORIES.has(category)) {
     throw new AppError("invalid category", 400);
@@ -295,7 +300,6 @@ exports.createSopController = asyncHandler(async (req, res) => {
 });
 
 exports.updateSopController = asyncHandler(async (req, res) => {
-  assertAdminOnly(req);
 
   const current = await getSopById(req.params.id);
   if (!current) throw new AppError("SOP not found", 404);
@@ -303,6 +307,8 @@ exports.updateSopController = asyncHandler(async (req, res) => {
   const updates = {};
   const file = pickUploadedFile(req);
   const coverFile = pickThumbnailFile(req);
+  assertCanUploadFile(req, file);
+  assertCanUploadFile(req, coverFile);
 
   if (req.body.title !== undefined) {
     const title = String(req.body.title).trim();
@@ -441,7 +447,6 @@ exports.updateSopController = asyncHandler(async (req, res) => {
 });
 
 exports.deleteSopController = asyncHandler(async (req, res) => {
-  assertAdminOnly(req);
 
   const current = await getSopById(req.params.id);
   if (!current) throw new AppError("SOP not found", 404);

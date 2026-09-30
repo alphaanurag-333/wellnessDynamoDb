@@ -897,7 +897,7 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
             </div>
             <div className="ua-cp-ip-test-group__grid">
               {flattenTests(group).map((test) => (
-                <label key={test} className="ua-cp-ip-test-item">
+                <label key={test} className="ua-cp-ip-test-item" onMouseDown={(e) => e.preventDefault()}>
                   <input
                     type="checkbox"
                     checked={!!selected[`${group.id}:${test}`]}
@@ -1237,7 +1237,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
                 </div>
                 <div className="ua-cp-ip-test-group__grid" style={{padding:"10px 40px 10px"}}>
                   {group.tests.map((test) => (
-                    <label key={test.id} className="ua-cp-ip-test-item">
+                    <label key={test.id} className="ua-cp-ip-test-item" onMouseDown={(e) => e.preventDefault()}>
                       <input
                         type="checkbox"
                         checked={!!selected[test.id]}

@@ -832,9 +832,9 @@ export function AdminDashboard({
   const isFullDash = viewAs === "admin" || isStaffDash;
   const isAdminDash = viewAs === "admin";
   const canExport = can("console.dash.export");
-  const canViewRevenue = isAdminDash && can("console.rev.view");
+  const canViewRevenue = can("console.rev.view");
   const isContentCommunity = isStaffDash || isSupportDash;
-  const dashHasTeam = viewAs !== "awc";
+  const dashHasTeam = can("console.tm.view");
   const clientsByConcern = useMemo(() => groupClientsByConcern(clients), [clients]);
   const programCards = useMemo(() => {
     if (!Array.isArray(healthConcerns) || healthConcerns.length === 0) return [];
@@ -947,7 +947,7 @@ export function AdminDashboard({
     total: "0 pending",
     cells: OPS_OVERDUE.cells.map((cell) => ({ ...cell, count: 0, people: [] })),
   };
-  const excludeTeamIds = viewAs === "wc" ? ["wc"] : [];
+  const excludeTeamIds = viewAs === "wc" ? ["wc"] : viewAs === "awc" ? ["awc"] : [];
   const liveTeamRoles = statisticsForView?.teamRoles;
   const catalogTeamCards = Array.isArray(liveTeamRoles)
     ? teamCardsFromStats(liveTeamRoles, { excludeIds: excludeTeamIds })
@@ -1116,21 +1116,27 @@ export function AdminDashboard({
     delta: `${revenueDelta >= 0 ? "+" : ""}${revenueDelta}%`,
     deltaUp: revenueDelta >= 0,
   };
+  const revenueStripOrder = ["program", "app", "consultancy", "challenge"];
+  const revenueProducts = revenueAnalytics?.products || [];
   const dynamicRevenueCards = [
-    ...(revenueAnalytics?.products || []).map((row) => ({
+    ...revenueStripOrder.map((key) => revenueProducts.find((row) => row.key === key)).filter(Boolean).map((row) => ({
+      key: row.key,
       label: row.name,
       value: formatRevenue(row.value),
       share: `${asNumber(row.pct)}% of total`,
       pct: asNumber(row.pct),
       color: row.color || PRODUCT_COLORS[row.key] || PRODUCT_COLORS.program,
+      showBar: true,
     })),
     {
+      key: "avg",
       label: "Avg. per client",
       value: formatRevenue(revenueAnalytics?.avgPerClient),
       share: null,
       pct: 0,
       color: PRODUCT_COLORS.avg,
       isAvg: true,
+      showBar: false,
     },
   ];
   const trendMax = Math.max(
@@ -2381,14 +2387,12 @@ export function AdminDashboard({
                     <span className="revenue-card__bar" style={{ background: card.color }} />
                     <div className="revenue-card__label">{card.label}</div>
                     <div className="revenue-card__value" >{card.value}</div>
-                    {card.share ? (
-                      <>
-                        <div className="revenue-card__track">
-                          <div className="revenue-card__fill" style={{ width: `${card.pct}%`, background: card.color }} />
-                        </div>
-                        <div className="revenue-card__share"><span>{card.share}</span></div>
-                      </>
+                    {card.showBar ? (
+                      <div className="revenue-card__track">
+                        <div className="revenue-card__fill" style={{ width: `${card.pct}%`, background: card.color }} />
+                      </div>
                     ) : null}
+                    {card.share ? <div className="revenue-card__share"><span>{card.share}</span></div> : null}
                   </div>
                 ))}
               </div>

@@ -1598,6 +1598,20 @@ async function listUsers({
   };
 }
 
+async function listDeletedUserIds() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "deleted",
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+  });
+  return items
+    .map((row) => String(row?.id || "").trim())
+    .filter(Boolean);
+}
+
 async function listArchivedUsers({ page = 1, limit = 20, search } = {}) {
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
@@ -1672,6 +1686,7 @@ module.exports = {
   resolveEffectiveWhatsappKey,
   updateUser,
   deleteUser,
+  listDeletedUserIds,
   listUsersByParentCoachId,
   listUsersByReferredByUserId,
   listUsersByReferredByEntityId,

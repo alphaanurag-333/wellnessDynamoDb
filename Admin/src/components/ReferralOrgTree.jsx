@@ -123,12 +123,17 @@ export function ReferralOrgTree({ root, collapsedMap, onToggle, canOpenUser }) {
   return (
     <div className="ua-org-scroll" ref={scrollRef}>
       <ul className="ua-org-tree">
-        <OrgBranch
-          node={root}
-          collapsedMap={collapsedMap}
-          onToggle={onToggle}
-          canOpenUser={canOpenUser}
-        />
+        <li className="ua-org-node">
+          <div className="ua-org-admin">Admin</div>
+          <ul className="ua-org-children">
+            <OrgBranch
+              node={root}
+              collapsedMap={collapsedMap}
+              onToggle={onToggle}
+              canOpenUser={canOpenUser}
+            />
+          </ul>
+        </li>
       </ul>
     </div>
   );
