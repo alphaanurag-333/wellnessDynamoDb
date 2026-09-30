@@ -122,7 +122,7 @@ export default function Methodology() {
       <div className="site-container">
         <div className="methodology__header">
           <h2>Our Wellness Roadmap</h2>
-          <p>
+          <p className="jyst">
           Our personalised wellness approach connects nutrition,lifestyle, metabolic health and overall wellbeing—combining 1:1 consultation, detailed health and
 lifestyle assessment, and personalised guidance to create a sustainable path towards better
 health

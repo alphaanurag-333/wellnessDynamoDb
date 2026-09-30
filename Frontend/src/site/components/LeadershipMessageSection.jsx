@@ -173,13 +173,13 @@ function LeadershipNoteCard({
         </div>
       </div>
 
-      <div className="leadership__content">
+      <div className="leadership__content" style={{textAlign:'justify'}}>
         <InlineReadMore
           text={paragraphs.join(" ")}
           expanded={expanded}
           onToggle={toggleExpanded}
           lines={5}
-          className="leadership__description"
+          className="leadership__description" 
         />
       </div>
 
