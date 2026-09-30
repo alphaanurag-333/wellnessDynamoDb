@@ -13,7 +13,7 @@ const {
 
 const router = express.Router();
 
-// Coaches (and other staff) may view; create / edit / delete are Admin-only (enforced in controllers).
+// View, create, edit, delete, and file upload follow the SOP library grants.
 router.get("/", protectAccount, authorizeStaff("console.sop.view", { admin: "sops.view" }), listSopsController);
 router.get("/:id", protectAccount, authorizeStaff("console.sop.view", { admin: "sops.view" }), getSopByIdController);
 router.post(

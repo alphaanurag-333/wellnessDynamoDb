@@ -13,6 +13,7 @@ const {
   updateAccessPolicy,
   deleteAccessPolicy,
   attachAccessPolicy,
+  detachAccessPolicy,
   updateAccessRole,
   deleteAccessRole,
   listAccessMembers,
@@ -41,6 +42,7 @@ router.post("/policies", ...requireAccessAdmin, createAccessPolicy);
 router.patch("/policies/:id", ...requireAccessAdmin, updateAccessPolicy);
 router.delete("/policies/:id", ...requireAccessAdmin, deleteAccessPolicy);
 router.post("/policies/:id/attachments", ...requireAccessAdmin, attachAccessPolicy);
+router.delete("/policies/:id/attachments/:attachmentId", ...requireAccessAdmin, detachAccessPolicy);
 router.patch("/roles/:id", ...requireAccessAdmin, updateAccessRole);
 router.delete("/roles/:id", ...requireAccessAdmin, deleteAccessRole);
 router.patch("/members/:id/role", ...requireAccessAdmin, setAccessMemberRole);

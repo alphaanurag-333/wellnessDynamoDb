@@ -1012,6 +1012,32 @@ exports.attachAccessPolicy = asyncHandler(async (req, res) => {
   });
 });
 
+exports.detachAccessPolicy = asyncHandler(async (req, res) => {
+  assertSuperAdmin(req);
+  const policy = await getAccessPolicyById(req.params.id);
+  if (!policy) throw new AppError("Policy not found", 404);
+  const attachmentId = String(req.params.attachmentId || "").trim();
+  const existing = (policy.attachments || []).find((entry) => entry.id === attachmentId);
+  if (!existing) throw new AppError("Attachment not found", 404);
+  const updated = await updateAccessPolicy(req.params.id, {
+    attachments: (policy.attachments || []).filter((entry) => entry.id !== attachmentId),
+  });
+  recordAccessAuditLogAsync({
+    kind: "permission",
+    text: `Policy detached: ${updated.name}`,
+    detail: describePolicyTarget(existing),
+    subject: updated.name,
+    subjectMeta: "Policy",
+    actor: actorDisplayName(req),
+    actorAccountId: req.auth?.sub || null,
+  });
+  return res.json({
+    status: true,
+    message: "Policy detached",
+    policy: updated,
+  });
+});
+
 exports.listAccessMembers = asyncHandler(async (req, res) => {
   assertTeamsReadAccess(req);
   const search = req.query.search || req.query.q;
@@ -1888,8 +1914,8 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
         });
       }
     } else {
-      // WC / AWC / Trainee / Support: add new baseline slugs, drop Configs leftovers
-      // (and WC revenue analytics). Matches Access Control defaults.
+      // WC / AWC / Trainee / Support keep the matrix an admin saved.
+      // Only drop slugs those roles are not allowed to hold.
       const aligned = alignSeededConsoleRole(role, roleKey);
       const currentPerms = Array.isArray(role.permissions) ? role.permissions : [];
       const currentNav = Array.isArray(role.navSections) ? role.navSections : [];

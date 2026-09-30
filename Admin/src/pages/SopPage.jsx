@@ -166,7 +166,7 @@ function SopMediaView({ sop }) {
   return null;
 }
 
-function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit }) {
+function SopFormModal({ mode, initial, saving, accessRoles, canUpload = true, onClose, onSubmit }) {
   const fileRef = useRef(null);
   const coverRef = useRef(null);
   const audienceOptions = useMemo(() => buildSopAudienceOptions(accessRoles), [accessRoles]);
@@ -239,7 +239,9 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
     const typeErr = validateSopContentType(form.contentType);
     if (typeErr) next.contentType = typeErr;
 
-    if (form.contentType === "text") {
+    if (!canUpload && (file || coverFile || form.contentType === "word" || form.contentType === "pdf")) {
+      next.file = "You do not have permission to upload SOP files.";
+    } else if (form.contentType === "text") {
       const stepsErr = validateSopSteps(form.steps);
       if (stepsErr) next.steps = stepsErr;
     } else if (form.contentType === "word" || form.contentType === "pdf") {
@@ -644,9 +646,12 @@ function SopFormModal({ mode, initial, saving, accessRoles, onClose, onSubmit })
 
 export function SopPage() {
   const { showToast } = useOutletContext();
-  const { isAdminView, viewAs, activeRole } = useViewAs();
-  // Upload / edit / delete are Admin-only. Coaches and other roles get view-only.
-  const canManage = Boolean(isAdminView);
+  const { isAdminView, viewAs, activeRole, can } = useViewAs();
+  const canView = can("console.sop.view");
+  const canCreate = can("console.sop.create");
+  const canEdit = can("console.sop.edit");
+  const canDelete = can("console.sop.delete");
+  const canUpload = can("console.sop.upload");
   const [sops, setSops] = useState([]);
   const [accessRoles, setAccessRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -671,6 +676,11 @@ export function SopPage() {
   }, []);
 
   const loadSops = useCallback(async () => {
+    if (!canView) {
+      setSops([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setLoadError("");
     const token = getAdminToken();
@@ -689,7 +699,7 @@ export function SopPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [canView]);
 
   useEffect(() => {
     loadSops();
@@ -761,14 +771,14 @@ export function SopPage() {
       <PageHeader
         title="SOP"
         subtitle={
-          canManage
-            ? "Upload Text, Word, PDF, or Video (file or YouTube). Coaches can view only."
-            : "Standard operating procedures from Admin — view only."
+          canCreate
+            ? "Upload Text, Word, PDF, or Video (file or YouTube)."
+            : "Standard operating procedures you are allowed to view."
         }
         actions={
-          canManage ? (
+          canCreate ? (
             <button type="button" className="ua-sop-btn-new" onClick={() => setModal({ mode: "create", sop: null })}>
-              + Upload SOP
+              + New SOP
             </button>
           ) : null
         }
@@ -780,7 +790,7 @@ export function SopPage() {
         <div className="ua-sop-empty">{loadError}</div>
       ) : sorted.length === 0 ? (
         <div className="ua-sop-empty">
-          {canManage ? "No SOPs yet. Upload the first one for your wellness coaches." : "No SOPs available yet."}
+          {canCreate ? "No SOPs yet. Upload the first one for your wellness coaches." : "No SOPs available yet."}
         </div>
       ) : (
         <div className="ua-sop-list">
@@ -830,7 +840,7 @@ export function SopPage() {
                     >
                       {open ? "Hide" : "View"}
                     </button>
-                    {canManage ? (
+                    {canEdit ? (
                       <button
                         type="button"
                         className="ua-sop-action ua-sop-action--edit"
@@ -839,7 +849,7 @@ export function SopPage() {
                         Edit
                       </button>
                     ) : null}
-                    {canManage ? (
+                    {canDelete ? (
                       <button
                         type="button"
                         className="ua-sop-action ua-sop-action--icon"
@@ -859,18 +869,19 @@ export function SopPage() {
         </div>
       )}
 
-      {modal && canManage ? (
+      {modal && (modal.mode === "edit" ? canEdit : canCreate) ? (
         <SopFormModal
           mode={modal.mode}
           initial={modal.mode === "edit" ? modal.sop : { ...EMPTY_FORM, audienceRole: defaultSopAudienceRole(accessRoles) }}
           accessRoles={accessRoles}
+          canUpload={canUpload}
           saving={saving}
           onClose={() => !saving && setModal(null)}
           onSubmit={modal.mode === "edit" ? handleUpdate : handleCreate}
         />
       ) : null}
 
-      {deleteAsk && canManage ? (
+      {deleteAsk && canDelete ? (
         <div className="ua-dialog-backdrop" onClick={() => !saving && setDeleteAsk(null)} role="presentation">
           <div
             className="ua-dialog ua-dialog--confirm"

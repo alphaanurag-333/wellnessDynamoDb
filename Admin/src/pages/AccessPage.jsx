@@ -9,6 +9,7 @@ import { staffInitials } from "../data/teamsData.js";
 import {
   approveAccessRequest,
   attachAccessPolicy,
+  detachAccessPolicy,
   createAccessPolicy,
   createAccessRole,
   deleteAccessPolicy,
@@ -34,8 +35,6 @@ import {
   DEFAULT_VIEWS,
   PERM_ACTS,
   PERM_CATALOG,
-  POLICY_CARD_ATTACHMENT_LIMIT,
-  POLICY_CARD_RULE_LIMIT,
   POLICY_DESC_MAX_LEN,
   POLICY_NAME_MAX_LEN,
   ROLE_META,
@@ -51,6 +50,10 @@ import {
   sectionStats,
   toggleGrant,
   clearSectionGrants,
+  restoreSectionGrants,
+  sectionIdForFeature,
+  sectionHasEntryGrant,
+  syncSectionTick,
   vsParentDelta,
 } from "../data/accessData.js";
 
@@ -627,6 +630,20 @@ function PoliciesTab({ onToast }) {
     }
   }
 
+  async function handleDetach(policy, attachment) {
+    const key = `detach:${attachment.id}`;
+    setBusyAction(key);
+    try {
+      await detachAccessPolicy(policy.id, attachment.id);
+      onToast(`Removed ${policyAttachmentLabel(attachment)} from "${policy.name}"`);
+      await load();
+    } catch (err) {
+      onToast(err?.message || "Could not remove attachment");
+    } finally {
+      setBusyAction("");
+    }
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return;
     setBusyAction("delete");
@@ -661,25 +678,46 @@ function PoliciesTab({ onToast }) {
         policies.length ? (
           <div className="ua-policy-grid">
             {policies.map((policy) => {
-              const visibleRules = (policy.rules || []).slice(0, POLICY_CARD_RULE_LIMIT);
-              const extraRules = Math.max(0, (policy.rules || []).length - visibleRules.length);
-              const visibleAttachments = (policy.attachments || []).slice(0, POLICY_CARD_ATTACHMENT_LIMIT);
-              const extraAttachments = Math.max(0, (policy.attachments || []).length - visibleAttachments.length);
+              const rules = policy.rules || [];
+              const attachments = policy.attachments || [];
+              const scopeKey = String(policy.effect || policy.scope || "deny").toLowerCase();
               return (
               <div key={policy.id} className="ua-policy-card">
                 <div className="ua-policy-card__head">
-                  <div className="ua-policy-card__title-block">
-                    <div className="ua-policy-card__name" title={policy.name}>{policy.name}</div>
-                    {policy.desc ? (
-                      <div className="ua-policy-card__desc" title={policy.desc}>{policy.desc}</div>
-                    ) : null}
-                  </div>
-                  <span className={`ua-policy-card__scope ua-policy-card__scope--${String(policy.effect || policy.scope || "deny").toLowerCase()}`}>
+                  <div className="ua-policy-card__name" title={policy.name}>{policy.name}</div>
+                  <details className="ua-policy-card__menu">
+                    <summary aria-label={`Actions for ${policy.name}`}>⋯</summary>
+                    <div className="ua-policy-card__menu-panel">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                          setEditorPolicy(policy);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="is-danger"
+                        onClick={(event) => {
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                          setDeleteTarget(policy);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </details>
+                  <span className={`ua-policy-card__scope ua-policy-card__scope--${scopeKey}`}>
                     {policy.scope}
                   </span>
                 </div>
+                {policy.desc ? (
+                  <div className="ua-policy-card__desc" title={policy.desc}>{policy.desc}</div>
+                ) : null}
                 <div className="ua-policy-card__rules">
-                  {visibleRules.map((rule, index) => (
+                  {rules.map((rule, index) => (
                     <div key={`${policy.id}-${rule.featureId}-${rule.effect}-${rule.action}-${index}`} className="ua-policy-card__rule">
                       <span className={`ua-rule-badge ua-rule-badge--${String(rule.type || rule.effect || "deny").toLowerCase()}`}>
                         {rule.type || String(rule.effect || "deny").toUpperCase()}
@@ -687,34 +725,33 @@ function PoliciesTab({ onToast }) {
                       <span className="ua-policy-card__rule-text">{rule.text}</span>
                     </div>
                   ))}
-                  {extraRules ? <div className="ua-policy-card__more">+{extraRules} more rule{extraRules === 1 ? "" : "s"}</div> : null}
                 </div>
                 <div className="ua-policy-card__foot">
-                  <div className="ua-policy-card__attachments">
-                    <span className="ua-policy-card__attachments-label">Attached to</span>
-                    <div className="ua-policy-card__chips">
-                      {visibleAttachments.length ? (
-                        <>
-                          {visibleAttachments.map((attachment) => (
-                            <span key={attachment.id} className="ua-policy-card__chip" title={policyAttachmentLabel(attachment)}>
-                              {policyAttachmentLabel(attachment)}
-                            </span>
-                          ))}
-                          {extraAttachments ? <span className="ua-policy-card__more-chip">+{extraAttachments}</span> : null}
-                        </>
-                      ) : (
-                        <span className="ua-policy-card__empty">Nobody yet</span>
-                      )}
-                    </div>
+                  <span className="ua-policy-card__attachments-label">Attached to</span>
+                  <div className="ua-policy-card__chips">
+                    {attachments.length ? attachments.map((attachment) => {
+                      const label = policyAttachmentLabel(attachment);
+                      const detaching = busyAction === `detach:${attachment.id}`;
+                      return (
+                        <span key={attachment.id} className="ua-policy-card__chip" title={label}>
+                          <span className="ua-policy-card__chip-label">{label}</span>
+                          <button
+                            type="button"
+                            className="ua-policy-card__chip-x"
+                            aria-label={`Remove ${label}`}
+                            disabled={Boolean(busyAction)}
+                            onClick={() => handleDetach(policy, attachment)}
+                          >
+                            {detaching ? "…" : "×"}
+                          </button>
+                        </span>
+                      );
+                    }) : (
+                      <span className="ua-policy-card__empty">Nobody yet</span>
+                    )}
                   </div>
                   <div className="ua-policy-card__actions">
-                    <button type="button" className="ua-soft-btn" onClick={() => setEditorPolicy(policy)}>
-                      Edit
-                    </button>
-                    <button type="button" className="ua-soft-btn" onClick={() => setDeleteTarget(policy)}>
-                      Delete
-                    </button>
-                    <button type="button" className="ua-soft-btn ua-soft-btn--attach" onClick={() => setAttachPolicyTarget(policy)}>
+                    <button type="button" className="ua-policy-card__attach" onClick={() => setAttachPolicyTarget(policy)}>
                       Attach
                     </button>
                   </div>
@@ -928,11 +965,20 @@ function RolesPermissionsTab({ onToast }) {
       onToast("Admin permissions are locked");
       return;
     }
-    setGrants((g) => {
-      const next = toggleGrant(g, parents, role.id, featureId, action);
-      stateRef.current.grants = next;
-      return next;
-    });
+    const nextGrants = toggleGrant(stateRef.current.grants, parents, role.id, featureId, action);
+    stateRef.current.grants = nextGrants;
+    setGrants(nextGrants);
+    const sectionId = sectionIdForFeature(featureId);
+    if (sectionId) {
+      const nextViews = syncSectionTick(
+        stateRef.current.views,
+        role.id,
+        sectionId,
+        sectionHasEntryGrant(nextGrants, role.id, sectionId),
+      );
+      stateRef.current.views = nextViews;
+      setViews(nextViews);
+    }
     scheduleSave();
   }
 
@@ -984,13 +1030,13 @@ function RolesPermissionsTab({ onToast }) {
       stateRef.current.views = next;
       return next;
     });
-    if (currentlyOpen) {
-      setGrants((g) => {
-        const next = clearSectionGrants(g, stateRef.current.parents, role.id, sectionId);
-        stateRef.current.grants = next;
-        return next;
-      });
-    }
+    setGrants((g) => {
+      const next = currentlyOpen
+        ? clearSectionGrants(g, stateRef.current.parents, role.id, sectionId)
+        : restoreSectionGrants(g, role.id, sectionId);
+      stateRef.current.grants = next;
+      return next;
+    });
     scheduleSave();
   }
 

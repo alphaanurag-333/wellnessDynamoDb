@@ -41,6 +41,22 @@ export function hasConsolePermission(permissions, slug) {
   return Array.isArray(permissions) && permissions.includes(slug);
 }
 
+/**
+ * A sidebar item opens only when its entry permission is granted.
+ * User Management follows Client list, not the other profile features.
+ */
+const NAV_ENTRY_SLUGS = {
+  dashboard: ["console.dash.view", "console.rev.view"],
+  users: ["console.cl.view"],
+  teams: ["console.tm.view"],
+  "referral-tree": ["console.rt.view"],
+  calendar: ["console.cal.view", "console.avail.view"],
+  pending: ["console.pt.view"],
+  sop: ["console.sop.view"],
+  configs: ["console.ct.view", "console.bn.view", "console.cf.view", "console.rp.view"],
+  "contact-inquiries": ["console.ci.view"],
+};
+
 /** A nav section opens as soon as the role holds any permission inside it. */
 export function sectionsFromPermissions(permissions) {
   const sections = new Set();
@@ -48,6 +64,16 @@ export function sectionsFromPermissions(permissions) {
     const parsed = parseConsoleSlug(slug);
     const sectionId = parsed && FEATURE_SECTION.get(parsed.featureId);
     if (sectionId) sections.add(sectionId);
+  }
+  return applyNavEntryGates(sections, permissions);
+}
+
+function applyNavEntryGates(sections, permissions) {
+  const granted = new Set(permissions || []);
+  for (const id of [...sections]) {
+    const required = NAV_ENTRY_SLUGS[id];
+    if (!required) continue;
+    if (!required.some((slug) => granted.has(slug))) sections.delete(id);
   }
   return sections;
 }
@@ -80,22 +106,18 @@ export function intersectNavSections(permissionSections, tickList) {
 }
 
 /**
- * Live left-nav: granted permissions ∩ Access Control section ticks.
- * Admin view always opens every operational section.
+ * Live left-nav follows the account's granted entry permissions.
+ * A section such as Contact Inquiries opens for an Assistant WC when that
+ * account has its view grant, including a personal override the role
+ * template does not list. Admin view always opens every operational section.
  */
 export function resolveLiveNavSections({
   permissions,
-  tickList,
-  roleId,
   isAdminView = false,
   includeAccess = false,
 } = {}) {
   if (isAdminView) return defaultAdminNavSections({ includeAccess });
-  const fromPerms = sectionsFromPermissions(permissions);
-  const ticks = Array.isArray(tickList) && tickList.length
-    ? tickList
-    : baselineNavForRole(roleId);
-  const sections = intersectNavSections(fromPerms, ticks);
+  const sections = sectionsFromPermissions(permissions);
   if (includeAccess) sections.add("access");
   return sections;
 }

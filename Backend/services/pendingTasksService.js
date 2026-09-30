@@ -2,6 +2,7 @@ const {
   listUsers,
   listUsersByParentCoachId,
   listUsersByAssignedCoachId,
+  listDeletedUserIds,
 } = require("../models/userModel");
 const { queryMealLogsByCoachId, queryPendingMealLogs, toMealLogPublic } = require("../models/mealTrackingModel");
 const { queryPendingLabReports } = require("../models/userLabReportModel");
@@ -202,6 +203,11 @@ function inUserSet(userId, allowedIds) {
   return allowedIds.has(String(userId || "").trim());
 }
 
+function omitArchived(items, archivedIds) {
+  if (!archivedIds?.size) return items || [];
+  return (items || []).filter((item) => !archivedIds.has(String(item?.userId || "").trim()));
+}
+
 function lastCounsellingAt(meetings) {
   let latest = 0;
   for (const meeting of meetings || []) {
@@ -395,7 +401,15 @@ function safe(promise, fallback) {
 }
 
 async function getPendingTasks(actor) {
-  const users = await listScopedUsers(actor);
+  const [scopedUsers, deletedIds] = await Promise.all([
+    listScopedUsers(actor),
+    listDeletedUserIds().catch((err) => {
+      console.error("Pending tasks archived-client lookup failed:", err?.message || err);
+      return [];
+    }),
+  ]);
+  const archivedIds = new Set(deletedIds);
+  const users = (scopedUsers || []).filter((user) => !archivedIds.has(userIdOf(user)));
   const usersById = userMapFrom(users);
   const allowedIds = actor.role === "admin" ? null : new Set(usersById.keys());
   const coachId =
@@ -452,16 +466,19 @@ async function getPendingTasks(actor) {
     meetingsByUser.get(userId).push(meeting);
   }
 
-  const counsellingReports = [
-    ...counsellingItems(users, meetingsByUser),
-    ...bloodReportItems(usersById, reports),
-  ];
+  const counsellingReports = omitArchived(
+    [
+      ...counsellingItems(users, meetingsByUser),
+      ...bloodReportItems(usersById, reports),
+    ],
+    archivedIds,
+  );
 
   return {
     counsellingReports,
-    mealReview: mealReviewItems(usersById, mealLogs),
-    orders: orderItems(usersById, recs),
-    meetings: meetingItems(usersById, meetings),
+    mealReview: omitArchived(mealReviewItems(usersById, mealLogs), archivedIds),
+    orders: omitArchived(orderItems(usersById, recs), archivedIds),
+    meetings: omitArchived(meetingItems(usersById, meetings), archivedIds),
   };
 }
 
