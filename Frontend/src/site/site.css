@@ -13395,8 +13395,8 @@ bottom: -18px;
   .wellness-hero__image{
     height: auto;
     /* max-height: 360px; */
-        max-height: 220px;
-    aspect-ratio: 4 / 5;
+        max-height: 300px;
+    aspect-ratio: 5 / 4;
   }
   .wellness-hero__stat-card{
     bottom: var(--space-3);
