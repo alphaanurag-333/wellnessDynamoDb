@@ -323,11 +323,10 @@ function parseHasProgramFlag(value) {
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
-/** Assigned program row and/or completed purchase counts as having a program. */
+/** A completed program purchase is required. Assigned-but-unpaid programs do not count. */
 function userHasActiveProgram(user) {
   if (!user) return false;
-  if (Boolean(user.programPurchased)) return true;
-  return Boolean(String(user.assignedProgramId || "").trim());
+  return Boolean(user.programPurchased);
 }
 
 function applyHasProgramFilter(users, hasProgram) {
