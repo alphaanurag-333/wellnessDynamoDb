@@ -93,9 +93,13 @@ function matchOpenUserId(pathname) {
 function extraQueryForTypeTab(tabId, baseUserTier) {
   const purchased = { hasProgram: true };
   if (tabId === "app") {
+    // Maintenance is its own tier. A Heal, Seek, or PWC filter has no overlap with it.
+    if (baseUserTier && baseUserTier !== "maintenance") {
+      return { empty: true };
+    }
     return {
       ...purchased,
-      userTier: baseUserTier || "maintenance",
+      userTier: "maintenance",
       excludeClientCategory: "eagle",
     };
   }
@@ -417,6 +421,7 @@ export function UsersPage() {
 
   const listQuery = useMemo(() => {
     const extra = extraQueryForTypeTab(typeTab, baseListQuery.userTier);
+    if (extra.empty) return { empty: true };
     return {
       ...baseListQuery,
       ...extra,
@@ -431,6 +436,9 @@ export function UsersPage() {
         limit,
         search: debouncedSearch || undefined,
       });
+    }
+    if (listQuery.empty) {
+      return { users: [], pagination: { page: 1, limit, total: 0, pages: 1 } };
     }
     const params = { ...listQuery, page, limit };
     return useScopedUsers
@@ -488,6 +496,7 @@ export function UsersPage() {
     async function loadTabCounts() {
       const fetchCount = async (tabId) => {
         const extra = extraQueryForTypeTab(tabId, baseListQuery.userTier);
+        if (extra.empty) return 0;
         const params = {
           ...baseListQuery,
           ...extra,
