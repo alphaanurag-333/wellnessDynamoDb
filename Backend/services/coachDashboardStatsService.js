@@ -78,9 +78,15 @@ function healthConcernIdOf(user) {
   return String(raw || "").trim();
 }
 
+function isPurchasedProgram(user) {
+  const value = user?.programPurchased;
+  return value === true || value === "true" || value === 1;
+}
+
 function countClientsByHealthConcern(users) {
   const counts = new Map();
   for (const user of users) {
+    if (!isPurchasedProgram(user)) continue;
     const concernId = healthConcernIdOf(user);
     if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
   }

@@ -14,6 +14,7 @@ export const FIELD_LIMITS = {
   lastName: 100,
   email: 100,
   message: 1000,
+  phoneNationalMin: 7,
   phoneNational: 15,
   phoneNationalIndia: 10,
 };
@@ -105,8 +106,11 @@ export function validateContactForm(form) {
       } else if (/^(\d)\1{9}$/.test(phone)) {
         errors.phone = "Enter a valid mobile number.";
       }
-    } else if (phone.length < 4 || phone.length > FIELD_LIMITS.phoneNational) {
-      errors.phone = "Enter a valid phone number (4–15 digits).";
+    } else if (
+      phone.length < FIELD_LIMITS.phoneNationalMin ||
+      phone.length > FIELD_LIMITS.phoneNational
+    ) {
+      errors.phone = `Enter a valid phone number (${FIELD_LIMITS.phoneNationalMin}–${FIELD_LIMITS.phoneNational} digits).`;
     }
   }
 

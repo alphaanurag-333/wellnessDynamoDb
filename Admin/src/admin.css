@@ -7238,6 +7238,16 @@
   border-color: #c2891b;
 }
 
+.updated-admin .ua-tier-action--eagle {
+  border: 1px dashed #d8b4fe;
+  color: #9333ea;
+}
+
+.updated-admin .ua-tier-action--eagle:hover:not(:disabled) {
+  background: #faf5ff;
+  border-color: #9333ea;
+}
+
 .updated-admin .ua-tier-action--undo {
   border: none;
   background: transparent;
@@ -15185,6 +15195,17 @@
   border-color: #5e6ad2;
 }
 
+.updated-admin .ua-cp-tier-action--eagle {
+  border: 1px dashed #d8b4fe;
+  background: #fff;
+  color: #9333ea;
+}
+
+.updated-admin .ua-cp-tier-action--eagle:hover:not(:disabled) {
+  background: #faf5ff;
+  border-color: #9333ea;
+}
+
 .updated-admin .ua-cp-tier-action--down {
   border: 1px dashed #e3d4b4;
   background: #fff;
@@ -16542,6 +16563,9 @@
 }
 
 .updated-admin .ua-cp-ba-block__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 11.5px;
   font-weight: 650;
   color: #8a97ac;
@@ -16628,6 +16652,37 @@
   font-size: 11.5px;
   color: #9aa6b8;
   font-weight: 600;
+}
+
+.updated-admin .ua-cp-ba-photo__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cp-ba-photo__status--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.updated-admin .ua-cp-ba-photo__status--approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.updated-admin .ua-cp-ba-photo__status--rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.updated-admin .ua-cp-ba-photo__status--mixed {
+  background: #e0e7ff;
+  color: #3730a3;
 }
 
 .updated-admin .ua-cp-ba-table-wrap {
@@ -16790,7 +16845,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-ba-photo-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 14px;
   padding: 16px 20px 20px;
   overflow-y: auto;
@@ -16835,13 +16890,79 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-ba-photo-card__foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
   padding: 10px 12px;
   font-size: 11.5px;
   font-weight: 650;
   color: #5a6b85;
+}
+
+.updated-admin .ua-cp-ba-photo-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-ba-photo-card__reason {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #991b1b;
+}
+
+.updated-admin .ua-cp-ba-photo-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 750;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review--accept {
+  border: none;
+  background: #2b8f5b;
+  color: #fff;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review--accept:hover:not(:disabled) {
+  background: #247a4e;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review--reject {
+  background: #fff;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+}
+
+.updated-admin .ua-cp-ba-photo-card__review--reject:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.updated-admin .ua-cp-ba-review-backdrop {
+  z-index: 640;
+}
+
+.updated-admin .ua-cp-present-modal__eyebrow--danger {
+  color: #b42318;
 }
 
 .updated-admin .ua-cp-ba-photo-card__save {
@@ -16884,9 +17005,15 @@ scrollbar-width: thin;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 14px 16px;
   background: #fff;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__head .ua-cp-modal__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .updated-admin .ua-cp-ba-photo-preview__title {
@@ -16910,7 +17037,7 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__dialog {
-  width: min(360px, calc(100% - 32px));
+  width: min(440px, calc(100% - 32px));
   max-height: min(58vh, 420px);
   border-radius: 12px;
 }

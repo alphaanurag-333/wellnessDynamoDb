@@ -531,6 +531,8 @@ export function mapApiUserToRow(user, index = 0) {
     termsAcceptedBool: Boolean(user?.termsAccepted),
     programs,
     programLabel,
+    programPurchased: Boolean(user?.programPurchased)
+      || assignedProgramStatus === "purchased",
     assignedProgram,
     assignedProgramId: String(user?.assignedProgramId || assignedProgram?.id || "").trim(),
     assignedProgramTitle,
@@ -689,6 +691,10 @@ export async function fetchScopedUsers({
   search,
   scope = "all",
   userTier,
+  clientCategory,
+  excludeUserTier,
+  excludeClientCategory,
+  hasProgram,
   subscriptionExpiryDays,
 } = {}) {
   const q = new URLSearchParams();
@@ -697,6 +703,12 @@ export async function fetchScopedUsers({
   if (search && String(search).trim()) q.set("search", String(search).trim());
   if (scope) q.set("scope", String(scope));
   if (userTier) q.set("userTier", userTier);
+  if (clientCategory) q.set("clientCategory", String(clientCategory).trim());
+  if (excludeUserTier) q.set("excludeUserTier", String(excludeUserTier).trim());
+  if (excludeClientCategory) q.set("excludeClientCategory", String(excludeClientCategory).trim());
+  if (hasProgram === true || hasProgram === "true" || hasProgram === 1 || hasProgram === "1") {
+    q.set("hasProgram", "true");
+  }
   if (subscriptionExpiryDays) q.set("subscriptionExpiryDays", String(subscriptionExpiryDays));
 
   try {
@@ -813,6 +825,22 @@ export async function downloadUserProgressPhoto(userId, photoId, angle, filename
   }
 }
 
+export async function reviewUserProgressPhoto(userId, photoId, angle, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/body-analytics/photos/${encodeURIComponent(photoId)}/${encodeURIComponent(angle)}/review`,
+      {
+        action,
+        ...(rejectionReason ? { rejectionReason } : {}),
+      },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function updateUserStatus(id, status) {
   try {
     const { data } = await api.patch(
@@ -880,6 +908,19 @@ export async function moveUserToHeal(id) {
   }
 }
 
+export async function moveUserToEagle(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/convert-to-eagle`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function moveUserToMaintenance(id) {
   try {
     const { data } = await api.post(
@@ -925,6 +966,20 @@ export async function assignUserCoach(id, payload) {
     const { data } = await api.post(
       `/account/users/${encodeURIComponent(id)}/assign-coach`,
       payload,
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+/** Remove the wellness coach (and assistant) or only the assistant coach. */
+export async function unassignUserCoach(id, { kind }) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/unassign-coach`,
+      { kind },
       { headers: authHeader() },
     );
     return mapApiUserToRow(data.user);

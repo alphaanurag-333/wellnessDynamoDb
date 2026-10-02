@@ -9,9 +9,10 @@ import { NutritionsSection } from "./NutritionsSection.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientProfileArchived } from "./ClientProfileArchivedContext.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
-import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier } from "../../data/usersData.js";
+import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier, isEagleClient, userTierBadge } from "../../data/usersData.js";
 import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
 import {
+  moveUserToEagle,
   moveUserToHeal,
   moveUserToMaintenance,
   moveUserToSeek,
@@ -113,11 +114,19 @@ function DosageBadge({ label, tone }) {
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
-  const { can, isAdminView } = useViewAs();
+  const { can, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
   const archived = useClientProfileArchived();
   const canEditPii = !archived && can("console.pii.edit");
-  // Direct tier conversion is admin-only (matches User Management + API).
+  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
   const canChangeTier = !archived && Boolean(isAdminView);
+  const canUpgradePaidTier =
+    canChangeTier
+    || (
+      !archived
+      && sessionUi === "wc"
+      && (viewAs === "wc" || viewAsPersona === "wc")
+      && can("console.cl.edit")
+    );
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -153,8 +162,11 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   const currentTier = normalizeTier(user.tier);
   const tierActions = getTierActions(currentTier, user.ageDays ?? 30);
-  const tierBadgeTone = tierBadgeStyle(currentTier);
-  const displayTierLabel = tierLabel(currentTier);
+  const tierBadge = userTierBadge(user);
+  const tierBadgeTone = isEagleClient(user)
+    ? { background: tierBadge.style.bg, color: tierBadge.style.color, border: `1px solid ${tierBadge.style.border}` }
+    : tierBadgeStyle(currentTier);
+  const displayTierLabel = tierBadge.label;
   const userId = String(user?.id || "").trim();
   const goalLabel = goalOptions.find((o) => o.id === form.healthConcernId)?.title
     || user.goal
@@ -281,8 +293,28 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     }
   }
 
+  async function convertToEagle() {
+    if (!canUpgradePaidTier || isEagleClient(user) || !userId || tierBusy) return;
+    setTierBusy(true);
+    try {
+      const updated = await moveUserToEagle(userId);
+      onUserUpdated?.(updated);
+      onToast(`${user.name} converted to EAGLE`);
+    } catch (err) {
+      onToast(err?.message || "Could not convert this client to Eagle");
+    } finally {
+      setTierBusy(false);
+    }
+  }
+
   async function convertTier() {
-    if (!canChangeTier || !tierActions.canConvert || !userId || tierBusy) return;
+    const wcHealUpgrade = canUpgradePaidTier && !canChangeTier
+      && (currentTier === "Seek" || currentTier === "Consultancy");
+    if (canChangeTier) {
+      if (!tierActions.canConvert || !userId || tierBusy) return;
+    } else if (!wcHealUpgrade || !userId || tierBusy) {
+      return;
+    }
     setTierBusy(true);
     try {
       const updated = currentTier === "Seek to Heal"
@@ -447,8 +479,14 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
         </div>
       </div>
       <div className="ua-cp-personal__badges">
-        <span className={`ua-cp-tier-badge ua-cp-tier-badge--${tierBadgeClass(currentTier)}`} style={tierBadgeTone}>{displayTierLabel}</span>
-        {canChangeTier && tierActions.canConvert ? (
+        <span
+          className={`ua-cp-tier-badge${isEagleClient(user) ? "" : ` ua-cp-tier-badge--${tierBadgeClass(currentTier)}`}`}
+          style={tierBadgeTone}
+        >
+          {displayTierLabel}
+        </span>
+        {(canChangeTier && tierActions.canConvert)
+          || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy")) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
@@ -457,6 +495,17 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             disabled={tierBusy}
           >
             {tierActions.convertLabel}
+          </button>
+        ) : null}
+        {canUpgradePaidTier && !isEagleClient(user) ? (
+          <button
+            type="button"
+            className="ua-cp-tier-action ua-cp-tier-action--eagle"
+            title="Convert this client directly to EAGLE when payment did not go through"
+            onClick={convertToEagle}
+            disabled={tierBusy}
+          >
+            Convert to EAGLE
           </button>
         ) : null}
         {canChangeTier && tierActions.canDowngrade ? (

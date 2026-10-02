@@ -12,11 +12,15 @@ const {
 const { updateReferralCodeOwnerCoachId } = require("./referralCodeModel");
 const {
   resolveReassignmentPatch,
+  buildClearedCoachAssignmentPatch,
   assertHealUserAssignment,
   normalizeAssignedCoachType,
   isPaidClientTier,
 } = require("./userAssignmentLogic");
-const { syncConsultancyAssigneeForUser } = require("../services/consultancyAssigneeSyncService");
+const {
+  syncConsultancyAssigneeForUser,
+  clearConsultancyAssigneeForUser,
+} = require("../services/consultancyAssigneeSyncService");
 
 async function resolveWellnessCoachTarget(coachId) {
   return (
@@ -94,7 +98,7 @@ async function reassignHealUser(
     throw err;
   }
 
-  if (!isPaidClientTier(user.userTier)) {
+  if (!options.allowAnyTier && !isPaidClientTier(user.userTier)) {
     throw new Error("Only consultancy or Heal clients can be reassigned to a coach");
   }
 
@@ -136,7 +140,8 @@ async function reassignHealUser(
  */
 async function assignPendingHealUser(
   userId,
-  { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource = "admin_manual" }
+  { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource = "admin_manual" },
+  options = {}
 ) {
   const user = await getUserById(userId);
   if (!user) {
@@ -145,7 +150,7 @@ async function assignPendingHealUser(
     throw err;
   }
 
-  if (!isPaidClientTier(user.userTier)) {
+  if (!options.allowAnyTier && !isPaidClientTier(user.userTier)) {
     throw new Error("Only consultancy or Heal clients can receive coach assignment");
   }
 
@@ -156,8 +161,92 @@ async function assignPendingHealUser(
   return reassignHealUser(
     userId,
     { assignedCoachId, assignedCoachType, parentCoachId, assignmentSource },
-    optionsFromAdmin()
+    { ...optionsFromAdmin(), allowAnyTier: Boolean(options.allowAnyTier) }
   );
+}
+
+async function clearUserCoachAssignment(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const paidClient = isPaidClientTier(normalizeUserTier(user.userTier));
+  const updated = await updateUser(userId, buildClearedCoachAssignmentPatch({ paidClient }));
+  assertHealUserAssignment(updated);
+
+  if (updated.referralCode) {
+    try {
+      await updateReferralCodeOwnerCoachId(updated.referralCode, "pending");
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException") throw err;
+    }
+  }
+
+  try {
+    await clearConsultancyAssigneeForUser(userId);
+  } catch (err) {
+    console.error("[UserAssignment] consultancy assignee clear failed", err.message);
+  }
+
+  return updated;
+}
+
+/**
+ * Admin removes WC or AWC from the users list.
+ * Removing WC clears the assistant as well. Removing AWC leaves the parent WC in place.
+ */
+async function unassignUserCoach(userId, { kind } = {}) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const target = String(kind || "").trim().toLowerCase();
+  if (target !== "wc" && target !== "awc") {
+    const err = new Error("kind must be wc or awc");
+    err.name = "InvalidHealAssignmentError";
+    throw err;
+  }
+
+  if (target === "awc") {
+    const isAwc = normalizeAssignedCoachType(user.assignedCoachType) === "assistant_wellness_coach";
+    if (!isAwc || !String(user.assignedCoachId || "").trim()) {
+      const err = new Error("No assistant wellness coach is assigned");
+      err.name = "InvalidHealAssignmentError";
+      throw err;
+    }
+    const parentId = String(user.parentCoachId || "").trim();
+    if (!parentId) return clearUserCoachAssignment(userId);
+    return reassignHealUser(
+      userId,
+      {
+        assignedCoachId: parentId,
+        assignedCoachType: "wellness_coach",
+        parentCoachId: parentId,
+        assignmentSource: "admin_manual",
+      },
+      { allowAnyTier: true }
+    );
+  }
+
+  const hasWc = Boolean(
+    String(user.parentCoachId || "").trim()
+    || (
+      normalizeAssignedCoachType(user.assignedCoachType) === "wellness_coach"
+      && String(user.assignedCoachId || "").trim()
+    )
+  );
+  if (!hasWc) {
+    const err = new Error("No wellness coach is assigned");
+    err.name = "InvalidHealAssignmentError";
+    throw err;
+  }
+  return clearUserCoachAssignment(userId);
 }
 
 function optionsFromAdmin() {
@@ -168,4 +257,5 @@ module.exports = {
   validateReassignmentTarget,
   reassignHealUser,
   assignPendingHealUser,
+  unassignUserCoach,
 };

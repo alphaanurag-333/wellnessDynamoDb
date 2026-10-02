@@ -22,6 +22,7 @@ const {
   isMaintenanceTier,
   isConsultancyOnlyTier,
   isAlreadyAssignedClient,
+  shouldKeepExistingAssignment,
 } = require("./userAssignmentLogic");
 const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 
@@ -176,8 +177,42 @@ async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
 }
 
 /**
+ * Heal upgrade that leaves the current WC / AWC allocation in place.
+ */
+
+async function upgradeToHealKeepingAssignment(user) {
+  const userId = user.id;
+  const ownReferralCode = user.referralCode || (await generateUniqueReferralCode());
+  const now = new Date().toISOString();
+  const parentCoachIdForRegistry = String(user.parentCoachId || "").trim() || null;
+
+  const updates = omitExistingHistoryFields(
+    {
+      userTier: "heal",
+      referralCode: ownReferralCode,
+      convertedAt: now,
+    },
+    user
+  );
+
+  const updated = await updateUser(userId, updates);
+  assertHealUserAssignment(updated);
+
+  await ensureUserReferralRegistry(
+    userId,
+    ownReferralCode,
+    updated.assignmentStatus === "assigned" && parentCoachIdForRegistry
+      ? parentCoachIdForRegistry
+      : "pending"
+  );
+
+  return updated;
+}
+
+/**
  * Upgrade consultancy_only → Heal (Seek to Heal subscription).
- * Admin may pass allowFromSeek to convert directly without consultancy payment.
+ * Admin and wellness coaches may pass allowFromSeek to convert directly
+ * without consultancy payment. An already-assigned client keeps that coach.
  */
 async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false } = {}) {
   const user = await getUserById(userId);
@@ -196,31 +231,7 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
   const tier = normalizeTier(user.userTier);
 
   if (tier === "consultancy_only") {
-    const ownReferralCode = user.referralCode || (await generateUniqueReferralCode());
-    const now = new Date().toISOString();
-    const parentCoachIdForRegistry = String(user.parentCoachId || "").trim() || null;
-
-    const updates = omitExistingHistoryFields(
-      {
-        userTier: "heal",
-        referralCode: ownReferralCode,
-        convertedAt: now,
-      },
-      user
-    );
-
-    const updated = await updateUser(userId, updates);
-    assertHealUserAssignment(updated);
-
-    await ensureUserReferralRegistry(
-      userId,
-      ownReferralCode,
-      updated.assignmentStatus === "assigned" && parentCoachIdForRegistry
-        ? parentCoachIdForRegistry
-        : "pending"
-    );
-
-    return updated;
+    return upgradeToHealKeepingAssignment(user);
   }
 
   if (tier === "seek" && !allowFromSeek) {
@@ -233,6 +244,10 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
     const err = new Error("Maintenance clients renew via FY app subscription, not Heal conversion");
     err.name = "InvalidTierError";
     throw err;
+  }
+
+  if (shouldKeepExistingAssignment(user, referralCode)) {
+    return upgradeToHealKeepingAssignment(user);
   }
 
   const normalizedReferralCode = resolveReferralCodeInput(user, referralCode);

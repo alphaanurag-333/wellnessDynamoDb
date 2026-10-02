@@ -142,8 +142,8 @@ function requireSuperAdmin(req, res, next) {
 }
 
 /**
- * Admin (or Super Admin) only — used for direct client tier conversion.
- * WC / AWC / other staff with console.cl.edit must not change tiers via API.
+ * Admin (or Super Admin) only — used for tier downgrades.
+ * HEAL and Eagle upgrades are also available to a wellness coach on their own roster.
  */
 function requireAdmin(req, res, next) {
   if (!req.auth) {

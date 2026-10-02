@@ -1,6 +1,6 @@
 const { getUserById, updateUser } = require("../models/userModel");
-const { convertSeekToHeal } = require("../models/userConversionModel");
-const { normalizeUserTier, isHealTier } = require("../models/userAssignmentLogic");
+const { convertSeekToHeal, convertMaintenanceToHeal } = require("../models/userConversionModel");
+const { normalizeUserTier, isHealTier, isEagleClientCategory } = require("../models/userAssignmentLogic");
 const {
   listActiveProgramCatalog,
   getProgramCatalogRecordById,
@@ -20,7 +20,11 @@ const {
 } = require("../models/energyExchangeProgramModel");
 const { getAppConfig } = require("../models/appConfigModel");
 const { emitPendingAssignment } = require("./adminActivityService");
-const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
+const { reassignHealUser } = require("../models/userAssignmentModel");
+const {
+  buildPaidOnboardingResetUpdates,
+  buildEaglePaidOnboardingCompleteUpdates,
+} = require("../utils/paidOnboardingHelpers");
 
 function normalizeProgramLookupText(value) {
   return String(value || "")
@@ -213,10 +217,40 @@ async function setupPaidClientEntitlements(user, { catalogProgramId, now } = {})
 }
 
 /**
- * Admin Seek/Consultancy → Heal with the same post-payment state as Energy Exchange checkout:
- * tier upgrade, program assignment/purchase, energy exchange enablement, paid onboarding bootstrap.
+ * Keep an existing WC/AWC allocation. If the client is still unassigned, put them
+ * on the acting wellness coach.
  */
-async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId } = {}) {
+async function ensureWellnessCoachAllocation(user, coachId) {
+  const ownerId = String(coachId || "").trim();
+  if (!ownerId || !user?.id) return user;
+
+  const parent = String(user.parentCoachId || "").trim();
+  const status = String(user.assignmentStatus || "").trim().toLowerCase();
+  if (parent === ownerId && status === "assigned") return user;
+  if (parent && parent !== ownerId) {
+    const err = new Error("User is not under your coaching hierarchy");
+    err.name = "ForbiddenAssignmentError";
+    throw err;
+  }
+
+  return reassignHealUser(
+    user.id,
+    {
+      assignedCoachId: ownerId,
+      assignedCoachType: "wellness_coach",
+      parentCoachId: ownerId,
+      assignmentSource: "coach_reassign",
+    },
+    { allowAnyTier: true, actingCoachId: ownerId }
+  );
+}
+
+/**
+ * Seek/Consultancy → Heal with the same post-payment state as Energy Exchange checkout:
+ * tier upgrade, program assignment/purchase, energy exchange enablement, paid onboarding bootstrap.
+ * When allocateToCoachId is set (WC login), the client is allocated to that coach.
+ */
+async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId, allocateToCoachId } = {}) {
   const userBefore = await getUserById(userId);
   if (!userBefore) {
     const err = new Error("User not found");
@@ -250,6 +284,10 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId }
   // leave paidOnboardingCompleted=true from the previous Heal membership.
   let refreshed = await updateUser(userId, onboardingPatches);
 
+  if (allocateToCoachId) {
+    refreshed = await ensureWellnessCoachAllocation(refreshed, allocateToCoachId);
+  }
+
   if (String(refreshed.parentCoachId || "").trim()) {
     refreshed = await setupPaidClientEntitlements(refreshed, { catalogProgramId, now });
   }
@@ -260,8 +298,77 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId }
   return refreshed;
 }
 
+/**
+ * Admin direct convert to Eagle when payment did not go through.
+ * Lands on the same state as a paid Eagle purchase: Heal tier, Eagle category,
+ * and the 10-step onboarding wizard marked complete.
+ */
+async function adminConvertUserToEagle(userId, { referralCode, catalogProgramId, allocateToCoachId } = {}) {
+  const userBefore = await getUserById(userId);
+  if (!userBefore) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (isEagleClientCategory(userBefore.clientCategory)) {
+    const err = new Error("User is already an Eagle client");
+    err.name = "AlreadyConvertedError";
+    throw err;
+  }
+
+  const tier = normalizeUserTier(userBefore.userTier);
+  let user = userBefore;
+
+  if (tier === "maintenance") {
+    user = await convertMaintenanceToHeal(userId);
+  } else if (!isHealTier(user.userTier)) {
+    try {
+      user = await convertSeekToHeal(userId, {
+        referralCode,
+        allowFromSeek: tier === "seek",
+      });
+    } catch (err) {
+      if (err?.name !== "AlreadyConvertedError") throw err;
+      user = await getUserById(userId);
+      if (!user || !isHealTier(user.userTier)) throw err;
+    }
+  }
+
+  const now = new Date().toISOString();
+  if (allocateToCoachId) {
+    user = await ensureWellnessCoachAllocation(user, allocateToCoachId);
+  }
+  if (String(user.parentCoachId || "").trim()) {
+    user = await setupPaidClientEntitlements(user, { catalogProgramId, now });
+  }
+
+  const patches = {
+    clientCategory: "eagle",
+    pendingCoachCheckout: {},
+    ...buildEaglePaidOnboardingCompleteUpdates(),
+  };
+  if (!user.healPaidAt) patches.healPaidAt = now;
+
+  const refreshed = await updateUser(userId, patches);
+
+  try {
+    const {
+      clearTemporaryChallengeFlagOnRealPurchase,
+    } = require("./challengeAccessService");
+    await clearTemporaryChallengeFlagOnRealPurchase(userId);
+  } catch (err) {
+    console.error("[adminConvertUserToEagle] clear challenge temp flag failed", err.message);
+  }
+
+  if (String(refreshed.assignmentStatus || "").trim() === "pending_admin") {
+    emitPendingAssignment(refreshed);
+  }
+  return refreshed;
+}
+
 module.exports = {
   adminConvertUserToHeal,
+  adminConvertUserToEagle,
   setupPaidClientEntitlements,
   ensureWellnessProgramForPaidClient,
   ensureEnergyExchangeForPaidClient,

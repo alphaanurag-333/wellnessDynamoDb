@@ -69,7 +69,27 @@ async function syncConsultancyAssigneeForUser(userId, assignment) {
   return updateConsultancyTransaction(latest.id, fields);
 }
 
+async function clearConsultancyAssigneeForUser(userId) {
+  const { items } = await listTransactionsByUserId(userId, {
+    page: 1,
+    limit: 5,
+    paymentStatus: "paid",
+    productType: "consultancy",
+  });
+  const latest = items[0];
+  if (!latest) return null;
+
+  return updateConsultancyTransaction(latest.id, {
+    meetingAssigneeType: null,
+    meetingAssigneeId: null,
+    parentCoachId: null,
+    visibleToCoachIds: [],
+    assigneeSnapshot: null,
+  });
+}
+
 module.exports = {
   buildConsultancyAssigneeFields,
   syncConsultancyAssigneeForUser,
+  clearConsultancyAssigneeForUser,
 };

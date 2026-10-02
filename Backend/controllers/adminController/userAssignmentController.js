@@ -8,9 +8,10 @@ const {
 } = require("../../models/userConversionModel");
 const {
   adminConvertUserToHeal,
+  adminConvertUserToEagle,
   setupPaidClientEntitlements,
 } = require("../../services/adminHealConversionService");
-const { assignPendingHealUser, reassignHealUser } = require("../../models/userAssignmentModel");
+const { assignPendingHealUser, reassignHealUser, unassignUserCoach } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
 const {
@@ -28,6 +29,7 @@ const {
   resolveStaffActor,
   assertStaffCanAccessUser,
   assertStaffCanAssignCoach,
+  assertStaffCanUpgradePaidTier,
 } = require("../staffAccess");
 
 async function resolveAssigneeRecord(assignedCoachId, assignedCoachType) {
@@ -92,6 +94,7 @@ function mapAssignmentError(err) {
   if (err?.name === "InvalidHealAssignmentError") throw new AppError(err.message, 400);
   if (err?.name === "InvalidTierError") throw new AppError(err.message, 400);
   if (err?.name === "ImmutableFieldError") throw new AppError(err.message, 400);
+  if (err?.name === "ForbiddenAssignmentError") throw new AppError(err.message, 403);
   throw err;
 }
 
@@ -174,9 +177,14 @@ exports.convertMaintenanceUserToHealController = asyncHandler(async (req, res) =
 exports.convertUserToHealController = asyncHandler(async (req, res) => {
   const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
   const catalogProgramId = req.body?.catalogProgramId ?? req.body?.catalog_program_id ?? null;
+  const { allocateToCoachId } = await assertStaffCanUpgradePaidTier(req, req.params.id);
   let user;
   try {
-    user = await adminConvertUserToHeal(req.params.id, { referralCode, catalogProgramId });
+    user = await adminConvertUserToHeal(req.params.id, {
+      referralCode,
+      catalogProgramId,
+      allocateToCoachId,
+    });
   } catch (err) {
     if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     mapAssignmentError(err);
@@ -185,6 +193,29 @@ exports.convertUserToHealController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "User converted to Heal successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.convertUserToEagleController = asyncHandler(async (req, res) => {
+  const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? null;
+  const catalogProgramId = req.body?.catalogProgramId ?? req.body?.catalog_program_id ?? null;
+  const { allocateToCoachId } = await assertStaffCanUpgradePaidTier(req, req.params.id);
+  let user;
+  try {
+    user = await adminConvertUserToEagle(req.params.id, {
+      referralCode,
+      catalogProgramId,
+      allocateToCoachId,
+    });
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    mapAssignmentError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "User converted to Eagle successfully",
     user: await enrichUser(user),
   });
 });
@@ -206,7 +237,7 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
       assignedCoachType,
       parentCoachId,
       assignmentSource: "admin_manual",
-    });
+    }, { allowAnyTier: true });
   } catch (err) {
     mapAssignmentError(err);
   }
@@ -263,7 +294,7 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
       assignedCoachId,
       assignedCoachType,
       parentCoachId,
-    });
+    }, { allowAnyTier: true });
   } catch (err) {
     mapAssignmentError(err);
   }
@@ -282,6 +313,24 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "User reassigned successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.unassignUserCoachController = asyncHandler(async (req, res) => {
+  const kind = String(req.body?.kind || "").trim().toLowerCase();
+  let user;
+  try {
+    user = await unassignUserCoach(req.params.id, { kind });
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: kind === "awc"
+      ? "Assistant wellness coach removed"
+      : "Wellness coach removed",
     user: await enrichUser(user),
   });
 });
@@ -316,7 +365,16 @@ exports.listHealUsersByCoachController = asyncHandler(async (req, res) => {
 });
 
 exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
-  const { search, scope = "all", userTier, subscriptionExpiryDays } = req.query;
+  const {
+    search,
+    scope = "all",
+    userTier,
+    subscriptionExpiryDays,
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+    hasProgram,
+  } = req.query;
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 20));
   const data = await listHealUsersForStaff(req, {
@@ -326,6 +384,10 @@ exports.listHealUsersForStaffController = asyncHandler(async (req, res) => {
     scope,
     userTier: userTier || "client",
     subscriptionExpiryDays,
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+    hasProgram,
   });
   const users = await Promise.all(data.users.map((u) => enrichUser(u, { ensureReferral: false })));
 

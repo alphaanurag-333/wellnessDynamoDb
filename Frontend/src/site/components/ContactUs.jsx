@@ -11,7 +11,6 @@ import {
   blockPersonNameDigitKeyDown,
   blockPhoneNonDigitKeyDown,
   dialCodeFromPhonecode,
-  firstContactFormError,
   isIndiaDial,
   sanitizeContactEmail,
   sanitizeContactName,
@@ -162,7 +161,6 @@ export default function ContactUsSection() {
     const errors = validateContactForm(formData);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setFeedback({ type: "error", text: firstContactFormError(errors) });
       return;
     }
 
@@ -196,7 +194,7 @@ export default function ContactUsSection() {
 
   const phoneHint = isIndiaDial(formData.phoneCountryCode)
     ? "10-digit, starts with 6–9"
-    : "4–15 digits, no country code";
+    : `${FIELD_LIMITS.phoneNationalMin}–${FIELD_LIMITS.phoneNational} digits, no country code`;
 
   const phonePlaceholder = isIndiaDial(formData.phoneCountryCode)
     ? "9876543210"

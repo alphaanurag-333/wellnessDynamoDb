@@ -13,11 +13,13 @@ const {
 } = require("../../controllers/adminController/userController");
 const {
   convertUserToHealController,
+  convertUserToEagleController,
   convertUserToSeekController,
   convertUserToMaintenanceController,
   convertMaintenanceUserToHealController,
   assignHealUserController,
   reassignHealUserController,
+  unassignUserCoachController,
   listPendingAssignmentUsersController,
 } = require("../../controllers/adminController/userAssignmentController");
 const { getUserWaterTrackingHistoryController } = require("../../controllers/waterTrackingHistoryController");
@@ -47,6 +49,7 @@ const {
 const {
   getUserBodyAnalyticsController,
   downloadUserProgressPhotoController,
+  reviewUserProgressPhotoController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
 
 const router = express.Router();
@@ -80,6 +83,12 @@ router.get(
   protectAccount,
   clientView,
   downloadUserProgressPhotoController
+);
+router.patch(
+  "/:id/body-analytics/photos/:photoId/:angle/review",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  reviewUserProgressPhotoController
 );
 router.get("/:id/water-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserWaterTrackingHistoryController);
 router.get("/:id/steps-tracking", protectAccount, authorizeStaff("console.cl.view", { admin: "users.view" }), getUserStepsTrackingHistoryController);
@@ -157,12 +166,24 @@ router.post(
   optionalUserFile,
   createUserController
 );
-router.post("/:id/convert-to-heal", protectAccount, requireAdmin, convertUserToHealController);
+router.post(
+  "/:id/convert-to-heal",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  convertUserToHealController
+);
+router.post(
+  "/:id/convert-to-eagle",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  convertUserToEagleController
+);
 router.post("/:id/convert-to-seek", protectAccount, requireAdmin, convertUserToSeekController);
 router.post("/:id/convert-to-maintenance", protectAccount, requireAdmin, convertUserToMaintenanceController);
 router.post("/:id/maintenance-to-heal", protectAccount, requireAdmin, convertMaintenanceUserToHealController);
 router.post("/:id/assign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), assignHealUserController);
 router.post("/:id/reassign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), reassignHealUserController);
+router.post("/:id/unassign-coach", protectAccount, requireAdmin, unassignUserCoachController);
 router.patch("/:id", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, updateUserController);
 router.delete("/:id", protectAccount, authorizeStaff("console.cl.delete", { admin: "users.delete" }), deleteUserController);
 

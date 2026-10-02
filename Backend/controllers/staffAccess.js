@@ -124,9 +124,52 @@ async function assertStaffCanAssignCoach(req, userId, { assignedCoachId, assigne
   return actor;
 }
 
+/**
+ * Admin may upgrade any client. A wellness coach may upgrade only clients
+ * already on their roster, or unassigned clients who used that coach's code.
+ * The returned coach id is applied when the upgrade would otherwise leave
+ * the client pending.
+ */
+async function assertStaffCanUpgradePaidTier(req, userId) {
+  const actor = resolveStaffActor(req);
+  if (actor.role === "admin") return { actor, allocateToCoachId: null };
+  if (actor.role !== "wellness_coach") {
+    throw new AppError("Only an admin or wellness coach can upgrade this client", 403);
+  }
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  const parent = String(user.parentCoachId || "").trim();
+  if (parent && parent !== actor.id) {
+    throw new AppError("User is not under your coaching hierarchy", 403);
+  }
+  if (!parent) {
+    const referredType = String(user.referredByEntityType || "").toLowerCase();
+    const referredId = String(user.referredByEntityId || "").trim();
+    const ownsReferral = referredType === "wellness_coach" && referredId === actor.id;
+    if (!ownsReferral) {
+      throw new AppError("User is not under your coaching hierarchy", 403);
+    }
+  }
+
+  return { actor, allocateToCoachId: actor.id };
+}
+
 async function listHealUsersForStaff(
   req,
-  { page = 1, limit = 20, search, scope = "all", userTier = "client", subscriptionExpiryDays } = {},
+  {
+    page = 1,
+    limit = 20,
+    search,
+    scope = "all",
+    userTier = "client",
+    subscriptionExpiryDays,
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+    hasProgram,
+  } = {},
 ) {
   const actor = resolveStaffActor(req);
   const subscriptionExpiryUserIds = await resolveSubscriptionExpiryUserIds(subscriptionExpiryDays);
@@ -139,6 +182,13 @@ async function listHealUsersForStaff(
     };
   }
 
+  const segment = {
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+    hasProgram,
+  };
+
   if (actor.role === "admin") {
     const data = await listUsers({
       page: 1,
@@ -146,6 +196,7 @@ async function listHealUsersForStaff(
       search,
       assignmentStatus: "assigned",
       subscriptionExpiryUserIds,
+      ...segment,
     });
     const rows = (data.users || []).filter((row) => matchesAssignedClientTier(row.userTier, userTier));
     const safePage = Math.max(1, Number(page) || 1);
@@ -167,6 +218,7 @@ async function listHealUsersForStaff(
       userTier,
       scope,
       subscriptionExpiryUserIds,
+      ...segment,
     });
   }
 
@@ -181,6 +233,7 @@ async function listHealUsersForStaff(
       search,
       userTier,
       subscriptionExpiryUserIds,
+      ...segment,
     });
   }
 
@@ -195,6 +248,7 @@ async function listHealUsersForStaff(
       userTier,
       scope,
       subscriptionExpiryUserIds,
+      ...segment,
     });
   }
 
@@ -255,6 +309,7 @@ module.exports = {
   assertStaffCanMutate,
   assertStaffCanAccessUser,
   assertStaffCanAssignCoach,
+  assertStaffCanUpgradePaidTier,
   listHealUsersForStaff,
   listStaffClientIdSet,
 };
