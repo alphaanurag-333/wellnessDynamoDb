@@ -1,6 +1,8 @@
+const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { comparePassword, hashPassword } = require("../../utils/password");
+const { docClient } = require("../../config/db");
 const { createTokenPair, verifyRefreshToken, signMfaToken, verifyMfaToken } = require("../../utils/jwt");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
 const {
@@ -147,6 +149,41 @@ async function sendAccountAuthResponse(res, statusCode, account, activeRoleKey, 
   });
 }
 
+function invalidLoginMessage(emailFound, passwordFound) {
+  if (emailFound && !passwordFound) return "Invalid password";
+  if (!emailFound && passwordFound) return "Invalid email";
+  return "Invalid email and password";
+}
+
+async function passwordMatchesAnyStaffAccount(plainPassword) {
+  const seen = new Set();
+  let lastKey;
+  do {
+    const { Items, LastEvaluatedKey } = await docClient.send(
+      new ScanCommand({
+        TableName: "Account",
+        ProjectionExpression: "#password, #status",
+        ExpressionAttributeNames: { "#password": "password", "#status": "status" },
+        ExclusiveStartKey: lastKey,
+      })
+    );
+    for (const item of Items || []) {
+      if (String(item?.status || "").toLowerCase() === "deleted") continue;
+      const hash = item?.password;
+      if (!hash || seen.has(hash)) continue;
+      seen.add(hash);
+      try {
+        if (await comparePassword(plainPassword, hash)) return true;
+      } catch {
+        // Skip rows whose password is not a bcrypt hash.
+      }
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return false;
+}
+
 exports.loginAccount = asyncHandler(async (req, res) => {
   const { email, password, activeRole } = req.body || {};
   if (!email || !password) {
@@ -157,13 +194,15 @@ exports.loginAccount = asyncHandler(async (req, res) => {
   if (!account && config.accountDualRead !== false) {
     account = await resolveAccountByEmail(email);
   }
-  if (!account?.password) {
-    throw new AppError("Invalid credentials", 401);
+
+  if (!account) {
+    const passwordFound = await passwordMatchesAnyStaffAccount(password);
+    throw new AppError(invalidLoginMessage(false, passwordFound), 401);
   }
 
-  const matched = await comparePassword(password, account.password);
+  const matched = account.password ? await comparePassword(password, account.password) : false;
   if (!matched) {
-    throw new AppError("Invalid credentials", 401);
+    throw new AppError(invalidLoginMessage(true, false), 401);
   }
   if (account.status === "deleted") {
     throw new AppError("Account has been deleted", 401);

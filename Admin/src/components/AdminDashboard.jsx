@@ -772,10 +772,15 @@ function clientRowFromUser(user) {
   };
 }
 
+function isPurchasedProgramClient(user) {
+  return user?.programPurchased === true || user?.programPurchased === "true";
+}
+
 function countsFromClientRoster(clients) {
   const counts = {};
   if (!Array.isArray(clients)) return counts;
   for (const user of clients) {
+    if (!isPurchasedProgramClient(user)) continue;
     const id = concernKey(user?.healthConcernId);
     if (!id) continue;
     counts[id] = (counts[id] || 0) + 1;
@@ -794,11 +799,12 @@ function paletteForConcern(option, index) {
   };
 }
 
-/** Live clients grouped under both their concern id and concern title. */
+/** Purchasers with a primary health concern, grouped by concern id and title. */
 function groupClientsByConcern(clients) {
   if (!Array.isArray(clients)) return null;
   const groups = new Map();
   for (const user of clients) {
+    if (!isPurchasedProgramClient(user)) continue;
     const row = clientRowFromUser(user);
     const keys = new Set([concernKey(user.healthConcernId), concernKey(user.goal)]);
     for (const key of keys) {
@@ -835,11 +841,20 @@ export function AdminDashboard({
   const canViewRevenue = can("console.rev.view");
   const isContentCommunity = isStaffDash || isSupportDash;
   const dashHasTeam = can("console.tm.view");
-  const clientsByConcern = useMemo(() => groupClientsByConcern(clients), [clients]);
+  const programCategorySource = useMemo(() => {
+    if (Array.isArray(statistics?.programCategoryClients)) return statistics.programCategoryClients;
+    if (!Array.isArray(clients)) return null;
+    return clients.filter(isPurchasedProgramClient);
+  }, [clients, statistics]);
+  const clientsByConcern = useMemo(
+    () => groupClientsByConcern(programCategorySource),
+    [programCategorySource],
+  );
   const programCards = useMemo(() => {
     if (!Array.isArray(healthConcerns) || healthConcerns.length === 0) return [];
-    const concernCounts = statistics?.healthConcernCounts ?? {};
-    const rosterCounts = countsFromClientRoster(clients);
+    const usePurchasedList = Array.isArray(statistics?.programCategoryClients);
+    const concernCounts = usePurchasedList ? {} : (statistics?.healthConcernCounts ?? {});
+    const rosterCounts = countsFromClientRoster(programCategorySource);
     return healthConcerns
       .filter(
         (option) =>
@@ -866,7 +881,7 @@ export function AdminDashboard({
           modalLabel: option.label,
         };
       });
-  }, [clients, healthConcerns, statistics]);
+  }, [healthConcerns, programCategorySource, statistics]);
 
   const hasAdminStatistics = statistics && Object.hasOwn(statistics, "totalUsers");
   const hasStaffStatistics = statistics && Object.hasOwn(statistics, "totalClients");
@@ -1919,7 +1934,7 @@ export function AdminDashboard({
       <section className="section">
         <div className="section__head">
           <h2 className="section__title">Program categories : clients</h2>
-          <span className="section__hint">Clients registered per program · tap to see who</span>
+          <span className="section__hint">Clients with a primary health concern who purchased a program · tap to see who</span>
         </div>
         <div className="prog-cats prog-cats--v2">
           <div className="prog-cats__main">

@@ -10694,7 +10694,7 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
   .methodology__header p {
     font-size: 0.95rem !important;
     line-height: 1.65 !important;
-    text-align: left;
+    text-align: justify;
   }
 }
 
@@ -12547,10 +12547,18 @@ font-size: 0.62rem;
     border-radius: 8px;
   }
 }
-
+/* .jsty {
+    text-align: justify !important;
+} */
+.leadership__description.rm-flow.jsty {
+    text-align: justify !important;
+}
 @media (max-width: 576px) {
 .heroSwiper .swiper-pagination{
   gap: 18px;
+}
+.jyst {
+  text-align: justify !important;
 }
 .footer-title-font-size{
     font-size: 1.55rem !important;
@@ -12619,7 +12627,7 @@ font-size: 0.62rem;
 .swiper.heroSwiper,
   .heroSwiper--loading {
     
-    height: clamp(160px, 44.444vw, 220px); 
+    height: clamp(180px, 65.444vw, 220px); 
              width: calc(100% - (2 * var(--container-padding, 15px))); 
          max-width: 100%; 
          margin-left: auto; 

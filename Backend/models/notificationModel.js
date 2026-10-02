@@ -56,6 +56,7 @@ const KIND = new Set([
   "program_assigned",
   "presentable_pic_request",
   "presentable_pic_reviewed",
+  "progress_photo_reviewed",
   "coach_assigned",
   "coach_reassigned",
 ]);

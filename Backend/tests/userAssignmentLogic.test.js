@@ -4,9 +4,11 @@ const {
   resolveConversionAssignment,
   validateHealUserAssignment,
   resolveReassignmentPatch,
+  buildClearedCoachAssignmentPatch,
   isWellnessTrackingTier,
   matchesAssignedClientTier,
   isAlreadyAssignedClient,
+  shouldKeepExistingAssignment,
 } = require("../models/userAssignmentLogic");
 
 const COACH_ID = "coach-001";
@@ -358,6 +360,55 @@ describe("resolveReassignmentPatch", () => {
     assert.equal(patch.parentCoachId, COACH_ID);
     assert.equal(patch.assignmentStatus, "assigned");
     assert.equal(Object.hasOwn(patch, "referredByUserId"), false);
+  });
+});
+
+describe("buildClearedCoachAssignmentPatch", () => {
+  it("returns a paid client to pending admin with no coach fields", () => {
+    const patch = buildClearedCoachAssignmentPatch({ paidClient: true });
+    assert.equal(patch.assignmentStatus, "pending_admin");
+    assert.equal(patch.assignedCoachId, null);
+    assert.equal(patch.assignedCoachType, null);
+    assert.equal(patch.parentCoachId, null);
+    assert.equal(
+      validateHealUserAssignment({ userTier: "heal", ...patch }).valid,
+      true
+    );
+  });
+
+  it("clears assignment entirely for a free client", () => {
+    const patch = buildClearedCoachAssignmentPatch({ paidClient: false });
+    assert.equal(patch.assignmentStatus, null);
+    assert.equal(
+      validateHealUserAssignment({ userTier: "seek", ...patch }).valid,
+      true
+    );
+  });
+});
+
+describe("shouldKeepExistingAssignment", () => {
+  it("keeps a coach already on the client when no new referral code is supplied", () => {
+    const user = healUser(USER_A_ID, COACH_ID);
+    user.userTier = "seek";
+    assert.equal(shouldKeepExistingAssignment(user, null), true);
+    assert.equal(shouldKeepExistingAssignment(user, ""), true);
+  });
+
+  it("re-resolves assignment when an explicit referral code is supplied", () => {
+    const user = healUser(USER_A_ID, COACH_ID);
+    user.userTier = "seek";
+    assert.equal(shouldKeepExistingAssignment(user, "IRW-WC-1"), false);
+  });
+
+  it("does not keep assignment for an unassigned client", () => {
+    assert.equal(
+      shouldKeepExistingAssignment(
+        { userTier: "seek", assignmentStatus: "pending_admin", parentCoachId: null },
+        null
+      ),
+      false
+    );
+    assert.equal(isAlreadyAssignedClient({ userTier: "seek" }), false);
   });
 });
 

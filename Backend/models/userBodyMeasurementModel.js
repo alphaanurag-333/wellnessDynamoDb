@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl } = require("../utils/s3");
@@ -86,12 +86,51 @@ async function getLatestBodyMeasurementForUser(userId) {
   return result.items[0] || null;
 }
 
+function normalizeWeightReviewStatus(value) {
+  const next = String(value || "pending").trim().toLowerCase();
+  if (next === "approved" || next === "rejected") return next;
+  return "pending";
+}
+
+async function reviewWeightPhoto(id, { status, reviewedById, rejectionReason } = {}) {
+  const nextStatus = normalizeWeightReviewStatus(status);
+  if (nextStatus === "pending") throw new Error("status must be approved or rejected");
+
+  const now = new Date().toISOString();
+  const reason = nextStatus === "rejected"
+    ? String(rejectionReason || "").trim() || null
+    : null;
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression:
+        "SET weightReviewStatus = :status, weightReviewedAt = :reviewedAt, weightReviewedById = :reviewedById, weightRejectionReason = :reason, updatedAt = :updatedAt",
+      ConditionExpression: "attribute_exists(id)",
+      ExpressionAttributeValues: {
+        ":status": nextStatus,
+        ":reviewedAt": now,
+        ":reviewedById": reviewedById || null,
+        ":reason": reason,
+        ":updatedAt": now,
+      },
+      ReturnValues: "ALL_NEW",
+    })
+  );
+  return Attributes;
+}
+
 function toPublicBodyMeasurement(item) {
   if (!item) return null;
   return {
     ...item,
     _id: item.id,
     weightPicUrl: item.weightPicKey ? resolvePublicUrl(item.weightPicKey) : null,
+    weightReviewStatus: item.weightPicKey ? normalizeWeightReviewStatus(item.weightReviewStatus) : null,
+    weightReviewedAt: item.weightReviewedAt || null,
+    weightReviewedById: item.weightReviewedById || null,
+    weightRejectionReason: item.weightRejectionReason || null,
   };
 }
 
@@ -104,5 +143,6 @@ module.exports = {
   getBodyMeasurementById,
   listBodyMeasurementsByUser,
   getLatestBodyMeasurementForUser,
+  reviewWeightPhoto,
   toPublicBodyMeasurement,
 };

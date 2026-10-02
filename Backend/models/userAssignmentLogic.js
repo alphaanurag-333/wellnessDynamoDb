@@ -75,6 +75,15 @@ function isAlreadyAssignedClient(user) {
   );
 }
 
+/**
+ * Manual HEAL / Eagle upgrades must not replace a coach who is already on the client.
+ * An explicit referral code still re-resolves assignment.
+ */
+function shouldKeepExistingAssignment(user, referralCode) {
+  if (String(referralCode || "").trim()) return false;
+  return isAlreadyAssignedClient(user);
+}
+
 /** Seek, consultancy, and Heal users can use water/steps tracking in the mobile app. */
 function isWellnessTrackingTier(value) {
   return USER_TIERS.has(normalizeUserTier(value));
@@ -330,6 +339,21 @@ function resolveReassignmentPatch({ assignedCoachId, assignedCoachType, parentCo
   };
 }
 
+/**
+ * Clear WC and AWC together.
+ * Paid clients return to pending_admin so assignment invariants still hold.
+ */
+function buildClearedCoachAssignmentPatch({ paidClient = true } = {}) {
+  return {
+    assignedCoachId: null,
+    assignedCoachType: null,
+    parentCoachId: null,
+    assignmentStatus: paidClient ? "pending_admin" : null,
+    assignmentSource: null,
+    assignedAt: null,
+  };
+}
+
 module.exports = {
   USER_TIERS,
   CLIENT_CATEGORIES,
@@ -350,10 +374,12 @@ module.exports = {
   isPaidClientTier,
   isAssignableStaff,
   isAlreadyAssignedClient,
+  shouldKeepExistingAssignment,
   isWellnessTrackingTier,
   matchesAssignedClientTier,
   resolveConversionAssignment,
   validateHealUserAssignment,
   assertHealUserAssignment,
   resolveReassignmentPatch,
+  buildClearedCoachAssignmentPatch,
 };

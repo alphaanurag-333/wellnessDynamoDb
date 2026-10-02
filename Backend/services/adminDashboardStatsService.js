@@ -17,6 +17,10 @@ const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { countAcrossPartitions } = require("../utils/dynamoCount");
 const { getSubscriptionExpiryStats } = require("./subscriptionExpiryStats");
+const {
+  getWellnessCoachByIdResolved,
+  getAssistantWellnessCoachByIdResolved,
+} = require("./accountResolver");
 
 const STATUS_INDEX = "StatusCreatedAtIndex";
 const IST_TZ = "Asia/Kolkata";
@@ -513,8 +517,51 @@ async function countUsersByClientCategory(category) {
   });
 }
 
+function isPurchasedProgram(user) {
+  const value = user?.programPurchased;
+  return value === true || value === "true" || value === 1;
+}
+
+async function loadDisplayNames(ids, loader) {
+  const unique = [...new Set((ids || []).map((id) => String(id || "").trim()).filter(Boolean))];
+  const byId = new Map();
+  await Promise.all(
+    unique.map(async (id) => {
+      try {
+        const row = await loader(id);
+        const name = String(row?.name || "").trim();
+        if (name) byId.set(id, name);
+      } catch {
+        /* missing staff record */
+      }
+    }),
+  );
+  return byId;
+}
+
+function toProgramCategoryClient(row, coachNames, assistantNames) {
+  const parentId = String(row.parentCoachId || "").trim();
+  const assignedId = String(row.assignedCoachId || "").trim();
+  const assignedType = String(row.assignedCoachType || "").trim().toLowerCase();
+  const coachName = coachNames.get(parentId)
+    || (assignedType === "wellness_coach" ? coachNames.get(assignedId) : "")
+    || "";
+  const awcName = assignedType === "assistant_wellness_coach"
+    ? (assistantNames.get(assignedId) || "")
+    : "";
+  return {
+    id: row.id,
+    name: row.name || "Unnamed",
+    healthConcernId: row.healthConcernId,
+    programPurchased: true,
+    coach: coachName || "Not assigned",
+    awc: awcName || "Not assigned",
+  };
+}
+
 async function scanUserAnalytics() {
   const counts = new Map();
+  const programCategoryClients = [];
   const onboardedByMonth = {};
   const usersById = new Map();
   let registeredTodayCount = 0;
@@ -525,7 +572,7 @@ async function scanUserAnalytics() {
     const { Items = [], LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: USER_TABLE,
-        ProjectionExpression: "id, #name, primaryHealthConcern, parentCoachId, assignedCoachId, assignedCoachType, #status, createdAt",
+        ProjectionExpression: "id, #name, primaryHealthConcern, programPurchased, parentCoachId, assignedCoachId, assignedCoachType, #status, createdAt",
         FilterExpression: "#status IN (:active, :inactive, :blocked)",
         ExpressionAttributeNames: { "#status": "status", "#name": "name" },
         ExpressionAttributeValues: {
@@ -540,16 +587,32 @@ async function scanUserAnalytics() {
     for (const user of Items) {
       const id = String(user.id || "").trim();
       const concernId = String(user.primaryHealthConcern?.id || user.primaryHealthConcern || "").trim();
+      const parentCoachId = String(user.parentCoachId || "").trim();
+      const assignedCoachId = String(user.assignedCoachId || "").trim();
+      const assignedCoachType = String(user.assignedCoachType || "").trim();
       if (id) {
         usersById.set(id, {
           name: String(user.name || "").trim(),
-          parentCoachId: String(user.parentCoachId || "").trim(),
-          assignedCoachId: String(user.assignedCoachId || "").trim(),
-          assignedCoachType: String(user.assignedCoachType || "").trim(),
+          parentCoachId,
+          assignedCoachId,
+          assignedCoachType,
           primaryHealthConcern: concernId,
         });
       }
-      if (concernId) counts.set(concernId, (counts.get(concernId) || 0) + 1);
+      // Program category cards: primary health concern and a purchased program.
+      if (concernId && isPurchasedProgram(user)) {
+        counts.set(concernId, (counts.get(concernId) || 0) + 1);
+        if (id) {
+          programCategoryClients.push({
+            id,
+            name: String(user.name || "").trim() || "Unnamed",
+            healthConcernId: concernId,
+            parentCoachId,
+            assignedCoachId,
+            assignedCoachType,
+          });
+        }
+      }
       if (todayKey && dayKeyFromDate(user.createdAt) === todayKey) {
         registeredTodayCount += 1;
       }
@@ -561,6 +624,7 @@ async function scanUserAnalytics() {
 
   return {
     healthConcernCounts: Object.fromEntries(counts),
+    programCategoryClients,
     onboardedByMonth,
     usersById,
     registeredTodayCount,
@@ -630,6 +694,7 @@ async function getAdminDashboardStats() {
 
   const {
     healthConcernCounts,
+    programCategoryClients: rawProgramCategoryClients = [],
     onboardedByMonth,
     usersById = new Map(),
     registeredTodayCount = 0,
@@ -642,7 +707,25 @@ async function getAdminDashboardStats() {
       user.assignedCoachType === "wellness_coach" ? user.assignedCoachId : "",
     ]),
   ];
-  const coachNames = await loadCoachNamesById(coachIds);
+  const [coachNames, programCoachNames, programAssistantNames] = await Promise.all([
+    loadCoachNamesById(coachIds),
+    loadDisplayNames(
+      rawProgramCategoryClients.flatMap((row) => [
+        row.parentCoachId,
+        String(row.assignedCoachType || "").toLowerCase() === "wellness_coach" ? row.assignedCoachId : "",
+      ]),
+      getWellnessCoachByIdResolved,
+    ),
+    loadDisplayNames(
+      rawProgramCategoryClients
+        .filter((row) => String(row.assignedCoachType || "").toLowerCase() === "assistant_wellness_coach")
+        .map((row) => row.assignedCoachId),
+      getAssistantWellnessCoachByIdResolved,
+    ),
+  ]);
+  const programCategoryClients = rawProgramCategoryClients.map((row) => (
+    toProgramCategoryClient(row, programCoachNames, programAssistantNames)
+  ));
   const revenueAnalytics = buildRevenueAnalytics({
     paidTransactions,
     onboardedByMonth,
@@ -689,6 +772,7 @@ async function getAdminDashboardStats() {
     pendingCoachApprovals,
     pendingUserAssignments,
     healthConcernCounts,
+    programCategoryClients,
     subscriptionExpiry,
     registeredToday: {
       count: registeredTodayCount,

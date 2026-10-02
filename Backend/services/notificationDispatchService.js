@@ -62,6 +62,7 @@ const FCM_TYPE_BY_KIND = {
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
   presentable_pic_reviewed: "presentable_pic_reviewed_notification",
+  progress_photo_reviewed: "progress_photo_reviewed_notification",
   coach_assigned: "coach_assigned_notification",
   coach_reassigned: "coach_reassigned_notification",
 };
@@ -865,6 +866,45 @@ async function dispatchPresentablePicRequestNotification({
   return notification;
 }
 
+const PROGRESS_PHOTO_ANGLE_LABELS = {
+  front: "front",
+  right: "right",
+  left: "left",
+  weight: "weight",
+};
+
+async function dispatchProgressPhotoReviewedNotification({
+  userId,
+  photoId,
+  angle,
+  status,
+  rejectionReason = "",
+  coachName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const label = PROGRESS_PHOTO_ANGLE_LABELS[String(angle || "").trim().toLowerCase()] || "progress";
+  const approved = String(status || "").trim().toLowerCase() === "approved";
+  const reason = String(rejectionReason || "").trim();
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "progress_photo_reviewed",
+    message: approved
+      ? `${name} accepted your ${label} progress photo.`
+      : reason
+        ? `${name} rejected your ${label} progress photo. ${reason}`
+        : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`,
+    referenceId: photoId ? String(photoId) : null,
+    referenceType: "progress_photo",
+    actorUserId,
+    title: approved ? "Progress photo accepted" : "Progress photo rejected",
+    comment: `${label}:${approved ? "approved" : "rejected"}`,
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchPresentablePicReviewedNotification({
   userId,
   status,
@@ -1108,6 +1148,7 @@ module.exports = {
   dispatchProgramAssignedNotificationAsync,
   dispatchPresentablePicRequestNotification,
   dispatchPresentablePicReviewedNotification,
+  dispatchProgressPhotoReviewedNotification,
   dispatchOnboardingMeetingConfirmedNotification,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotification,

@@ -18,8 +18,8 @@ export default function InlineReadMore({
   if (!source) return null;
 
   return (
-    <Tag ref={ref} className={`rm-flow ${className}`.trim()}>
-      <span className="rm-flow__text">{visible}{showToggle && expanded ? " " : ""}</span>{showToggle ? (
+    <Tag  ref={ref} className={`jsty rm-flow  ${className} `.trim()}>
+      <span  className="rm-flow__text">{visible}{showToggle && expanded ? " " : ""}</span>{showToggle ? (
         <button
           type="button"
           className="rm-flow__btn"

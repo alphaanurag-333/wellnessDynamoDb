@@ -1335,6 +1335,10 @@ async function listUsersByAssignedCoachId(
     search,
     userTier = "client",
     unpaginated = false,
+    clientCategory,
+    excludeUserTier,
+    excludeClientCategory,
+    hasProgram,
     subscriptionExpiryUserIds,
   } = {}
 ) {
@@ -1348,6 +1352,10 @@ async function listUsersByAssignedCoachId(
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 20));
   const normalizedSearch = String(search || "").trim().toLowerCase();
   const normalizedTier = String(userTier || "client").toLowerCase().trim();
+  const excludeUserTiers = parseExcludeUserTiers(excludeUserTier);
+  const excludeClientCategories = parseExcludeClientCategories(excludeClientCategory);
+  const requireProgram = parseHasProgramFlag(hasProgram);
+  const normalizedCategory = clientCategory ? normalizeClientCategory(clientCategory, "") : "";
   const expiryIdSet = Array.isArray(subscriptionExpiryUserIds)
     ? new Set(
         subscriptionExpiryUserIds
@@ -1387,6 +1395,12 @@ async function listUsersByAssignedCoachId(
   if (normalizedSearch) {
     rows = rows.filter((r) => userMatchesListSearch(r, normalizedSearch));
   }
+
+  if (normalizedCategory) {
+    rows = rows.filter((row) => normalizeClientCategory(row.clientCategory) === normalizedCategory);
+  }
+  rows = applyUserListExclusions(rows, excludeUserTiers, excludeClientCategories);
+  rows = applyHasProgramFilter(rows, requireProgram);
 
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / safeLimit));

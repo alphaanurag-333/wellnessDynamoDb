@@ -237,6 +237,32 @@ export function formatPhotoDate(value) {
   });
 }
 
+export function normalizePhotoReviewStatus(value) {
+  const next = String(value || "pending").trim().toLowerCase();
+  if (next === "approved" || next === "rejected") return next;
+  return "pending";
+}
+
+export function photoReviewMeta(status) {
+  const value = normalizePhotoReviewStatus(status);
+  if (value === "approved") return { label: "Accepted", tone: "approved" };
+  if (value === "rejected") return { label: "Rejected", tone: "rejected" };
+  return { label: "Pending", tone: "pending" };
+}
+
+export function photoReviewSummary(photos) {
+  const list = photos || [];
+  if (!list.length) return null;
+  const pending = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "pending").length;
+  const rejected = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "rejected").length;
+  const approved = list.length - pending - rejected;
+  if (pending === list.length) return { label: "Pending", tone: "pending" };
+  if (pending > 0) return { label: `${pending} pending`, tone: "pending" };
+  if (rejected && approved) return { label: "Reviewed", tone: "mixed" };
+  if (rejected) return { label: "Rejected", tone: "rejected" };
+  return { label: "Accepted", tone: "approved" };
+}
+
 function mapPhotoRows(records, angle) {
   return (records || [])
     .filter((row) => row[angle.urlKey])
@@ -247,6 +273,8 @@ function mapPhotoRows(records, angle) {
       stamp: row.recordedAt || row.createdAt || "",
       date: formatPhotoDate(row.recordedAt || row.createdAt),
       url: row[angle.urlKey],
+      reviewStatus: normalizePhotoReviewStatus(row[`${angle.slug}ReviewStatus`]),
+      rejectionReason: String(row[`${angle.slug}RejectionReason`] || "").trim(),
     }));
 }
 

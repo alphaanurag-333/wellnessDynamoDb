@@ -183,6 +183,32 @@ export function canConvertTier(tier) {
   return t === "Seek" || t === "Consultancy" || t === "Seek to Heal";
 }
 
+export function isEagleClient(user) {
+  const category = String(user?.clientCategory || "").toLowerCase().trim();
+  if (category === "eagle") return true;
+  return String(user?.utype || "").toLowerCase().trim() === "team";
+}
+
+const EAGLE_TIER_STYLE = { bg: "#faf5ff", color: "#9333ea", border: "#e9d5ff" };
+
+/** Eagle is a client category layered on the Heal plan, so the badge reads EAGLE. */
+export function userTierBadge(user) {
+  if (isEagleClient(user)) {
+    return { label: "EAGLE", style: EAGLE_TIER_STYLE };
+  }
+  return { label: tierLabel(user?.tier), style: tierStyle(user?.tier) };
+}
+
+export function eagleConversionPrompt(user) {
+  const name = String(user?.name || "this client").trim() || "this client";
+  return {
+    title: `Convert ${name} to EAGLE?`,
+    body: `This is a direct upgrade when payment did not go through. ${name} becomes an Eagle client on the Heal plan, skips the onboarding wizard, and moves to Eagle users.`,
+    confirm: "Convert to EAGLE",
+    kicker: "Conversion",
+  };
+}
+
 export function conversionPrompt(user, direction) {
   const name = String(user?.name || "this client").trim() || "this client";
   const t = normalizeTier(user?.tier);
@@ -245,6 +271,13 @@ export function canDowngradeTier(tier, ageDays) {
   // Heal → Seek, PWC → Seek, and Maintenance → Heal are the downgrade paths.
   void ageDays;
   return t === "Seek to Heal" || t === "Maintenance" || t === "Consultancy";
+}
+
+/** SEEK / PWC → HEAL only. Used by a wellness coach upgrading their own clients. */
+export function listPaidUpgradeOptions(tier, ageDays) {
+  return listTierMoveOptions(tier, ageDays).filter(
+    (move) => move.direction === "up" && move.target === "Seek to Heal",
+  );
 }
 
 /** Inline TIER-column actions: current badge stays put; these are the move options. */

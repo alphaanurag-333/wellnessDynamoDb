@@ -11,20 +11,24 @@ import {
   enrichUser,
   canUndoTierMove,
   conversionPrompt,
+  eagleConversionPrompt,
+  isEagleClient,
   lastActiveMinutes,
+  listPaidUpgradeOptions,
   listTierMoveOptions,
   nextTier,
   normalizeTier,
   prevTier,
   tierLabel,
-  tierStyle,
   userInitials,
+  userTierBadge,
   userOverrideKey,
 } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
   assignUserCoach,
   deleteUser,
+  unassignUserCoach,
   fetchArchivedUsers,
   fetchScopedUsers,
   fetchUser,
@@ -32,6 +36,7 @@ import {
   mapUiStatusToApi,
   mapUiTierToApi,
   moveMaintenanceUserToHeal,
+  moveUserToEagle,
   moveUserToHeal,
   moveUserToMaintenance,
   moveUserToSeek,
@@ -95,12 +100,25 @@ function extraQueryForTypeTab(tabId, baseUserTier) {
   if (tabId === "team") return { clientCategory: "eagle" };
   if (tabId === "individual") {
     return {
-      clientCategory: "individual",
+      excludeClientCategory: "eagle",
       excludeUserTier: "maintenance",
-      hasProgram: true,
     };
   }
   return {};
+}
+
+function scopedUsersRequest(params) {
+  return {
+    page: params.page,
+    limit: params.limit,
+    search: params.search,
+    userTier: params.userTier,
+    subscriptionExpiryDays: params.subscriptionExpiryDays,
+    clientCategory: params.clientCategory,
+    excludeUserTier: params.excludeUserTier,
+    excludeClientCategory: params.excludeClientCategory,
+    hasProgram: params.hasProgram,
+  };
 }
 
 function resolveWcId(user) {
@@ -198,7 +216,7 @@ function usersToCsv(rows) {
       user.email,
       user.phone,
       user.goal,
-      tierLabel(user.tier),
+      userTierBadge(user).label,
       user.coach || UNASSIGNED_COACH,
       user.awc || "",
       user.lastActive || "",
@@ -246,7 +264,7 @@ export function UsersPage() {
   const { pathname } = useLocation();
   const openUserId = matchOpenUserId(pathname);
   const { showToast: onToast } = useOutletContext();
-  const { activeRole, can, dataScope, isAdminView, viewAs, viewAsPersona } = useViewAs();
+  const { activeRole, can, dataScope, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
   const listSearchRef = useRef(searchParams);
   const profileWasOpenRef = useRef(Boolean(openUserId));
@@ -261,8 +279,15 @@ export function UsersPage() {
   const canEdit = can("console.cl.edit");
   const canDelete = can("console.cl.delete");
   const canExport = can("console.cl.export");
-  // Direct tier conversion on this page is admin-only (API enforces the same).
+  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
   const canChangeTier = Boolean(isAdminView);
+  const canUpgradePaidTier =
+    canChangeTier
+    || (
+      sessionUi === "wc"
+      && (viewAs === "wc" || viewAsPersona === "wc")
+      && can("console.cl.edit")
+    );
   // Disable / re-enable client accounts is admin-only (WC and other staff must not see this).
   const canDisable = Boolean(isAdminView);
   // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
@@ -403,13 +428,7 @@ export function UsersPage() {
     }
     const params = { ...listQuery, page, limit };
     return useScopedUsers
-      ? fetchScopedUsers({
-          page: params.page,
-          limit: params.limit,
-          search: params.search,
-          userTier: params.userTier,
-          subscriptionExpiryDays: params.subscriptionExpiryDays,
-        })
+      ? fetchScopedUsers(scopedUsersRequest(params))
       : fetchUsers(params);
   }, [debouncedSearch, isArchivedTab, listQuery, useScopedUsers]);
 
@@ -470,13 +489,7 @@ export function UsersPage() {
         };
         try {
           const result = useScopedUsers
-            ? await fetchScopedUsers({
-                page: 1,
-                limit: 1,
-                search: params.search,
-                userTier: params.userTier,
-                subscriptionExpiryDays: params.subscriptionExpiryDays,
-              })
+            ? await fetchScopedUsers(scopedUsersRequest({ ...params, page: 1, limit: 1 }))
             : await fetchUsers({ ...params, page: 1, limit: 1 });
           return Number(result?.pagination?.total) || 0;
         } catch {
@@ -767,9 +780,22 @@ export function UsersPage() {
     });
   };
 
+  const withWcAllocationNote = (prompt) => {
+    if (canChangeTier || !canUpgradePaidTier) return prompt;
+    return {
+      ...prompt,
+      body: `${prompt.body} They stay allocated to you as their wellness coach.`,
+    };
+  };
+
   const convertTier = (user) => {
-    if (!canChangeTier) return;
-    setConversionAsk({ user, direction: "up", ...conversionPrompt(user, "up") });
+    if (!canUpgradePaidTier) return;
+    setConversionAsk({ user, direction: "up", ...withWcAllocationNote(conversionPrompt(user, "up")) });
+  };
+
+  const convertToEagle = (user) => {
+    if (!canUpgradePaidTier || isEagleClient(user)) return;
+    setConversionAsk({ user, kind: "eagle", ...withWcAllocationNote(eagleConversionPrompt(user)) });
   };
 
   const downgradeTier = (user) => {
@@ -779,9 +805,33 @@ export function UsersPage() {
 
   const confirmConversion = async () => {
     const ask = conversionAsk;
-    if (!canChangeTier || !ask?.user) return;
+    if (!canUpgradePaidTier || !ask?.user) return;
+    if (!canChangeTier && ask.direction === "down") return;
     const user = ask.user;
     const key = userOverrideKey(user);
+    if (ask.kind === "eagle") {
+      setActionBusy(true);
+      try {
+        let updated = await moveUserToEagle(key);
+        try {
+          const fresh = await fetchUser(key);
+          if (fresh) updated = { ...updated, ...fresh };
+        } catch {
+          // Conversion already succeeded; keep the payload if status refresh fails.
+        }
+        setUsers((prev) => prev.map((row) => (
+          userOverrideKey(row) === key ? { ...row, ...updated } : row
+        )));
+        onToast(`${user.name} converted to EAGLE`);
+        setConversionAsk(null);
+        refreshUsers();
+      } catch (err) {
+        onToast(err?.message || "Could not convert this client to Eagle");
+      } finally {
+        setActionBusy(false);
+      }
+      return;
+    }
     const fromTier = user.tier;
     const toTier = ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier);
     setActionBusy(true);
@@ -942,8 +992,19 @@ export function UsersPage() {
     if (normalizedTo === fromId) return;
 
     if (!normalizedTo) {
-      setSelectReset((n) => n + 1);
-      onToast("Clearing coach assignment isn’t available from this list");
+      if (!fromId) return;
+      const fromName = kind === "wc"
+        ? (user.coach === UNASSIGNED_COACH ? "" : (user.coach || ""))
+        : (user.awc || "");
+      setReassignAsk({
+        user,
+        kind,
+        mode: "unassign",
+        from: fromName,
+        to: "",
+        toId: "",
+        parentCoachId: "",
+      });
       return;
     }
 
@@ -975,11 +1036,30 @@ export function UsersPage() {
 
   const confirmReassign = async () => {
     if (!reassignAsk) return;
-    const { user, kind, to, toId, parentCoachId } = reassignAsk;
+    const { user, kind, to, toId, parentCoachId, mode } = reassignAsk;
     const key = userOverrideKey(user);
-    if (!key || !toId) return;
+    if (!key) return;
+    if (mode !== "unassign" && !toId) return;
 
     const isWc = kind === "wc";
+    if (mode === "unassign") {
+      setActionBusy(true);
+      try {
+        const updated = await unassignUserCoach(key, { kind });
+        setUsers((prev) => prev.map((u) => (userOverrideKey(u) === key ? { ...u, ...updated } : u)));
+        onToast(isWc
+          ? `Wellness coach removed from ${user.name}`
+          : `Assistant WC removed from ${user.name}`);
+        setReassignAsk(null);
+      } catch (err) {
+        setSelectReset((n) => n + 1);
+        onToast(err?.message || "Could not remove coach");
+      } finally {
+        setActionBusy(false);
+      }
+      return;
+    }
+
     const payload = isWc
       ? {
           assignedCoachId: toId,
@@ -1213,7 +1293,8 @@ export function UsersPage() {
             </div>
           ) : isArchivedTab ? (
             rows.map((u, i) => {
-              const tier = tierStyle(u.tier);
+              const tierBadge = userTierBadge(u);
+              const tier = tierBadge.style;
               const rowKey = userOverrideKey(u) || u.name;
               return (
                 <div
@@ -1252,7 +1333,7 @@ export function UsersPage() {
                       className="ua-tier"
                       style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
                     >
-                      {tierLabel(u.tier)}
+                      {tierBadge.label}
                     </span>
                   </div>
                   <div className="ua-table__muted ua-users-last-active" data-label="Last active">
@@ -1269,9 +1350,12 @@ export function UsersPage() {
             })
           ) : (
             rows.map((u, i) => {
-              const tier = tierStyle(u.tier);
+              const tierBadge = userTierBadge(u);
+              const tier = tierBadge.style;
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
-              const tierMoves = canChangeTier ? listTierMoveOptions(u.tier, u.ageDays) : [];
+              const tierMoves = canChangeTier
+                ? listTierMoveOptions(u.tier, u.ageDays)
+                : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
               const rowKey = userOverrideKey(u) || u.name;
               const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
               const showTierUndo = Boolean(
@@ -1310,7 +1394,7 @@ export function UsersPage() {
                       className="ua-tier"
                       style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
                     >
-                      {tierLabel(u.tier)}
+                      {tierBadge.label}
                     </span>
                     {tierMoves.length ? (
                       <div className="ua-users-tier__moves">
@@ -1327,6 +1411,17 @@ export function UsersPage() {
                           </button>
                         ))}
                       </div>
+                    ) : null}
+                    {canUpgradePaidTier && !isEagleClient(u) ? (
+                      <button
+                        type="button"
+                        className="ua-tier-action ua-tier-action--eagle"
+                        title="Convert this client directly to EAGLE when payment did not go through"
+                        disabled={actionBusy}
+                        onClick={() => convertToEagle(u)}
+                      >
+                        → EAGLE
+                      </button>
                     ) : null}
                     {showTierUndo ? (
                       <button
@@ -1474,16 +1569,41 @@ export function UsersPage() {
             aria-modal="true"
             aria-labelledby="reassign-user-title"
           >
-            <div className="ua-dialog__kicker ua-dialog__kicker--blue">Coach reassignment</div>
+            <div className="ua-dialog__kicker ua-dialog__kicker--blue">
+              {reassignAsk.mode === "unassign" ? "Remove coach" : "Coach reassignment"}
+            </div>
             <div id="reassign-user-title" className="ua-dialog__title ua-dialog__title--confirm">
-              {reassignAsk.kind === "wc" ? "Assign wellness coach" : "Assign assistant WC"} for {reassignAsk.user.name}?
+              {reassignAsk.mode === "unassign"
+                ? (reassignAsk.kind === "wc"
+                  ? `Remove wellness coach from ${reassignAsk.user.name}?`
+                  : `Remove assistant WC from ${reassignAsk.user.name}?`)
+                : (reassignAsk.kind === "wc"
+                  ? `Assign wellness coach for ${reassignAsk.user.name}?`
+                  : `Assign assistant WC for ${reassignAsk.user.name}?`)}
             </div>
             <p className="ua-dialog__body">
-              <span className="ua-dialog__reassign-from">{reassignAsk.from || "Unassigned"}</span>
-              {" → "}
-              <span className="ua-dialog__reassign-to">{reassignAsk.to || "Unassigned"}</span>
-              <br />
-              This assigns the client’s {reassignAsk.kind === "wc" ? "wellness coach" : "assistant coach"} after you confirm.
+              {reassignAsk.mode === "unassign" ? (
+                reassignAsk.kind === "wc" ? (
+                  <>
+                    {reassignAsk.from || "The wellness coach"} will be removed
+                    {reassignAsk.user.awc ? ", along with the assistant coach" : ""}.
+                    {" "}The client stays on the roster as unassigned.
+                  </>
+                ) : (
+                  <>
+                    {reassignAsk.from || "The assistant coach"} will be removed.
+                    {" "}The wellness coach stays assigned.
+                  </>
+                )
+              ) : (
+                <>
+                  <span className="ua-dialog__reassign-from">{reassignAsk.from || "Unassigned"}</span>
+                  {" → "}
+                  <span className="ua-dialog__reassign-to">{reassignAsk.to || "Unassigned"}</span>
+                  <br />
+                  This assigns the client’s {reassignAsk.kind === "wc" ? "wellness coach" : "assistant coach"} after you confirm.
+                </>
+              )}
             </p>
             <div className="ua-dialog__actions">
               <button
@@ -1503,7 +1623,7 @@ export function UsersPage() {
                 onClick={confirmReassign}
                 disabled={actionBusy}
               >
-                {actionBusy ? "Assigning…" : "Confirm"}
+                {actionBusy ? "Saving…" : (reassignAsk.mode === "unassign" ? "Remove" : "Confirm")}
               </button>
             </div>
           </div>

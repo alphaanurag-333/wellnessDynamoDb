@@ -150,7 +150,7 @@ exports.getUserByIdController = asyncHandler(async (req, res) => {
 });
 
 exports.createUserController = asyncHandler(async (req, res) => {
-  const { fields, password } = parseUserFields(req.body, { requirePassword: false });
+  const { fields, password } = parseUserFields(req.body, { requirePassword: false, requireDob: true });
 
   await assertUniqueEmail(fields.email);
   await assertUniquePhone(fields.phoneCountryCode, fields.phone);
