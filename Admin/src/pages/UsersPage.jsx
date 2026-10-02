@@ -91,19 +91,25 @@ function matchOpenUserId(pathname) {
 }
 
 function extraQueryForTypeTab(tabId, baseUserTier) {
+  const purchased = { hasProgram: true };
   if (tabId === "app") {
     return {
+      ...purchased,
       userTier: baseUserTier || "maintenance",
       excludeClientCategory: "eagle",
     };
   }
+  // Eagle is a category, including direct upgrades when payment did not go through.
   if (tabId === "team") return { clientCategory: "eagle" };
   if (tabId === "individual") {
     return {
+      ...purchased,
       excludeClientCategory: "eagle",
       excludeUserTier: "maintenance",
     };
   }
+  // All users matches the dashboard tier total: Seek, PWC, Heal, and Maintenance.
+  // Seek (free) clients usually have no purchased program, so do not require one here.
   return {};
 }
 
