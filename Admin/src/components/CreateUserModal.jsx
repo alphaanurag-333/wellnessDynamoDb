@@ -18,6 +18,8 @@ import {
   sanitizePersonName,
   sanitizePhoneDigits,
   sanitizePincode,
+  maxAllowedDobIso,
+  minAllowedDobIso,
   validateDateOfBirth,
   validateEmail,
   validatePersonName,
@@ -569,15 +571,38 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
             <Field
               label="Date of birth"
               required
-              hint={`Must be at least ${DOB_MIN_AGE_YEARS} years ago and within ${DOB_MAX_AGE_YEARS} years.`}
+              hint={`Age must be between ${DOB_MIN_AGE_YEARS} and ${DOB_MAX_AGE_YEARS} years.`}
               error={errors.dob}
             >
               <input
                 className="ua-create-user__input"
                 type="date"
                 value={form.dob}
+                min={minAllowedDobIso()}
+                max={maxAllowedDobIso()}
                 disabled={busy}
-                onChange={(e) => patch({ dob: e.target.value })}
+                onChange={(e) => {
+                  const dob = e.target.value;
+                  const tooYoung = Boolean(dob) && dob > maxAllowedDobIso();
+                  const tooOld = Boolean(dob) && dob < minAllowedDobIso();
+                  if (tooYoung || tooOld) {
+                    e.target.value = form.dob || "";
+                    setErrors((prev) => ({
+                      ...prev,
+                      dob: validateDateOfBirth(dob, { required: true }),
+                    }));
+                    return;
+                  }
+                  patch({ dob });
+                  const dobErr = dob ? validateDateOfBirth(dob, { required: true }) : "";
+                  setErrors((prev) => {
+                    if (!dobErr && !prev.dob) return prev;
+                    const next = { ...prev };
+                    if (dobErr) next.dob = dobErr;
+                    else delete next.dob;
+                    return next;
+                  });
+                }}
               />
             </Field>
             <Field label="Gender" required error={errors.gender}>

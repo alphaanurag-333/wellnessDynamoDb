@@ -116,7 +116,7 @@ function parsePresentablePicFromBody(value) {
   return parseMediaKeyFromBody(value, "presentablePic");
 }
 
-function parseUserFields(body, { requirePassword = false } = {}) {
+function parseUserFields(body, { requirePassword = false, requireDob = false } = {}) {
   const name = String(body.name ?? "").trim();
   const email = normalizeEmail(body.email);
   const phone = normalizePhone(body.phone);
@@ -187,6 +187,9 @@ function parseUserFields(body, { requirePassword = false } = {}) {
   }
   if (gender && !USER_ALLOWED_GENDERS.includes(gender)) {
     throw new AppError("gender is invalid", 400);
+  }
+  if (requireDob && (body.dob === undefined || body.dob === null || String(body.dob).trim() === "")) {
+    throw new AppError("Date of birth is required.", 400);
   }
   if (body.dob !== undefined && body.dob !== null && String(body.dob).trim() !== "") {
     assertValidDateOfBirth(body.dob);
