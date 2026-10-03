@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import InlineReadMore from "./InlineReadMore.jsx";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
@@ -133,35 +134,6 @@ function mapTransformation(row) {
 
 function TransformationStoryCard({ item, onExpandChange }) {
   const [expanded, setExpanded] = useState(false);
-  const captionRef = useRef(null);
-  const [overflows, setOverflows] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = captionRef.current;
-    if (!el) return undefined;
-
-    const measure = () => {
-      const wasExpanded = el.classList.contains("transformation-story-card__caption--expanded");
-      if (wasExpanded) el.classList.remove("transformation-story-card__caption--expanded");
-      const nextOverflows = el.scrollHeight > el.clientHeight + 1;
-      if (wasExpanded) el.classList.add("transformation-story-card__caption--expanded");
-      setOverflows(nextOverflows);
-    };
-
-    measure();
-    const frame = window.requestAnimationFrame(measure);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [item.description]);
-
-  const showToggle = overflows || expanded;
 
   function toggleExpanded(event) {
     event.preventDefault();
@@ -208,32 +180,33 @@ function TransformationStoryCard({ item, onExpandChange }) {
 
       <div className="transformation-story-card__body">
         <h3>{item.name}</h3>
-        <p
-          ref={captionRef}
+        <InlineReadMore
+          text={item.description}
+          expanded={expanded}
+          onToggle={() =>
+            setExpanded((prev) => {
+              const next = !prev;
+              queueMicrotask(() => onExpandChange?.(next));
+              return next;
+            })
+          }
+          lines={3}
           className={`transformation-story-card__caption${expanded ? " transformation-story-card__caption--expanded" : ""}`}
-        >
-          {item.description}
-        </p>
+        />
 
-        {showToggle ? (
-          <button
-            type="button"
-            className="transformation-story-card__more"
-            onClick={toggleExpanded}
-            aria-expanded={expanded}
-          >
-            {expanded ? "Show Less" : item.storyLabel}
-            {expanded ? (
-              <ArrowUpRight size={14} aria-hidden />
-            ) : (
-              <ArrowRight size={14} aria-hidden />
-            )}
-          </button>
-        ) : (
-          <span className="transformation-story-card__more transformation-story-card__more--spacer" aria-hidden>
-            {item.storyLabel}
-          </span>
-        )}
+        <button
+          type="button"
+          className="transformation-story-card__more"
+          onClick={toggleExpanded}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Show Less" : item.storyLabel}
+          {expanded ? (
+            <ArrowUpRight size={14} aria-hidden />
+          ) : (
+            <ArrowRight size={14} aria-hidden />
+          )}
+        </button>
 
         {item.timeTaken != null ? (
           <div className="transformation-story-card__meta">
