@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import InlineReadMore from "./InlineReadMore.jsx";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -95,33 +96,6 @@ function mapHealingTestimonial(row) {
 }
 
 function RealHealingCard({ item, expanded, onToggle }) {
-  const reviewRef = useRef(null);
-  const [overflows, setOverflows] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = reviewRef.current;
-    if (!el) return undefined;
-
-    const measure = () => {
-      if (expanded) return;
-      setOverflows(el.scrollHeight > el.clientHeight + 1);
-    };
-
-    measure();
-    const frame = window.requestAnimationFrame(measure);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [item.review, expanded]);
-
-  const showToggle = overflows || expanded;
-
   return (
     <article className={`real-healing-card${expanded ? " real-healing-card--expanded" : ""}`}>
       <div className="real-healing-top">
@@ -129,32 +103,27 @@ function RealHealingCard({ item, expanded, onToggle }) {
         <span className="real-healing-tag">{item.category}</span>
       </div>
 
-      <p
-        ref={reviewRef}
+      <InlineReadMore
+        text={`\u201c${item.review}\u201d`}
+        expanded={expanded}
+        onToggle={() => onToggle(item.id)}
+        lines={2}
         className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}
-      >
-        {`\u201c${item.review}\u201d`}
-      </p>
+      />
 
-      {showToggle ? (
-        <button
-          type="button"
-          className="real-healing-more"
-          onClick={() => onToggle(item.id)}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Show Less" : item.storyLabel}
-          {expanded ? (
-            <ArrowUpRight size={14} aria-hidden />
-          ) : (
-            <ArrowRight size={14} aria-hidden />
-          )}
-        </button>
-      ) : (
-        <span className="real-healing-more real-healing-more--spacer" aria-hidden>
-          {item.storyLabel}
-        </span>
-      )}
+      <button
+        type="button"
+        className="real-healing-more"
+        onClick={() => onToggle(item.id)}
+        aria-expanded={expanded}
+      >
+        {expanded ? "Show Less" : item.storyLabel}
+        {expanded ? (
+          <ArrowUpRight size={14} aria-hidden />
+        ) : (
+          <ArrowRight size={14} aria-hidden />
+        )}
+      </button>
 
       <div className="real-healing-bottom">
         <div className="real-healing-profile">

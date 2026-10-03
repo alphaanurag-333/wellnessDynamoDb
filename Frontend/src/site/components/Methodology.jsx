@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
+import InlineReadMore from "./InlineReadMore.jsx";
 import discoveryImg from "../images/discovery.png";
 import analysisImg from "../images/analysis.png";
 import programImg from "../images/program.png";
@@ -36,33 +37,6 @@ const methodologyData = [
 ];
 
 function MethodologyCard({ item, expanded, onToggle }) {
-  const descRef = useRef(null);
-  const [overflows, setOverflows] = useState(false);
-
-  useLayoutEffect(() => {
-    const el = descRef.current;
-    if (!el) return undefined;
-
-    const measure = () => {
-      if (expanded) return;
-      setOverflows(el.scrollHeight > el.clientHeight + 1);
-    };
-
-    measure();
-    const frame = window.requestAnimationFrame(measure);
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
-    ro?.observe(el);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      ro?.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [item.description, expanded]);
-
-  const showToggle = overflows || expanded;
-
   return (
     <article className={`methodology-card${expanded ? " methodology-card--expanded" : ""}`}>
       <div className="methodology-card__image">
@@ -72,35 +46,27 @@ function MethodologyCard({ item, expanded, onToggle }) {
       <div className="methodology-card__content">
         <h3>{item.title}</h3>
         <p className="methodology-card__subtitle">{item.headTitle}</p>
-        <p
-          ref={descRef}
+        <InlineReadMore
+          text={item.description}
+          expanded={expanded}
+          onToggle={() => onToggle(item.id)}
+          lines={3}
           className={`methodology-card__desc${expanded ? " methodology-card__desc--expanded" : ""}`}
-        >
-          {item.description}
-        </p>
+        />
 
-        {showToggle ? (
-          <button
-            type="button"
-            className="methodology-card__more"
-            onClick={() => onToggle(item.id)}
-            aria-expanded={expanded}
-          >
-            {expanded ? "Show Less" : item.learnMoreLabel}
-            {expanded ? (
-              <ArrowUpRight size={14} aria-hidden />
-            ) : (
-              <ArrowRight size={14} aria-hidden />
-            )}
-          </button>
-        ) : (
-          <span
-            className="methodology-card__more methodology-card__more--spacer"
-            aria-hidden
-          >
-            {item.learnMoreLabel}
-          </span>
-        )}
+        <button
+          type="button"
+          className="methodology-card__more"
+          onClick={() => onToggle(item.id)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Show Less" : item.learnMoreLabel}
+          {expanded ? (
+            <ArrowUpRight size={14} aria-hidden />
+          ) : (
+            <ArrowRight size={14} aria-hidden />
+          )}
+        </button>
 
         <BookConsultationButton className="methodology-card__cta">
           Book Your Discovery Call

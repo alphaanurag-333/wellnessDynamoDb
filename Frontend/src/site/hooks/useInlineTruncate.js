@@ -22,7 +22,8 @@ function snapToWord(source, index) {
 }
 
 /**
- * Truncates `text` so `preview + "... Read More"` fits in `lines` lines.
+ * Truncates `text` so the preview and a right-floated "Read More"
+ * share the same last line.
  */
 export function useInlineTruncate(text, expanded, lines = 3) {
   const ref = useRef(null);
@@ -44,7 +45,8 @@ export function useInlineTruncate(text, expanded, lines = 3) {
 
       const cs = getComputedStyle(el);
       const lh = lineHeightPx(cs);
-      const maxH = lh * lines + Math.max(3, lh * 0.3);
+      el.style.setProperty("--rm-lh", `${lh}px`);
+      const maxH = lh * lines + 2;
       const probe = document.createElement("p");
       probe.style.cssText = [
         "position:fixed",
@@ -52,7 +54,7 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         "top:0",
         "visibility:hidden",
         "pointer-events:none",
-        `width:${width}px`,
+        `width:${Math.max(0, width - 1)}px`,
         `font-size:${cs.fontSize}`,
         `font-family:${cs.fontFamily}`,
         `font-weight:${cs.fontWeight}`,
@@ -70,18 +72,21 @@ export function useInlineTruncate(text, expanded, lines = 3) {
       const small =
         getComputedStyle(document.documentElement).getPropertyValue("--font-size-small").trim() ||
         cs.fontSize;
-      const textSpan = document.createElement("span");
+      const spacer = document.createElement("span");
+      spacer.style.cssText = `float:right;width:0;height:${lh * Math.max(0, lines - 1)}px`;
       const btn = document.createElement("span");
-      btn.textContent = "... Read More";
+      btn.textContent = "Read More";
       btn.style.cssText = [
-        "display:inline",
+        "float:right",
+        "clear:right",
         "white-space:nowrap",
         "font-weight:600",
         `font-size:${small}`,
-        "padding-right:1.15em",
+        "margin-left:8px",
+        "padding-right:18px",
       ].join(";");
-
-      probe.append(textSpan, btn);
+      const textSpan = document.createElement("span");
+      probe.append(textSpan);
       document.body.appendChild(probe);
 
       textSpan.textContent = source;
@@ -99,6 +104,9 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         return;
       }
 
+      probe.insertBefore(btn, textSpan);
+      probe.insertBefore(spacer, btn);
+
       let lo = 0;
       let hi = source.length;
       let best = 0;
@@ -113,7 +121,21 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         }
       }
 
-      const next = source.slice(0, snapToWord(source, best)).trimEnd();
+      let end = snapToWord(source, best);
+      const paint = (index) => {
+        const slice = index > 0 ? source.slice(0, index).trimEnd() : "";
+        textSpan.textContent = slice ? `${slice}\u2026` : "\u2026";
+      };
+      paint(end);
+      let guard = 0;
+      while (probe.scrollHeight > maxH && end > 0 && guard < 12) {
+        const prevSpace = source.lastIndexOf(" ", Math.max(0, end - 1));
+        end = prevSpace > 0 ? prevSpace : 0;
+        paint(end);
+        guard += 1;
+      }
+
+      const next = end > 0 ? source.slice(0, end).trimEnd() : "";
       setPreview((prev) => (prev === next ? prev : next));
       probe.remove();
     };
