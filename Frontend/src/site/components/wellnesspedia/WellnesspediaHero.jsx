@@ -4,8 +4,9 @@ import { Autoplay, Pagination, EffectFade } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
-import { handleMediaImageError, mediaUrl } from "../../../media.js";
+import { mediaUrl } from "../../../media.js";
 import { fetchActiveBanners } from "../../api/publicMisc.js";
+import { HeroBannerImage } from "../HeroBannerImage.jsx";
 
 function isWebVisibleBanner(banner) {
   if (!banner) return false;
@@ -16,12 +17,13 @@ function isWebVisibleBanner(banner) {
 
 function toHeroSlide(banner) {
   const desktop = mediaUrl(banner.image) || banner.image || "";
-  const fallback = mediaUrl(banner.mobileImage) || banner.mobileImage || "";
+  const mobile = mediaUrl(banner.mobileImage) || banner.mobileImage || "";
   return {
     id: banner.id || banner._id,
     title: banner.title || "",
     description: banner.description || "",
-    image: desktop || fallback,
+    image: desktop || mobile,
+    mobileImage: mobile,
   };
 }
 
@@ -102,11 +104,10 @@ export default function WellnesspediaHero() {
         <SwiperSlide key={slide.id}>
           <div className="slide-flash" />
           <div className="hero-bg">
-            <img
-              src={slide.image}
+            <HeroBannerImage
+              image={slide.image}
+              mobileImage={slide.mobileImage}
               alt={slide.title || "Wellnesspedia banner"}
-              className="hero-bg-image"
-              onError={handleMediaImageError}
             />
           </div>
           <div className="hero-overlay" />

@@ -176,45 +176,43 @@ const mailHref = contact?.email
       <div className="site-container">
         <div className="site-footer__grid">
           <div className="site-footer__brand">
-            <Link
-              to="/"
-              className="site-footer__brand-head"
-              aria-label={`${BRAND_NAME} — Home`}
-            >
-              <img
-                src={logoSrc}
-                alt=""
-                className="site-footer__brand-logo"
-              />
-              <span className="site-footer__brand-name">{BRAND_NAME}
+            <div className="site-footer__brand-head">
+              <Link to="/" aria-label={`${BRAND_NAME} — Home`}>
+                <img
+                  src={logoSrc}
+                  alt=""
+                  className="site-footer__brand-logo"
+                />
+              </Link>
+              <div className="site-footer__brand-name">
+                <Link to="/" className="site-footer__brand-name-link">
+                  {BRAND_NAME}
+                </Link>
                 <FooterBrandText text={footerText} />
-             
 
-            
+                {social.length > 0 ? (
+                  <div className="site-footer__social" aria-label="Social media links">
+                    {social.map((item) => {
+                      const Icon = SOCIAL_ICONS[item.icon] || FaLink;
+                      const label = socialAriaLabel(item.label);
 
-            {social.length > 0 ? (
-              <div className="site-footer__social" aria-label="Social media links">
-                {social.map((item) => {
-                  const Icon = SOCIAL_ICONS[item.icon] || FaLink;
-                  const label = socialAriaLabel(item.label);
-
-                  return (
-                    <a
-                      key={item.key}
-                      href={item.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={label}
-                      title={label}
-                    >
-                      {Icon ? <Icon aria-hidden="true" /> : null}
-                    </a>
-                  );
-                })}
+                      return (
+                        <a
+                          key={item.key}
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={label}
+                          title={label}
+                        >
+                          {Icon ? <Icon aria-hidden="true" /> : null}
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-             </span>
-            </Link>
+            </div>
           </div>
 
           <nav className="site-footer__column" aria-label="Wellness programs">

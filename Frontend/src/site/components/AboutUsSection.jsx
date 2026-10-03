@@ -543,7 +543,7 @@ const AboutUsSection = () => {
 
              <p className="aboutFaq__para managmt mt-0">
   We believe in a holistic approach towards health & Wellness.
-  <br />
+  {/* <br /> */}
   Holistic Health recognizes the interconnectedness of mind, body
   & spirit and treats them as one which emphasizes the importance
   of nurturing each aspect to achieve optimal well-being.

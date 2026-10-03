@@ -14,6 +14,35 @@ function lineHeightPx(style) {
   return value;
 }
 
+const MAX_EXTRA_TRIM_WORDS = 20;
+
+/**
+ * Counts the line boxes actually occupied by the element's content.
+ * Uses client rects instead of the element height, which may include a CSS `min-height`.
+ */
+function renderedLineCount(el, lineHeight) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+  range.detach?.();
+  if (rects.length === 0) return 0;
+
+  const box = el.getBoundingClientRect();
+  const scale = el.offsetHeight > 0 && box.height > 0 ? box.height / el.offsetHeight : 1;
+  const tolerance = (lineHeight * scale) / 2;
+  const centers = rects.map((rect) => (rect.top + rect.bottom) / 2).sort((a, b) => a - b);
+
+  let count = 1;
+  let lineStart = centers[0];
+  for (let i = 1; i < centers.length; i += 1) {
+    if (centers[i] - lineStart > tolerance) {
+      count += 1;
+      lineStart = centers[i];
+    }
+  }
+  return count;
+}
+
 function snapToWord(source, index) {
   if (index >= source.length) return source.length;
   const snapped = source.lastIndexOf(" ", index);
@@ -22,21 +51,28 @@ function snapToWord(source, index) {
 }
 
 /**
- * Truncates `text` so the preview and a right-floated "Read More"
- * share the same last line.
+ * Truncates `text` so the preview, its ellipsis and an inline "Read More"
+ * fit within `lines` lines.
  */
 export function useInlineTruncate(text, expanded, lines = 3) {
   const ref = useRef(null);
   const [overflows, setOverflows] = useState(false);
   const [preview, setPreview] = useState(() => String(text || ""));
+  const measureRef = useRef(null);
+  // Words dropped beyond the probe result when the real element still wraps past `lines`.
+  const extraTrimRef = useRef({ width: 0, words: 0 });
 
   useLayoutEffect(() => {
     const el = ref.current;
     const source = String(text || "");
     if (!el) return undefined;
+    extraTrimRef.current = { width: 0, words: 0 };
 
     const measure = () => {
       const width = el.clientWidth;
+      if (extraTrimRef.current.width !== width) {
+        extraTrimRef.current = { width, words: 0 };
+      }
       if (!width || !source) {
         setOverflows(false);
         setPreview(source);
@@ -45,7 +81,6 @@ export function useInlineTruncate(text, expanded, lines = 3) {
 
       const cs = getComputedStyle(el);
       const lh = lineHeightPx(cs);
-      el.style.setProperty("--rm-lh", `${lh}px`);
       const maxH = lh * lines + 2;
       const probe = document.createElement("p");
       probe.style.cssText = [
@@ -72,18 +107,16 @@ export function useInlineTruncate(text, expanded, lines = 3) {
       const small =
         getComputedStyle(document.documentElement).getPropertyValue("--font-size-small").trim() ||
         cs.fontSize;
-      const spacer = document.createElement("span");
-      spacer.style.cssText = `float:right;width:0;height:${lh * Math.max(0, lines - 1)}px`;
       const btn = document.createElement("span");
       btn.textContent = "Read More";
+      // Mirrors .rm-flow__btn: inline after the text, 14px icon + 4px gap + 4px icon margin.
       btn.style.cssText = [
-        "float:right",
-        "clear:right",
+        "display:inline-block",
         "white-space:nowrap",
         "font-weight:600",
         `font-size:${small}`,
-        "margin-left:8px",
-        "padding-right:18px",
+        "margin-left:6px",
+        "padding-right:22px",
       ].join(";");
       const textSpan = document.createElement("span");
       probe.append(textSpan);
@@ -104,8 +137,7 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         return;
       }
 
-      probe.insertBefore(btn, textSpan);
-      probe.insertBefore(spacer, btn);
+      probe.append(btn);
 
       let lo = 0;
       let hi = source.length;
@@ -135,23 +167,50 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         guard += 1;
       }
 
+      for (let i = 0; i < extraTrimRef.current.words && end > 0; i += 1) {
+        const prevSpace = source.lastIndexOf(" ", Math.max(0, end - 1));
+        end = prevSpace > 0 ? prevSpace : 0;
+      }
+
       const next = end > 0 ? source.slice(0, end).trimEnd() : "";
       setPreview((prev) => (prev === next ? prev : next));
       probe.remove();
     };
 
+    measureRef.current = measure;
     measure();
     const frame = window.requestAnimationFrame(measure);
     const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
     ro?.observe(el);
     window.addEventListener("resize", measure);
+    const fonts = typeof document !== "undefined" ? document.fonts : null;
+    fonts?.addEventListener?.("loadingdone", measure);
+    let active = true;
+    fonts?.ready?.then(() => {
+      if (active) measure();
+    });
 
     return () => {
+      active = false;
       window.cancelAnimationFrame(frame);
       ro?.disconnect();
       window.removeEventListener("resize", measure);
+      fonts?.removeEventListener?.("loadingdone", measure);
+      if (measureRef.current === measure) measureRef.current = null;
     };
   }, [text, expanded, lines]);
+
+  // The off-screen probe can disagree with the live element by a few pixels
+  // (font swap, sub-pixel rounding), letting the preview spill onto an extra line.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || expanded || !overflows || !preview) return;
+    if (renderedLineCount(el, lineHeightPx(getComputedStyle(el))) <= lines) return;
+    const trim = extraTrimRef.current;
+    if (trim.words >= MAX_EXTRA_TRIM_WORDS) return;
+    trim.words += 1;
+    measureRef.current?.();
+  }, [preview, overflows, expanded, lines]);
 
   return { ref, overflows, preview };
 }

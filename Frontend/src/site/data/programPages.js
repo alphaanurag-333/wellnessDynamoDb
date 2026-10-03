@@ -3,7 +3,7 @@ export const CONSULTATION_WHATSAPP = "https://wa.me/919372109740";
 export const programPages = {
   fatLoss: {
     id: "fat-loss",
-    title: "Fat Loss",
+    title: "Fat Loss & Weight Management",
     eyebrow: "India Redefining Wellness",
     description:
       "Achieve your ideal weight with personalized nutrition, effective workouts, and ongoing coach support for a healthier lifestyle.",
@@ -35,7 +35,7 @@ export const programPages = {
 
   thyroid: {
     id: "thyroid",
-    title: "Thyroid Care",
+    title: "Thyroid Wellness",
     eyebrow: "India Redefining Wellness",
     description:
       "Restore balance and optimize thyroid function with customized nutrition, targeted exercise, and expert guidance for hypo- and hyperthyroidism.",
@@ -52,7 +52,7 @@ export const programPages = {
 
   pcod: {
     id: "pcod-pcos-reversal",
-    title: "PCOD & PCOS",
+    title: "PMOS (PCOS/PCOD) Wellness",
     eyebrow: "India Redefining Wellness",
     description:
       "A holistic approach to managing Polycystic Ovary Syndrome with personalized nutrition, tailored exercise, and hormonal balance strategies.",

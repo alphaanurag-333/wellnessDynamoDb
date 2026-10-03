@@ -57,17 +57,16 @@
   place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid #e6ebf2;
+  border: none;
   border-radius: 999px;
-  background: #fff;
-  color: #16233f;
-  box-shadow: 0 4px 14px rgba(15, 31, 56, 0.08);
+  background: var(--primary, #e7863a);
+  color: #fff;
   cursor: pointer;
+  transition: filter 0.15s ease;
 }
 
 .app-dl-modal__close:hover {
-  border-color: #d7deea;
-  color: var(--primary, #e7863a);
+  filter: brightness(0.92);
 }
 
 .app-dl-modal__grid {

@@ -4,25 +4,26 @@ import { Autoplay, Pagination, EffectFade } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/effect-fade";
-import { handleMediaImageError, mediaUrl } from "../../media.js";
+import { mediaUrl } from "../../media.js";
 import { fetchActiveBanners } from "../api/publicMisc.js";
+import { HeroBannerImage } from "./HeroBannerImage.jsx";
 
 function isWebVisibleBanner(banner) {
   if (!banner) return false;
   if (String(banner.status || "active").toLowerCase() !== "active") return false;
   if (banner.webOn === false || banner.webOn === "false" || banner.webOn === 0) return false;
-  // Website always uses the desktop/web asset (never the app/mobile crop).
   return Boolean(banner.image || banner.mobileImage);
 }
 
 function toHeroSlide(banner) {
   const desktop = mediaUrl(banner.image) || banner.image || "";
-  const fallback = mediaUrl(banner.mobileImage) || banner.mobileImage || "";
+  const mobile = mediaUrl(banner.mobileImage) || banner.mobileImage || "";
   return {
     id: banner.id || banner._id,
     title: banner.title || "",
     description: banner.description || "",
-    image: desktop || fallback,
+    image: desktop || mobile,
+    mobileImage: mobile,
   };
 }
 
@@ -126,22 +127,15 @@ export function SiteHero() {
         <SwiperSlide key={slide.id}>
           <div className="slide-flash" />
           <div className="hero-bg">
-            <img
-              src={slide.image}
+            <HeroBannerImage
+              image={slide.image}
+              mobileImage={slide.mobileImage}
               alt={slide.title || "Banner"}
-              className="hero-bg-image"
               width={1905}
               height={640}
               decoding={index === 0 ? "sync" : "async"}
               loading={index === 0 ? "eager" : "lazy"}
-              ref={
-                index === 0
-                  ? (el) => {
-                      if (el) el.setAttribute("fetchpriority", "high");
-                    }
-                  : undefined
-              }
-              onError={handleMediaImageError}
+              highPriority={index === 0}
             />
           </div>
           <div className="hero-overlay" />

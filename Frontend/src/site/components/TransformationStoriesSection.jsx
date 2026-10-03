@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import InlineReadMore from "./InlineReadMore.jsx";
 import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { fetchTransformations } from "../api/publicMisc.js";
 import { SiteLoader } from "./SiteLoader.jsx";
@@ -81,17 +81,6 @@ function parseTags(achievements, inchesLost, inchesRaw) {
   return tags;
 }
 
-function firstName(fullName) {
-  const first = String(fullName || "").trim().split(/\s+/)[0];
-  return first || "their";
-}
-
-function transformationLinkLabel(name) {
-  const first = firstName(name);
-  const possessive = /s$/i.test(first) ? `${first}'` : `${first}'s`;
-  return `Read ${possessive} Transformation`;
-}
-
 function mapTransformation(row) {
   if (!row) return null;
 
@@ -128,22 +117,11 @@ function mapTransformation(row) {
     tags: parseTags(row.achievements, inchesLost, inchesRaw),
     timeTaken,
     inchesLost,
-    storyLabel: transformationLinkLabel(name),
   };
 }
 
 function TransformationStoryCard({ item, onExpandChange }) {
   const [expanded, setExpanded] = useState(false);
-
-  function toggleExpanded(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    setExpanded((prev) => {
-      const next = !prev;
-      queueMicrotask(() => onExpandChange?.(next));
-      return next;
-    });
-  }
 
   return (
     <article className={`transformation-story-card${expanded ? " transformation-story-card--expanded" : ""}`}>
@@ -193,20 +171,6 @@ function TransformationStoryCard({ item, onExpandChange }) {
           lines={3}
           className={`transformation-story-card__caption${expanded ? " transformation-story-card__caption--expanded" : ""}`}
         />
-
-        <button
-          type="button"
-          className="transformation-story-card__more"
-          onClick={toggleExpanded}
-          aria-expanded={expanded}
-        >
-          {expanded ? "Show Less" : item.storyLabel}
-          {expanded ? (
-            <ArrowUpRight size={14} aria-hidden />
-          ) : (
-            <ArrowRight size={14} aria-hidden />
-          )}
-        </button>
 
         {item.timeTaken != null ? (
           <div className="transformation-story-card__meta">

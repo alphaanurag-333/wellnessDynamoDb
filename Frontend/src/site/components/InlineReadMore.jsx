@@ -22,30 +22,13 @@ export default function InlineReadMore({
   return (
     <Tag
       ref={ref}
-      className={`jsty rm-flow${clamped ? " rm-flow--clamp" : ""}${expanded ? " is-expanded" : ""} ${className}`.trim()}
-      style={{ "--rm-lines": lines }}
-    >
-      {clamped ? (
-        <button
-          type="button"
-          className="rm-flow__btn"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onToggle?.();
-          }}
-          aria-expanded={false}
-        >
-          <span className="rm-flow__label">Read More</span>
-          <ArrowRight size={14} aria-hidden />
-        </button>
-      ) : null}
+      className={`jsty rm-flow${clamped ? " rm-flow--clamp" : ""}${expanded ? " is-expanded" : ""} ${className}`.trim()}    >
       <span className="rm-flow__text">
         {visible}
         {clamped ? "\u2026" : ""}
         {showToggle && expanded ? " " : ""}
       </span>
-      {showToggle && expanded ? (
+      {showToggle ? (
         <button
           type="button"
           className="rm-flow__btn"
@@ -54,10 +37,10 @@ export default function InlineReadMore({
             event.stopPropagation();
             onToggle?.();
           }}
-          aria-expanded
+          aria-expanded={expanded}
         >
-          <span className="rm-flow__label">Read Less</span>
-          <ArrowUpRight size={14} aria-hidden />
+          <span className="rm-flow__label">{expanded ? "Read Less" : "Read More"}</span>
+          {expanded ? <ArrowUpRight size={14} aria-hidden /> : <ArrowRight size={14} aria-hidden />}
         </button>
       ) : null}
     </Tag>
