@@ -11957,7 +11957,7 @@ gap: 45px;
     width: auto;
   }
 .methodology-card__image {
-    height: 200px;
+    height: auto;
   }
 .methodology-card__content h3 {
     font-size: var(--font-size-h4);
@@ -16591,7 +16591,8 @@ button.program-hero__cta {
   overflow: visible !important;
   text-overflow: clip !important;
   white-space: normal !important;
-  text-align: start !important;
+  /* text-align: start !important; */
+  text-align: justify !important;
 }
 
 .site-shell .rm-flow--clamp .rm-flow__btn {
