@@ -163,6 +163,21 @@ function statusTone(status) {
   return "muted";
 }
 
+function todayIstDateString() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isHiddenFromApp(item, today) {
+  const end = String(item?.endDate || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || end >= today) return false;
+  return item?.status === "published" || item?.status === "completed";
+}
+
 function formatPhone(user) {
   if (!user?.phone) return "";
   const code = String(user.phoneCountryCode || "").trim();
@@ -455,6 +470,7 @@ export function ChallengesSection({ onToast }) {
   const [jobBusy, setJobBusy] = useState(false);
   const [lastJob, setLastJob] = useState(null);
   const [formErrors, setFormErrors] = useState({});
+  const today = useMemo(() => todayIstDateString(), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -647,7 +663,7 @@ export function ChallengesSection({ onToast }) {
 
       <Panel
         title="Lifecycle job"
-        subtitle="Grants temporary Heal on start date and restores free users after end date. Cron runs hourly at :15 IST when enabled."
+        subtitle="Grants temporary Heal on start date and restores free users after end date. Challenges past their end date are hidden from the app and marked completed when this job runs."
         actions={
           <button
             type="button"
@@ -661,8 +677,8 @@ export function ChallengesSection({ onToast }) {
       >
         {lastJob ? (
           <p className="ua-cfg-panel__sub" style={{ margin: 0 }}>
-            Last run ({lastJob.today}): granted {lastJob.granted}, completed {lastJob.completed}, failed{" "}
-            {lastJob.failed}
+            Last run ({lastJob.today}): granted {lastJob.granted}, completed {lastJob.completed}, hidden{" "}
+            {lastJob.expiredChallenges || 0}, failed {lastJob.failed}
           </p>
         ) : (
           <p className="ua-cfg-panel__sub" style={{ margin: 0 }}>
@@ -756,6 +772,9 @@ export function ChallengesSection({ onToast }) {
                       <span className={`ua-cfg-chal-badge ua-cfg-chal-badge--${statusTone(item.status)}`}>
                         {item.status}
                       </span>
+                      {isHiddenFromApp(item, today) ? (
+                        <span className="ua-cfg-chal-badge ua-cfg-chal-badge--muted">Hidden from app</span>
+                      ) : null}
                     </div>
                     <p className="ua-cfg-chal-card__meta">
                       ₹{Number(item.price || 0).toLocaleString("en-IN")} · {item.startDate} → {item.endDate} ·{" "}

@@ -15,6 +15,7 @@ const {
   getChallengeRecordById,
   incrementChallengeEnrollmentCount,
 } = require("../models/challengeModel");
+const { isChallengeOpenInApp } = require("../utils/challengeAvailability");
 const {
   createEnrollment,
   findActiveOrBookedEnrollment,
@@ -118,7 +119,7 @@ async function resolveChallengeCoupon(couponCode, challengeId, baseAmount) {
 
 async function previewChallengeCheckout(challengeId, { couponCode } = {}) {
   const challenge = await getChallengeById(challengeId);
-  if (!challenge || challenge.status !== "published") {
+  if (!isChallengeOpenInApp(challenge)) {
     const err = new Error("Challenge not found or not available");
     err.name = "NotFoundError";
     throw err;

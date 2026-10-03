@@ -20,6 +20,7 @@ const {
 const {
   getSectionSurfaceConfig,
 } = require("../../models/sectionSurfaceConfigModel");
+const { isChallengeOpenInApp } = require("../../utils/challengeAvailability");
 
 async function isChallengesAppEnabled() {
   const config = await getSectionSurfaceConfig("challenges");
@@ -53,7 +54,7 @@ exports.getPublishedChallengeController = asyncHandler(async (req, res) => {
     throw new AppError("Challenges are currently unavailable", 404);
   }
   const challenge = await getChallengeById(req.params.id);
-  if (!challenge || challenge.status !== "published") {
+  if (!isChallengeOpenInApp(challenge)) {
     throw new AppError("Challenge not found", 404);
   }
   return res.status(200).json({ status: true, challenge });
@@ -134,7 +135,7 @@ exports.validateChallengeCouponController = asyncHandler(async (req, res) => {
   if (!challengeId) throw new AppError("challengeId is required", 400);
 
   const challenge = await getChallengeById(challengeId);
-  if (!challenge || challenge.status !== "published") {
+  if (!isChallengeOpenInApp(challenge)) {
     throw new AppError("Challenge not found", 404);
   }
 
