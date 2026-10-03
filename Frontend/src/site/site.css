@@ -2454,7 +2454,7 @@ position: relative;
   border-radius: 34px;
   object-fit: cover;
   object-position: bottom;
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
   animation: imageFloat 8s ease-in-out infinite;
 }
 
@@ -13083,6 +13083,9 @@ bottom: -18px;
 .success-text {
     font-size: 14px;
     line-height: 26px;
+  }
+  .real-healing-disclaimer {
+    text-align: justify !important;
   }
 .image-card {
     width: 100%;
