@@ -116,6 +116,8 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
   const [draft, setDraft] = useState(() => cloneEntry(gateways?.cashfree));
   const [viewTab, setViewTab] = useState(() => (gateways?.cashfree?.mode === "live" ? "live" : "uat"));
   const [pendingMode, setPendingMode] = useState(null);
+  const [saveAsk, setSaveAsk] = useState(false);
+  const [status, setStatus] = useState("");
   const savedRef = useRef(cloneEntry(gateways?.cashfree));
 
   const applyLoaded = useCallback(
@@ -153,6 +155,7 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
   }, [mode]);
 
   function updateModeCredentials(modeId, patch) {
+    setStatus("");
     setDraft((prev) => {
       const current = cloneEntry(prev);
       return {
@@ -175,8 +178,11 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
     try {
       const payload = { cashfree: cloneEntry(nextEntry) };
       const saved = await saveAppPaymentGateways(payload);
-      applyLoaded(saved.gateways);
-      if (successMessage) onToast(successMessage);
+      applyLoaded(saved?.gateways || payload);
+      if (successMessage) {
+        setStatus(successMessage);
+        onToast(successMessage);
+      }
       return true;
     } catch (error) {
       onToast(error?.message || "Failed to save payment gateways");
@@ -186,26 +192,38 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
     }
   }
 
-  async function saveCredentials() {
-    if (busy) return;
-    const next = cloneEntry(draft);
+  function credentialError(entry) {
+    const uatError = validateModeCredentials(entry, "uat");
+    if (uatError) return uatError;
 
-    const uatError = validateModeCredentials(next, "uat");
-    if (uatError) {
-      onToast(uatError);
+    const live = entry.live || emptyModeSafe();
+    const livePartial = Boolean(live.appId.trim() || live.secretKey.trim());
+    if (entry.mode === "live" || livePartial) {
+      return validateModeCredentials(entry, "live");
+    }
+    return null;
+  }
+
+  function requestSave() {
+    if (busy) return;
+    const error = credentialError(cloneEntry(draft));
+    if (error) {
+      onToast(error);
       return;
     }
+    setSaveAsk(true);
+  }
 
-    const live = next.live || emptyModeSafe();
-    const livePartial = Boolean(live.appId.trim() || live.secretKey.trim());
-    if (next.mode === "live" || livePartial) {
-      const liveError = validateModeCredentials(next, "live");
-      if (liveError) {
-        onToast(liveError);
-        return;
-      }
+  async function confirmSave() {
+    if (busy) return;
+    const next = cloneEntry(draft);
+    const error = credentialError(next);
+    if (error) {
+      setSaveAsk(false);
+      onToast(error);
+      return;
     }
-
+    setSaveAsk(false);
     await persist(next, "Cashfree credentials saved");
   }
 
@@ -306,6 +324,12 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
               />
             </div>
 
+            {status ? (
+              <p className="ua-cfg-pgw-status" role="status">
+                {status}
+              </p>
+            ) : null}
+
             {viewTab !== mode ? (
               <div className="ua-cfg-pgw-mode-switch">
                 <button
@@ -332,7 +356,7 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
                 type="button"
                 className="ua-cfg-btn ua-cfg-btn--primary"
                 disabled={busy || !dirty}
-                onClick={saveCredentials}
+                onClick={requestSave}
               >
                 {busy ? "Saving…" : "Save credentials"}
               </button>
@@ -340,6 +364,19 @@ export function PaymentGatewaySection({ gateways, setGateways, onToast }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={saveAsk}
+        tag="Payment gateway"
+        title="Save Cashfree credentials?"
+        body={`${modeLabel(mode)} stays the active payment mode. The App ID and secret key you edited will be stored and used the next time that environment processes a payment.`}
+        cancelLabel="Cancel"
+        confirmLabel="Save credentials"
+        onCancel={() => {
+          if (!busy) setSaveAsk(false);
+        }}
+        onConfirm={confirmSave}
+      />
 
       <ConfirmDialog
         open={Boolean(pendingMode)}

@@ -27,7 +27,7 @@ const {
 } = require("../../utils/accountPermissions");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
 const { normalizeEmail, normalizePhone, normalizeCountryCode } = require("../../models/userModel");
-const { resolveOtp, getOtpExpiryDate, isOtpExpired, anyStaticOtpMatch, deliverOtp } = require("../../utils/otp");
+const { resolveOtp, getOtpExpiryDate, isOtpExpired, anyStaticOtpMatch, deliverOtp, otpExpiredError } = require("../../utils/otp");
 const { verifyTotp } = require("../../utils/totp");
 const {
   assertValidDateOfBirth,
@@ -564,11 +564,13 @@ exports.verifyAccountLoginOtp = asyncHandler(async (req, res) => {
   if (!account) {
     throw new AppError("No account found with this mobile number", 404);
   }
-  if (
-    !anyStaticOtpMatch(otp, [phone, account.phone]) &&
-    (!account.otp || account.otp !== otp || isOtpExpired(account.otpExpire))
-  ) {
-    throw new AppError("Invalid or expired OTP", 401);
+  if (!anyStaticOtpMatch(otp, [phone, account.phone])) {
+    if (account.otp && isOtpExpired(account.otpExpire)) {
+      throw otpExpiredError();
+    }
+    if (!account.otp || account.otp !== otp) {
+      throw new AppError("Invalid OTP", 401);
+    }
   }
 
   await updateAccount(account.id, { otp: null, otpExpire: null });

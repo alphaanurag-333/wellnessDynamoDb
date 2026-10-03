@@ -2,7 +2,7 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { hashPassword, comparePassword } = require("../../utils/password");
 const { createTokenPair, verifyRefreshToken } = require("../../utils/jwt");
-const { resolveOtp, getOtpExpiryDate, isOtpExpired, isStaticOtpPhone, anyStaticOtpMatch, deliverOtp } = require("../../utils/otp");
+const { resolveOtp, getOtpExpiryDate, isOtpExpired, isStaticOtpPhone, anyStaticOtpMatch, deliverOtp, otpExpiredError } = require("../../utils/otp");
 const { assertValidMobile } = require("../../utils/phoneValidation");
 const {
   setRegistrationOtp,
@@ -162,6 +162,9 @@ async function verifyRegistrationOtpOrThrow(identifiers, otp) {
   const result = await verifyRegistrationOtp(identifiers, code);
   if (result.ok) return;
 
+  if (result.reason === "expired") {
+    throw otpExpiredError();
+  }
   if (result.reason === "missing") {
     throw new AppError("No OTP requested. Send registration OTP first.", 400);
   }
@@ -445,7 +448,7 @@ exports.verifyLoginOtp = asyncHandler(async (req, res) => {
     }
 
     if (isOtpExpired(user.otpExpire)) {
-      throw new AppError("OTP has expired. Request a new code.", 400);
+      throw otpExpiredError();
     }
 
     if (String(user.otp) !== otp) {
