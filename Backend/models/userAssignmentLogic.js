@@ -75,6 +75,18 @@ function isAlreadyAssignedClient(user) {
   );
 }
 
+/** True when a wellness coach or assistant wellness coach is on the client record. */
+function clientHasWcOrAwc(user) {
+  if (String(user?.parentCoachId || "").trim()) return true;
+  return (
+    Boolean(String(user?.assignedCoachId || "").trim()) &&
+    Boolean(normalizeAssignedCoachType(user?.assignedCoachType))
+  );
+}
+
+const WC_OR_AWC_REQUIRED_MESSAGE =
+  "Assign a wellness coach or assistant wellness coach to this client first";
+
 /**
  * Manual HEAL / Eagle upgrades must not replace a coach who is already on the client.
  * An explicit referral code still re-resolves assignment.
@@ -374,6 +386,8 @@ module.exports = {
   isPaidClientTier,
   isAssignableStaff,
   isAlreadyAssignedClient,
+  clientHasWcOrAwc,
+  WC_OR_AWC_REQUIRED_MESSAGE,
   shouldKeepExistingAssignment,
   isWellnessTrackingTier,
   matchesAssignedClientTier,

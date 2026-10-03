@@ -113,6 +113,7 @@ import {
 } from "../data/configDetailData.js";
 import { configPermissionPrefix, findConfigItem, getConfigStateLabel, isLegalGuidelinesConfigId, isLegalPrivacyConfigId, isLegalTosConfigId } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
+import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../data/usersData.js";
 import {
   getCoachCheckoutOptions,
   listCoachCheckoutStaff,
@@ -264,9 +265,15 @@ function ClientLookupPanel({
     setProgramId("");
   }
 
+  const programNeedsCoach = productType === "program" && Boolean(client) && !clientHasWcOrAwc(client);
+
   function setupProgram() {
     const program = programOptions.find((entry) => entry.id === programId);
     if (!program || !client) return;
+    if (programNeedsCoach) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setSetupOpen(true);
   }
 
@@ -331,12 +338,18 @@ function ClientLookupPanel({
             <button
               type="button"
               className="ua-cfg-lookup__setup"
-              disabled={!programId}
+              disabled={!programId || programNeedsCoach}
+              title={programNeedsCoach ? WC_OR_AWC_REQUIRED_MESSAGE : undefined}
               onClick={setupProgram}
             >
               Set up ›
             </button>
           </div>
+          {programNeedsCoach ? (
+            <div className="ua-cfg-lookup__empty" role="note" style={{ gridColumn: "1 / -1" }}>
+              {WC_OR_AWC_REQUIRED_MESSAGE} before assigning a program.
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="ua-cfg-lookup__empty">No client loaded — enter a referral code above.</div>

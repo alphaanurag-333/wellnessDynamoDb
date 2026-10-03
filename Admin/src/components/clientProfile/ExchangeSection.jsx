@@ -23,6 +23,7 @@ import {
   paymentSummary,
   programLabel,
 } from "../../data/exchangeData.js";
+import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../../data/usersData.js";
 
 function mapCatalog(rows) {
   return (Array.isArray(rows) ? rows : [])
@@ -526,7 +527,8 @@ export function ExchangeSection({ user, onToast }) {
       : 0;
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
-  const canTrigger = canCreate && Boolean(user?.id && program && discount && validity && !loading && !triggering);
+  const hasCoach = clientHasWcOrAwc(user);
+  const canTrigger = canCreate && hasCoach && Boolean(user?.id && program && discount && validity && !loading && !triggering);
 
   function closeMenus() {
     setOpenField(null);
@@ -705,11 +707,13 @@ export function ExchangeSection({ user, onToast }) {
           <p className="ua-cp-ex-form__note" style={{maxWidth:"100%"}}>
             {loadError
               ? loadError
-              : emptyConfig
-                ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
-                : program && discount && validity
-                  ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · ${fyYearsLabel} app subscription included in the same price · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
-                  : "Loading published App Program options…"}
+              : !hasCoach
+                ? `${WC_OR_AWC_REQUIRED_MESSAGE} before assigning a program.`
+                : emptyConfig
+                  ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
+                  : program && discount && validity
+                    ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · ${fyYearsLabel} app subscription included in the same price · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
+                    : "Loading published App Program options…"}
           </p>
         </div>
           </>

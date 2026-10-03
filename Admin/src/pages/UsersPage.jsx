@@ -19,10 +19,12 @@ import {
   nextTier,
   normalizeTier,
   prevTier,
+  seekUpgradeBlockedForAdmin,
   tierLabel,
   userInitials,
   userTierBadge,
   userOverrideKey,
+  WC_OR_AWC_REQUIRED_MESSAGE,
 } from "../data/usersData.js";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
@@ -803,13 +805,23 @@ export function UsersPage() {
     };
   };
 
+  const adminSeekUpgradeBlocked = (user) => canChangeTier && seekUpgradeBlockedForAdmin(user);
+
   const convertTier = (user) => {
     if (!canUpgradePaidTier) return;
+    if (adminSeekUpgradeBlocked(user)) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setConversionAsk({ user, direction: "up", ...withWcAllocationNote(conversionPrompt(user, "up")) });
   };
 
   const convertToEagle = (user) => {
     if (!canUpgradePaidTier || isEagleClient(user)) return;
+    if (adminSeekUpgradeBlocked(user)) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setConversionAsk({ user, kind: "eagle", ...withWcAllocationNote(eagleConversionPrompt(user)) });
   };
 
@@ -824,6 +836,11 @@ export function UsersPage() {
     if (!canChangeTier && ask.direction === "down") return;
     const user = ask.user;
     const key = userOverrideKey(user);
+    if ((ask.kind === "eagle" || ask.direction === "up") && adminSeekUpgradeBlocked(user)) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      setConversionAsk(null);
+      return;
+    }
     if (ask.kind === "eagle") {
       setActionBusy(true);
       try {
@@ -1372,6 +1389,7 @@ export function UsersPage() {
                 ? listTierMoveOptions(u.tier, u.ageDays)
                 : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
               const rowKey = userOverrideKey(u) || u.name;
+              const seekUpgradeBlocked = adminSeekUpgradeBlocked(u);
               const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
               const showTierUndo = Boolean(
                 tierUndo
@@ -1413,26 +1431,31 @@ export function UsersPage() {
                     </span>
                     {tierMoves.length ? (
                       <div className="ua-users-tier__moves">
-                        {tierMoves.map((move) => (
-                          <button
-                            key={`${rowKey}-${move.direction}-${move.target}`}
-                            type="button"
-                            className={`ua-tier-action ua-tier-action--${move.direction}`}
-                            title={move.title}
-                            disabled={actionBusy}
-                            onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
-                          >
-                            {move.label}
-                          </button>
-                        ))}
+                        {tierMoves.map((move) => {
+                          const blocked = move.direction === "up" && seekUpgradeBlocked;
+                          return (
+                            <button
+                              key={`${rowKey}-${move.direction}-${move.target}`}
+                              type="button"
+                              className={`ua-tier-action ua-tier-action--${move.direction}`}
+                              title={blocked ? WC_OR_AWC_REQUIRED_MESSAGE : move.title}
+                              disabled={actionBusy || blocked}
+                              onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
+                            >
+                              {move.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     ) : null}
                     {canUpgradePaidTier && !isEagleClient(u) ? (
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--eagle"
-                        title="Convert this client directly to EAGLE when payment did not go through"
-                        disabled={actionBusy}
+                        title={seekUpgradeBlocked
+                          ? WC_OR_AWC_REQUIRED_MESSAGE
+                          : "Convert this client directly to EAGLE when payment did not go through"}
+                        disabled={actionBusy || seekUpgradeBlocked}
                         onClick={() => convertToEagle(u)}
                       >
                         → EAGLE

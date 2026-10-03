@@ -26,7 +26,13 @@ const {
 const {
   createCashfreeOrder,
 } = require("../utils/paymentGateway");
-const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../models/userAssignmentLogic");
+const {
+  isConsultancyOnlyTier,
+  isHealTier,
+  isMaintenanceTier,
+  clientHasWcOrAwc,
+  WC_OR_AWC_REQUIRED_MESSAGE,
+} = require("../models/userAssignmentLogic");
 const {
   resolveSubscriptionPlanFromItem,
 } = require("./subscriptionCategoryService");
@@ -604,6 +610,9 @@ async function triggerCoachCheckout({
 
   if (type === "program" && user.programPurchased) {
     throw new AppError("Client has already purchased a Wellness Program", 409);
+  }
+  if (type === "program" && actor?.role === "admin" && !clientHasWcOrAwc(user)) {
+    throw new AppError(`${WC_OR_AWC_REQUIRED_MESSAGE} before assigning a program`, 400);
   }
 
   const { config, item } = await findCatalogItem(type, itemId);
