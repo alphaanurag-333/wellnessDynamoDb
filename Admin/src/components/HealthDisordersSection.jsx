@@ -134,6 +134,7 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
   const [editingId, setEditingId] = useState(null);
   const [editSnapshot, setEditSnapshot] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingToggle, setPendingToggle] = useState(null);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [descLines, setDescLines] = useState(1);
 
@@ -292,35 +293,69 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
     }
   }
 
-  async function toggleStatus(item) {
-    const nextOn = item.status !== "active";
+  function requestToggle(entry, field) {
+    if (loading || busy || !entry) return;
+    if (field === "webVisible" || field === "appVisible") {
+      setPendingToggle({ entry, field, next: entry[field] === false });
+      return;
+    }
+    if (field === "status") {
+      setPendingToggle({ entry, field, next: entry.status !== "active" });
+    }
+  }
+
+  async function confirmToggle() {
+    const pending = pendingToggle;
+    if (!pending?.entry) return;
+    const { entry, field, next } = pending;
+    setPendingToggle(null);
     setBusy(true);
     try {
-      const saved = await adminUpdateHealthDisorder(null, item.id, { on: nextOn });
-      setItems((list) => list.map((row) => (row.id === item.id ? saved : row)));
-      onToast?.(`${item.title} ${nextOn ? "shown" : "hidden"}`);
+      const saved = field === "status"
+        ? await adminUpdateHealthDisorder(null, entry.id, { on: next })
+        : await adminUpdateHealthDisorder(null, entry.id, { [field]: next });
+      setItems((list) => list.map((row) => (row.id === entry.id ? saved : row)));
+      if (field === "status") {
+        onToast?.(`${entry.title} ${next ? "enabled" : "disabled"}`);
+      } else {
+        const surface = field === "webVisible" ? "Web" : "App";
+        onToast?.(`${surface} ${next ? "enabled" : "disabled"} for ${entry.title}`);
+      }
     } catch (error) {
-      onToast?.(error?.message || "Failed to update status");
+      onToast?.(error?.message || "Failed to update health disorder");
     } finally {
       setBusy(false);
     }
   }
 
-  async function toggleSurface(item, field) {
-    if (field !== "webVisible" && field !== "appVisible") return;
-    const next = !item[field];
-    setBusy(true);
-    try {
-      const saved = await adminUpdateHealthDisorder(null, item.id, { [field]: next });
-      setItems((list) => list.map((row) => (row.id === item.id ? saved : row)));
-      const label = field === "webVisible" ? "web" : "app";
-      onToast?.(`${item.title} ${next ? "shown" : "hidden"} on ${label}`);
-    } catch (error) {
-      onToast?.(error?.message || "Failed to update visibility");
-    } finally {
-      setBusy(false);
+  const toggleCopy = useMemo(() => {
+    const name = pendingToggle?.entry?.title || "this health disorder";
+    const next = Boolean(pendingToggle?.next);
+    if (pendingToggle?.field === "webVisible") {
+      return {
+        title: next ? `Enable web for ${name}?` : `Disable web for ${name}?`,
+        body: next ? "This health disorder will show on the website." : "This health disorder will be hidden from the website.",
+        confirmLabel: next ? "Enable" : "Disable",
+        confirmTone: next ? "primary" : "danger",
+      };
     }
-  }
+    if (pendingToggle?.field === "appVisible") {
+      return {
+        title: next ? `Enable app for ${name}?` : `Disable app for ${name}?`,
+        body: next ? "This health disorder will show in the app." : "This health disorder will be hidden from the app.",
+        confirmLabel: next ? "Enable" : "Disable",
+        confirmTone: next ? "primary" : "danger",
+      };
+    }
+    return {
+      title: next ? `Enable ${name}?` : `Disable ${name}?`,
+      body: next
+        ? "This health disorder will be live on the site."
+        : "This health disorder will be hidden from the site.",
+      confirmLabel: next ? "Enable" : "Disable",
+      confirmTone: next ? "primary" : "danger",
+    };
+  }, [pendingToggle]);
 
   async function confirmDelete() {
     if (!pendingDelete) return;
@@ -594,9 +629,9 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                               type="button"
                               className={`ua-toggle ua-toggle--sm${entry.webVisible !== false ? " ua-toggle--on" : ""}`}
                               aria-pressed={entry.webVisible !== false}
-                              aria-label={entry.webVisible !== false ? "Hide on web" : "Show on web"}
+                              aria-label={entry.webVisible !== false ? `Disable web for ${entry.title}` : `Enable web for ${entry.title}`}
                               disabled={locked}
-                              onClick={() => toggleSurface(entry, "webVisible")}
+                              onClick={() => requestToggle(entry, "webVisible")}
                             >
                               <span className="ua-toggle__knob" />
                             </button>
@@ -609,9 +644,9 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                               type="button"
                               className={`ua-toggle ua-toggle--sm${entry.appVisible !== false ? " ua-toggle--on" : ""}`}
                               aria-pressed={entry.appVisible !== false}
-                              aria-label={entry.appVisible !== false ? "Hide on app" : "Show on app"}
+                              aria-label={entry.appVisible !== false ? `Disable app for ${entry.title}` : `Enable app for ${entry.title}`}
                               disabled={locked}
-                              onClick={() => toggleSurface(entry, "appVisible")}
+                              onClick={() => requestToggle(entry, "appVisible")}
                             >
                               <span className="ua-toggle__knob" />
                             </button>
@@ -624,9 +659,9 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
                               type="button"
                               className={`ua-toggle ua-toggle--sm${live ? " ua-toggle--on" : ""}`}
                               aria-pressed={live}
-                              aria-label={`${entry.title} ${live ? "live" : "hidden"}`}
+                              aria-label={live ? `Disable ${entry.title}` : `Enable ${entry.title}`}
                               disabled={locked}
-                              onClick={() => toggleStatus(entry)}
+                              onClick={() => requestToggle(entry, "status")}
                             >
                               <span className="ua-toggle__knob" />
                             </button>
@@ -729,6 +764,17 @@ export function HealthDisordersSection({ items, setItems, editor, setEditor, onT
         confirmTone="danger"
         onCancel={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingToggle)}
+        tag="Health disorder"
+        title={toggleCopy.title}
+        body={toggleCopy.body}
+        confirmLabel={toggleCopy.confirmLabel}
+        confirmTone={toggleCopy.confirmTone}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={confirmToggle}
       />
     </div>
   );

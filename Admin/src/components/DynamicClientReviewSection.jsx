@@ -196,6 +196,7 @@ export function DynamicClientReviewSection({
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: TESTIMONIAL_PAGE_SIZE, total: 0, pages: 1 });
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingToggle, setPendingToggle] = useState(null);
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -262,51 +263,74 @@ export function DynamicClientReviewSection({
     }
   }
 
-  async function approve(entry) {
-    setBusy(true);
-    try {
-      const saved = await adminUpdateClientTestimonial(null, entry.id, { live: true });
-      setQueue((prev) => prev.filter((row) => row.id !== entry.id));
-      setPublished((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      onToast(`${asCopyString(entry.name)} approved`);
-    } catch (error) {
-      onToast(error?.message || "Could not approve review");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function hide(entry) {
-    setBusy(true);
-    try {
-      const saved = await adminUpdateClientTestimonial(null, entry.id, { live: false });
-      setPublished((prev) => prev.filter((row) => row.id !== entry.id));
-      setQueue((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      onToast(`${asCopyString(entry.name)} hidden`);
-    } catch (error) {
-      onToast(error?.message || "Could not hide review");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function patchPublished(id, patch) {
     setPublished((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
-  async function toggleSurface(item, field) {
-    if (busy || (field !== "webVisible" && field !== "appVisible")) return;
-    const next = !item[field];
-    const prev = item[field];
-    patchPublished(item.id, { [field]: next });
+  function requestToggle(entry, field) {
+    if (busy || !entry) return;
+    if (field !== "webVisible" && field !== "appVisible" && field !== "live") return;
+    setPendingToggle({ entry, field, next: !entry[field] });
+  }
+
+  async function confirmToggle() {
+    const pending = pendingToggle;
+    if (!pending?.entry) return;
+    const { entry, field, next } = pending;
+    setPendingToggle(null);
+    setBusy(true);
     try {
-      const saved = await adminUpdateClientTestimonial(null, item.id, { [field]: next });
-      patchPublished(item.id, saved);
+      const saved = await adminUpdateClientTestimonial(null, entry.id, { [field]: next });
+      if (field === "live") {
+        if (next) {
+          setQueue((prev) => prev.filter((row) => row.id !== entry.id));
+          setPublished((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+          onToast(`${asCopyString(entry.name)} enabled`);
+        } else {
+          setPublished((prev) => prev.filter((row) => row.id !== entry.id));
+          setQueue((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+          onToast(`${asCopyString(entry.name)} disabled`);
+        }
+      } else {
+        patchPublished(entry.id, saved);
+        const surface = field === "webVisible" ? "Web" : "App";
+        onToast(`${surface} ${next ? "enabled" : "disabled"} for ${asCopyString(entry.name)}`);
+      }
     } catch (error) {
-      patchPublished(item.id, { [field]: prev });
-      onToast(error?.message || `Could not update ${field === "webVisible" ? "web" : "app"} visibility`);
+      onToast(error?.message || "Could not update review");
+    } finally {
+      setBusy(false);
     }
   }
+
+  const toggleCopy = useMemo(() => {
+    const name = asCopyString(pendingToggle?.entry?.name) || "this review";
+    const next = Boolean(pendingToggle?.next);
+    if (pendingToggle?.field === "webVisible") {
+      return {
+        title: next ? `Enable web for ${name}?` : `Disable web for ${name}?`,
+        body: next ? "This review will show on the website." : "This review will be hidden from the website.",
+        confirmLabel: next ? "Enable" : "Disable",
+        confirmTone: next ? "primary" : "danger",
+      };
+    }
+    if (pendingToggle?.field === "appVisible") {
+      return {
+        title: next ? `Enable app for ${name}?` : `Disable app for ${name}?`,
+        body: next ? "This review will show in the app." : "This review will be hidden from the app.",
+        confirmLabel: next ? "Enable" : "Disable",
+        confirmTone: next ? "primary" : "danger",
+      };
+    }
+    return {
+      title: next ? `Enable ${name}?` : `Disable ${name}?`,
+      body: next
+        ? "This review will be published on the live site."
+        : "This review will be hidden from the site and returned to the review queue.",
+      confirmLabel: next ? "Enable" : "Disable",
+      confirmTone: next ? "primary" : "danger",
+    };
+  }, [pendingToggle]);
 
   async function deleteItem() {
     if (!pendingDelete) return;
@@ -406,7 +430,7 @@ export function DynamicClientReviewSection({
                     type="button"
                     className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-cr-btn-approve"
                     disabled={busy}
-                    onClick={() => approve(entry)}
+                    onClick={() => requestToggle(entry, "live")}
                   >
                     Approve
                   </button>
@@ -453,9 +477,9 @@ export function DynamicClientReviewSection({
                         type="button"
                         className={`ua-toggle ua-toggle--sm${entry.webVisible ? " ua-toggle--on" : ""}`}
                         aria-pressed={entry.webVisible}
-                        aria-label={entry.webVisible ? "Hide on web" : "Show on web"}
+                        aria-label={entry.webVisible ? `Disable web for ${asCopyString(entry.name)}` : `Enable web for ${asCopyString(entry.name)}`}
                         disabled={busy}
-                        onClick={() => toggleSurface(entry, "webVisible")}
+                        onClick={() => requestToggle(entry, "webVisible")}
                       >
                         <span className="ua-toggle__knob" />
                       </button>
@@ -466,9 +490,9 @@ export function DynamicClientReviewSection({
                         type="button"
                         className={`ua-toggle ua-toggle--sm${entry.appVisible ? " ua-toggle--on" : ""}`}
                         aria-pressed={entry.appVisible}
-                        aria-label={entry.appVisible ? "Hide on app" : "Show on app"}
+                        aria-label={entry.appVisible ? `Disable app for ${asCopyString(entry.name)}` : `Enable app for ${asCopyString(entry.name)}`}
                         disabled={busy}
-                        onClick={() => toggleSurface(entry, "appVisible")}
+                        onClick={() => requestToggle(entry, "appVisible")}
                       >
                         <span className="ua-toggle__knob" />
                       </button>
@@ -481,8 +505,9 @@ export function DynamicClientReviewSection({
                         type="button"
                         className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`}
                         aria-pressed={entry.live}
+                        aria-label={entry.live ? `Disable ${asCopyString(entry.name)}` : `Enable ${asCopyString(entry.name)}`}
                         disabled={busy}
-                        onClick={() => hide(entry)}
+                        onClick={() => requestToggle(entry, "live")}
                       >
                         <span className="ua-toggle__knob" />
                       </button>
@@ -581,6 +606,17 @@ export function DynamicClientReviewSection({
         confirmTone="danger"
         onCancel={() => setPendingDelete(null)}
         onConfirm={deleteItem}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingToggle)}
+        tag="Client review"
+        title={toggleCopy.title}
+        body={toggleCopy.body}
+        confirmLabel={toggleCopy.confirmLabel}
+        confirmTone={toggleCopy.confirmTone}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={confirmToggle}
       />
     </div>
   );

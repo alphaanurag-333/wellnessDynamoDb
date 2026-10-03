@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+
 export function ConfirmDialog({
   open,
   tag,
@@ -11,7 +13,8 @@ export function ConfirmDialog({
 }) {
   if (!open) return null;
 
-  return (
+  const host = document.querySelector(".updated-admin") || document.body;
+  return createPortal(
     <div className="ua-cp-modal-backdrop ua-confirm-backdrop" onClick={onCancel} role="presentation">
       <div
         className="ua-confirm-dialog"
@@ -35,6 +38,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    host,
   );
 }

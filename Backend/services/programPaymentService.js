@@ -91,7 +91,7 @@ async function createProgramOrder(userId, { paymentMethod = "upi" } = {}) {
     }
   }
 
-  if (user.programPurchased) {
+  if (user.programPurchased && !offer) {
     const err = new Error("Wellness Program already purchased");
     err.name = "AlreadyPurchasedError";
     throw err;

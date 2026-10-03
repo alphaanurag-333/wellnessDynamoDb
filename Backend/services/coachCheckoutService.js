@@ -575,6 +575,18 @@ async function findCatalogItem(productType, itemId) {
   return { config, item };
 }
 
+/** Admin/WC "Convert to Heal" sets programPurchased without a payment; only a paid program transaction counts. */
+async function hasPaidProgramTransaction(userId) {
+  if (!userId) return false;
+  const paid = await listTransactionsByUserId(userId, {
+    page: 1,
+    limit: 1,
+    paymentStatus: "paid",
+    productType: "program",
+  });
+  return (paid.items || []).length > 0;
+}
+
 async function replacePendingTransaction(userId, productType) {
   const pending = await listTransactionsByUserId(userId, {
     page: 1,
@@ -608,7 +620,7 @@ async function triggerCoachCheckout({
     throw new AppError("User is not under your coaching hierarchy", 403);
   }
 
-  if (type === "program" && user.programPurchased) {
+  if (type === "program" && user.programPurchased && (await hasPaidProgramTransaction(user.id))) {
     throw new AppError("Client has already purchased a Wellness Program", 409);
   }
   if (type === "program" && actor?.role === "admin" && !clientHasWcOrAwc(user)) {
@@ -937,6 +949,7 @@ module.exports = {
   toPublicCoachProgramOffer,
   resolveBundledSubscription,
   canActorTriggerCheckout,
+  hasPaidProgramTransaction,
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,
   buildUserProgramGetPayload,

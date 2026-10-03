@@ -119,8 +119,13 @@ async function deleteRegistrationOtp(identifiers) {
 }
 
 async function verifyRegistrationOtp(identifiers, otp) {
-  const entry = await findRegistrationOtp(identifiers);
-  if (!entry) return { ok: false, reason: "missing" };
+  const entry = await getRegistrationOtpRecord(identifiers);
+  if (!entry || entry.otp == null || String(entry.otp).trim() === "") {
+    return { ok: false, reason: "missing" };
+  }
+  if (isOtpExpired(entry.otpExpire)) {
+    return { ok: false, reason: "expired" };
+  }
   if (String(entry.otp) !== String(otp).trim()) {
     return { ok: false, reason: "invalid" };
   }

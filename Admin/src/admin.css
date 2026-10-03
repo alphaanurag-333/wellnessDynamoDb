@@ -38347,6 +38347,17 @@ scrollbar-width: thin;
   cursor: not-allowed;
 }
 
+.updated-admin .ua-cfg-pgw-status {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #e8f6ee;
+  color: #146c43;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
 .updated-admin .ua-cfg-pgw-actions {
   display: flex;
   flex-wrap: wrap;

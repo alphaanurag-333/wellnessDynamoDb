@@ -56,6 +56,15 @@ function isOtpExpired(otpExpire) {
   return Number.isNaN(t) || t < Date.now();
 }
 
+const OTP_EXPIRED_MESSAGE = "OTP has expired";
+const OTP_EXPIRED_CODE = "OTP_EXPIRED";
+
+function otpExpiredError() {
+  const err = new AppError(OTP_EXPIRED_MESSAGE, 400);
+  err.code = OTP_EXPIRED_CODE;
+  return err;
+}
+
 function otpTargetLabel({ phoneCountryCode, phone, email }) {
   const mobile = `${phoneCountryCode || ""} ${phone || ""}`.trim();
   return mobile || email || "unknown";
@@ -97,6 +106,9 @@ module.exports = {
   resolveOtp,
   getOtpExpiryDate,
   isOtpExpired,
+  OTP_EXPIRED_MESSAGE,
+  OTP_EXPIRED_CODE,
+  otpExpiredError,
   isStaticOtpPhone,
   isValidStaticOtp,
   anyStaticOtpMatch,
