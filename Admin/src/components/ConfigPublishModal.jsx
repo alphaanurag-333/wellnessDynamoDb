@@ -8,6 +8,7 @@ const DEFERRED_PUBLISH_CONFIGS = new Set([
   "app-language-disable",
   "app-whatsapp-support",
   "app-compliance",
+  "app-citation",
 ]);
 
 function publishBody(item) {

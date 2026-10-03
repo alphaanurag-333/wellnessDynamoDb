@@ -17,6 +17,7 @@ import {
   AppTermsOfServiceSection,
   BannerSection,
   ChallengesSection,
+  CitationSection,
   CommitmentLetterSection,
   CommunityGuidelinesSection,
   ConfigPreviewModal,
@@ -1292,6 +1293,7 @@ const PUBLISH_CONFIGS = new Set([
   "app-community-guidelines",
   "app-medical-disclaimer",
   "app-compliance",
+  "app-citation",
   "web-fs-tos",
   "web-fs-privacy",
   "web-fs-guidelines",
@@ -1372,6 +1374,7 @@ export function ConfigDetailPage() {
     enabled: true,
     names: "GDPR, HIPAA",
   });
+  const [citationSettings, setCitationSettings] = useState({ enabled: true });
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
@@ -1542,7 +1545,8 @@ export function ConfigDetailPage() {
       || current.id === "app-consultancy-amount"
       || current.id === "app-language-disable"
       || current.id === "app-whatsapp-support"
-      || current.id === "app-compliance";
+      || current.id === "app-compliance"
+      || current.id === "app-citation";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1557,6 +1561,8 @@ export function ConfigDetailPage() {
           setWhatsappSupportSettings(saved);
         } else if (current.id === "app-compliance" && saved) {
           setComplianceSettings(saved);
+        } else if (current.id === "app-citation" && saved) {
+          setCitationSettings(saved);
         } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
@@ -1693,6 +1699,8 @@ export function ConfigDetailPage() {
             ? guidelineBlocks.some((entry) => entry.shown)
           : item.id === "app-compliance"
             ? Boolean(complianceSettings?.enabled)
+          : item.id === "app-citation"
+            ? Boolean(citationSettings?.enabled)
           : item.id === "app-measurement-video"
             ? measurementGuide.live
           : item.id === "app-onboarding-video"
@@ -2075,6 +2083,16 @@ export function ConfigDetailPage() {
           <AppComplianceSection
             settings={complianceSettings}
             setSettings={setComplianceSettings}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-citation":
+        return (
+          <CitationSection
+            settings={citationSettings}
+            setSettings={setCitationSettings}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}

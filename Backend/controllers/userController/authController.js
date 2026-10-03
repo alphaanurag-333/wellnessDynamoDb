@@ -8,7 +8,6 @@ const {
   setRegistrationOtp,
   clearRegistrationOtp,
   verifyRegistrationOtp,
-  getRegistrationOtpMeta,
 } = require("../../utils/registrationOtpStore");
 const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
@@ -49,11 +48,7 @@ const { uploadFileFromRequest } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
 const { ensureHealIfProgramPurchased } = require("../../models/userConversionModel");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
-const {
-  assertOtpSendAllowed,
-  buildNextOtpSendState,
-  clearOtpSendState,
-} = require("../../utils/otpSendGuard");
+const { clearOtpSendState } = require("../../utils/otpSendGuard");
 
 function getSessionVersion(user) {
   return Number(user?.sessionVersion || 0);
@@ -208,26 +203,13 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
     phone: delivery.phone,
     phoneCountryCode: delivery.phoneCountryCode,
   };
-  const existingOtpMeta = await getRegistrationOtpMeta(identifiers);
-  const skipGuard = isStaticOtpPhone(phone) || isStaticOtpPhone(delivery.phone);
-  const { effectiveCount } = skipGuard
-    ? { effectiveCount: 0 }
-    : assertOtpSendAllowed({
-        sendCount: existingOtpMeta?.otpSendCount,
-        cooldownUntil: existingOtpMeta?.otpCooldownUntil,
-      });
-  const nextSendState = skipGuard
-    ? { otpSendCount: 0, otpCooldownUntil: null }
-    : buildNextOtpSendState(effectiveCount);
-
   const otp = resolveOtp(delivery.phone || phone);
   const otpExpire = getOtpExpiryDate();
 
   await setRegistrationOtp(identifiers, {
     otp,
     otpExpire,
-    otpSendCount: nextSendState.otpSendCount,
-    otpCooldownUntil: nextSendState.otpCooldownUntil,
+    ...clearOtpSendState(),
   });
 
   await deliverOtp({
@@ -405,17 +387,8 @@ exports.sendLoginOtp = asyncHandler(async (req, res) => {
 
   const effectiveWhatsapp = getEffectiveWhatsapp(user);
   const otpPhone = effectiveWhatsapp.phone || user.phone;
-  const skipGuard =
+  const isStaticPhone =
     isStaticOtpPhone(phone) || isStaticOtpPhone(user.phone) || isStaticOtpPhone(otpPhone);
-  const { effectiveCount } = skipGuard
-    ? { effectiveCount: 0 }
-    : assertOtpSendAllowed({
-        sendCount: user.otpSendCount,
-        cooldownUntil: user.otpCooldownUntil,
-      });
-  const nextSendState = skipGuard
-    ? { otpSendCount: 0, otpCooldownUntil: null }
-    : buildNextOtpSendState(effectiveCount);
 
   const otp = resolveOtp(phone || otpPhone);
   const otpExpire = getOtpExpiryDate();
@@ -423,13 +396,12 @@ exports.sendLoginOtp = asyncHandler(async (req, res) => {
   await updateUser(user.id, {
     otp,
     otpExpire,
-    otpSendCount: nextSendState.otpSendCount,
-    otpCooldownUntil: nextSendState.otpCooldownUntil,
+    ...clearOtpSendState(),
   });
 
   await deliverOtp({
     email: user.email,
-    phone: skipGuard ? normalizePhone(phone) || otpPhone : otpPhone,
+    phone: isStaticPhone ? normalizePhone(phone) || otpPhone : otpPhone,
     phoneCountryCode: effectiveWhatsapp.countryCode || user.phoneCountryCode,
     otp,
   });

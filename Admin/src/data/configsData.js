@@ -436,6 +436,17 @@ export const CONFIG_GROUPS = {
           toggleable: false,
           upload: true,
         },
+        {
+          id: "app-citation",
+          name: "Citation",
+          note: "Show citations in the client app · Active or Inactive · App Config",
+          owner: "Admin",
+          app: true,
+          web: false,
+          live: true,
+          on: true,
+          tags: [],
+        },
       ],
     },
   ],
@@ -886,6 +897,7 @@ export function listConfigItems() {
 
 export function getConfigStateLabel(item, on) {
   if (item.id === "app-gst") return on ? "On" : "Off";
+  if (item.id === "app-citation") return on ? "Active" : "Inactive";
   if (item.id === "app-payment-gateway") {
     return typeof on === "string" ? on : "Not set";
   }
