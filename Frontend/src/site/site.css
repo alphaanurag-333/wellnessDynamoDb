@@ -1655,7 +1655,7 @@ min-height: 100dvh;
 /* ========== Layout ========== */
 --container-width: 1320px;
   --container-padding: 15px;
---header-height: 72px;
+--header-height: 74px;
 /* ========== Buttons ========== */
 --btn-primary-bg: var(--primary);
   --btn-primary-color: #fff;
@@ -2011,6 +2011,10 @@ border-bottom: 1px solid var(--border-light);
 
 .mobile-nav summary {
   list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 padding: 14px 0;
 color: var(--text-heading);
 font-size: var(--fs-base);
@@ -2020,6 +2024,15 @@ cursor: pointer;
 
 .mobile-nav summary::-webkit-details-marker {
   display: none;
+}
+
+.mobile-nav summary svg {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.mobile-nav details[open] > summary svg {
+  transform: rotate(180deg);
 }
 
 .mobile-submenu {
@@ -11843,7 +11856,7 @@ gap: 45px;
 
 @media (max-width: 768px) {
 .site-header__inner {
-    height: 60px;
+    height: 63px;
   }
   .form-group {
     width: 100%;
@@ -12780,6 +12793,9 @@ font-size: 0.62rem;
   }
 .mobile-nav {
     padding: 15px;
+  }
+  .mobile-nav {
+    padding-top: 0px !important;
   }
 .methodology-card__cta {
     width: 100%;

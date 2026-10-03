@@ -224,7 +224,8 @@ export function SiteHeader() {
 
           <details open={isHealthActive}>
             <summary className={isHealthActive ? "active" : ""}>
-              Health Solutions   <ChevronDown size={18} />
+              <span>Health Solutions</span>
+              <ChevronDown size={18} aria-hidden />
             </summary>
 
             <div className="mobile-submenu">
