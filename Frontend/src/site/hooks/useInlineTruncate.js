@@ -43,6 +43,74 @@ function renderedLineCount(el, lineHeight) {
   return count;
 }
 
+/** True when any text line box paints on top of the inline "Read More" control. */
+function controlOverlapsText(el) {
+  const btn = el.querySelector(".rm-flow__btn");
+  const textEl = el.querySelector(".rm-flow__text");
+  if (!btn || !textEl) return false;
+  const b = btn.getBoundingClientRect();
+  if (!b.width || !b.height) return false;
+  const range = document.createRange();
+  range.selectNodeContents(textEl);
+  const rects = Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0);
+  range.detach?.();
+  return rects.some(
+    (r) => r.right > b.left + 1 && r.left < b.right - 1 && r.bottom > b.top + 1 && r.top < b.bottom - 1
+  );
+}
+
+/**
+ * Builds a hidden copy of the live element next to it so it picks up the exact same
+ * stylesheet rules (iOS Safari justify, card-specific fonts, etc.) as the real paragraph.
+ */
+function createProbe(el, contentWidth) {
+  const probe = document.createElement(el.tagName);
+  probe.className = String(el.className || "")
+    .replace(/\b(rm-flow--clamp|is-expanded)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  probe.setAttribute("aria-hidden", "true");
+  probe.style.cssText = [
+    "position:absolute !important",
+    "left:0 !important",
+    "top:0 !important",
+    "visibility:hidden !important",
+    "pointer-events:none !important",
+    "box-sizing:content-box !important",
+    `width:${Math.max(0, contentWidth)}px !important`,
+    "min-width:0 !important",
+    "max-width:none !important",
+    "height:auto !important",
+    "min-height:0 !important",
+    "max-height:none !important",
+    "margin:0 !important",
+    "padding:0 !important",
+    "border:0 !important",
+    "overflow:visible !important",
+  ].join(";");
+
+  const textSpan = document.createElement("span");
+  textSpan.className = "rm-flow__text";
+  probe.append(textSpan);
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.tabIndex = -1;
+  btn.className = "rm-flow__btn";
+  const label = document.createElement("span");
+  label.className = "rm-flow__label";
+  label.textContent = "Read More";
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.setAttribute("width", "14");
+  icon.setAttribute("height", "14");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  btn.append(label, icon);
+
+  const parent = el.parentNode || document.body;
+  parent.insertBefore(probe, el.nextSibling);
+  return { probe, textSpan, btn };
+}
+
 function snapToWord(source, index) {
   if (index >= source.length) return source.length;
   const snapped = source.lastIndexOf(" ", index);
@@ -82,45 +150,8 @@ export function useInlineTruncate(text, expanded, lines = 3) {
       const cs = getComputedStyle(el);
       const lh = lineHeightPx(cs);
       const maxH = lh * lines + 2;
-      const probe = document.createElement("p");
-      probe.style.cssText = [
-        "position:fixed",
-        "left:-9999px",
-        "top:0",
-        "visibility:hidden",
-        "pointer-events:none",
-        `width:${Math.max(0, width - 1)}px`,
-        `font-size:${cs.fontSize}`,
-        `font-family:${cs.fontFamily}`,
-        `font-weight:${cs.fontWeight}`,
-        `font-style:${cs.fontStyle}`,
-        `line-height:${cs.lineHeight}`,
-        `letter-spacing:${cs.letterSpacing}`,
-        "text-align:left",
-        "white-space:normal",
-        "overflow-wrap:break-word",
-        "word-break:normal",
-        "margin:0",
-        "padding:0",
-      ].join(";");
-
-      const small =
-        getComputedStyle(document.documentElement).getPropertyValue("--font-size-small").trim() ||
-        cs.fontSize;
-      const btn = document.createElement("span");
-      btn.textContent = "Read More";
-      // Mirrors .rm-flow__btn: inline after the text, 14px icon + 4px gap + 4px icon margin.
-      btn.style.cssText = [
-        "display:inline-block",
-        "white-space:nowrap",
-        "font-weight:600",
-        `font-size:${small}`,
-        "margin-left:6px",
-        "padding-right:22px",
-      ].join(";");
-      const textSpan = document.createElement("span");
-      probe.append(textSpan);
-      document.body.appendChild(probe);
+      const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const { probe, textSpan, btn } = createProbe(el, width - padX - 1);
 
       textSpan.textContent = source;
       const fits = probe.scrollHeight <= maxH;
@@ -137,6 +168,7 @@ export function useInlineTruncate(text, expanded, lines = 3) {
         return;
       }
 
+      probe.classList.add("rm-flow--clamp");
       probe.append(btn);
 
       let lo = 0;
@@ -205,7 +237,8 @@ export function useInlineTruncate(text, expanded, lines = 3) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || expanded || !overflows || !preview) return;
-    if (renderedLineCount(el, lineHeightPx(getComputedStyle(el))) <= lines) return;
+    const tooTall = renderedLineCount(el, lineHeightPx(getComputedStyle(el))) > lines;
+    if (!tooTall && !controlOverlapsText(el)) return;
     const trim = extraTrimRef.current;
     if (trim.words >= MAX_EXTRA_TRIM_WORDS) return;
     trim.words += 1;
