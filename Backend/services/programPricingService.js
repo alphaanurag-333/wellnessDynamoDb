@@ -176,8 +176,11 @@ async function previewCoachProgramOffer(user, offer) {
 async function previewProgramCheckout(userId) {
   const user = await getUserById(userId);
   if (!user) throwNamed("User not found", "NotFoundError");
-  if (user.programPurchased) {
-    throwNamed("Wellness Program already purchased", "AlreadyPurchasedError");
+
+  // A live coach offer stays payable even if Convert to Heal already flagged programPurchased.
+  const offer = getActiveCoachCheckoutOffer(user, "program");
+  if (offer) {
+    return previewCoachProgramOffer(user, offer);
   }
 
   const expiredOffer = getExpiredCoachCheckoutOffer(user, "program");
@@ -185,9 +188,8 @@ async function previewProgramCheckout(userId) {
     throwNamed("This payment link has expired", "ValidationError");
   }
 
-  const offer = getActiveCoachCheckoutOffer(user, "program");
-  if (offer) {
-    return previewCoachProgramOffer(user, offer);
+  if (user.programPurchased) {
+    throwNamed("Wellness Program already purchased", "AlreadyPurchasedError");
   }
 
   const program = await getPurchasableProgramForUser(userId);
