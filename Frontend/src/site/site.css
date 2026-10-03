@@ -12594,7 +12594,7 @@ font-size: 0.62rem;
   .heroSwiper .swiper-slide .hero-bg-image,
   .home-page > .swiper.heroSwiper .swiper-slide img,
   .home-page > .swiper.heroSwiper .swiper-slide .hero-bg-image {
-    object-fit: cover;
+    object-fit: fill;
   }
 .champion-section,
   .real-healing-section {
@@ -13787,7 +13787,7 @@ bottom: -18px;
     min-height: auto !important;
   }
   .monthly-champions .champion-card {
-    padding: 14px 16px 16px !important;
+    padding: 10px 10px 10px !important;
   }
   .monthly-champions .champion-avatar {
     width: 48px;
@@ -13817,11 +13817,11 @@ bottom: -18px;
   .monthly-champions .champion-title,
   .monthly-champions .marginmanages {
     font-size: 0.82rem !important;
-    margin-bottom: 4px !important;
+    margin-bottom: 2px !important;
   }
   .monthly-champions .champion-info h4,
   .monthly-champions .fonrside {
-    font-size: 1rem !important;
+    font-size: 0.8rem !important;
   }
   .monthly-champions .champion-info p,
   .champion-info p {
