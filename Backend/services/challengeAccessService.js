@@ -2,7 +2,10 @@ const { getUserById, updateUser } = require("../models/userModel");
 const {
   getChallengeById,
   getChallengeRecordById,
+  listExpiredPublishedChallenges,
+  updateChallenge,
 } = require("../models/challengeModel");
+const { todayIstDateString } = require("../utils/challengeAvailability");
 const {
   listEnrollmentsByStatus,
   updateEnrollment,
@@ -13,17 +16,6 @@ const {
   buildRestoreAccessUpdates,
 } = require("../utils/challengeOnboardingHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
-
-const IST_TZ = "Asia/Kolkata";
-
-function todayIstDateString(reference = new Date()) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: IST_TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(reference);
-}
 
 async function grantChallengeAccess(enrollment, challenge) {
   if (!enrollment || enrollment.wasOriginallyPaid || !enrollment.temporaryAccess) {
@@ -116,11 +108,29 @@ async function clearTemporaryChallengeFlagOnRealPurchase(userId) {
   return enrollment;
 }
 
+async function hideExpiredChallenges(today) {
+  const rows = await listExpiredPublishedChallenges(today);
+  let hidden = 0;
+  for (const row of rows) {
+    await updateChallenge(row.id, { status: "completed" });
+    hidden += 1;
+  }
+  return hidden;
+}
+
 async function runChallengeLifecycleJob({ now = new Date() } = {}) {
   const today = todayIstDateString(now);
   let granted = 0;
   let completed = 0;
   let failed = 0;
+  let expiredChallenges = 0;
+
+  try {
+    expiredChallenges = await hideExpiredChallenges(today);
+  } catch (err) {
+    failed += 1;
+    console.error("[ChallengeLifecycle] hide expired challenges failed", err.message);
+  }
 
   const booked = await listEnrollmentsByStatus("booked", { page: 1, limit: 500 });
   for (const enrollment of booked.enrollments) {
@@ -157,7 +167,7 @@ async function runChallengeLifecycleJob({ now = new Date() } = {}) {
     }
   }
 
-  return { today, granted, completed, failed };
+  return { today, granted, completed, failed, expiredChallenges };
 }
 
 module.exports = {

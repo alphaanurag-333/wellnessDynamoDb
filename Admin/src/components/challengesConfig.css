@@ -398,6 +398,7 @@
 .updated-admin .ua-cfg-chal-card__top {
   display: flex;
   align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

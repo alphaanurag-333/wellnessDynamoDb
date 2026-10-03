@@ -22,6 +22,7 @@ import {
   pointsToTransformationFields,
 } from "../data/testimonialDropdownData.js";
 import { TRANSFORMATION_MEDIA_CATEGORY, TRANSFORMATION_PAGE_SIZE } from "../data/transformationConfigData.js";
+import { moveConfigListItem } from "../utils/configReorder.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
 import { galleryVersionLabel } from "../data/galleryData.js";
@@ -547,27 +548,44 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
     }
   }
 
+  const canReorder = !query;
+
+  async function listEveryTransformation() {
+    const all = [];
+    const seen = new Set();
+    let pageNum = 1;
+    let pages = 1;
+    do {
+      const result = await adminListTransformations(null, { page: pageNum, limit: 200 });
+      for (const item of result?.items || []) {
+        if (!item?.id || seen.has(item.id)) continue;
+        seen.add(item.id);
+        all.push(item);
+      }
+      pages = Number(result?.pagination?.pages) || 1;
+      pageNum += 1;
+    } while (pageNum <= pages && pageNum <= 50);
+    return all;
+  }
+
   async function moveItem(index, direction) {
-    const next = index + direction;
-    if (next < 0 || next >= items.length) return;
-    const current = items[index];
-    const swap = items[next];
-    const currentOrder = Number.isFinite(Number(current.order)) ? current.order : index + 1;
-    const swapOrder = Number.isFinite(Number(swap.order)) ? swap.order : next + 1;
-    setBusy(true);
-    try {
-      const [savedCurrent, savedSwap] = await Promise.all([
-        adminUpdateTransformation(null, current.id, { order: swapOrder }),
-        adminUpdateTransformation(null, swap.id, { order: currentOrder }),
-      ]);
-      patchItem(current.id, savedCurrent);
-      patchItem(swap.id, savedSwap);
-      await loadItems();
-    } catch (error) {
-      onToast(error?.message || "Could not reorder");
-    } finally {
-      setBusy(false);
-    }
+    await moveConfigListItem({
+      canReorder,
+      busy,
+      setBusy,
+      items,
+      setItems,
+      index,
+      direction,
+      crossPage: true,
+      page,
+      pageSize: TRANSFORMATION_PAGE_SIZE,
+      listAll: listEveryTransformation,
+      updateItem: (id, fields) => adminUpdateTransformation(null, id, fields),
+      reload: () => loadItems(),
+      onToast,
+      blockedMessage: "Clear search to reorder transformations",
+    });
   }
 
   async function deleteItem() {
@@ -1080,8 +1098,26 @@ export function DynamicTransformationSection({ items, setItems, editor, setEdito
                           </div>
                         </div>
                         <div className="ua-cfg-tf-item__moves">
-                          <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === 0} onClick={() => moveItem(index, -1)} aria-label="Move up">↑</button>
-                          <button type="button" className="ua-cfg-icon-btn" disabled={busy || index === items.length - 1} onClick={() => moveItem(index, 1)} aria-label="Move down">↓</button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || (index === 0 && page <= 1)}
+                            onClick={() => moveItem(index, -1)}
+                            aria-label="Move up"
+                            title={canReorder ? "Move up" : "Clear search to reorder"}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="ua-cfg-icon-btn"
+                            disabled={busy || !canReorder || (index === items.length - 1 && page >= (pagination.pages || 1))}
+                            onClick={() => moveItem(index, 1)}
+                            aria-label="Move down"
+                            title={canReorder ? "Move down" : "Clear search to reorder"}
+                          >
+                            ↓
+                          </button>
                         </div>
                         <div className="ua-cfg-tf-item__btns">
                           <button

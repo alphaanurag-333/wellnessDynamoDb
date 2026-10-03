@@ -12,6 +12,7 @@ const {
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 const { resolvePublicUrl } = require("../utils/s3");
+const { todayIstDateString } = require("../utils/challengeAvailability");
 const {
   PAID_ONBOARDING_STATUS_KEYS,
 } = require("../utils/paidOnboardingHelpers");
@@ -273,11 +274,15 @@ async function listChallenges({ page = 1, limit = 20, status, search } = {}) {
   };
 }
 
-async function listPublishedChallenges({ page = 1, limit = 50 } = {}) {
+async function listPublishedChallenges({ page = 1, limit = 50, today } = {}) {
+  const asOf = today || todayIstDateString();
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: "published",
+    filterExpression: "#endDate >= :minEndDate",
+    exprNames: { "#endDate": "endDate" },
+    exprValues: { ":minEndDate": asOf },
     scanIndexForward: false,
     page,
     limit,
@@ -288,6 +293,24 @@ async function listPublishedChallenges({ page = 1, limit = 50 } = {}) {
     challenges: items.map((row) => toChallengePublic(row)),
     pagination,
   };
+}
+
+async function listExpiredPublishedChallenges(today) {
+  const asOf = String(today || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return [];
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: "published",
+    filterExpression: "#endDate < :today",
+    exprNames: { "#endDate": "endDate" },
+    exprValues: { ":today": asOf },
+    scanIndexForward: false,
+    page: 1,
+    limit: 200,
+    maxLimit: 200,
+  });
+  return items.map((row) => toChallengePublic(row)).filter(Boolean);
 }
 
 async function updateChallenge(id, updates) {
@@ -390,6 +413,7 @@ module.exports = {
   getChallengeRecordById,
   listChallenges,
   listPublishedChallenges,
+  listExpiredPublishedChallenges,
   updateChallenge,
   incrementChallengeEnrollmentCount,
   deleteChallenge,

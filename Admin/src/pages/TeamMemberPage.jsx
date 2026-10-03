@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
+import { ConfirmDialog } from "../components/ConfirmDialog.jsx";
 import { CfgSelect, OrangeButton, PageHeader } from "../components/shared.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
@@ -128,12 +129,14 @@ function AdminMemberPasswordModal({ open, busy, memberName, onClose, onSubmit })
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setPassword("");
     setConfirmPassword("");
     setError("");
+    setConfirmOpen(false);
   }, [open]);
 
   if (!open) return null;
@@ -152,6 +155,12 @@ function AdminMemberPasswordModal({ open, busy, memberName, onClose, onSubmit })
       return;
     }
     setError("");
+    setConfirmOpen(true);
+  }
+
+  function handleConfirm() {
+    if (busy) return;
+    setConfirmOpen(false);
     onSubmit({ password });
   }
 
@@ -215,6 +224,22 @@ function AdminMemberPasswordModal({ open, busy, memberName, onClose, onSubmit })
             {busy ? "Updating…" : "Update password"}
           </button>
         </div>
+      </div>
+      <div onClick={(event) => event.stopPropagation()}>
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Update password?"
+          body={
+            memberName
+              ? `Replace the current password for ${memberName}? They will need this new password to sign in.`
+              : "Replace the current password? They will need this new password to sign in."
+          }
+          confirmLabel="Update password"
+          onCancel={() => {
+            if (!busy) setConfirmOpen(false);
+          }}
+          onConfirm={handleConfirm}
+        />
       </div>
     </div>
   );
