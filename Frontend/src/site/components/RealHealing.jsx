@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import InlineReadMore from "./InlineReadMore.jsx";
 import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { IoStar, IoStarHalf, IoStarOutline } from "react-icons/io5";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -103,13 +102,9 @@ function RealHealingCard({ item, expanded, onToggle }) {
         <span className="real-healing-tag">{item.category}</span>
       </div>
 
-      <InlineReadMore
-        text={`\u201c${item.review}\u201d`}
-        expanded={expanded}
-        onToggle={() => onToggle(item.id)}
-        lines={2}
-        className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}
-      />
+      <p className={`real-healing-review${expanded ? " real-healing-review--expanded" : ""}`}>
+        {`\u201c${item.review}\u201d`}
+      </p>
 
       <button
         type="button"

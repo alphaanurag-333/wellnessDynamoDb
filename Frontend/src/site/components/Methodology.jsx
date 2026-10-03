@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { BookConsultationButton } from "./AppDownloadModalContext.jsx";
-import InlineReadMore from "./InlineReadMore.jsx";
 import discoveryImg from "../images/discovery.png";
 import analysisImg from "../images/analysis.png";
 import programImg from "../images/program.png";
@@ -12,21 +12,27 @@ const methodologyData = [
     title: "1:1 Discovery Call",
     headTitle: "Understanding You First",
     description:
-      "Your wellness journey begins with a personalised 1:1 conversation. Your Wellness Coach takes time to understand your health history, current lifestyle, nutrition, daily routine, challenges and wellness goals—creating the foundation for guidance that is truly relevant to you.",  },
+      "Your wellness journey begins with a personalised 1:1 conversation. Your Wellness Coach takes time to understand your health history, current lifestyle, nutrition, daily routine, challenges and wellness goals—creating the foundation for guidance that is truly relevant to you.",
+    learnMoreLabel: "Learn About Discovery Call",
+  },
   {
     id: 2,
     image: analysisImg,
     title: "Root Cause & Lifestyle Assessment",
     headTitle: "Looking Beyond the Symptoms",
     description:
-      "We look beyond isolated symptoms to understand the factors that may be influencing your wellbeing. Your health history, nutrition, lifestyle, metabolic health, activity, sleep, stress and available health reports are considered together to identify patterns and areas that may benefit from focused lifestyle support.",  },
+      "We look beyond isolated symptoms to understand the factors that may be influencing your wellbeing. Your health history, nutrition, lifestyle, metabolic health, activity, sleep, stress and available health reports are considered together to identify patterns and areas that may benefit from focused lifestyle support.",
+    learnMoreLabel: "Learn About Our Assessment",
+  },
   {
     id: 3,
     image: programImg,
     title: "Personalised Program",
     headTitle: "Designed Around You",
     description:
-      "Because every individual has different health needs, routines and challenges, your IRW program is personalised around you. Nutrition, movement, sleep, stress management and sustainable lifestyle strategies are combined with dedicated 1:1 coaching, regular reviews and ongoing support to help you work towards your wellness goals.",  },
+      "Because every individual has different health needs, routines and challenges, your IRW program is personalised around you. Nutrition, movement, sleep, stress management and sustainable lifestyle strategies are combined with dedicated 1:1 coaching, regular reviews and ongoing support to help you work towards your wellness goals.",
+    learnMoreLabel: "Learn About Personalised Programs",
+  },
 ];
 
 function MethodologyCard({ item, expanded, onToggle }) {
@@ -39,13 +45,23 @@ function MethodologyCard({ item, expanded, onToggle }) {
       <div className="methodology-card__content">
         <h3>{item.title}</h3>
         <p className="methodology-card__subtitle">{item.headTitle}</p>
-        <InlineReadMore
-          text={item.description}
-          expanded={expanded}
-          onToggle={() => onToggle(item.id)}
-          lines={3}
-          className={`methodology-card__desc${expanded ? " methodology-card__desc--expanded" : ""}`}
-        />
+        <p className={`methodology-card__desc${expanded ? " methodology-card__desc--expanded" : ""}`}>
+          {item.description}
+        </p>
+
+        <button
+          type="button"
+          className="methodology-card__more"
+          onClick={() => onToggle(item.id)}
+          aria-expanded={expanded}
+        >
+          {expanded ? "Show Less" : item.learnMoreLabel}
+          {expanded ? (
+            <ArrowUpRight size={14} aria-hidden />
+          ) : (
+            <ArrowRight size={14} aria-hidden />
+          )}
+        </button>
 
         <BookConsultationButton className="methodology-card__cta">
           Book Your Discovery Call

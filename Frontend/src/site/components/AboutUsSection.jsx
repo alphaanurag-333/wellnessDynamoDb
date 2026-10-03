@@ -389,16 +389,16 @@ const AboutUsSection = () => {
             {aboutBody ? (
               looksLikeHtml(aboutBody) ? (
               <div
-                className="wellness__text mt-0 mb-0 static-page-content"
+                className=" wellness__text mt-0 mb-0 static-page-content"
                 dangerouslySetInnerHTML={{ __html: aboutBody }}
               />
               ) : (
-              <p className="wellness__text mt-0 mb-0">
+              <p className="mrr wellness__text mt-0 mb-0">
                 {aboutBody}
               </p>
               )
             ) : (
-              <p className="wellness__text mt-0 mb-0">
+              <p className=" wellness__text mt-0 mb-0">
                 {FALLBACK_DESCRIPTION_BODY}
               </p>
             )}

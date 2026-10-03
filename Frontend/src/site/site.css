@@ -2635,7 +2635,7 @@ h5.pillar-card__head-title {
   color: var(--text-heading);
 }
 .methodology-card__content p.methodology-card__desc {
-  margin: 8px 0 16px;
+  margin: 8px 0 5px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -2662,6 +2662,32 @@ h5.pillar-card__head-title {
   -webkit-line-clamp: unset;
   line-clamp: unset;
   overflow: visible;
+}
+
+.methodology-card__more {
+  margin: 6px 0 10px;
+  margin-left: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: flex-end;
+  gap: 6px;
+  width: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  transition: var(--transition, opacity 0.2s ease);
+}
+
+.methodology-card__more svg {
+  flex-shrink: 0;
+}
+
+.methodology-card__more:hover {
+  opacity: 0.85;
 }
 
 /* Inline "... Read More" in the text flow — must beat card line-clamp rules */
@@ -7377,6 +7403,36 @@ box-shadow: var(--shadow-sm);
   text-overflow: unset;
 }
 
+.transformation-story-card__more {
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  color: var(--primary);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-small);
+  font-weight: var(--fw-semibold);
+  line-height: 1.4;
+  text-align: left;
+  transition: var(--transition);
+}
+
+.transformation-story-card__more:hover {
+  opacity: 0.85;
+}
+
+.transformation-story-card__more svg {
+  flex-shrink: 0;
+}
+
 .transformation-story-card__meta {
   display: inline-flex;
   align-items: center;
@@ -8029,9 +8085,9 @@ background-image: url("../site/images/birthday-card-bg.png");
 .real-healing-tag {
   background: var(--primary-light);
   color: var(--primary);
-  padding: 6px 14px;
+  padding: 3px 14px;
   border-radius: var(--radius-pill);
-  font-size: var(--fs-xs);
+  font-size: 0.62rem;
   font-weight: var(--fw-semibold);
   max-width: 100%;
   overflow: hidden;
@@ -10608,6 +10664,12 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
 /*  RESPONSIVE & MEDIA QUERIES (kept at end; same-query blocks merged)        */
 /* ========================================================================== */
 
+@media (min-width: 992px) {
+  :root {
+    --font-size-body: 1rem;
+  }
+}
+
 @media (max-width: 640px) {
 :root {
     --font-size-display: 1.875rem;
@@ -11964,6 +12026,7 @@ gap: 45px;
   }
 .methodology-card__image {
     height: auto;
+    aspect-ratio: 16 / 10;
   }
 .methodology-card__content h3 {
     font-size: var(--font-size-h4);
@@ -12482,7 +12545,7 @@ gap: 20px;
     padding: 16px 16px 18px;
   }
 .transformation-story-card__tags {
-    padding: 8px 5px 0;
+    padding: 8px 15px 0;
   }
 .transformation-story-card__label {
 font-size: 0.62rem;
@@ -12515,6 +12578,7 @@ font-size: 0.62rem;
     text-align: justify !important;
 }
 @media (max-width: 576px) {
+ 
 .heroSwiper .swiper-pagination{
   gap: 18px;
 }
@@ -12556,6 +12620,7 @@ font-size: 0.62rem;
     margin: 0 16px 18px;
   }
   .pillar-card__more,
+  .methodology-card__more,
   .real-healing-more,
   .monthly-champions .champion-info__more,
   .success-card__more,
@@ -16316,6 +16381,8 @@ h5.pillar-card__head-title,
 
 /* Text links */
 .rm-flow__btn,
+.methodology-card__more,
+.transformation-story-card__more,
 .success-card__more,
 .real-healing-more,
 .champion-info__more,
