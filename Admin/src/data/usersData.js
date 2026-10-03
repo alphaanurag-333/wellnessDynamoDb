@@ -178,6 +178,23 @@ export function nextTier(tier) {
   return "Seek to Heal";
 }
 
+const ASSIGNED_COACH_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
+
+export const WC_OR_AWC_REQUIRED_MESSAGE =
+  "Assign a wellness coach or assistant wellness coach to this client first";
+
+/** True when a wellness coach or assistant wellness coach is on the client record. */
+export function clientHasWcOrAwc(user) {
+  if (String(user?.parentCoachId || "").trim()) return true;
+  const type = String(user?.assignedCoachType || "").trim().toLowerCase();
+  return Boolean(String(user?.assignedCoachId || "").trim()) && ASSIGNED_COACH_TYPES.has(type);
+}
+
+/** Admin cannot move a SEEK client to HEAL or EAGLE until a WC or AWC is assigned. */
+export function seekUpgradeBlockedForAdmin(user) {
+  return normalizeTier(user?.tier) === "Seek" && !clientHasWcOrAwc(user);
+}
+
 export function canConvertTier(tier) {
   const t = normalizeTier(tier);
   return t === "Seek" || t === "Consultancy" || t === "Seek to Heal";
@@ -231,7 +248,7 @@ export function conversionPrompt(user, direction) {
     }
     return {
       title: `Convert ${name} from SEEK to HEAL?`,
-      body: `This is a manual upgrade when payment did not go through. ${name} becomes a Heal client with coaching entitlements. Assign a coach afterwards if they are still unassigned.`,
+      body: `This is a manual upgrade when payment did not go through. ${name} becomes a Heal client with coaching entitlements under their assigned coach.`,
       confirm: "Convert to HEAL",
       kicker: "Conversion",
     };

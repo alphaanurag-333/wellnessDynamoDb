@@ -1,6 +1,12 @@
 const { getUserById, updateUser } = require("../models/userModel");
 const { convertSeekToHeal, convertMaintenanceToHeal } = require("../models/userConversionModel");
-const { normalizeUserTier, isHealTier, isEagleClientCategory } = require("../models/userAssignmentLogic");
+const {
+  normalizeUserTier,
+  isHealTier,
+  isEagleClientCategory,
+  clientHasWcOrAwc,
+  WC_OR_AWC_REQUIRED_MESSAGE,
+} = require("../models/userAssignmentLogic");
 const {
   listActiveProgramCatalog,
   getProgramCatalogRecordById,
@@ -216,6 +222,15 @@ async function setupPaidClientEntitlements(user, { catalogProgramId, now } = {})
   return current;
 }
 
+/** Admin SEEK upgrades need a WC or AWC already on the client. */
+function assertSeekClientHasCoach(user, tier, allocateToCoachId) {
+  if (allocateToCoachId || tier !== "seek") return;
+  if (clientHasWcOrAwc(user)) return;
+  const err = new Error(`${WC_OR_AWC_REQUIRED_MESSAGE} before converting from SEEK`);
+  err.name = "ValidationError";
+  throw err;
+}
+
 /**
  * Keep an existing WC/AWC allocation. If the client is still unassigned, put them
  * on the acting wellness coach.
@@ -259,6 +274,7 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId, 
   }
 
   const tier = normalizeUserTier(userBefore.userTier);
+  assertSeekClientHasCoach(userBefore, tier, allocateToCoachId);
   let user;
   try {
     user = await convertSeekToHeal(userId, {
@@ -317,6 +333,7 @@ async function adminConvertUserToEagle(userId, { referralCode, catalogProgramId,
   }
 
   const tier = normalizeUserTier(userBefore.userTier);
+  assertSeekClientHasCoach(userBefore, tier, allocateToCoachId);
   let user = userBefore;
 
   if (tier === "maintenance") {

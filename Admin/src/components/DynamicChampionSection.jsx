@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MONTHLY_CHAMPION_PAGE_SIZE,
   adminListMonthlyChampions,
@@ -9,6 +9,7 @@ import {
 } from "../api/monthlyChampionApi.js";
 import { formatRecipeDate } from "../data/recipesConfigData.js";
 import { asCopyString } from "../data/bannerConfigData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import { CfgSelect, ListPagination } from "./shared.jsx";
 
 function Panel({ title, subtitle, actions, children }) {
@@ -118,6 +119,8 @@ export function DynamicChampionSection({ items, setItems, onToast }) {
     pages: 1,
   });
   const [lastJob, setLastJob] = useState(null);
+  const [pendingLive, setPendingLive] = useState(null);
+  const liveLock = useRef(false);
 
   const loadItems = useCallback(async (pageOverride) => {
     const nextPage = pageOverride ?? page;
@@ -173,6 +176,8 @@ export function DynamicChampionSection({ items, setItems, onToast }) {
   }
 
   async function toggleLive(entry) {
+    if (!entry || liveLock.current) return;
+    liveLock.current = true;
     setBusy(true);
     try {
       const saved = await adminUpdateMonthlyChampion(null, entry.id, { live: !entry.live });
@@ -181,8 +186,21 @@ export function DynamicChampionSection({ items, setItems, onToast }) {
     } catch (error) {
       onToast(error?.message || "Could not update champion status");
     } finally {
+      liveLock.current = false;
       setBusy(false);
     }
+  }
+
+  function requestToggleLive(entry) {
+    if (busy || liveLock.current) return;
+    setPendingLive(entry);
+  }
+
+  async function confirmToggleLive() {
+    const entry = pendingLive;
+    if (!entry) return;
+    setPendingLive(null);
+    await toggleLive(entry);
   }
 
   async function runJob() {
@@ -310,7 +328,7 @@ export function DynamicChampionSection({ items, setItems, onToast }) {
                       aria-label={entry.live ? "Hide champion card" : "Show champion card"}
                       aria-pressed={entry.live}
                       disabled={busy}
-                      onClick={() => toggleLive(entry)}
+                      onClick={() => requestToggleLive(entry)}
                     >
                       <span className="ua-toggle__knob" />
                     </button>
@@ -354,6 +372,21 @@ export function DynamicChampionSection({ items, setItems, onToast }) {
         busy={busy}
         onClose={() => setEditing(null)}
         onSave={saveMessage}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingLive)}
+        tag="Champion card"
+        title={pendingLive?.live
+          ? `Disable ${asCopyString(pendingLive?.name) || "this champion"}?`
+          : `Enable ${asCopyString(pendingLive?.name) || "this champion"}?`}
+        body={pendingLive?.live
+          ? "This card will be hidden from the public feed until you turn it back on."
+          : "This card will be live on the public feed."}
+        confirmLabel={pendingLive?.live ? "Disable" : "Enable"}
+        confirmTone={pendingLive?.live ? "danger" : "primary"}
+        onCancel={() => setPendingLive(null)}
+        onConfirm={confirmToggleLive}
       />
     </div>
   );

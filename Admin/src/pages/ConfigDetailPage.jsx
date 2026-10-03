@@ -17,6 +17,7 @@ import {
   AppTermsOfServiceSection,
   BannerSection,
   ChallengesSection,
+  CitationSection,
   CommitmentLetterSection,
   CommunityGuidelinesSection,
   ConfigPreviewModal,
@@ -112,6 +113,7 @@ import {
 } from "../data/configDetailData.js";
 import { configPermissionPrefix, findConfigItem, getConfigStateLabel, isLegalGuidelinesConfigId, isLegalPrivacyConfigId, isLegalTosConfigId } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
+import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../data/usersData.js";
 import {
   getCoachCheckoutOptions,
   listCoachCheckoutStaff,
@@ -263,9 +265,15 @@ function ClientLookupPanel({
     setProgramId("");
   }
 
+  const programNeedsCoach = productType === "program" && Boolean(client) && !clientHasWcOrAwc(client);
+
   function setupProgram() {
     const program = programOptions.find((entry) => entry.id === programId);
     if (!program || !client) return;
+    if (programNeedsCoach) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setSetupOpen(true);
   }
 
@@ -330,12 +338,18 @@ function ClientLookupPanel({
             <button
               type="button"
               className="ua-cfg-lookup__setup"
-              disabled={!programId}
+              disabled={!programId || programNeedsCoach}
+              title={programNeedsCoach ? WC_OR_AWC_REQUIRED_MESSAGE : undefined}
               onClick={setupProgram}
             >
               Set up ›
             </button>
           </div>
+          {programNeedsCoach ? (
+            <div className="ua-cfg-lookup__empty" role="note" style={{ gridColumn: "1 / -1" }}>
+              {WC_OR_AWC_REQUIRED_MESSAGE} before assigning a program.
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className="ua-cfg-lookup__empty">No client loaded — enter a referral code above.</div>
@@ -1292,6 +1306,7 @@ const PUBLISH_CONFIGS = new Set([
   "app-community-guidelines",
   "app-medical-disclaimer",
   "app-compliance",
+  "app-citation",
   "web-fs-tos",
   "web-fs-privacy",
   "web-fs-guidelines",
@@ -1372,6 +1387,7 @@ export function ConfigDetailPage() {
     enabled: true,
     names: "GDPR, HIPAA",
   });
+  const [citationSettings, setCitationSettings] = useState({ enabled: true });
   const [measurementGuide, setMeasurementGuide] = useState(MEASUREMENT_GUIDE);
   const [measurementParams, setMeasurementParams] = useState(MEASUREMENT_PARAMETERS);
   const [onboardingCoaches, setOnboardingCoaches] = useState(ONBOARDING_COACHES);
@@ -1542,7 +1558,8 @@ export function ConfigDetailPage() {
       || current.id === "app-consultancy-amount"
       || current.id === "app-language-disable"
       || current.id === "app-whatsapp-support"
-      || current.id === "app-compliance";
+      || current.id === "app-compliance"
+      || current.id === "app-citation";
     if (usesPublishHandler) {
       const publish = legalPublishHandlerRef.current;
       if (!publish) {
@@ -1557,6 +1574,8 @@ export function ConfigDetailPage() {
           setWhatsappSupportSettings(saved);
         } else if (current.id === "app-compliance" && saved) {
           setComplianceSettings(saved);
+        } else if (current.id === "app-citation" && saved) {
+          setCitationSettings(saved);
         } else if (current.id === "web-fs-social" && Array.isArray(saved)) {
           setSocialLinks(saved);
         } else if (current.id === "app-consultancy-amount" && saved) {
@@ -1693,6 +1712,8 @@ export function ConfigDetailPage() {
             ? guidelineBlocks.some((entry) => entry.shown)
           : item.id === "app-compliance"
             ? Boolean(complianceSettings?.enabled)
+          : item.id === "app-citation"
+            ? Boolean(citationSettings?.enabled)
           : item.id === "app-measurement-video"
             ? measurementGuide.live
           : item.id === "app-onboarding-video"
@@ -2075,6 +2096,16 @@ export function ConfigDetailPage() {
           <AppComplianceSection
             settings={complianceSettings}
             setSettings={setComplianceSettings}
+            onToast={onToast}
+            registerPublishHandler={registerLegalPublishHandler}
+            onLocalChange={handleLegalLocalChange}
+          />
+        );
+      case "app-citation":
+        return (
+          <CitationSection
+            settings={citationSettings}
+            setSettings={setCitationSettings}
             onToast={onToast}
             registerPublishHandler={registerLegalPublishHandler}
             onLocalChange={handleLegalLocalChange}

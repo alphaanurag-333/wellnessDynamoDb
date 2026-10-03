@@ -8,6 +8,7 @@ const {
   isWellnessTrackingTier,
   matchesAssignedClientTier,
   isAlreadyAssignedClient,
+  clientHasWcOrAwc,
   shouldKeepExistingAssignment,
 } = require("../models/userAssignmentLogic");
 
@@ -409,6 +410,41 @@ describe("shouldKeepExistingAssignment", () => {
       false
     );
     assert.equal(isAlreadyAssignedClient({ userTier: "seek" }), false);
+  });
+});
+
+describe("clientHasWcOrAwc", () => {
+  it("is true when a wellness coach is assigned", () => {
+    assert.equal(clientHasWcOrAwc(healUser(USER_A_ID, COACH_ID)), true);
+  });
+
+  it("is true when an assistant wellness coach is assigned", () => {
+    assert.equal(
+      clientHasWcOrAwc({
+        userTier: "seek",
+        assignedCoachId: ASSISTANT_ID,
+        assignedCoachType: "assistant_wellness_coach",
+        parentCoachId: COACH_ID,
+      }),
+      true
+    );
+    assert.equal(
+      clientHasWcOrAwc({
+        userTier: "seek",
+        assignedCoachId: ASSISTANT_ID,
+        assignedCoachType: "assistant_wellness_coach",
+      }),
+      true
+    );
+  });
+
+  it("is false when neither a wellness coach nor an assistant is assigned", () => {
+    assert.equal(clientHasWcOrAwc({ userTier: "seek", assignmentStatus: "pending_admin" }), false);
+    assert.equal(
+      clientHasWcOrAwc({ userTier: "seek", assignedCoachId: COACH_ID, assignedCoachType: "user" }),
+      false
+    );
+    assert.equal(clientHasWcOrAwc(null), false);
   });
 });
 

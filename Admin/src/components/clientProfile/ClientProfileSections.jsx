@@ -9,7 +9,16 @@ import { NutritionsSection } from "./NutritionsSection.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientProfileArchived } from "./ClientProfileArchivedContext.jsx";
 import { getTierActions } from "../../data/userDetailData.js";
-import { tierBadgeClass, tierBadgeStyle, tierLabel, normalizeTier, isEagleClient, userTierBadge } from "../../data/usersData.js";
+import {
+  tierBadgeClass,
+  tierBadgeStyle,
+  tierLabel,
+  normalizeTier,
+  isEagleClient,
+  userTierBadge,
+  seekUpgradeBlockedForAdmin,
+  WC_OR_AWC_REQUIRED_MESSAGE,
+} from "../../data/usersData.js";
 import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
 import {
   moveUserToEagle,
@@ -167,6 +176,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     ? { background: tierBadge.style.bg, color: tierBadge.style.color, border: `1px solid ${tierBadge.style.border}` }
     : tierBadgeStyle(currentTier);
   const displayTierLabel = tierBadge.label;
+  const seekUpgradeBlocked = canChangeTier && seekUpgradeBlockedForAdmin(user);
   const userId = String(user?.id || "").trim();
   const goalLabel = goalOptions.find((o) => o.id === form.healthConcernId)?.title
     || user.goal
@@ -295,6 +305,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   async function convertToEagle() {
     if (!canUpgradePaidTier || isEagleClient(user) || !userId || tierBusy) return;
+    if (seekUpgradeBlocked) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setTierBusy(true);
     try {
       const updated = await moveUserToEagle(userId);
@@ -313,6 +327,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     if (canChangeTier) {
       if (!tierActions.canConvert || !userId || tierBusy) return;
     } else if (!wcHealUpgrade || !userId || tierBusy) {
+      return;
+    }
+    if (seekUpgradeBlocked) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
     setTierBusy(true);
@@ -490,9 +508,9 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
-            title={tierActions.convertTitle}
+            title={seekUpgradeBlocked ? WC_OR_AWC_REQUIRED_MESSAGE : tierActions.convertTitle}
             onClick={convertTier}
-            disabled={tierBusy}
+            disabled={tierBusy || seekUpgradeBlocked}
           >
             {tierActions.convertLabel}
           </button>
@@ -501,9 +519,11 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--eagle"
-            title="Convert this client directly to EAGLE when payment did not go through"
+            title={seekUpgradeBlocked
+              ? WC_OR_AWC_REQUIRED_MESSAGE
+              : "Convert this client directly to EAGLE when payment did not go through"}
             onClick={convertToEagle}
-            disabled={tierBusy}
+            disabled={tierBusy || seekUpgradeBlocked}
           >
             Convert to EAGLE
           </button>

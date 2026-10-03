@@ -417,6 +417,8 @@ async function createAppConfig() {
     compliance_enabled: true,
     compliance_names: "GDPR, HIPAA",
 
+    citation_enabled: true,
+
     // Nested array with credentials object
     payment_gateways: [],   // default empty 
 

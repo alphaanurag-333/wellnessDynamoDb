@@ -93,6 +93,10 @@ export const AppComplianceSection = named(
   () => import("../components/AppComplianceSection.jsx"),
   "AppComplianceSection",
 );
+export const CitationSection = named(
+  () => import("../components/CitationSection.jsx"),
+  "CitationSection",
+);
 export const PrivacyPolicySection = named(
   () => import("../components/PrivacyPolicySection.jsx"),
   "PrivacyPolicySection",

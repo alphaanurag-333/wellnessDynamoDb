@@ -126,6 +126,12 @@ function toPublicClientAppConfig(doc) {
         : config.compliance_enabled === true
           || String(config.compliance_enabled || "").toLowerCase() === "true",
     compliance_names: String(config.compliance_names ?? "").trim() || "GDPR, HIPAA",
+    /** Citation Active (true) / Inactive (false); unset = Active */
+    citation_enabled:
+      config.citation_enabled === undefined || config.citation_enabled === null || config.citation_enabled === ""
+        ? true
+        : config.citation_enabled === true
+          || String(config.citation_enabled).toLowerCase() === "true",
     updatedAt: config.updatedAt,
   };
 }

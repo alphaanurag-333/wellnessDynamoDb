@@ -639,6 +639,10 @@ exports.updateAppConfigController = asyncHandler(async (req, res) => {
     updates.compliance_names = String(req.body.compliance_names ?? "").trim().slice(0, 120);
   }
 
+  if (req.body.citation_enabled !== undefined) {
+    updates.citation_enabled = normalizeBooleanFlag(req.body.citation_enabled, true);
+  }
+
   for (const field of BODY_MEASUREMENT_INFO_SHOWN_FIELDS) {
     if (req.body[field] !== undefined) {
       updates[field] = normalizeBodyMeasurementInfoShown(req.body[field], true);
