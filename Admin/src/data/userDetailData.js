@@ -34,7 +34,7 @@ export const COMPACT_CLIENT_MENU = [
   PERSONAL_MENU_ITEM,
   CONSULTATION_MENU_ITEM,
   EXCHANGE_MENU_ITEM,
-];
+]; 
 
 /**
  * Eagle clients — Personal Details, Internal Parameters, Food & Water Tracking,
