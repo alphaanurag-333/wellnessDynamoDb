@@ -22,6 +22,7 @@ export const CLIENT_MENU = [
 
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
 const INTERNAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "internal");
+const FOOD_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "food");
 const NUTRITIONS_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "nutritions");
 const EXCHANGE_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "exchange");
 const COUNSELLING_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "counselling");
@@ -36,12 +37,13 @@ export const COMPACT_CLIENT_MENU = [
 ];
 
 /**
- * Eagle clients — Personal Details, Internal Parameters, Nutritions,
- * Counselling sessions, plus Energy Exchange for FY / program billing.
+ * Eagle clients — Personal Details, Internal Parameters, Food & Water Tracking,
+ * Nutritions, Counselling sessions, plus Energy Exchange for FY / program billing.
  */
 export const EAGLE_CLIENT_MENU = [
   PERSONAL_MENU_ITEM,
   INTERNAL_MENU_ITEM,
+  FOOD_MENU_ITEM,
   NUTRITIONS_MENU_ITEM,
   COUNSELLING_MENU_ITEM,
   EXCHANGE_MENU_ITEM,
@@ -64,7 +66,7 @@ export function isCompactClientProfileTier(tier) {
 }
 
 /**
- * Eagle: Personal Details, Internal Parameters, Nutritions, Counselling, Energy Exchange.
+ * Eagle: Personal Details, Internal Parameters, Food & Water Tracking, Nutritions, Counselling, Energy Exchange.
  * HEAL / Maintenance (non-eagle): full coaching workspace.
  * Seek and PWC: compact set (personal, consultation, energy exchange) until conversion.
  */

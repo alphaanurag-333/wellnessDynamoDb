@@ -190,9 +190,14 @@ export function clientHasWcOrAwc(user) {
   return Boolean(String(user?.assignedCoachId || "").trim()) && ASSIGNED_COACH_TYPES.has(type);
 }
 
-/** Admin cannot move a SEEK client to HEAL or EAGLE until a WC or AWC is assigned. */
+/** Admin cannot change tier until a wellness coach or assistant wellness coach is assigned. */
+export function tierChangeBlockedWithoutCoach(user) {
+  return !clientHasWcOrAwc(user);
+}
+
+/** @deprecated Use tierChangeBlockedWithoutCoach. Kept so existing call sites stay blocked. */
 export function seekUpgradeBlockedForAdmin(user) {
-  return normalizeTier(user?.tier) === "Seek" && !clientHasWcOrAwc(user);
+  return tierChangeBlockedWithoutCoach(user);
 }
 
 export function canConvertTier(tier) {
@@ -330,14 +335,31 @@ export function listTierMoveOptions(tier, ageDays) {
   return options;
 }
 
-/** Heal ↔ Maintenance is the only cleanly reversible pair for session Undo. */
+export function isEagleMoveTarget(tier) {
+  return String(tier || "").trim().toLowerCase() === "eagle";
+}
+
+/**
+ * Session Undo covers Heal ↔ Maintenance, and Heal → Eagle.
+ * Eagle keeps the Heal plan and only changes client category, so it can be reversed.
+ */
 export function canUndoTierMove(fromTier, toTier) {
   const from = normalizeTier(fromTier);
   const to = normalizeTier(toTier);
+  if (isEagleMoveTarget(toTier) || isEagleMoveTarget(to)) {
+    return from === "Seek to Heal";
+  }
   return (
     (from === "Seek to Heal" && to === "Maintenance")
     || (from === "Maintenance" && to === "Seek to Heal")
   );
+}
+
+/** True while the row is still on the tier or Eagle category this Undo would reverse. */
+export function tierUndoStillApplies(user, undo) {
+  if (!undo || !canUndoTierMove(undo.fromTier, undo.toTier)) return false;
+  if (isEagleMoveTarget(undo.toTier)) return isEagleClient(user);
+  return normalizeTier(user?.tier) === normalizeTier(undo.toTier) && !isEagleClient(user);
 }
 
 export function lastActiveMinutes(value) {
