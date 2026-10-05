@@ -14,6 +14,7 @@ const {
 const {
   convertUserToHealController,
   convertUserToEagleController,
+  undoEagleConversionController,
   convertUserToSeekController,
   convertUserToMaintenanceController,
   convertMaintenanceUserToHealController,
@@ -178,6 +179,7 @@ router.post(
   authorizeStaff("console.cl.edit", { admin: "users.edit" }),
   convertUserToEagleController
 );
+router.post("/:id/undo-eagle", protectAccount, requireAdmin, undoEagleConversionController);
 router.post("/:id/convert-to-seek", protectAccount, requireAdmin, convertUserToSeekController);
 router.post("/:id/convert-to-maintenance", protectAccount, requireAdmin, convertUserToMaintenanceController);
 router.post("/:id/maintenance-to-heal", protectAccount, requireAdmin, convertMaintenanceUserToHealController);

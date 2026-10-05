@@ -13,14 +13,16 @@ import {
   conversionPrompt,
   eagleConversionPrompt,
   isEagleClient,
+  isEagleMoveTarget,
   lastActiveMinutes,
   listPaidUpgradeOptions,
   listTierMoveOptions,
   nextTier,
   normalizeTier,
   prevTier,
-  seekUpgradeBlockedForAdmin,
+  tierChangeBlockedWithoutCoach,
   tierLabel,
+  tierUndoStillApplies,
   userInitials,
   userTierBadge,
   userOverrideKey,
@@ -39,6 +41,7 @@ import {
   mapUiTierToApi,
   moveMaintenanceUserToHeal,
   moveUserToEagle,
+  undoUserEagleConversion,
   moveUserToHeal,
   moveUserToMaintenance,
   moveUserToSeek,
@@ -805,11 +808,11 @@ export function UsersPage() {
     };
   };
 
-  const adminSeekUpgradeBlocked = (user) => canChangeTier && seekUpgradeBlockedForAdmin(user);
+  const adminTierChangeBlocked = (user) => canChangeTier && tierChangeBlockedWithoutCoach(user);
 
   const convertTier = (user) => {
     if (!canUpgradePaidTier) return;
-    if (adminSeekUpgradeBlocked(user)) {
+    if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
@@ -818,7 +821,7 @@ export function UsersPage() {
 
   const convertToEagle = (user) => {
     if (!canUpgradePaidTier || isEagleClient(user)) return;
-    if (adminSeekUpgradeBlocked(user)) {
+    if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
@@ -827,6 +830,10 @@ export function UsersPage() {
 
   const downgradeTier = (user) => {
     if (!canChangeTier) return;
+    if (adminTierChangeBlocked(user)) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
     setConversionAsk({ user, direction: "down", ...conversionPrompt(user, "down") });
   };
 
@@ -836,12 +843,13 @@ export function UsersPage() {
     if (!canChangeTier && ask.direction === "down") return;
     const user = ask.user;
     const key = userOverrideKey(user);
-    if ((ask.kind === "eagle" || ask.direction === "up") && adminSeekUpgradeBlocked(user)) {
+    if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       setConversionAsk(null);
       return;
     }
     if (ask.kind === "eagle") {
+      const fromTier = user.tier;
       setActionBusy(true);
       try {
         let updated = await moveUserToEagle(key);
@@ -854,9 +862,17 @@ export function UsersPage() {
         setUsers((prev) => prev.map((row) => (
           userOverrideKey(row) === key ? { ...row, ...updated } : row
         )));
+        setTierUndoByKey((prev) => {
+          const next = { ...prev };
+          if (canUndoTierMove(fromTier, "Eagle")) {
+            next[key] = { fromTier, toTier: "Eagle" };
+          } else {
+            delete next[key];
+          }
+          return next;
+        });
         onToast(`${user.name} converted to EAGLE`);
         setConversionAsk(null);
-        refreshUsers();
       } catch (err) {
         onToast(err?.message || "Could not convert this client to Eagle");
       } finally {
@@ -911,8 +927,7 @@ export function UsersPage() {
     if (!canChangeTier) return;
     const key = userOverrideKey(user);
     const undo = tierUndoByKey[key];
-    if (!undo || !canUndoTierMove(undo.fromTier, undo.toTier)) return;
-    if (normalizeTier(user.tier) !== normalizeTier(undo.toTier)) {
+    if (!undo || !tierUndoStillApplies(user, undo)) {
       setTierUndoByKey((prev) => {
         const next = { ...prev };
         delete next[key];
@@ -923,7 +938,9 @@ export function UsersPage() {
     setActionBusy(true);
     try {
       let updated;
-      if (normalizeTier(undo.fromTier) === "Seek to Heal" && normalizeTier(undo.toTier) === "Maintenance") {
+      if (isEagleMoveTarget(undo.toTier)) {
+        updated = await undoUserEagleConversion(key);
+      } else if (normalizeTier(undo.fromTier) === "Seek to Heal" && normalizeTier(undo.toTier) === "Maintenance") {
         updated = await moveMaintenanceUserToHeal(key);
       } else {
         updated = await moveUserToMaintenance(key);
@@ -1389,13 +1406,9 @@ export function UsersPage() {
                 ? listTierMoveOptions(u.tier, u.ageDays)
                 : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
               const rowKey = userOverrideKey(u) || u.name;
-              const seekUpgradeBlocked = adminSeekUpgradeBlocked(u);
+              const tierChangeBlocked = adminTierChangeBlocked(u);
               const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
-              const showTierUndo = Boolean(
-                tierUndo
-                && normalizeTier(u.tier) === normalizeTier(tierUndo.toTier)
-                && canUndoTierMove(tierUndo.fromTier, tierUndo.toTier),
-              );
+              const showTierUndo = Boolean(tierUndo && tierUndoStillApplies(u, tierUndo));
 
               return (
                 <div
@@ -1432,7 +1445,7 @@ export function UsersPage() {
                     {tierMoves.length ? (
                       <div className="ua-users-tier__moves">
                         {tierMoves.map((move) => {
-                          const blocked = move.direction === "up" && seekUpgradeBlocked;
+                          const blocked = tierChangeBlocked;
                           return (
                             <button
                               key={`${rowKey}-${move.direction}-${move.target}`}
@@ -1452,10 +1465,10 @@ export function UsersPage() {
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--eagle"
-                        title={seekUpgradeBlocked
+                        title={tierChangeBlocked
                           ? WC_OR_AWC_REQUIRED_MESSAGE
                           : "Convert this client directly to EAGLE when payment did not go through"}
-                        disabled={actionBusy || seekUpgradeBlocked}
+                        disabled={actionBusy || tierChangeBlocked}
                         onClick={() => convertToEagle(u)}
                       >
                         → EAGLE

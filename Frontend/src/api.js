@@ -5,7 +5,7 @@ import axios from "axios";
 // const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 //const API_BASE = "https://wellness-development.developmentalphawizz.com";
 // const API_BASE = "http://localhost:5000";
- const API_BASE = "https://irwellness.in";
+const API_BASE = "https://irwellness.in";
 // const API_BASE = "https://wellness.developmentalphawizz.com:5005";
 // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 

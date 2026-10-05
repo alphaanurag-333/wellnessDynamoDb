@@ -23,6 +23,7 @@ function toPublicProfile(doc) {
   delete o.pendingWhatsappPhone;
   delete o.pendingWhatsappCountryCode;
   delete o.totpSecret;
+  delete o.eagleUndoSnapshot;
   return o;
 }
 

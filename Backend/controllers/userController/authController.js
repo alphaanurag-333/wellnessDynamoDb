@@ -224,7 +224,7 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
 
   const payload = {
     status: true,
-    message: "Registration OTP sent successfully",
+    message: "OTP has been sent successfully on WhatsApp",
   };
 
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
@@ -411,7 +411,7 @@ exports.sendLoginOtp = asyncHandler(async (req, res) => {
 
   const payload = {
     status: true,
-    message: "OTP sent successfully",
+    message: "OTP has been sent successfully on WhatsApp",
   };
 
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
@@ -600,7 +600,7 @@ exports.sendDeleteAccountOtp = asyncHandler(async (req, res) => {
 
   const payload = {
     status: true,
-    message: "Delete-account OTP sent successfully",
+    message: "OTP has been sent successfully on WhatsApp",
   };
 
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
@@ -637,7 +637,7 @@ exports.sendProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
 
   const payload = {
     status: true,
-    message: "Phone change OTP sent successfully",
+    message: "OTP has been sent successfully on WhatsApp",
   };
 
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {
@@ -679,7 +679,7 @@ exports.sendProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
 
   const payload = {
     status: true,
-    message: "WhatsApp change OTP sent successfully",
+    message: "OTP has been sent successfully on WhatsApp",
   };
 
   if (config.exposeOtpInResponse && config.nodeEnv !== "production") {

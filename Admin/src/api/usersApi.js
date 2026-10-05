@@ -921,6 +921,20 @@ export async function moveUserToEagle(id) {
   }
 }
 
+/** Reverse an admin Heal → Eagle conversion made in this session. */
+export async function undoUserEagleConversion(id) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(id)}/undo-eagle`,
+      {},
+      { headers: authHeader() },
+    );
+    return mapApiUserToRow(data.user);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function moveUserToMaintenance(id) {
   try {
     const { data } = await api.post(

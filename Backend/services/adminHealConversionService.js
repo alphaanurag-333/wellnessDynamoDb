@@ -222,13 +222,26 @@ async function setupPaidClientEntitlements(user, { catalogProgramId, now } = {})
   return current;
 }
 
-/** Admin SEEK upgrades need a WC or AWC already on the client. */
-function assertSeekClientHasCoach(user, tier, allocateToCoachId) {
-  if (allocateToCoachId || tier !== "seek") return;
+/** Admin tier changes need a WC or AWC already on the client. A WC upgrade may assign themselves. */
+function assertClientHasCoachForTierChange(user, allocateToCoachId) {
+  if (allocateToCoachId) return;
   if (clientHasWcOrAwc(user)) return;
-  const err = new Error(`${WC_OR_AWC_REQUIRED_MESSAGE} before converting from SEEK`);
+  const err = new Error(WC_OR_AWC_REQUIRED_MESSAGE);
   err.name = "ValidationError";
   throw err;
+}
+
+function buildHealToEagleUndoSnapshot(user) {
+  return {
+    clientCategory: String(user?.clientCategory || "individual").toLowerCase().trim() || "individual",
+    userTier: normalizeUserTier(user?.userTier),
+    paidOnboardingCompleted: Boolean(user?.paidOnboardingCompleted),
+    paidOnboardingStep: user?.paidOnboardingStep || null,
+    paidOnboardingStepStatus:
+      user?.paidOnboardingStepStatus && typeof user.paidOnboardingStepStatus === "object"
+        ? user.paidOnboardingStepStatus
+        : null,
+  };
 }
 
 /**
@@ -274,7 +287,7 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId, 
   }
 
   const tier = normalizeUserTier(userBefore.userTier);
-  assertSeekClientHasCoach(userBefore, tier, allocateToCoachId);
+  assertClientHasCoachForTierChange(userBefore, allocateToCoachId);
   let user;
   try {
     user = await convertSeekToHeal(userId, {
@@ -333,7 +346,7 @@ async function adminConvertUserToEagle(userId, { referralCode, catalogProgramId,
   }
 
   const tier = normalizeUserTier(userBefore.userTier);
-  assertSeekClientHasCoach(userBefore, tier, allocateToCoachId);
+  assertClientHasCoachForTierChange(userBefore, allocateToCoachId);
   let user = userBefore;
 
   if (tier === "maintenance") {
@@ -365,6 +378,10 @@ async function adminConvertUserToEagle(userId, { referralCode, catalogProgramId,
     ...buildEaglePaidOnboardingCompleteUpdates(),
   };
   if (!user.healPaidAt) patches.healPaidAt = now;
+  // Heal → Eagle only changes category. Keep the pre-conversion plan so admin Undo can restore it.
+  if (tier === "heal") {
+    patches.eagleUndoSnapshot = buildHealToEagleUndoSnapshot(userBefore);
+  }
 
   const refreshed = await updateUser(userId, patches);
 
@@ -383,9 +400,50 @@ async function adminConvertUserToEagle(userId, { referralCode, catalogProgramId,
   return refreshed;
 }
 
+/**
+ * Reverse an admin Heal → Eagle conversion using the snapshot saved at convert time.
+ * Restores client category and onboarding. The Heal plan itself is unchanged.
+ */
+async function adminUndoEagleConversion(userId) {
+  const user = await getUserById(userId);
+  if (!user) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (!isEagleClientCategory(user.clientCategory)) {
+    const err = new Error("User is not an Eagle client");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+
+  const snap = user.eagleUndoSnapshot;
+  if (!snap || typeof snap !== "object" || normalizeUserTier(snap.userTier) !== "heal") {
+    const err = new Error("This Eagle conversion can no longer be undone");
+    err.name = "InvalidTierError";
+    throw err;
+  }
+
+  const previousCategory = String(snap.clientCategory || "individual").toLowerCase().trim();
+  const updates = {
+    clientCategory: previousCategory && previousCategory !== "eagle" ? previousCategory : "individual",
+    userTier: "heal",
+    paidOnboardingCompleted: Boolean(snap.paidOnboardingCompleted),
+    paidOnboardingStep: snap.paidOnboardingStep || "register",
+    paidOnboardingStepStatus:
+      snap.paidOnboardingStepStatus && typeof snap.paidOnboardingStepStatus === "object"
+        ? snap.paidOnboardingStepStatus
+        : {},
+    eagleUndoSnapshot: null,
+  };
+
+  return updateUser(userId, updates);
+}
+
 module.exports = {
   adminConvertUserToHeal,
   adminConvertUserToEagle,
+  adminUndoEagleConversion,
   setupPaidClientEntitlements,
   ensureWellnessProgramForPaidClient,
   ensureEnergyExchangeForPaidClient,

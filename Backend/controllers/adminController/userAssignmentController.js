@@ -9,8 +9,13 @@ const {
 const {
   adminConvertUserToHeal,
   adminConvertUserToEagle,
+  adminUndoEagleConversion,
   setupPaidClientEntitlements,
 } = require("../../services/adminHealConversionService");
+const {
+  clientHasWcOrAwc,
+  WC_OR_AWC_REQUIRED_MESSAGE,
+} = require("../../models/userAssignmentLogic");
 const { assignPendingHealUser, reassignHealUser, unassignUserCoach } = require("../../models/userAssignmentModel");
 const { getWellnessCoachRecordById } = require("../../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../../models/assistantWellnessCoachModel");
@@ -87,6 +92,14 @@ async function notifyUserCoachAssignment({
   return assignee;
 }
 
+async function assertTierChangeHasCoach(userId) {
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  if (!clientHasWcOrAwc(user)) {
+    throw new AppError(WC_OR_AWC_REQUIRED_MESSAGE, 400);
+  }
+}
+
 function mapAssignmentError(err) {
   if (err?.name === "NotFoundError") throw new AppError("User not found", 404);
   if (err?.name === "AlreadyConvertedError") throw new AppError(err.message, 409);
@@ -132,6 +145,7 @@ async function resolveParentCoachId({ assignedCoachId, assignedCoachType, parent
 }
 
 exports.convertUserToSeekController = asyncHandler(async (req, res) => {
+  await assertTierChangeHasCoach(req.params.id);
   let user;
   try {
     user = await convertHealToSeek(req.params.id);
@@ -147,6 +161,7 @@ exports.convertUserToSeekController = asyncHandler(async (req, res) => {
 });
 
 exports.convertUserToMaintenanceController = asyncHandler(async (req, res) => {
+  await assertTierChangeHasCoach(req.params.id);
   let user;
   try {
     user = await convertHealToMaintenance(req.params.id);
@@ -161,6 +176,7 @@ exports.convertUserToMaintenanceController = asyncHandler(async (req, res) => {
 });
 
 exports.convertMaintenanceUserToHealController = asyncHandler(async (req, res) => {
+  await assertTierChangeHasCoach(req.params.id);
   let user;
   try {
     user = await convertMaintenanceToHeal(req.params.id);
@@ -216,6 +232,21 @@ exports.convertUserToEagleController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "User converted to Eagle successfully",
+    user: await enrichUser(user),
+  });
+});
+
+exports.undoEagleConversionController = asyncHandler(async (req, res) => {
+  let user;
+  try {
+    user = await adminUndoEagleConversion(req.params.id);
+  } catch (err) {
+    mapAssignmentError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Eagle conversion undone",
     user: await enrichUser(user),
   });
 });
