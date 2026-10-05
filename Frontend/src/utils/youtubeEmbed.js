@@ -1,44 +1,69 @@
-export function youtubeEmbedUrl(url) {
+const VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{6,20}$/;
+const PATH_TYPES = new Set(["shorts", "live", "v", "embed"]);
+
+function cleanVideoId(value) {
+  const id = String(value || "").trim();
+  return VIDEO_ID_PATTERN.test(id) ? id : "";
+}
+
+export function youtubeVideoId(url) {
   const raw = String(url || "").trim();
   if (!raw) return "";
-
-  if (raw.includes("/embed/")) {
-    try {
-      const parsed = new URL(raw);
-      const parts = parsed.pathname.split("/").filter(Boolean);
-      const embedIndex = parts.indexOf("embed");
-      if (embedIndex >= 0 && parts[embedIndex + 1]) {
-        return `https://www.youtube.com/embed/${parts[embedIndex + 1]}`;
-      }
-    } catch {
-      return raw;
-    }
-    return raw;
-  }
 
   try {
     const parsed = new URL(raw);
     const host = parsed.hostname.replace(/^www\./, "");
+    const parts = parsed.pathname.split("/").filter(Boolean);
+
+    if (host === "youtu.be") return cleanVideoId(parts[0]);
 
     if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
-      const videoId = parsed.searchParams.get("v");
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
-
-      const parts = parsed.pathname.split("/").filter(Boolean);
-      // /shorts/VIDEO_ID, /live/VIDEO_ID, /v/VIDEO_ID
-      const pathTypes = new Set(["shorts", "live", "v", "embed"]);
-      if (parts.length >= 2 && pathTypes.has(parts[0]) && parts[1]) {
-        return `https://www.youtube.com/embed/${parts[1]}`;
-      }
-    }
-
-    if (host === "youtu.be") {
-      const videoId = parsed.pathname.replace(/^\//, "").split("/")[0];
-      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+      const fromQuery = cleanVideoId(parsed.searchParams.get("v"));
+      if (fromQuery) return fromQuery;
+      // /shorts/VIDEO_ID, /live/VIDEO_ID, /v/VIDEO_ID, /embed/VIDEO_ID
+      const typeIndex = parts.findIndex((part) => PATH_TYPES.has(part));
+      if (typeIndex >= 0) return cleanVideoId(parts[typeIndex + 1]);
     }
   } catch {
     return "";
   }
 
   return "";
+}
+
+export function youtubeEmbedUrl(url) {
+  const videoId = youtubeVideoId(url);
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : "";
+}
+
+export function youtubeThumbnailUrl(videoId) {
+  return videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "";
+}
+
+let iframeApiPromise = null;
+
+export function loadYouTubeIframeApi() {
+  if (typeof window === "undefined") return Promise.reject(new Error("No window"));
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (iframeApiPromise) return iframeApiPromise;
+
+  iframeApiPromise = new Promise((resolve, reject) => {
+    const previousReady = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof previousReady === "function") previousReady();
+      resolve(window.YT);
+    };
+
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.async = true;
+    script.onerror = () => {
+      iframeApiPromise = null;
+      script.remove();
+      reject(new Error("Failed to load YouTube IFrame API"));
+    };
+    document.head.appendChild(script);
+  });
+
+  return iframeApiPromise;
 }

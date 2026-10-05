@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
-import { FaPlay } from "react-icons/fa";
+import { Play } from "lucide-react";
 
 import "swiper/css";
 
 import { DEFAULT_IMAGE_SRC, handleMediaImageError, mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchVideoTestimonials } from "../api/publicMisc.js";
+import YouTubePlayer from "./YouTubePlayer.jsx";
 
 const SKELETON_COUNT = 5;
 
@@ -60,13 +61,7 @@ function VideoTestimonialCard({ item, isPlaying, onPlay }) {
               className="video-card__player"
             />
           ) : (
-            <iframe
-              src={`${item.playUrl}?autoplay=1`}
-              title={item.name}
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-              className="video-card__player"
-            />
+            <YouTubePlayer url={item.playUrl} title={item.name} />
           )}
         </div>
         <p className="video-card__name">{item.name}</p>
@@ -89,7 +84,7 @@ function VideoTestimonialCard({ item, isPlaying, onPlay }) {
           onError={handleMediaImageError}
         />
         <span className="play-btn" aria-hidden>
-          <FaPlay />
+          <Play size={22} fill="currentColor" />
         </span>
       </button>
       <p className="video-card__name">{item.name}</p>

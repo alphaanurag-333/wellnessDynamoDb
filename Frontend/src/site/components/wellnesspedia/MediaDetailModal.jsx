@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Play } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../../media.js";
 import { youtubeEmbedUrl } from "../../../utils/youtubeEmbed.js";
+import YouTubePlayer from "../YouTubePlayer.jsx";
 import WellnesspediaModal from "./WellnesspediaModal.jsx";
 import "./MediaDetailModal.css";
 
@@ -50,13 +51,11 @@ export default function MediaDetailModal({ open, onClose, item }) {
         <div className="wp-media-modal__media">
           {playing && canPlay ? (
             embedUrl ? (
-              <iframe
+              <YouTubePlayer
                 key={`yt-${item.id}`}
+                url={embedUrl}
                 title={item.title || "Video"}
-                src={`${embedUrl}?autoplay=1`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="wp-media-modal__player"
+                poster={thumbnail}
               />
             ) : (
               <video

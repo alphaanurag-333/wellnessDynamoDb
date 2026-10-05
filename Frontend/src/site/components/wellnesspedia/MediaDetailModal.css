@@ -84,63 +84,6 @@
   z-index: 1;
 }
 
-.wp-media-modal__yt {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: #000;
-  isolation: isolate;
-}
-
-.wp-media-modal__yt .wp-media-modal__player {
-  top: 50%;
-  left: 50%;
-  width: 118%;
-  height: 118%;
-  inset: auto;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  -webkit-transform: translate(-50%, -50%);
-}
-
-.wp-media-modal__hit,
-.wp-media-modal__resume {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-
-.wp-media-modal__hit {
-  background: transparent;
-}
-
-.wp-media-modal__resume {
-  display: grid;
-  place-items: center;
-  background: #000;
-  overflow: hidden;
-}
-
-.wp-media-modal__resume img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
-  object-fit: cover;
-  opacity: 0.55;
-}
-
-.wp-media-modal__resume .wp-media-modal__play {
-  position: relative;
-  inset: auto;
-  margin: 0;
-}
-
 .wp-media-modal__play {
   position: absolute;
   inset: 0;
@@ -150,12 +93,12 @@
   height: 64px;
   border: none;
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.95);
-  color: #fff;
+  background: var(--play-icon-bg, rgba(37, 99, 235, 0.95));
+  color: var(--play-icon-color, #fff);
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+  box-shadow: var(--play-icon-shadow, 0 6px 16px rgba(15, 23, 42, 0.28));
   transition: transform 0.15s ease;
 }
 

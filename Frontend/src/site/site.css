@@ -71,6 +71,13 @@
   /* Touch target */
   --touch-target: 44px;
 
+  /* Video play icon (shared across all video thumbnails) */
+  --play-icon-size: 48px;
+  --play-icon-size-sm: 40px;
+  --play-icon-bg: rgba(37, 99, 235, 0.95);
+  --play-icon-color: #fff;
+  --play-icon-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
+
   /* Legacy aliases used across site.css (map onto the system) */
   --font-primary: var(--font-family-base);
   --font-navbar: var(--font-family-base);
@@ -1657,7 +1664,7 @@ min-height: 100dvh;
 /* ========== Layout ========== */
 --container-width: 1320px;
   --container-padding: 15px;
---header-height: 74px;
+--header-height: 75px;
 /* ========== Buttons ========== */
 --btn-primary-bg: var(--primary);
   --btn-primary-color: #fff;
@@ -1969,7 +1976,7 @@ z-index: 1000;
 /* MOBILE HEADER */
 
 .mobile-sidebar__header {
-  height: 60px;
+  height: 66px;
 padding: 0 20px;
 display: flex;
   align-items: center;
@@ -1978,8 +1985,8 @@ border-bottom: 1px solid var(--border-color);
 }
 
 .mobile-sidebar__header img {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   object-fit: contain;
 }
 
@@ -4202,7 +4209,7 @@ font-size: 14px;
 
 .contact-phone-row {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: fit-content(8.5rem) minmax(0, 1fr);
   align-items: stretch;
   gap: 8px;
   width: 100%;
@@ -4235,7 +4242,7 @@ font-size: 14px;
 .contact-phone-country-select {
   position: relative;
   width: 100%;
-  min-width: 0;
+  min-width: 5.5rem;
 }
 
 .contact-phone-country-select--open {
@@ -4247,6 +4254,9 @@ font-size: 14px;
   text-align: left;
   font-family: inherit;
   line-height: 40px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .contact-phone-country-trigger:disabled {
@@ -5047,16 +5057,15 @@ color: var(--primary);
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 56px;
-  height: 40px;
-  background: #ff0000;
-  border-radius: 10px;
+  width: var(--play-icon-size);
+  height: var(--play-icon-size);
+  background: var(--play-icon-bg);
+  border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #fff;
-  font-size: 0.95rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  color: var(--play-icon-color);
+  box-shadow: var(--play-icon-shadow);
   pointer-events: none;
   transition: transform var(--transition);
 }
@@ -8130,6 +8139,7 @@ background-image: url("../site/images/birthday-card-bg.png");
   overflow-wrap: break-word;
   word-break: normal;
   hyphens: none;
+  max-height: calc(var(--line-height-body) * 2em);
 }
 
 .real-healing-review--expanded {
@@ -8139,6 +8149,14 @@ background-image: url("../site/images/birthday-card-bg.png");
   -webkit-box-orient: unset;
   overflow: visible !important;
   text-overflow: unset;
+  max-height: none !important;
+}
+
+@media (hover: none) {
+  .real-healing-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 .real-healing-more {
@@ -8428,16 +8446,15 @@ background-image: url("../site/images/birthday-card-bg.png");
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 56px;
-  height: 40px;
-  background: #ff0000;
-  border-radius: 10px;
+  width: var(--play-icon-size);
+  height: var(--play-icon-size);
+  background: var(--play-icon-bg);
+  border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  color: white;
-  font-size: 0.95rem;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+  color: var(--play-icon-color);
+  box-shadow: var(--play-icon-shadow);
   transition: transform var(--transition);
   pointer-events: none;
 }
@@ -10841,7 +10858,7 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
 
 @media (min-width: 992px) {
   :root {
-    --font-size-body: 1rem;
+    --font-size-body: 0.99rem;
   }
 }
 
@@ -10906,6 +10923,9 @@ background: radial-gradient(900px 320px at 0% 0%, rgb(201 227 205), #0c0c0c00 55
 }
 
 @media (max-width: 576px) {
+  .site-footer__brand-logo {
+    width: 60px; 
+  }
   .custimesmainsixe {
     text-align: justify !important;
   }
@@ -12034,7 +12054,7 @@ gap: 45px;
 
 @media (max-width: 768px) {
 .site-header__inner {
-    height: 63px;
+    height: 66px;
   }
   .form-group {
     width: 100%;
@@ -12315,7 +12335,7 @@ gap: 45px;
     padding: 0 14px;
   }
 .contact-phone-row {
-    grid-template-columns: 5.25rem minmax(0, 1fr);
+    grid-template-columns: fit-content(8rem) minmax(0, 1fr);
     gap: 8px;
   }
 .contact-phone-country {
@@ -12756,10 +12776,8 @@ font-size: 0.62rem;
     height: auto;
   }
 .play-btn {
-    width: 48px;
-    height: 34px;
-    font-size: 0.85rem;
-    border-radius: 8px;
+    width: var(--play-icon-size-sm);
+    height: var(--play-icon-size-sm);
   }
 }
 /* .jsty {
@@ -14631,14 +14649,15 @@ bottom: -18px;
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 38px;
-  height: 38px;
+  width: var(--play-icon-size-sm);
+  height: var(--play-icon-size-sm);
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.92);
-  color: #fff;
+  background: var(--play-icon-bg);
+  color: var(--play-icon-color);
   display: grid;
   place-items: center;
   pointer-events: none;
+  box-shadow: var(--play-icon-shadow);
 }
 
 .wellnesspedia-page .wp-recipe-card__body {
@@ -14704,7 +14723,7 @@ bottom: -18px;
   gap: 0.85rem;
   min-height: 150px;
   border: none;
-  border-radius: 18px;
+  border-radius: 12px;
   padding: 1.25rem 0.75rem;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -14967,7 +14986,7 @@ bottom: -18px;
   max-height: min(92vh, 900px);
   overflow: auto;
   background: #fdfbf7;
-  border-radius: 20px;
+  border-radius: 12px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
   padding: 1rem 1rem 1.5rem;
 }
@@ -16945,6 +16964,30 @@ button.program-hero__cta {
   max-width: none !important;
   overflow: visible !important;
   text-overflow: clip !important;
+}
+
+/*
+ * iOS WebKit justifies the last visible line of a -webkit-line-clamp box after placing
+ * the ellipsis, so words paint over the "…". Collapsed (clamped) states use start
+ * alignment on iOS only; expanded states keep justify.
+ */
+@supports (-webkit-touch-callout: none) {
+  .hero-description:not(.rm-flow),
+  .methodology-card__content p.methodology-card__desc:not(.methodology-card__desc--expanded):not(.rm-flow),
+  .success-card__review p:not(.success-card__review-text--expanded):not(.rm-flow),
+  .transformation-story-card__caption:not(.transformation-story-card__caption--expanded):not(.rm-flow),
+  .real-healing-review:not(.real-healing-review--expanded):not(.rm-flow),
+  .program-testimonial-card__quote:not(.program-testimonial-card__quote--expanded):not(.rm-flow),
+  .program-testimonial-card__quote:not(.program-testimonial-card__quote--expanded):not(.rm-flow) p,
+  .leadership__description:not(.expanded):not(.rm-flow),
+  .leadership__description:not(.expanded):not(.rm-flow) p,
+  .pillar-card__description.is-clamped:not(.rm-flow),
+  .monthly-champions .champion-info p.champion-info__text--clamped:not(.rm-flow),
+  .champion-info__text--clamped:not(.rm-flow),
+  .wellnesspedia-page .wp-recipe-card__body p:not(.rm-flow),
+  .wellnesspedia-page .wp-disorder-card__desc:not(.rm-flow) {
+    text-align: start !important;
+  }
 }
 
 

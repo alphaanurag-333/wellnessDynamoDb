@@ -131,17 +131,11 @@ function mapTransformation(row) {
   };
 }
 
-function TransformationStoryCard({ item, onExpandChange }) {
-  const [expanded, setExpanded] = useState(false);
-
+function TransformationStoryCard({ item, expanded, onToggle }) {
   function toggleExpanded(event) {
     event.preventDefault();
     event.stopPropagation();
-    setExpanded((prev) => {
-      const next = !prev;
-      queueMicrotask(() => onExpandChange?.(next));
-      return next;
-    });
+    onToggle?.(item.id);
   }
 
   return (
@@ -222,6 +216,18 @@ export default function TransformationStoriesSection() {
   const [transformations, setTransformations] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
+
+  const toggleExpanded = useCallback((id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      swiperRef.current?.update?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expandedId]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMoreRef.current) return;
@@ -371,11 +377,8 @@ export default function TransformationStoriesSection() {
                     <SwiperSlide key={item.id}>
                       <TransformationStoryCard
                         item={item}
-                        onExpandChange={() => {
-                          requestAnimationFrame(() => {
-                            swiperRef.current?.update?.();
-                          });
-                        }}
+                        expanded={expandedId === item.id}
+                        onToggle={toggleExpanded}
                       />
                     </SwiperSlide>
                   ))}

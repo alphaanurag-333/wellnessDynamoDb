@@ -393,12 +393,12 @@ const AboutUsSection = () => {
                 dangerouslySetInnerHTML={{ __html: aboutBody }}
               />
               ) : (
-              <p className="cmdd wellness__text mt-0 mb-0">
+              <p className=" wellness__text mt-0 mb-0">
                 {aboutBody}
               </p>
               )
             ) : (
-              <p className="cmdd wellness__text mt-0 mb-0">
+              <p className=" wellness__text mt-0 mb-0">
                 {FALLBACK_DESCRIPTION_BODY}
               </p>
             )}

@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation } from "swiper/modules";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { FaPlay } from "react-icons/fa";
+import { Play } from "lucide-react";
 import { handleMediaImageError, mediaUrl } from "../../media.js";
 import { youtubeEmbedUrl } from "../../utils/youtubeEmbed.js";
 import { fetchLeadershipNotes } from "../api/publicMisc.js";
 import { SiteLoader } from "./SiteLoader.jsx";
 import InlineReadMore from "./InlineReadMore.jsx";
+import YouTubePlayer from "./YouTubePlayer.jsx";
 
 import "swiper/css";
 import "swiper/css/navigation";
@@ -17,16 +18,6 @@ function messageParagraphs(text) {
     .split(/\n\s*\n/)
     .map((part) => part.trim())
     .filter(Boolean);
-}
-
-function withYoutubeAutoplay(embedUrl) {
-  try {
-    const parsed = new URL(embedUrl);
-    parsed.searchParams.set("autoplay", "1");
-    return parsed.toString();
-  } catch {
-    return embedUrl.includes("?") ? `${embedUrl}&autoplay=1` : `${embedUrl}?autoplay=1`;
-  }
 }
 
 function LeadershipVideo({ videoType = "none", ytLink = "", video = "", thumbnail = "", className = "" }) {
@@ -61,7 +52,7 @@ function LeadershipVideo({ videoType = "none", ytLink = "", video = "", thumbnai
     >
       <img src={poster} alt="" onError={handleMediaImageError} />
       <span className="leadership__video-play" aria-hidden>
-        <FaPlay />
+        <Play size={22} fill="currentColor" />
       </span>
     </button>
   ) : null;
@@ -73,11 +64,10 @@ function LeadershipVideo({ videoType = "none", ytLink = "", video = "", thumbnai
       <div className={wrapClass}>
         {cover}
         {playing || !poster ? (
-          <iframe
-            src={playing && poster ? withYoutubeAutoplay(embedUrl) : embedUrl}
+          <YouTubePlayer
+            url={embedUrl}
             title="Co-founder message video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+            autoPlay={playing && Boolean(poster)}
           />
         ) : null}
       </div>

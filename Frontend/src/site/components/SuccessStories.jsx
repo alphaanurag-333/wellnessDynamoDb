@@ -75,7 +75,7 @@ const SuccessStories = () => {
   return (
    
     <section className="success-story success-stories-page wellness-toolkit wellnesspedia-page">
-      <div className="container success-story__hero pt-2 pb-2">
+      <div className="container success-story__hero pt-3 pb-2">
         <div className="success-wrapper">
           <div className="success-content mb-0">
             {/* <span className="success-tag">CLINICALLY PROVEN RESULTS</span> */}
