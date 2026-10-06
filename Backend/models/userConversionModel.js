@@ -23,6 +23,7 @@ const {
   isConsultancyOnlyTier,
   isAlreadyAssignedClient,
   shouldKeepExistingAssignment,
+  buildLeaveEagleUpdates,
 } = require("./userAssignmentLogic");
 const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 
@@ -342,6 +343,7 @@ async function convertToSeek(userId) {
     programPurchased: false,
     programPurchasedAt: null,
     assignedProgramId: null,
+    ...buildLeaveEagleUpdates(user),
   };
 
   return updateUser(userId, updates);
@@ -394,6 +396,7 @@ async function convertHealToMaintenance(userId) {
   const updated = await updateUser(userId, {
     userTier: "maintenance",
     paidOnboardingCompleted: true,
+    ...buildLeaveEagleUpdates(user),
   });
 
   // Keep / grant current-FY app access from prior Heal membership; enable renewals.
@@ -421,7 +424,10 @@ async function convertMaintenanceToHeal(userId) {
     err.name = "InvalidTierError";
     throw err;
   }
-  return updateUser(userId, { userTier: "heal" });
+  return updateUser(userId, {
+    userTier: "heal",
+    ...buildLeaveEagleUpdates(user, { restoreHealOnboarding: true }),
+  });
 }
 
 /**

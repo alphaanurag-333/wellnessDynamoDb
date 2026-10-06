@@ -4,6 +4,7 @@ const {
   normalizeUserTier,
   isHealTier,
   isEagleClientCategory,
+  buildLeaveEagleUpdates,
   clientHasWcOrAwc,
   WC_OR_AWC_REQUIRED_MESSAGE,
 } = require("../models/userAssignmentLogic");
@@ -288,6 +289,20 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId, 
 
   const tier = normalizeUserTier(userBefore.userTier);
   assertClientHasCoachForTierChange(userBefore, allocateToCoachId);
+
+  // Eagle is a category on the Heal plan. Converting back to HEAL only drops that
+  // category — it must not reset onboarding the way a Seek → Heal upgrade does.
+  if (isEagleClientCategory(userBefore.clientCategory) && isHealTier(userBefore.userTier)) {
+    let refreshed = await updateUser(
+      userId,
+      buildLeaveEagleUpdates(userBefore, { restoreHealOnboarding: true })
+    );
+    if (allocateToCoachId) {
+      refreshed = await ensureWellnessCoachAllocation(refreshed, allocateToCoachId);
+    }
+    return refreshed;
+  }
+
   let user;
   try {
     user = await convertSeekToHeal(userId, {
@@ -319,6 +334,10 @@ async function adminConvertUserToHeal(userId, { referralCode, catalogProgramId, 
 
   if (String(refreshed.parentCoachId || "").trim()) {
     refreshed = await setupPaidClientEntitlements(refreshed, { catalogProgramId, now });
+  }
+
+  if (isEagleClientCategory(refreshed.clientCategory)) {
+    refreshed = await updateUser(userId, buildLeaveEagleUpdates(refreshed));
   }
 
   if (String(refreshed.assignmentStatus || "").trim() === "pending_admin") {

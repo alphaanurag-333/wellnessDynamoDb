@@ -10,6 +10,7 @@ const {
   isAlreadyAssignedClient,
   clientHasWcOrAwc,
   shouldKeepExistingAssignment,
+  buildLeaveEagleUpdates,
 } = require("../models/userAssignmentLogic");
 
 const COACH_ID = "coach-001";
@@ -445,6 +446,61 @@ describe("clientHasWcOrAwc", () => {
       false
     );
     assert.equal(clientHasWcOrAwc(null), false);
+  });
+});
+
+describe("buildLeaveEagleUpdates", () => {
+  it("returns nothing for a non-eagle client", () => {
+    assert.deepEqual(buildLeaveEagleUpdates({ clientCategory: "individual", userTier: "heal" }), {});
+  });
+
+  it("drops the eagle category and keeps heal onboarding when no snapshot exists", () => {
+    assert.deepEqual(
+      buildLeaveEagleUpdates(
+        { clientCategory: "eagle", userTier: "heal", paidOnboardingCompleted: true },
+        { restoreHealOnboarding: true }
+      ),
+      { clientCategory: "individual", eagleUndoSnapshot: null }
+    );
+  });
+
+  it("restores the heal onboarding snapshot when leaving eagle for heal", () => {
+    const updates = buildLeaveEagleUpdates(
+      {
+        clientCategory: "eagle",
+        userTier: "heal",
+        eagleUndoSnapshot: {
+          clientCategory: "individual",
+          userTier: "heal",
+          paidOnboardingCompleted: false,
+          paidOnboardingStep: "personal",
+          paidOnboardingStepStatus: { personalDetails: "done" },
+        },
+      },
+      { restoreHealOnboarding: true }
+    );
+    assert.equal(updates.clientCategory, "individual");
+    assert.equal(updates.eagleUndoSnapshot, null);
+    assert.equal(updates.paidOnboardingCompleted, false);
+    assert.equal(updates.paidOnboardingStep, "personal");
+    assert.equal(updates.paidOnboardingStepStatus.personalDetails, "done");
+  });
+
+  it("does not restore onboarding when the client is moving to another tier", () => {
+    const updates = buildLeaveEagleUpdates({
+      clientCategory: "eagle",
+      userTier: "heal",
+      eagleUndoSnapshot: {
+        clientCategory: "individual",
+        userTier: "heal",
+        paidOnboardingCompleted: false,
+        paidOnboardingStep: "personal",
+      },
+    });
+    assert.deepEqual(updates, {
+      clientCategory: "individual",
+      eagleUndoSnapshot: null,
+    });
   });
 });
 

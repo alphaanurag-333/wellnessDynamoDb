@@ -303,6 +303,24 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     }
   }
 
+  async function convertFromEagle() {
+    if (!canChangeTier || !isEagleClient(user) || currentTier !== "Seek to Heal" || !userId || tierBusy) return;
+    if (tierChangeBlocked) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
+    setTierBusy(true);
+    try {
+      const updated = await moveUserToHeal(userId);
+      onUserUpdated?.(updated);
+      onToast(`${user.name} converted to HEAL`);
+    } catch (err) {
+      onToast(err?.message || "Could not convert this client to Heal");
+    } finally {
+      setTierBusy(false);
+    }
+  }
+
   async function convertToEagle() {
     if (!canUpgradePaidTier || isEagleClient(user) || !userId || tierBusy) return;
     if (tierChangeBlocked) {
@@ -507,6 +525,19 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
         >
           {displayTierLabel}
         </span>
+        {canChangeTier && isEagleClient(user) && currentTier === "Seek to Heal" ? (
+          <button
+            type="button"
+            className="ua-cp-tier-action ua-cp-tier-action--up"
+            title={tierChangeBlocked
+              ? WC_OR_AWC_REQUIRED_MESSAGE
+              : "Convert this Eagle client back to HEAL. They stay on the Heal plan."}
+            onClick={convertFromEagle}
+            disabled={tierBusy || tierChangeBlocked}
+          >
+            Convert to HEAL
+          </button>
+        ) : null}
         {(canChangeTier && tierActions.canConvert)
           || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy")) ? (
           <button

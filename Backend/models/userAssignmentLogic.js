@@ -19,6 +19,38 @@ function isEagleClientCategory(value) {
   return normalizeClientCategory(value) === "eagle";
 }
 
+/**
+ * Drop the Eagle category when an admin moves the client to HEAL, Maintenance, or Seek.
+ * A Heal → Eagle snapshot restores the previous onboarding only when returning to Heal.
+ */
+function buildLeaveEagleUpdates(user, { restoreHealOnboarding = false } = {}) {
+  if (!isEagleClientCategory(user?.clientCategory)) return {};
+
+  const snap = user?.eagleUndoSnapshot;
+  const previousCategory = String(snap?.clientCategory || "").toLowerCase().trim();
+  const updates = {
+    clientCategory:
+      previousCategory && previousCategory !== "eagle" ? previousCategory : "individual",
+    eagleUndoSnapshot: null,
+  };
+
+  if (
+    restoreHealOnboarding &&
+    snap &&
+    typeof snap === "object" &&
+    normalizeUserTier(snap.userTier) === "heal"
+  ) {
+    updates.paidOnboardingCompleted = Boolean(snap.paidOnboardingCompleted);
+    updates.paidOnboardingStep = snap.paidOnboardingStep || "register";
+    updates.paidOnboardingStepStatus =
+      snap.paidOnboardingStepStatus && typeof snap.paidOnboardingStepStatus === "object"
+        ? snap.paidOnboardingStepStatus
+        : {};
+  }
+
+  return updates;
+}
+
 function normalizeAssignmentStatus(value, fallback = "pending_admin") {
   const next = String(value || fallback).toLowerCase().trim();
   return ASSIGNMENT_STATUSES.has(next) ? next : fallback;
@@ -376,6 +408,7 @@ module.exports = {
   normalizeUserTier,
   normalizeClientCategory,
   isEagleClientCategory,
+  buildLeaveEagleUpdates,
   normalizeAssignmentStatus,
   normalizeAssignedCoachType,
   normalizeAssignmentSource,

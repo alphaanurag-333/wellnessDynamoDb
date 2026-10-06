@@ -231,14 +231,26 @@ export function eagleConversionPrompt(user) {
   };
 }
 
+export function eagleToHealConversionPrompt(user) {
+  const name = String(user?.name || "this client").trim() || "this client";
+  return {
+    title: `Convert ${name} from EAGLE to HEAL?`,
+    body: `${name} leaves Eagle and stays on the Heal plan. Maintenance and Seek are still available after that.`,
+    confirm: "Convert to HEAL",
+    kicker: "Conversion",
+  };
+}
+
 export function conversionPrompt(user, direction) {
   const name = String(user?.name || "this client").trim() || "this client";
   const t = normalizeTier(user?.tier);
   if (direction === "up") {
     if (t === "Seek to Heal") {
       return {
-        title: `Move ${name} from HEAL to MAINTENANCE?`,
-        body: `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
+        title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to MAINTENANCE?`,
+        body: isEagleClient(user)
+          ? `${name} leaves Eagle and moves into maintenance. They stay on the roster without an active Heal program.`
+          : `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
         confirm: "Move to MAINTENANCE",
         kicker: "Conversion",
       };
@@ -275,8 +287,10 @@ export function conversionPrompt(user, direction) {
     };
   }
   return {
-    title: `Move ${name} from HEAL to SEEK?`,
-    body: `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
+    title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to SEEK?`,
+    body: isEagleClient(user)
+      ? `${name} leaves Eagle and moves back to Seek. Paid coaching entitlements end, and their history stays on the account.`
+      : `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
     confirm: "Move to SEEK",
     kicker: "Conversion",
   };
@@ -303,9 +317,18 @@ export function listPaidUpgradeOptions(tier, ageDays) {
 }
 
 /** Inline TIER-column actions: current badge stays put; these are the move options. */
-export function listTierMoveOptions(tier, ageDays) {
+export function listTierMoveOptions(tier, ageDays, user) {
   const t = normalizeTier(tier);
   const options = [];
+  if (isEagleClient(user) && t === "Seek to Heal") {
+    options.push({
+      direction: "up",
+      kind: "leave-eagle",
+      target: "Seek to Heal",
+      label: "→ HEAL",
+      title: "Convert this Eagle client back to HEAL. They stay on the Heal plan.",
+    });
+  }
   if (canConvertTier(t)) {
     const target = nextTier(t);
     options.push({

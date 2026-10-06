@@ -12,6 +12,7 @@ import {
   canUndoTierMove,
   conversionPrompt,
   eagleConversionPrompt,
+  eagleToHealConversionPrompt,
   isEagleClient,
   isEagleMoveTarget,
   lastActiveMinutes,
@@ -819,6 +820,19 @@ export function UsersPage() {
     setConversionAsk({ user, direction: "up", ...withWcAllocationNote(conversionPrompt(user, "up")) });
   };
 
+  const convertFromEagle = (user) => {
+    if (!canChangeTier || !isEagleClient(user)) return;
+    if (adminTierChangeBlocked(user)) {
+      onToast(WC_OR_AWC_REQUIRED_MESSAGE);
+      return;
+    }
+    setConversionAsk({
+      user,
+      kind: "leave-eagle",
+      ...withWcAllocationNote(eagleToHealConversionPrompt(user)),
+    });
+  };
+
   const convertToEagle = (user) => {
     if (!canUpgradePaidTier || isEagleClient(user)) return;
     if (adminTierChangeBlocked(user)) {
@@ -846,6 +860,34 @@ export function UsersPage() {
     if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       setConversionAsk(null);
+      return;
+    }
+    if (ask.kind === "leave-eagle") {
+      setActionBusy(true);
+      try {
+        let updated = await moveUserToHeal(key);
+        try {
+          const fresh = await fetchUser(key);
+          if (fresh) updated = { ...updated, ...fresh };
+        } catch {
+          // Conversion already succeeded; keep the payload if status refresh fails.
+        }
+        setUsers((prev) => prev.map((row) => (
+          userOverrideKey(row) === key ? { ...row, ...updated } : row
+        )));
+        setTierUndoByKey((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        onToast(`${user.name} converted to HEAL`);
+        setConversionAsk(null);
+        refreshUsers();
+      } catch (err) {
+        onToast(err?.message || "Could not convert this client to Heal");
+      } finally {
+        setActionBusy(false);
+      }
       return;
     }
     if (ask.kind === "eagle") {
@@ -916,6 +958,7 @@ export function UsersPage() {
         ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
         : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
       setConversionAsk(null);
+      refreshUsers();
     } catch (err) {
       onToast(err?.message || "Could not convert this client");
     } finally {
@@ -1403,7 +1446,7 @@ export function UsersPage() {
               const tier = tierBadge.style;
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
               const tierMoves = canChangeTier
-                ? listTierMoveOptions(u.tier, u.ageDays)
+                ? listTierMoveOptions(u.tier, u.ageDays, u)
                 : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
               const rowKey = userOverrideKey(u) || u.name;
               const tierChangeBlocked = adminTierChangeBlocked(u);
@@ -1453,7 +1496,11 @@ export function UsersPage() {
                               className={`ua-tier-action ua-tier-action--${move.direction}`}
                               title={blocked ? WC_OR_AWC_REQUIRED_MESSAGE : move.title}
                               disabled={actionBusy || blocked}
-                              onClick={() => (move.direction === "up" ? convertTier(u) : downgradeTier(u))}
+                              onClick={() => (
+                                move.kind === "leave-eagle"
+                                  ? convertFromEagle(u)
+                                  : (move.direction === "up" ? convertTier(u) : downgradeTier(u))
+                              )}
                             >
                               {move.label}
                             </button>
