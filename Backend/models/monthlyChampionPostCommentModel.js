@@ -142,7 +142,13 @@ async function deleteMonthlyChampionPostComment(id) {
   );
 }
 
-async function listMonthlyChampionPostComments({ monthlyChampionPostId, page = 1, limit = 50 } = {}) {
+async function listMonthlyChampionPostComments({
+  monthlyChampionPostId,
+  page = 1,
+  limit = 50,
+  createdFrom,
+  createdTo,
+} = {}) {
   const postId = String(monthlyChampionPostId || "").trim();
   if (!postId) {
     return {
@@ -156,6 +162,9 @@ async function listMonthlyChampionPostComments({ monthlyChampionPostId, page = 1
     indexName: "MonthlyChampionPostCreatedAtIndex",
     partitionKeyName: "monthlyChampionPostId",
     partitionKeyValue: postId,
+    sortKeyName: "createdAt",
+    sortKeyFrom: createdFrom || undefined,
+    sortKeyTo: createdTo || undefined,
     scanIndexForward: true,
     page,
     limit,
@@ -168,10 +177,32 @@ async function listMonthlyChampionPostComments({ monthlyChampionPostId, page = 1
   return { comments, pagination };
 }
 
-async function countCommentsForPost(monthlyChampionPostId) {
+/** Current calendar month in Asia/Kolkata as inclusive UTC ISO bounds (createdAt is stored as UTC ISO). */
+function currentMonthCreatedAtRange(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(now);
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const pad = (n) => String(n).padStart(2, "0");
+
+  const start = new Date(`${year}-${pad(month)}-01T00:00:00+05:30`);
+  const nextStart = new Date(`${nextYear}-${pad(nextMonth)}-01T00:00:00+05:30`);
+  return {
+    createdFrom: start.toISOString(),
+    createdTo: new Date(nextStart.getTime() - 1).toISOString(),
+  };
+}
+
+async function countCommentsForPost(monthlyChampionPostId, { createdFrom, createdTo } = {}) {
   const postId = String(monthlyChampionPostId || "").trim();
   if (!postId) return 0;
 
+  const hasRange = Boolean(createdFrom && createdTo);
   let total = 0;
   let lastKey;
 
@@ -180,8 +211,13 @@ async function countCommentsForPost(monthlyChampionPostId) {
       new QueryCommand({
         TableName: TABLE,
         IndexName: "MonthlyChampionPostCreatedAtIndex",
-        KeyConditionExpression: "monthlyChampionPostId = :monthlyChampionPostId",
-        ExpressionAttributeValues: { ":monthlyChampionPostId": postId },
+        KeyConditionExpression: hasRange
+          ? "monthlyChampionPostId = :monthlyChampionPostId AND createdAt BETWEEN :createdFrom AND :createdTo"
+          : "monthlyChampionPostId = :monthlyChampionPostId",
+        ExpressionAttributeValues: {
+          ":monthlyChampionPostId": postId,
+          ...(hasRange ? { ":createdFrom": createdFrom, ":createdTo": createdTo } : {}),
+        },
         Select: "COUNT",
         ExclusiveStartKey: lastKey,
       })
@@ -202,4 +238,5 @@ module.exports = {
   deleteMonthlyChampionPostComment,
   listMonthlyChampionPostComments,
   countCommentsForPost,
+  currentMonthCreatedAtRange,
 };

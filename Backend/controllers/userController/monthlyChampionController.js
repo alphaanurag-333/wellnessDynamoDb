@@ -7,14 +7,19 @@ const {
   findLatestMonthWithChampions,
   normalizeMonthYear,
 } = require("../../models/monthlyChampionPostModel");
-const { listMonthlyChampionPostComments, findMonthlyChampionPostCommentByUser, countCommentsForPost } = require("../../models/monthlyChampionPostCommentModel");
+const {
+  listMonthlyChampionPostComments,
+  findMonthlyChampionPostCommentByUser,
+  countCommentsForPost,
+  currentMonthCreatedAtRange,
+} = require("../../models/monthlyChampionPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const { getCurrentMonthStandingForUser } = require("../../services/monthlyChampionScoreService");
 
 async function enrichPost(post, viewerUserId) {
   const user = await getUserById(post.userId);
   const [commentCount, ownComment] = await Promise.all([
-    countCommentsForPost(post.id),
+    countCommentsForPost(post.id, currentMonthCreatedAtRange()),
     viewerUserId
       ? findMonthlyChampionPostCommentByUser(post.id, viewerUserId)
       : Promise.resolve(null),
@@ -104,6 +109,7 @@ exports.getUserMonthlyChampionByIdController = asyncHandler(async (req, res) => 
     monthlyChampionPostId: post.id,
     page: 1,
     limit: 200,
+    ...currentMonthCreatedAtRange(),
   });
 
   const enriched = await enrichPost(post, userId);

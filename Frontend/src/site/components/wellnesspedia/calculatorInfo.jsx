@@ -8,12 +8,12 @@ export const BMI_INFO_TIERS = [
 ];
 
 export const BMR_INFO_LEVELS = [
-  { name: "Sedentary : little or no exercise", factor: "× 1.2" },
-  { name: "Exercise 1 - 3 time/week", factor: "× 1.375" },
-  { name: "Exercise 4 - 5 time/week", factor: "× 1.55" },
-  { name: "Daily Exercise", factor: "× 1.725" },
-  { name: "Intense exercise 6 - 7 times/week", factor: "× 1.9" },
-  { name: "Very intense exercise daily", factor: "× 2.1" },
+  { name: "Sedentary: little or no exercise", factor: "× 1.2" },
+  { name: "Exercise 1-3 times/week", factor: "× 1.375" },
+  { name: "Exercise 4-5 times/week", factor: "× 1.465" },
+  { name: "Daily exercise or intense exercise 3-4 times/week", factor: "× 1.55" },
+  { name: "Intense exercise 6-7 times/week", factor: "× 1.725" },
+  { name: "Very intense exercise daily, or physical job", factor: "× 1.9" },
 ];
 
 export const BODY_FAT_REF = [
@@ -22,18 +22,23 @@ export const BODY_FAT_REF = [
   { age: "60 - 79", men: "13 - 24 %", women: "24 - 35 %" },
 ];
 
-export const VISCERAL_RISK_INFO = [
-  { ratio: "< 0.45", risk: "Excellent" },
-  { ratio: "0.45 – 0.49", risk: "Healthy" },
-  { ratio: "0.50 – 0.54", risk: "Early accumulation" },
-  { ratio: "0.55 – 0.59", risk: "High visceral fat" },
-  { ratio: "≥ 0.60", risk: "Very high metabolic risk" },
+export const VISCERAL_FAT_INFO = [
+  { label: "Visceral obesity", range: "≥ 130 cm²" },
+  { label: "No visceral obesity", range: "< 130 cm²" },
 ];
 
-export const WAIST_CUTOFF_INFO = [
-  { level: "Good", men: "< 85", women: "< 75" },
-  { level: "Caution", men: "85 – 89", women: "75 – 79" },
-  { level: "High Risk", men: "≥ 90", women: "≥ 80" },
+export const VISCERAL_BMI_INFO = [
+  { label: "Underweight", range: "< 18.5" },
+  { label: "Normal weight", range: "18.5 – 24.9" },
+  { label: "Overweight", range: "25 – 29.9" },
+  { label: "Obesity", range: "≥ 30" },
+];
+
+export const VISCERAL_ASIAN_BMI_INFO = [
+  { label: "Underweight", range: "< 18.5" },
+  { label: "Normal weight", range: "18.5 – 22.9" },
+  { label: "Overweight", range: "23 – 27.4" },
+  { label: "Obesity", range: "≥ 27.5" },
 ];
 
 export function BmiInfoPanel() {
@@ -113,57 +118,54 @@ export function BodyFatInfoPanel() {
   );
 }
 
+function InfoRangeTable({ title, rows, rangeHeading }) {
+  return (
+    <div className="wp-info-sheet">
+      <p className="wp-info-panel__kicker wp-info-panel__kicker--center">{title}</p>
+      <table className="wp-info-table wp-info-table--lines">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>{rangeHeading}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.label}>
+              <td>
+                <strong>{row.label}</strong>
+              </td>
+              <td className="is-muted">{row.range}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function VisceralInfoPanel() {
   return (
     <div className="wp-info-panel wp-info-panel--visceral">
-      <div className="wp-info-sheet">
-        <p className="wp-info-panel__kicker wp-info-panel__kicker--center">
-          Visceral Fat Risk
-        </p>
-        <table className="wp-info-table wp-info-table--lines">
-          <thead>
-            <tr>
-              <th>Waist : Height</th>
-              <th>Risk Assessment</th>
-            </tr>
-          </thead>
-          <tbody>
-            {VISCERAL_RISK_INFO.map((row) => (
-              <tr key={row.ratio}>
-                <td>
-                  <strong>{row.ratio}</strong>
-                </td>
-                <td className="is-muted">{row.risk}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="wp-info-sheet">
-        <p className="wp-info-panel__kicker wp-info-panel__kicker--center">
-          Waist Cut Off
-        </p>
-        <table className="wp-info-table wp-info-table--lines">
-          <thead>
-            <tr>
-              <th>Risk Level</th>
-              <th>Men (cm)</th>
-              <th>Women (cm)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {WAIST_CUTOFF_INFO.map((row) => (
-              <tr key={row.level}>
-                <td>
-                  <strong>{row.level}</strong>
-                </td>
-                <td>{row.men}</td>
-                <td>{row.women}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <InfoRangeTable
+        title="Visceral Fat"
+        rows={VISCERAL_FAT_INFO}
+        rangeHeading="Area"
+      />
+      <InfoRangeTable
+        title="Body Mass Index"
+        rows={VISCERAL_BMI_INFO}
+        rangeHeading="kg/m²"
+      />
+      <InfoRangeTable
+        title="BMI in Asian populations"
+        rows={VISCERAL_ASIAN_BMI_INFO}
+        rangeHeading="kg/m²"
+      />
+      <p className="wp-info-source">
+        <i className="wp-info-source__dot" />
+        Source: Samouda et al., Obesity, 2013
+      </p>
     </div>
   );
 }

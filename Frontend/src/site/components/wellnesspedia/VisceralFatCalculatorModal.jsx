@@ -1,9 +1,8 @@
 import { useState } from "react";
 import {
   isValidAge,
-  isValidHeight,
-  isValidMeasurement,
   isValidFeetInches,
+  isInRange,
   feetInchesToCm,
   cmToFeetInches,
   collectCalculatorErrors,
@@ -15,41 +14,131 @@ import {
   AgeField,
   GenderField,
   HeightField,
+  WeightField,
   MeasureField,
   bindField,
   bindGenderSwitch,
 } from "./calculatorFields.jsx";
 
 const VISCERAL_DESC =
-  "Estimate your visceral fat level using key body measurements to understand your abdominal fat and metabolic health.";
+  "Estimate visceral fat area for adults 18 years and older from age, weight, height, waist, and proximal thigh measurements.";
 
-const WAIST_CUTOFF = [
-  { level: "Good", men: "< 85", women: "< 75" },
-  { level: "Caution", men: "85 - 89", women: "75 - 79" },
-  { level: "High Risk", men: "≥ 90", women: "≥ 80" },
+const VAT_OBESITY = 130;
+const VAT_SCALE_MAX = 260;
+
+const BMI_GUIDE = [
+  { label: "Underweight", detail: "BMI < 18.5 kg/m²", test: (bmi) => bmi < 18.5 },
+  { label: "Normal weight", detail: "18.5 ≤ BMI < 25 kg/m²", test: (bmi) => bmi >= 18.5 && bmi < 25 },
+  { label: "Overweight", detail: "25 ≤ BMI < 30 kg/m²", test: (bmi) => bmi >= 25 && bmi < 30 },
+  { label: "Obesity", detail: "BMI ≥ 30 kg/m²", test: (bmi) => bmi >= 30 },
 ];
 
-const VISCERAL_RISK = [
-  { ratio: "< 0.45", risk: "Excellent", color: "#3B82F6" },
-  { ratio: "0.45 - 0.49", risk: "Healthy", color: "#22C55E" },
-  { ratio: "0.50 - 0.54", risk: "Early accumulation", color: "#A855F7" },
-  { ratio: "0.55 - 0.59", risk: "High visceral fat", color: "#F97316" },
-  { ratio: "≥ 0.60", risk: "Very high metabolic risk", color: "#EF4444" },
+const ASIAN_BMI_GUIDE = [
+  { label: "Underweight", detail: "BMI < 18.5 kg/m²", test: (bmi) => bmi < 18.5 },
+  { label: "Normal weight", detail: "18.5 ≤ BMI < 23 kg/m²", test: (bmi) => bmi >= 18.5 && bmi < 23 },
+  { label: "Overweight", detail: "23 ≤ BMI < 27.5 kg/m²", test: (bmi) => bmi >= 23 && bmi < 27.5 },
+  { label: "Obesity", detail: "BMI ≥ 27.5 kg/m²", test: (bmi) => bmi >= 27.5 },
 ];
+
+function round2(value) {
+  return Number(Number(value).toFixed(2));
+}
+
+/** Samouda VAT = TAAT − SAAT model (cm²). BMI is kg/m² and is used for women. */
+function estimateVisceralFat({ gender, age, weightKg, heightCm, waistCm, thighCm }) {
+  const heightM = heightCm / 100;
+  const bmiRaw = weightKg / (heightM * heightM);
+  const vatRaw =
+    gender === "male"
+      ? 6 * waistCm - 4.41 * thighCm + 1.19 * age - 213.65
+      : 2.15 * waistCm - 3.63 * thighCm + 1.46 * age + 6.22 * bmiRaw - 92.713;
+
+  return { vat: round2(vatRaw), bmi: round2(bmiRaw) };
+}
+
+function bmiMarkerPercent(bmi) {
+  const value = Number(bmi);
+  let pos = 0;
+  if (value > 0 && value < 18.5) pos = (value / 18.5) * 10;
+  else if (value >= 18.5 && value < 25) pos = 10 + ((value - 18.5) / 6.5) * 10;
+  else if (value >= 25 && value < 30) pos = 20 + ((value - 25) / 5) * 10;
+  else if (value >= 30) pos = Math.min(40, 30 + ((value - 30) / 10) * 10);
+  return (pos / 40) * 100;
+}
+
+function vatMarkerPercent(vat) {
+  const value = Math.min(Math.max(Number(vat), 0), VAT_SCALE_MAX);
+  return (value / VAT_SCALE_MAX) * 100;
+}
+
+function matchedLabel(rows, value) {
+  return rows.find((row) => row.test(value))?.label ?? "";
+}
+
+function ScoreBlock({ title, value, unit, status, risk, marker, segments, ticks }) {
+  return (
+    <div className="wp-vat-score">
+      <p className="wp-vat-score__title">{title}</p>
+      <div className={`wp-ring wp-ring--sm ${risk ? "is-risk" : "is-ok"}`}>
+        <strong>{value}</strong>
+        <span>{unit}</span>
+      </div>
+      <div className="wp-vat-scale" aria-hidden="true">
+        <div className="wp-vat-scale__track">
+          {segments.map((segment) => (
+            <i
+              key={segment.key}
+              className="wp-vat-scale__seg"
+              style={{ background: segment.color, flex: segment.flex }}
+            />
+          ))}
+          <i className="wp-vat-scale__marker" style={{ left: `${marker}%` }} />
+        </div>
+        <div className="wp-vat-scale__ticks">
+          {ticks.map((tick) => (
+            <span key={tick.label} style={{ left: `${tick.at}%` }}>
+              {tick.label}
+            </span>
+          ))}
+        </div>
+      </div>
+      <p className={`wp-vat-status ${risk ? "is-risk" : "is-ok"}`}>{status}</p>
+    </div>
+  );
+}
+
+function GuideList({ title, rows, value }) {
+  return (
+    <div>
+      <h5>{title}</h5>
+      <ul>
+        {rows.map((row) => (
+          <li key={row.label} className={row.test(value) ? "is-active" : ""}>
+            <strong>{row.label}: </strong>
+            {row.detail}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function VisceralFatCalculatorModal({ open, onClose }) {
   const [view, setView] = useState("form");
   const [gender, setGender] = useState("male");
   const [age, setAge] = useState("");
   const [heightUnit, setHeightUnit] = useState("cm");
+  const [weightUnit, setWeightUnit] = useState("kg");
   const [waistUnit, setWaistUnit] = useState("cm");
+  const [thighUnit, setThighUnit] = useState("cm");
   const [heightCm, setHeightCm] = useState("");
   const [feet, setFeet] = useState("");
   const [inch, setInch] = useState("");
+  const [weightKg, setWeightKg] = useState("");
+  const [weightLb, setWeightLb] = useState("");
   const [waist, setWaist] = useState("");
-  const [ratio, setRatio] = useState(null);
-  const [visceralFat, setVisceralFat] = useState(null);
-  const [visceralPercent, setVisceralPercent] = useState(null);
+  const [thigh, setThigh] = useState("");
+  const [result, setResult] = useState(null);
   const [errors, setErrors] = useState({});
 
   const changeHeightUnit = (unit) => {
@@ -65,45 +154,121 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
     setHeightUnit(unit);
   };
 
+  const changeWeightUnit = (unit) => {
+    if (unit === weightUnit) return;
+    if (unit === "lb") {
+      setWeightLb(
+        weightKg === "" || weightKg == null
+          ? ""
+          : String(Number((Number(weightKg) * 2.20462).toFixed(1)))
+      );
+    } else {
+      setWeightKg(
+        weightLb === "" || weightLb == null
+          ? ""
+          : String(Number((Number(weightLb) / 2.20462).toFixed(1)))
+      );
+    }
+    setWeightUnit(unit);
+    setErrors((prev) => {
+      if (!prev.weight) return prev;
+      const next = { ...prev };
+      delete next.weight;
+      return next;
+    });
+  };
+
+  const changeMeasureUnit = (unit, current, value, setUnit, setValue, errorKey) => {
+    if (unit === current) return;
+    if (value === "" || value == null) {
+      setUnit(unit);
+    } else if (unit === "in") {
+      setValue(String(Math.min(80, Number((Number(value) / 2.54).toFixed(1)))));
+      setUnit(unit);
+    } else {
+      setValue(String(Math.min(200, Number((Number(value) * 2.54).toFixed(1)))));
+      setUnit(unit);
+    }
+    setErrors((prev) => {
+      if (!prev[errorKey]) return prev;
+      const next = { ...prev };
+      delete next[errorKey];
+      return next;
+    });
+  };
+
+  const clearInputs = () => {
+    setAge("");
+    setHeightCm("");
+    setFeet("");
+    setInch("");
+    setWeightKg("");
+    setWeightLb("");
+    setWaist("");
+    setThigh("");
+  };
+
   const handleClose = () => {
     setView("form");
     setGender("male");
     setAge("");
     setHeightUnit("cm");
+    setWeightUnit("kg");
     setWaistUnit("cm");
-    setHeightCm("");
-    setFeet("");
-    setInch("");
-    setWaist("");
-    setRatio(null);
-    setVisceralFat(null);
-    setVisceralPercent(null);
+    setThighUnit("cm");
+    clearInputs();
+    setResult(null);
     setErrors({});
     onClose?.();
   };
 
-  const handleBack = () => {
-    setView("form");
-  };
-
   const calculate = () => {
+    const heightValue =
+      heightUnit === "cm" ? Number(heightCm) : feetInchesToCm(feet, inch);
+    const heightOk =
+      heightUnit === "cm"
+        ? isInRange(heightCm, 100, 300)
+        : isValidFeetInches(feet, inch) && heightValue >= 100 && heightValue <= 300;
+    const weightValue =
+      weightUnit === "kg" ? Number(weightKg) : Number(weightLb) * 0.45359237;
+    const weightOk =
+      weightUnit === "kg"
+        ? isInRange(weightKg, 10, 300)
+        : isInRange(weightLb, 22, 662) && weightValue >= 10 && weightValue <= 300.05;
+    const waistOk = waistUnit === "cm" ? isInRange(waist, 10, 200) : isInRange(waist, 4, 80);
+    const thighOk = thighUnit === "cm" ? isInRange(thigh, 10, 200) : isInRange(thigh, 4, 80);
+
     const nextErrors = collectCalculatorErrors([
       { id: "gender", label: "Gender", valid: Boolean(gender), hint: "Select gender" },
-      { id: "age", label: "Age", valid: isValidAge(age), hint: "Enter age between 1 and 120" },
+      {
+        id: "age",
+        label: "Age",
+        valid: isValidAge(age, { min: 18, max: 100 }),
+        hint: "Enter age between 18 and 100",
+      },
+      {
+        id: "weight",
+        label: "Weight",
+        valid: weightOk,
+        hint: weightUnit === "kg" ? "Enter weight between 10 and 300 kg" : "Enter weight between 22 and 661 lb",
+      },
       {
         id: "height",
         label: "Height",
-        valid:
-          heightUnit === "cm"
-            ? isValidHeight(heightCm, "cm")
-            : isValidFeetInches(feet, inch),
-        hint: heightUnit === "ft" ? "Enter 1–8 ft and 0–11 in" : "Enter height between 50 and 300 cm",
+        valid: heightOk,
+        hint: heightUnit === "ft" ? "Enter 1–3 m (about 3 ft 4 in to 8 ft)" : "Enter height between 100 and 300 cm",
       },
       {
         id: "waist",
         label: "Waist",
-        valid: isValidMeasurement(waist, waistUnit),
-        hint: waistUnit === "in" ? "Enter waist between 8 and 80 in" : "Enter waist between 20 and 200 cm",
+        valid: waistOk,
+        hint: waistUnit === "in" ? "Enter waist between 4 and 80 in" : "Enter waist between 10 and 200 cm",
+      },
+      {
+        id: "thigh",
+        label: "Thigh",
+        valid: thighOk,
+        hint: thighUnit === "in" ? "Enter thigh between 4 and 80 in" : "Enter thigh between 10 and 200 cm",
       },
     ]);
     if (Object.keys(nextErrors).length) {
@@ -112,22 +277,23 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
     }
     setErrors({});
 
-    const h =
-      heightUnit === "cm" ? Number(heightCm) : feetInchesToCm(feet, inch);
-    const w = waistUnit === "cm" ? Number(waist) : Number(waist) * 2.54;
-    const whtr = w / h;
-    setRatio(Number(whtr.toFixed(2)));
-
-    let level =
-      gender === "male"
-        ? Math.round(whtr * 100 + Number(age) * 0.18 - 30)
-        : Math.round(whtr * 100 + Number(age) * 0.15 - 28);
-    if (level < 1) level = 1;
-    if (level > 30) level = 30;
-    setVisceralFat(level);
-    setVisceralPercent(Number(((level / 30) * 100).toFixed(0)));
+    const waistCm = waistUnit === "cm" ? Number(waist) : Number(waist) * 2.54;
+    const thighCm = thighUnit === "cm" ? Number(thigh) : Number(thigh) * 2.54;
+    setResult(
+      estimateVisceralFat({
+        gender,
+        age: Number(age),
+        weightKg: weightValue,
+        heightCm: heightValue,
+        waistCm,
+        thighCm,
+      })
+    );
     setView("result");
   };
+
+  const visceralRisk = result != null && result.vat >= VAT_OBESITY;
+  const bmiRisk = result != null && result.bmi >= 25;
 
   return (
     <WellnesspediaModal
@@ -137,29 +303,33 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
       description={VISCERAL_DESC}
       showInfo={view === "form"}
       infoContent={<VisceralInfoPanel />}
-      infoLabel="Visceral fat risk reference"
+      infoLabel="Visceral fat and BMI reference"
       wide={view === "result"}
       className="wp-calc-modal"
     >
       {view === "form" ? (
         <div className="wp-calc-form">
           <div className="wp-calc-form__grid">
-           
             <GenderField
               value={gender}
-              onChange={bindGenderSwitch(gender, setGender, setErrors, () => {
-                setAge("");
-                setHeightCm("");
-                setFeet("");
-                setInch("");
-                setWaist("");
-              })}
+              onChange={bindGenderSwitch(gender, setGender, setErrors, clearInputs)}
               error={errors.gender}
             />
-             <AgeField
+            <AgeField
               value={age}
               onChange={bindField(setAge, setErrors, "age")}
               error={errors.age}
+            />
+            <WeightField
+              weightUnit={weightUnit}
+              onUnitChange={changeWeightUnit}
+              weight={weightUnit === "kg" ? weightKg : weightLb}
+              onWeight={
+                weightUnit === "kg"
+                  ? bindField(setWeightKg, setErrors, "weight")
+                  : bindField(setWeightLb, setErrors, "weight")
+              }
+              error={errors.weight}
             />
             <HeightField
               heightUnit={heightUnit}
@@ -173,13 +343,35 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
               error={errors.height}
             />
             <MeasureField
-              label="Waist"
+              label="Waist circumference"
               unit={waistUnit}
-              onUnitChange={setWaistUnit}
+              onUnitChange={(unit) =>
+                changeMeasureUnit(unit, waistUnit, waist, setWaistUnit, setWaist, "waist")
+              }
               value={waist}
               onChange={bindField(setWaist, setErrors, "waist")}
               error={errors.waist}
             />
+            <MeasureField
+              label="Thigh circumference"
+              unit={thighUnit}
+              onUnitChange={(unit) =>
+                changeMeasureUnit(unit, thighUnit, thigh, setThighUnit, setThigh, "thigh")
+              }
+              value={thigh}
+              onChange={bindField(setThigh, setErrors, "thigh")}
+              error={errors.thigh}
+            />
+          </div>
+          <div className="wp-vat-measure">
+            <p>
+              <strong>Waist: </strong>
+              midway between the lower rib and the iliac crest.
+            </p>
+            <p>
+              <strong>Proximal thigh: </strong>
+              tape on the gluteal crease, around the thigh.
+            </p>
           </div>
           <button type="button" className="wp-calc-submit" onClick={calculate}>
             Calculate Visceral Fat
@@ -187,74 +379,67 @@ export default function VisceralFatCalculatorModal({ open, onClose }) {
         </div>
       ) : (
         <div className="wp-calc-result">
-          <div className="wp-visceral-result">
-            <div className="wp-visceral-metrics">
-              <div className="wp-visceral-metric">
-                <span>Waist : Height</span>
-                <div className="wp-ring wp-ring--sm">
-                  <strong>{ratio}</strong>
-                </div>
-              </div>
-              <div className="wp-visceral-metric">
-                <span>Est. Visceral Fat</span>
-                <div className="wp-ring wp-ring--sm">
-                  <strong>{visceralFat}</strong>
-                </div>
-              </div>
-              <div className="wp-visceral-metric">
-                <span>Visceral Fat %</span>
-                <div className="wp-ring wp-ring--sm">
-                  <strong>{visceralPercent}</strong>
-                </div>
-              </div>
+          <div className="wp-vat-result">
+            <div className="wp-vat-scores">
+              <ScoreBlock
+                title="Your Visceral Fat"
+                value={result.vat.toFixed(2)}
+                unit="cm²"
+                status={visceralRisk ? "Visceral obesity" : "Absence of visceral obesity"}
+                risk={visceralRisk}
+                marker={vatMarkerPercent(result.vat)}
+                segments={[
+                  { key: "low", color: "#60a5fa", flex: 1 },
+                  { key: "high", color: "#ef4444", flex: 1 },
+                ]}
+                ticks={[
+                  { label: "< 130", at: 25 },
+                  { label: "≥ 130", at: 75 },
+                ]}
+              />
+              <ScoreBlock
+                title="Your Body Mass Index"
+                value={result.bmi.toFixed(2)}
+                unit="kg/m²"
+                status={matchedLabel(BMI_GUIDE, result.bmi)}
+                risk={bmiRisk}
+                marker={bmiMarkerPercent(result.bmi)}
+                segments={[
+                  { key: "under", color: "#facc15", flex: 1 },
+                  { key: "normal", color: "#60a5fa", flex: 1 },
+                  { key: "over", color: "#fb923c", flex: 1 },
+                  { key: "obese", color: "#ef4444", flex: 1 },
+                ]}
+                ticks={[
+                  { label: "18.50", at: 25 },
+                  { label: "25.00", at: 50 },
+                  { label: "30.00", at: 75 },
+                ]}
+              />
             </div>
-
-            <div className="wp-visceral-tables">
-              <div className="wp-ref-table">
-                <h4>Waist Cut Off</h4>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Risk Level</th>
-                      <th>Men (cm)</th>
-                      <th>Women (cm)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {WAIST_CUTOFF.map((row) => (
-                      <tr key={row.level}>
-                        <td>
-                          <strong>{row.level}</strong>
-                        </td>
-                        <td>{row.men}</td>
-                        <td>{row.women}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="wp-ref-table">
-                <h4>Visceral Fat Risk</h4>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Waist : Height</th>
-                      <th>Risk Assessment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {VISCERAL_RISK.map((row) => (
-                      <tr key={row.ratio}>
-                        <td>{row.ratio}</td>
-                        <td style={{ color: row.color }}>{row.risk}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="wp-vat-interpret">
+              <h4>Interpret your results</h4>
+              <GuideList
+                title="Visceral Fat"
+                rows={[
+                  {
+                    label: "Visceral obesity",
+                    detail: "Visceral fat ≥ 130 cm²",
+                    test: (vat) => vat >= VAT_OBESITY,
+                  },
+                  {
+                    label: "Absence of visceral obesity",
+                    detail: "Visceral fat < 130 cm²",
+                    test: (vat) => vat < VAT_OBESITY,
+                  },
+                ]}
+                value={result.vat}
+              />
+              <GuideList title="Body Mass Index" rows={BMI_GUIDE} value={result.bmi} />
+              <GuideList title="BMI in Asian populations" rows={ASIAN_BMI_GUIDE} value={result.bmi} />
             </div>
           </div>
-          <CalcBackButton onClick={handleBack} />
+          <CalcBackButton onClick={() => setView("form")} />
         </div>
       )}
     </WellnesspediaModal>

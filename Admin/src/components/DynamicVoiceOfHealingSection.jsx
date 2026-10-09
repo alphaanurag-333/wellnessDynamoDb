@@ -26,10 +26,10 @@ const EMPTY_DRAFT = {
   videoName: "",
 };
 
-const VH_CROP_WIDTH = 300;
-const VH_CROP_HEIGHT = 300;
-const VH_CROP_RATIO = "1:1";
-const VH_COVER_SIZE_LABEL = "Thumbnail: 300x300";
+const VH_CROP_WIDTH = 840;
+const VH_CROP_HEIGHT = 480;
+const VH_CROP_RATIO = "840:480";
+const VH_COVER_SIZE_LABEL = "Thumbnail: 840x480";
 const VH_VIDEO_SIZE_LABEL = "Video: 1920x1080";
 
 function withYoutubeAutoplay(embedUrl) {
@@ -236,8 +236,12 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
   const { openPicker: openVideoPicker, mediaPickerModal: videoPickerModal } = useMediaPicker({
     accept: "video",
     title: "Choose video",
-    onFiles: (file) => {
+    onFiles: (file, target) => {
       if (!file) return;
+      if (target && target !== "draft") {
+        patchItem(target, { videoFile: file, videoName: file.name, type: "video" });
+        return;
+      }
       setDraft((prev) => ({ ...prev, videoFile: file, videoName: file.name, type: "video" }));
     },
     onError: (error) => onToast?.(error?.message || "Could not attach media"),
@@ -324,6 +328,21 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
     }));
   }
 
+  function clearItemVideo(id) {
+    setItems((prev) => prev.map((row) => {
+      if (row.id !== id) return row;
+      if (row.videoFile instanceof File) {
+        return {
+          ...row,
+          videoFile: null,
+          videoName: "",
+          type: row.video ? "video" : "link",
+        };
+      }
+      return { ...row, video: "", videoName: "", videoFile: null, type: "link" };
+    }));
+  }
+
   async function confirmCrop(croppedFile, cropError) {
     if (cropError) {
       onToast(cropError.message || "Failed to crop image");
@@ -394,8 +413,10 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
       onToast("Add the client or video title");
       return;
     }
-    if (item.type === "link" && !String(item.ytLink || "").trim()) {
-      onToast("YouTube link is required for link videos");
+    const hasNewVideo = item.videoFile instanceof File;
+    const type = hasNewVideo || (item.type === "video" && String(item.video || "").trim()) ? "video" : "link";
+    if (type === "link" && !String(item.ytLink || "").trim()) {
+      onToast("Add a YouTube link or upload a video");
       return;
     }
     setBusy(true);
@@ -403,8 +424,8 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
       const saved = await adminUpdateVideoTestimonial(null, item.id, {
         name,
         ytLink: item.ytLink,
-        type: item.type,
-      });
+        type,
+      }, hasNewVideo ? { videoFile: item.videoFile } : {});
       patchItem(item.id, saved);
       setEditingId(null);
       onToast("Video saved");
@@ -581,8 +602,154 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
               const isEditing = editingId === entry.id;
               const photo = entry.imagePreview || entry.profileImage;
               const embed = youtubeEmbedUrl(entry.ytLink);
+              const videoLabel = entry.videoFile instanceof File
+                ? entry.videoName
+                : (entry.type === "video" && entry.video ? "Uploaded video" : "");
+              const rowActions = (
+                <div className="ua-cfg-vh-item__actions">
+                  <div className="ua-cfg-vh-item__surfaces">
+                    <div className="ua-cfg-vh-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.webVisible ? " is-on" : ""}`}>WEB</span>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${entry.webVisible ? " ua-toggle--on" : ""}`}
+                        aria-pressed={entry.webVisible}
+                        aria-label={entry.webVisible ? "Hide on web" : "Show on web"}
+                        disabled={busy}
+                        onClick={() => toggleSurface(entry, "webVisible")}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                    <div className="ua-cfg-vh-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.appVisible ? " is-on" : ""}`}>APP</span>
+                      <button
+                        type="button"
+                        className={`ua-toggle ua-toggle--sm${entry.appVisible ? " ua-toggle--on" : ""}`}
+                        aria-pressed={entry.appVisible}
+                        aria-label={entry.appVisible ? "Hide on app" : "Show on app"}
+                        disabled={busy}
+                        onClick={() => toggleSurface(entry, "appVisible")}
+                      >
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                    <div className="ua-cfg-vh-item__live">
+                      <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
+                      <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
+                        <span className="ua-toggle__knob" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="ua-cfg-tf-item__moves">
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      disabled={busy || !canReorder || index === 0}
+                      onClick={() => moveItem(index, -1)}
+                      aria-label="Move up"
+                      title={canReorder ? "Move up" : "Clear search to reorder"}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="ua-cfg-icon-btn"
+                      disabled={busy || !canReorder || index === items.length - 1}
+                      onClick={() => moveItem(index, 1)}
+                      aria-label="Move down"
+                      title={canReorder ? "Move down" : "Clear search to reorder"}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                  <div className="ua-cfg-vh-item__btns">
+                    <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
+                    {isEditing ? null : (
+                      <button
+                        type="button"
+                        className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+                        disabled={busy}
+                        onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {isEditing ? null : (
+                      <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
+                    )}
+                  </div>
+                </div>
+              );
+
+              if (isEditing) {
+                return (
+                  <article key={entry.id} className="ua-cfg-rc-new ua-cfg-vh-new ua-cfg-vh-item is-editing">
+                    <div className="ua-cfg-rc-new__head">
+                      <strong><span aria-hidden="true">▶</span> Edit video</strong>
+                      <div className="ua-cfg-vh-edit__tools">
+                        {rowActions}
+                        <button
+                          type="button"
+                          className="ua-cfg-icon-btn"
+                          aria-label="Close"
+                          disabled={busy}
+                          onClick={() => { setEditingId(null); loadItems(); }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                    <div className="ua-cfg-vh-new__grid">
+                      <div className="ua-cfg-vh-new__media">
+                        <CoverDrop
+                          previewUrl={photo}
+                          disabled={busy}
+                          onPick={() => openImagePicker(entry.id)}
+                        />
+                        <VideoDrop
+                          fileName={videoLabel}
+                          disabled={busy}
+                          onPick={() => openVideoPicker(entry.id)}
+                          onRemove={videoLabel ? () => clearItemVideo(entry.id) : null}
+                        />
+                      </div>
+                      <div className="ua-cfg-vh-new__side">
+                        <div className="ua-cfg-vh-new__fields">
+                          <label className="ua-cfg-vh-field">
+                            <span>Title</span>
+                            <input
+                              className="ua-cfg-vh-input"
+                              placeholder="Title · e.g. Madhupriya's reversal story"
+                              value={asCopyString(entry.name)}
+                              disabled={busy}
+                              onChange={(event) => patchItem(entry.id, { name: event.target.value })}
+                            />
+                          </label>
+                          <label className="ua-cfg-vh-field">
+                            <span>YouTube link</span>
+                            <input
+                              className="ua-cfg-vh-input"
+                              placeholder="https://youtube.com/…"
+                              value={asCopyString(entry.ytLink)}
+                              disabled={busy}
+                              onChange={(event) => patchItem(entry.id, { ytLink: event.target.value })}
+                            />
+                          </label>
+                        </div>
+                        <div className="ua-cfg-vh-new__foot">
+                          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={() => saveItem(entry)}>
+                            {busy ? "Saving…" : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              }
+
               return (
-                <article key={entry.id} className={`ua-cfg-rc-item ua-cfg-vh-item${isEditing ? " is-editing" : ""}`}>
+                <article key={entry.id} className="ua-cfg-rc-item ua-cfg-vh-item">
                   <div className="ua-cfg-rc-cover-wrap">
                     <button
                       type="button"
@@ -598,119 +765,20 @@ export function DynamicVoiceOfHealingSection({ items, setItems, editor, setEdito
                   <div className="ua-cfg-rc-item__body">
                     <div className="ua-cfg-vh-item__head">
                       <div className="ua-cfg-vh-item__identity">
-                        {isEditing ? (
-                          <input
-                            className="ua-cfg-vh-input ua-cfg-rc-title"
-                            value={asCopyString(entry.name)}
-                            disabled={busy}
-                            onChange={(event) => patchItem(entry.id, { name: event.target.value })}
-                          />
-                        ) : (
-                          <strong>{asCopyString(entry.name)}</strong>
-                        )}
+                        <strong>{asCopyString(entry.name)}</strong>
                         <div className="ua-cfg-vh-item__meta">
                           <span className={`ua-cfg-rc-pill${entry.type === "video" ? " ua-cfg-rc-pill--video" : " ua-cfg-rc-pill--cat"}`}>
                             {entry.type === "video" ? "Video" : "Link"}
                           </span>
-                          {isEditing ? null : (
-                            <p className="ua-cfg-panel__sub">
-                              {entry.type === "video" ? "Uploaded video" : (embed ? "YouTube link" : asCopyString(entry.ytLink) || "No link")}
-                              {" · "}
-                              {formatRecipeDate(entry.updatedAt)}
-                            </p>
-                          )}
+                          <p className="ua-cfg-panel__sub">
+                            {entry.type === "video" ? "Uploaded video" : (embed ? "YouTube link" : asCopyString(entry.ytLink) || "No link")}
+                            {" · "}
+                            {formatRecipeDate(entry.updatedAt)}
+                          </p>
                         </div>
                       </div>
-                      <div className="ua-cfg-vh-item__actions">
-                        <div className="ua-cfg-vh-item__surfaces">
-                          <div className="ua-cfg-vh-item__live">
-                            <span className={`ua-cfg-faq__shown${entry.webVisible ? " is-on" : ""}`}>WEB</span>
-                            <button
-                              type="button"
-                              className={`ua-toggle ua-toggle--sm${entry.webVisible ? " ua-toggle--on" : ""}`}
-                              aria-pressed={entry.webVisible}
-                              aria-label={entry.webVisible ? "Hide on web" : "Show on web"}
-                              disabled={busy}
-                              onClick={() => toggleSurface(entry, "webVisible")}
-                            >
-                              <span className="ua-toggle__knob" />
-                            </button>
-                          </div>
-                          <div className="ua-cfg-vh-item__live">
-                            <span className={`ua-cfg-faq__shown${entry.appVisible ? " is-on" : ""}`}>APP</span>
-                            <button
-                              type="button"
-                              className={`ua-toggle ua-toggle--sm${entry.appVisible ? " ua-toggle--on" : ""}`}
-                              aria-pressed={entry.appVisible}
-                              aria-label={entry.appVisible ? "Hide on app" : "Show on app"}
-                              disabled={busy}
-                              onClick={() => toggleSurface(entry, "appVisible")}
-                            >
-                              <span className="ua-toggle__knob" />
-                            </button>
-                          </div>
-                          <div className="ua-cfg-vh-item__live">
-                            <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>{entry.live ? "LIVE" : "HIDDEN"}</span>
-                            <button type="button" className={`ua-toggle ua-toggle--sm${entry.live ? " ua-toggle--on" : ""}`} aria-pressed={entry.live} disabled={busy} onClick={() => toggleLive(entry)}>
-                              <span className="ua-toggle__knob" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="ua-cfg-tf-item__moves">
-                          <button
-                            type="button"
-                            className="ua-cfg-icon-btn"
-                            disabled={busy || !canReorder || index === 0}
-                            onClick={() => moveItem(index, -1)}
-                            aria-label="Move up"
-                            title={canReorder ? "Move up" : "Clear search to reorder"}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className="ua-cfg-icon-btn"
-                            disabled={busy || !canReorder || index === items.length - 1}
-                            onClick={() => moveItem(index, 1)}
-                            aria-label="Move down"
-                            title={canReorder ? "Move down" : "Clear search to reorder"}
-                          >
-                            ↓
-                          </button>
-                        </div>
-                        <div className="ua-cfg-vh-item__btns">
-                          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => setViewingId(entry.id)}>View</button>
-                          {isEditing ? (
-                            <>
-                              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary ua-cfg-btn--sm" disabled={busy} onClick={() => saveItem(entry)}>Save</button>
-                              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={() => { setEditingId(null); loadItems(); }}>Cancel</button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                              disabled={busy}
-                              onClick={() => { setViewingId(null); setEditingId(entry.id); setCreating(false); }}
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <button type="button" className="ua-cfg-icon-btn" aria-label={`Delete ${asCopyString(entry.name)}`} disabled={busy} onClick={() => setPendingDelete(entry)}>×</button>
-                        </div>
-                      </div>
+                      {rowActions}
                     </div>
-                    {isEditing ? (
-                      <label className="ua-cfg-vh-field">
-                        <span>YouTube link</span>
-                        <input
-                          className="ua-cfg-vh-input"
-                          placeholder="https://youtube.com/…"
-                          value={asCopyString(entry.ytLink)}
-                          disabled={busy}
-                          onChange={(event) => patchItem(entry.id, { ytLink: event.target.value })}
-                        />
-                      </label>
-                    ) : null}
                   </div>
                 </article>
               );

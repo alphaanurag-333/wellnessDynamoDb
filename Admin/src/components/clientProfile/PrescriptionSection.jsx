@@ -176,14 +176,18 @@ function assignmentToHistoryEntry(assignment, { current = false, unsaved = false
   };
 }
 
+const NEW_INSTRUCTION_HINT = "New instruction";
+
 function ProtocolPointRow({ value, onChange, onRemove, disabled }) {
+  const showingHint = value === NEW_INSTRUCTION_HINT;
   return (
     <div className="ua-cp-rx-point">
       <span className="ua-cp-rx-point__bullet" aria-hidden="true" />
       <input
         type="text"
         className="ua-cp-rx-point__text"
-        value={value}
+        value={showingHint ? "" : value}
+        placeholder={NEW_INSTRUCTION_HINT}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -206,7 +210,7 @@ function ProtocolCard({ section, onUpdate, onRemove, disabled }) {
   }
 
   function addPoint() {
-    onUpdate({ ...section, points: [...section.points, "New instruction"] });
+    onUpdate({ ...section, points: [...section.points, ""] });
   }
 
   return (
@@ -418,7 +422,7 @@ export function PrescriptionSection({ user, onToast }) {
     if (!title) return;
     setSections((list) => [
       ...list,
-      { id: `custom-${Date.now()}`, catalogId: null, prescriptionId: null, title, points: ["New instruction"] },
+      { id: `custom-${Date.now()}`, catalogId: null, prescriptionId: null, title, points: [""] },
     ]);
     setCustomTitle("");
     onToast?.(`Added ${title}`);
@@ -471,7 +475,9 @@ export function PrescriptionSection({ user, onToast }) {
       .map((section) => ({
         catalogId: section.catalogId || undefined,
         title: String(section.title || "").trim(),
-        points: (section.points || []).map((point) => String(point || "").trim()).filter(Boolean),
+        points: (section.points || [])
+          .map((point) => String(point || "").trim())
+          .filter((point) => point && point !== NEW_INSTRUCTION_HINT),
       }))
       .filter((protocol) => protocol.points.length > 0);
     if (!protocols.length) {

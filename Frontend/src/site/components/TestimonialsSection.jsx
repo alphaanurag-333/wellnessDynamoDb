@@ -90,9 +90,19 @@ export default function TestimonialsSection({ items: itemsProp }) {
 
   useEffect(() => {
     const swiper = swiperRef.current;
-    if (!swiper?.autoplay) return;
+    if (!swiper) return;
+
+    const frame = requestAnimationFrame(() => {
+      swiper.update?.();
+    });
+
+    if (!swiper.autoplay) {
+      return () => cancelAnimationFrame(frame);
+    }
     if (expandedId) swiper.autoplay.stop();
     else if (!swiper.autoplay.running) swiper.autoplay.start();
+
+    return () => cancelAnimationFrame(frame);
   }, [expandedId]);
 
   const handleSlideChange = useCallback(() => {

@@ -24,12 +24,12 @@ const BMR_DESC =
   "Find out your Basal Metabolic Rate (BMR) and understand the number of calories your body needs to function at rest each day.";
 
 const ACTIVITY = [
-  { name: "Sedentary : little or no exercise", multiplier: 1.2 },
-  { name: "Exercise 1 - 3 time/week", multiplier: 1.375 },
-  { name: "Exercise 4 - 5 time/week", multiplier: 1.55 },
-  { name: "Daily Exercise", multiplier: 1.725 },
-  { name: "Intense exercise 6 - 7 times/week", multiplier: 1.9 },
-  { name: "Very intense exercise daily", multiplier: 2.1 },
+  { name: "Sedentary: little or no exercise", multiplier: 1.2 },
+  { name: "Exercise 1-3 times/week", multiplier: 1.375 },
+  { name: "Exercise 4-5 times/week", multiplier: 1.465 },
+  { name: "Daily exercise or intense exercise 3-4 times/week", multiplier: 1.55 },
+  { name: "Intense exercise 6-7 times/week", multiplier: 1.725 },
+  { name: "Very intense exercise daily, or physical job", multiplier: 1.9 },
 ];
 
 export default function BmrCalculatorModal({ open, onClose }) {

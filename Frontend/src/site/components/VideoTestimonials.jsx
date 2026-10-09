@@ -109,6 +109,7 @@ export default function VideoTestimonials() {
   const [items, setItems] = useState(null);
   const [playingId, setPlayingId] = useState(null);
   const swiperRef = useRef(null);
+  const playingSlideRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -148,7 +149,8 @@ export default function VideoTestimonials() {
     return null;
   }
 
-  const enableLoop = items.length > 5 && !playingId;
+  const enableLoop = items.length > 5;
+  const enableAutoplay = enableLoop && !playingId;
 
   return (
     <section className="video-slider-section" aria-label="Video testimonials">
@@ -160,19 +162,23 @@ export default function VideoTestimonials() {
           spaceBetween={18}
           loop={enableLoop}
           autoplay={
-            enableLoop
+            enableAutoplay
               ? {
                   delay: 3000,
                   disableOnInteraction: false,
                   pauseOnMouseEnter: true,
                 }
-              : true
+              : false
           }
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
           }}
-          onSlideChange={() => {
-            if (playingId) setPlayingId(null);
+          onSlideChange={(swiper) => {
+            if (!playingId) return;
+            // Stopping autoplay can emit slideChange without moving. Only
+            // close the player when the carousel actually leaves that slide.
+            if (swiper.realIndex === playingSlideRef.current) return;
+            setPlayingId(null);
           }}
           breakpoints={{
             0: {
@@ -204,6 +210,7 @@ export default function VideoTestimonials() {
                 item={item}
                 isPlaying={playingId === item.id}
                 onPlay={(id) => {
+                  playingSlideRef.current = swiperRef.current?.realIndex ?? null;
                   setPlayingId(id);
                   swiperRef.current?.autoplay?.stop?.();
                 }}

@@ -19,28 +19,28 @@ import {
 
 const activityLevels = [
   {
-    name: "Sedentary : little or no exercise",
+    name: "Sedentary: little or no exercise",
     multiplier: 1.2,
   },
   {
-    name: "Exercise 1 - 3 time/week",
+    name: "Exercise 1-3 times/week",
     multiplier: 1.375,
   },
   {
-    name: "Exercise 4 - 5 time/week",
+    name: "Exercise 4-5 times/week",
+    multiplier: 1.465,
+  },
+  {
+    name: "Daily exercise or intense exercise 3-4 times/week",
     multiplier: 1.55,
   },
   {
-    name: "Daily Exercise",
+    name: "Intense exercise 6-7 times/week",
     multiplier: 1.725,
   },
   {
-    name: "Intense exercise 6 - 7 times/week",
+    name: "Very intense exercise daily, or physical job",
     multiplier: 1.9,
-  },
-  {
-    name: "Very intense exercise daily",
-    multiplier: 2.1,
   },
 ];
 

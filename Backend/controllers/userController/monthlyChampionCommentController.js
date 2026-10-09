@@ -10,6 +10,7 @@ const {
   updateMonthlyChampionPostComment,
   deleteMonthlyChampionPostComment,
   getMonthlyChampionPostCommentRecordById,
+  currentMonthCreatedAtRange,
 } = require("../../models/monthlyChampionPostCommentModel");
 const { getUserById } = require("../../models/userModel");
 const {
@@ -38,6 +39,7 @@ exports.listMonthlyChampionCommentsController = asyncHandler(async (req, res) =>
     monthlyChampionPostId: req.params.postId,
     page,
     limit,
+    ...currentMonthCreatedAtRange(),
   });
 
   return res.status(200).json({

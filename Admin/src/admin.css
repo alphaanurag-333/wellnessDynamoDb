@@ -33158,6 +33158,11 @@ scrollbar-width: thin;
   font-family: inherit;
 }
 
+.updated-admin .ua-cp-rx-point__text::placeholder {
+  color: #8b97ab;
+  font-weight: 600;
+}
+
 .updated-admin .ua-cp-rx-point__text:hover,
 .updated-admin .ua-cp-rx-point__text:focus {
   border-color: #86d4a8;
@@ -54080,7 +54085,7 @@ scrollbar-width: thin;
   max-width: 100%;
   max-height: none;
   min-height: 0;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 840 / 480;
 }
 
 .updated-admin .ua-cfg-vh .ua-cfg-vh-cover .ua-cfg-tf-drop__img {
@@ -54119,11 +54124,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-vh-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-mv-upload-modal__crop-inner,
 .updated-admin .ua-cfg-vh-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-lg-crop-viewport,
 .updated-admin .ua-cfg-vh-crop-modal .ua-cfg-pt-upload-modal .ua-cfg-crop-viewport--fixed {
-  width: 300px;
-  height: 300px;
-  max-width: min(300px, 100%);
-  max-height: min(300px, calc(100vh - 280px));
-  aspect-ratio: 1 / 1;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(320px, calc(100vh - 280px));
+  aspect-ratio: 840 / 480;
   flex-shrink: 0;
 }
 
@@ -54184,7 +54189,7 @@ scrollbar-width: thin;
 .updated-admin .ua-cfg-vh .ua-cfg-vh-item,
 .updated-admin .ua-cfg-vh .ua-cfg-vh-item.ua-cfg-rc-item {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
+  grid-template-columns: 140px minmax(0, 1fr);
   align-items: start;
   gap: 12px 14px;
   min-width: 0;
@@ -54194,12 +54199,12 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover-wrap,
 .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover {
-  width: 100px;
-  height: 100px;
-  min-width: 100px;
-  min-height: 100px;
-  max-width: 100px;
-  aspect-ratio: 1 / 1;
+  width: 140px;
+  height: 80px;
+  min-width: 140px;
+  min-height: 80px;
+  max-width: 140px;
+  aspect-ratio: 840 / 480;
   border-radius: 10px;
 }
 
@@ -54306,6 +54311,29 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-vh-item .ua-cfg-vh-field {
   margin-top: 10px;
+}
+
+.updated-admin .ua-cfg-vh .ua-cfg-vh-item.is-editing {
+  display: block;
+  grid-template-columns: none;
+}
+
+.updated-admin .ua-cfg-vh .ua-cfg-vh-item.is-editing .ua-cfg-rc-new__head {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.updated-admin .ua-cfg-vh-edit__tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cfg-vh .ua-cfg-vh-item.is-editing .ua-cfg-vh-field {
+  margin-top: 0;
 }
 
 .updated-admin .ua-cfg-vh-item .ua-cfg-vh-input {
@@ -61886,17 +61914,17 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item,
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item.ua-cfg-rc-item {
     display: grid;
-    grid-template-columns: 100px minmax(0, 1fr);
+    grid-template-columns: 140px minmax(0, 1fr);
   }
 
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover-wrap,
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover {
-    width: 100px;
-    height: 100px;
-    min-width: 100px;
-    min-height: 100px;
-    max-width: 100px;
-    aspect-ratio: 1 / 1;
+    width: 140px;
+    height: 80px;
+    min-width: 140px;
+    min-height: 80px;
+    max-width: 140px;
+    aspect-ratio: 840 / 480;
   }
 
   .updated-admin .ua-cfg-vh-item__actions,
@@ -68344,18 +68372,18 @@ scrollbar-width: thin;
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item,
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item.ua-cfg-rc-item {
     display: grid;
-    grid-template-columns: 100px minmax(0, 1fr);
+    grid-template-columns: 140px minmax(0, 1fr);
     align-items: start;
   }
 
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover-wrap,
   .updated-admin .ua-cfg-vh .ua-cfg-vh-item .ua-cfg-rc-cover {
-    width: 100px;
-    height: 100px;
-    min-width: 100px;
-    min-height: 100px;
-    max-width: 100px;
-    aspect-ratio: 1 / 1;
+    width: 140px;
+    height: 80px;
+    min-width: 140px;
+    min-height: 80px;
+    max-width: 140px;
+    aspect-ratio: 840 / 480;
   }
 
   .updated-admin .ua-cfg-vh-item__head,
@@ -68427,7 +68455,7 @@ scrollbar-width: thin;
     min-width: 0;
     height: auto;
     min-height: 0;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 840 / 480;
   }
 
   .updated-admin .ua-cfg-vh .ua-cfg-rc-item__body {
@@ -68504,7 +68532,7 @@ scrollbar-width: thin;
     min-width: 0;
     height: auto;
     min-height: 0;
-    aspect-ratio: 1 / 1;
+    aspect-ratio: 840 / 480;
   }
 
   .updated-admin .ua-cfg-vh .ua-cfg-rc-item__body {

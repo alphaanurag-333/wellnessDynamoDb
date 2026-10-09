@@ -1,12 +1,12 @@
 const { toIsoDateOnly } = require("./healthProgressHelpers");
 
 const ACTIVITY_MULTIPLIERS = [
-  { key: "sedentary", label: "Sedentary : little or no exercise", multiplier: 1.2 },
-  { key: "lightly_active", label: "Exercise 1 - 3 time/week", multiplier: 1.375 },
-  { key: "moderately_active", label: "Exercise 4 - 5 time/week", multiplier: 1.55 },
-  { key: "highly_active", label: "Daily Exercise", multiplier: 1.725 },
-  { key: "very_active", label: "Intense exercise 6 - 7 times/week", multiplier: 1.9 },
-  { key: "extra_active", label: "Very intense exercise daily", multiplier: 2.1 },
+  { key: "sedentary", label: "Sedentary: little or no exercise", multiplier: 1.2 },
+  { key: "lightly_active", label: "Exercise 1-3 times/week", multiplier: 1.375 },
+  { key: "moderately_active", label: "Exercise 4-5 times/week", multiplier: 1.465 },
+  { key: "highly_active", label: "Daily exercise or intense exercise 3-4 times/week", multiplier: 1.55 },
+  { key: "very_active", label: "Intense exercise 6-7 times/week", multiplier: 1.725 },
+  { key: "extra_active", label: "Very intense exercise daily, or physical job", multiplier: 1.9 },
 ];
 
 const METRIC_TYPES = new Set(["bmi", "bmr", "body_fat", "visceral_fat"]);

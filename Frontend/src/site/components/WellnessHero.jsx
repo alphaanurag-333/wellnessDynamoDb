@@ -58,7 +58,7 @@ export default function WellnessHero() {
           <div className="wellness-hero__actions">
             <BookConsultationButton className="wellness-btn wellness-btn--primary">
               Book a Consultation
-              <FiArrowRight />
+              {/* <FiArrowRight /> */}
             </BookConsultationButton>
           </div>
         </div>
