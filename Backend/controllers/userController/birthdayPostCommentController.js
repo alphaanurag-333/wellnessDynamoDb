@@ -12,6 +12,7 @@ const {
   getBirthdayPostCommentRecordById,
 } = require("../../models/birthdayPostCommentModel");
 const { getUserById } = require("../../models/userModel");
+const { isCommunityBirthdayUser } = require("../../models/userAssignmentLogic");
 const { dispatchBirthdayWishNotification } = require("../../services/notificationDispatchService");
 const { assertCommentEditable } = require("../../utils/commentEditWindow");
 
@@ -24,6 +25,10 @@ function readPaging(query, defaultLimit = 50) {
 async function assertActivePost(postId) {
   const post = await getBirthdayPostById(postId);
   if (!post || normalizeStatus(post.status) !== "active") {
+    throw new AppError("Birthday post not found", 404);
+  }
+  const user = await getUserById(post.userId);
+  if (!isCommunityBirthdayUser(user)) {
     throw new AppError("Birthday post not found", 404);
   }
   return post;

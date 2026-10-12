@@ -51369,6 +51369,41 @@ scrollbar-width: thin;
   min-width: 0;
 }
 
+.updated-admin .ua-cfg-bd-queue__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.updated-admin .ua-cfg-bd-tier {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.updated-admin .ua-cfg-bd-tier.is-heal {
+  background: #e7f6ee;
+  color: #2b8f5b;
+}
+
+.updated-admin .ua-cfg-bd-tier.is-eagle {
+  background: #faf5ff;
+  color: #9333ea;
+}
+
+.updated-admin .ua-cfg-bd-tier.is-maintenance {
+  background: #eef0fc;
+  color: #5e6ad2;
+}
+
 .updated-admin .ua-cfg-bd-queue__row strong {
   display: block;
   font-size: 13px;

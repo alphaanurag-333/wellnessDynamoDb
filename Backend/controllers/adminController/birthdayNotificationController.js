@@ -7,11 +7,31 @@ const {
 } = require("../../models/birthdayNotificationModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
 const {
+  isCommunityBirthdayUser,
+  communityBirthdayTierLabel,
+} = require("../../models/userAssignmentLogic");
+const {
   deliverBirthdayPush,
   runBirthdayJob,
 } = require("../../services/birthdayJobService");
 const { findBirthdayPostByUserAndDate } = require("../../models/birthdayPostModel");
 const { ensureBirthdayReminderInbox } = require("../../services/notificationDispatchService");
+
+function pageRows(rows, page, limit) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
+  const safePage = Math.max(1, Number(page) || 1);
+  const total = rows.length;
+  const start = (safePage - 1) * safeLimit;
+  return {
+    rows: rows.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit) || 1),
+    },
+  };
+}
 
 function resendResultMessage(push) {
   if (push.reason === "no_token") return "User has no FCM token registered";
@@ -22,11 +42,10 @@ function resendResultMessage(push) {
 exports.listBirthdayNotificationsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, notificationDate, search } = req.query;
   const data = await listBirthdayNotifications({
-    page,
-    limit,
     status,
     notificationDate,
     search,
+    unpaginated: true,
   });
 
   const userIds = [...new Set(data.birthdayNotifications.map((row) => row.userId).filter(Boolean))];
@@ -34,19 +53,28 @@ exports.listBirthdayNotificationsController = asyncHandler(async (req, res) => {
   await Promise.all(
     userIds.map(async (userId) => {
       const user = await getUserById(userId);
-      if (user) userMap.set(userId, toPublicUser(user));
+      if (user) userMap.set(userId, user);
     })
   );
 
-  const birthdayNotifications = data.birthdayNotifications.map((row) => ({
-    ...row,
-    user: userMap.get(row.userId) || null,
-  }));
+  const eligible = data.birthdayNotifications
+    .filter((row) => isCommunityBirthdayUser(userMap.get(row.userId)))
+    .map((row) => {
+      const user = userMap.get(row.userId);
+      const birthdayTier = communityBirthdayTierLabel(user);
+      const publicUser = toPublicUser(user);
+      return {
+        ...row,
+        birthdayTier,
+        user: publicUser ? { ...publicUser, birthdayTier } : null,
+      };
+    });
+  const paged = pageRows(eligible, page, limit);
 
   return res.status(200).json({
     status: true,
-    birthdayNotifications,
-    pagination: data.pagination,
+    birthdayNotifications: paged.rows,
+    pagination: paged.pagination,
   });
 });
 

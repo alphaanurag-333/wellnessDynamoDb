@@ -14,6 +14,8 @@ const {
   findBirthdayPostCommentByUser,
 } = require("../../models/birthdayPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
+const { isCommunityBirthdayUser } = require("../../models/userAssignmentLogic");
+const { listUpcomingCommunityBirthdays } = require("../../services/dashboardCommunityService");
 
 function readPaging(query, defaultLimit = 20) {
   const page = Math.max(1, Number(query.page) || 1);
@@ -37,6 +39,28 @@ async function enrichPostSummary(post, viewerUserId) {
   };
 }
 
+function pageRows(rows, page, limit) {
+  const total = rows.length;
+  const start = (page - 1) * limit;
+  return {
+    rows: rows.slice(start, start + limit),
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.max(1, Math.ceil(total / limit) || 1),
+    },
+  };
+}
+
+exports.listUpcomingBirthdaysController = asyncHandler(async (req, res) => {
+  const birthdays = await listUpcomingCommunityBirthdays();
+  return res.status(200).json({
+    status: true,
+    birthdays,
+  });
+});
+
 exports.listBirthdayPostsController = asyncHandler(async (req, res) => {
   const { page, limit } = readPaging(req.query);
   const postDate =
@@ -48,20 +72,22 @@ exports.listBirthdayPostsController = asyncHandler(async (req, res) => {
 
   const data = await listBirthdayPostsByPostDate({
     postDate,
-    page,
-    limit,
+    page: 1,
+    limit: 200,
     status: "active",
   });
 
   const viewerUserId = req.user?.id || req.auth?.sub || null;
-  const birthdayPosts = await Promise.all(
+  const enriched = await Promise.all(
     data.birthdayPosts.map((post) => enrichPostSummary(post, viewerUserId))
   );
+  const eligible = enriched.filter((post) => isCommunityBirthdayUser(post.user));
+  const paged = pageRows(eligible, page, limit);
 
   return res.status(200).json({
     status: true,
-    birthdayPosts,
-    pagination: data.pagination,
+    birthdayPosts: paged.rows,
+    pagination: paged.pagination,
   });
 });
 
@@ -76,6 +102,9 @@ exports.getBirthdayPostByIdController = asyncHandler(async (req, res) => {
 
   const viewerUserId = req.user?.id || req.auth?.sub || null;
   const user = await getUserById(post.userId);
+  if (!isCommunityBirthdayUser(user)) {
+    throw new AppError("Birthday post not found", 404);
+  }
   const { comments, pagination } = await listBirthdayPostComments({
     birthdayPostId: post.id,
     page: 1,

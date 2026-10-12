@@ -209,6 +209,7 @@ async function listBirthdayPosts({
   limit = 10,
   status,
   postDate,
+  unpaginated = false,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedDate = postDate ? normalizePostDate(postDate) : "";
@@ -216,8 +217,8 @@ async function listBirthdayPosts({
   if (normalizedDate) {
     return listBirthdayPostsByPostDate({
       postDate: normalizedDate,
-      page,
-      limit,
+      page: unpaginated ? 1 : page,
+      limit: unpaginated ? 200 : limit,
       status: normalizedStatus || undefined,
     });
   }
@@ -254,8 +255,10 @@ async function listBirthdayPosts({
   });
 
   const total = sorted.length;
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
-  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = unpaginated
+    ? Math.max(total, 1)
+    : Math.max(1, Math.min(Number(limit) || 10, 200));
+  const safePage = unpaginated ? 1 : Math.max(1, Number(page) || 1);
   const start = (safePage - 1) * safeLimit;
 
   return {

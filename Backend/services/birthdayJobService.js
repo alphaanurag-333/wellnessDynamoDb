@@ -3,6 +3,7 @@ const { readFcmToken } = require("../utils/parseFcmId");
 const { resolveJobDate } = require("../utils/birthdayTimezone");
 const { birthdayQueryMonthDays } = require("../utils/dobMonthDay");
 const { listUsersWithBirthdayOnDate } = require("../models/userModel");
+const { isCommunityBirthdayUser } = require("../models/userAssignmentLogic");
 const {
   findBirthdayNotificationByUserAndDate,
   createBirthdayNotification,
@@ -153,7 +154,7 @@ async function runBirthdayJob(options = {}) {
   const jobDate = resolveJobDate(options.dateOnly);
   const monthDays = jobDate.monthDays || birthdayQueryMonthDays(jobDate.dateOnly);
 
-  const users = await listUsersWithBirthdayOnDate(jobDate.dateOnly);
+  const users = (await listUsersWithBirthdayOnDate(jobDate.dateOnly)).filter(isCommunityBirthdayUser);
   const results = [];
 
   for (const user of users) {

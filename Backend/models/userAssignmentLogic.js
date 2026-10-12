@@ -82,6 +82,26 @@ function isMaintenanceTier(value) {
   return normalizeUserTier(value) === "maintenance";
 }
 
+/**
+ * Community birthday lists (dashboard chips and mobile birthday APIs).
+ * Heal, Eagle, and Maintenance only. Seek and consultancy-only are excluded.
+ * Eagle is a client category, usually on the Heal plan.
+ */
+function isCommunityBirthdayUser(user) {
+  if (!user || typeof user !== "object") return false;
+  if (isEagleClientCategory(user.clientCategory)) return true;
+  const tier = normalizeUserTier(user.userTier, "");
+  return tier === "heal" || tier === "maintenance";
+}
+
+/** Display label for a community birthday user. Eagle wins over Heal. */
+function communityBirthdayTierLabel(user) {
+  if (!isCommunityBirthdayUser(user)) return null;
+  if (isEagleClientCategory(user.clientCategory)) return "Eagle";
+  if (isMaintenanceTier(user.userTier)) return "Maintenance";
+  return "Heal";
+}
+
 function isConsultancyOnlyTier(value) {
   return normalizeUserTier(value) === "consultancy_only";
 }
@@ -415,6 +435,8 @@ module.exports = {
   normalizeReferredByEntityType,
   isHealTier,
   isMaintenanceTier,
+  isCommunityBirthdayUser,
+  communityBirthdayTierLabel,
   isConsultancyOnlyTier,
   isPaidClientTier,
   isAssignableStaff,

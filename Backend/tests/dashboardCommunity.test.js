@@ -5,7 +5,9 @@ const {
   formatScoreDisplay,
   nextBirthdayFromDob,
   pickUpcomingBirthdays,
+  selectCommunityBirthdayUsers,
 } = require("../services/dashboardCommunityService");
+const { communityBirthdayTierLabel } = require("../models/userAssignmentLogic");
 
 describe("formatBirthdayWhen", () => {
   it("labels today and upcoming dates like the dashboard chips", () => {
@@ -71,5 +73,26 @@ describe("pickUpcomingBirthdays", () => {
     assert.equal(rows[5].when, "4 Jan");
     assert.equal(rows.some((row) => row.name === "Jul User"), false);
     assert.equal(rows.some((row) => row.name === "No Dob"), false);
+  });
+
+  it("keeps only Heal, Eagle, and Maintenance users", () => {
+    const users = [
+      { id: "1", name: "Dipti", userTier: "heal", clientCategory: "individual", dob: "1990-10-11" },
+      { id: "2", name: "Seek User", userTier: "seek", dob: "1990-10-12" },
+      { id: "3", name: "Anruag gupta", userTier: "heal", clientCategory: "eagle", dob: "1992-11-01" },
+      { id: "4", name: "Neeti V Hirve", userTier: "maintenance", dob: "1988-11-23" },
+      { id: "5", name: "Consult User", userTier: "consultancy_only", dob: "1991-11-28" },
+    ];
+
+    const rows = pickUpcomingBirthdays(selectCommunityBirthdayUsers(users), 10, "2026-10-09");
+    assert.deepEqual(
+      rows.map((row) => row.name),
+      ["Dipti", "Anruag gupta", "Neeti V Hirve"]
+    );
+    assert.equal(communityBirthdayTierLabel(users[0]), "Heal");
+    assert.equal(communityBirthdayTierLabel(users[2]), "Eagle");
+    assert.equal(communityBirthdayTierLabel(users[3]), "Maintenance");
+    assert.equal(communityBirthdayTierLabel(users[1]), null);
+    assert.equal(communityBirthdayTierLabel(users[4]), null);
   });
 });

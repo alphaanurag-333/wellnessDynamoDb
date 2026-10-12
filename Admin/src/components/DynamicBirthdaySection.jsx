@@ -95,8 +95,17 @@ function mergeBirthdayPost(row, saved) {
     ...saved,
     name: saved.name && saved.name !== "Unknown" ? saved.name : row.name,
     profileImage: saved.profileImage || row.profileImage,
+    birthdayTier: saved.birthdayTier || row.birthdayTier,
     commentCount: saved.commentCount || row.commentCount,
   };
+}
+
+function TierBadge({ tier }) {
+  const label = String(tier || "").trim();
+  if (!label) return null;
+  return (
+    <span className={`ua-cfg-bd-tier is-${label.toLowerCase()}`}>{label}</span>
+  );
 }
 
 export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToast }) {
@@ -244,7 +253,7 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
     <div className="ua-cfg-bd">
       <Panel
         title="⏱ Automatic trigger"
-        subtitle="Runs every night at ~12:05 AM IST and sends a wish + social post to everyone whose birthday it is."
+        subtitle="Runs every night at ~12:05 AM IST and sends a wish + social post to Heal, Eagle, and Maintenance users whose birthday it is."
         actions={
           <button
             type="button"
@@ -286,7 +295,10 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
                 <div className="ua-cfg-bd-queue__person">
                   <Avatar src={entry.profileImage} name={asCopyString(entry.name)} />
                   <div className="ua-cfg-bd-queue__copy">
-                    <strong>{asCopyString(entry.name)}</strong>
+                    <div className="ua-cfg-bd-queue__name">
+                      <strong>{asCopyString(entry.name)}</strong>
+                      <TierBadge tier={entry.birthdayTier} />
+                    </div>
                     <p>{asCopyString(entry.message) || "Birthday wish"}</p>
                   </div>
                 </div>
@@ -334,6 +346,7 @@ export function DynamicBirthdaySection({ posts, setPosts, queue, setQueue, onToa
                   <div className="ua-cfg-bd-post__copy">
                     <div className="ua-cfg-bd-post__meta">
                       <strong>{asCopyString(entry.name)}</strong>
+                      <TierBadge tier={entry.birthdayTier} />
                       <span className={`ua-cfg-faq__shown${entry.live ? " is-on" : ""}`}>
                         {entry.live ? "LIVE" : "HIDDEN"}
                       </span>

@@ -204,6 +204,7 @@ async function listBirthdayNotifications({
   status,
   notificationDate,
   search,
+  unpaginated = false,
 } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const normalizedDate = notificationDate ? normalizeNotificationDate(notificationDate) : "";
@@ -256,8 +257,10 @@ async function listBirthdayNotifications({
     { search: searchFilter.search, searchFields: searchFilter.searchFields }
   );
   const total = sorted.length;
-  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
-  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = unpaginated
+    ? Math.max(total, 1)
+    : Math.max(1, Math.min(Number(limit) || 10, 200));
+  const safePage = unpaginated ? 1 : Math.max(1, Number(page) || 1);
   const start = (safePage - 1) * safeLimit;
   const slice = sorted.slice(start, start + safeLimit);
 

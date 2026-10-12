@@ -56,6 +56,7 @@ const {
 } = require("../../models/monthlyChampionPostModel");
 const { readCatalogPagination, wantsCatalogPagination } = require("../../utils/catalogPagination");
 const { getUserById } = require("../../models/userModel");
+const { isCommunityBirthdayUser } = require("../../models/userAssignmentLogic");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
 const { createContactInquiry } = require("../../models/contactInquiryModel");
@@ -577,22 +578,33 @@ exports.getActiveBirthdayPosts = asyncHandler(async (req, res) => {
 
   const data = await listBirthdayPostsByPostDate({
     postDate,
-    page,
-    limit,
+    page: 1,
+    limit: 200,
     status: "active",
   });
 
-  const birthdayPosts = await Promise.all(
+  const pairs = await Promise.all(
     data.birthdayPosts.map(async (post) => {
       const user = await getUserById(post.userId);
-      return toPublicSiteBirthdayPost(post, user);
+      return { post, user };
     })
   );
+  const eligible = pairs.filter(({ user }) => isCommunityBirthdayUser(user));
+  const total = eligible.length;
+  const start = (page - 1) * limit;
+  const birthdayPosts = eligible
+    .slice(start, start + limit)
+    .map(({ post, user }) => toPublicSiteBirthdayPost(post, user));
 
   return res.status(200).json({
     status: true,
     birthdayPosts,
-    pagination: data.pagination,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.max(1, Math.ceil(total / limit) || 1),
+    },
   });
 });
 

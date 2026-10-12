@@ -3,6 +3,7 @@ const express = require("express");
 const { protectUser } = require("../../middleware/auth");
 const {
   listBirthdayPostsController,
+  listUpcomingBirthdaysController,
   getBirthdayPostByIdController,
 } = require("../../controllers/userController/birthdayPostController");
 const {
@@ -17,6 +18,7 @@ const router = express.Router();
 router.use(protectUser);
 
 router.get("/", listBirthdayPostsController);
+router.get("/upcoming", listUpcomingBirthdaysController);
 router.get("/:postId/comments", listBirthdayPostCommentsController);
 router.post("/:postId/comments", createBirthdayPostCommentController);
 router.patch("/:postId/comments/:id", updateBirthdayPostCommentController);

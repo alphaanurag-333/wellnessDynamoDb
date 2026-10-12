@@ -13,6 +13,10 @@ const {
   countCommentsForPost,
 } = require("../../models/birthdayPostCommentModel");
 const { getUserById, toPublicUser } = require("../../models/userModel");
+const {
+  isCommunityBirthdayUser,
+  communityBirthdayTierLabel,
+} = require("../../models/userAssignmentLogic");
 const { getBirthdayNotificationById } = require("../../models/birthdayNotificationModel");
 
 async function enrichBirthdayPost(post) {
@@ -31,26 +35,51 @@ async function enrichBirthdayPost(post) {
   };
 }
 
+function pageRows(rows, page, limit) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
+  const safePage = Math.max(1, Number(page) || 1);
+  const total = rows.length;
+  const start = (safePage - 1) * safeLimit;
+  return {
+    rows: rows.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit) || 1),
+    },
+  };
+}
+
 exports.listBirthdayPostsController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, status, postDate } = req.query;
-  const data = await listBirthdayPosts({ page, limit, status, postDate });
+  const data = await listBirthdayPosts({ status, postDate, unpaginated: true });
 
-  const birthdayPosts = await Promise.all(
+  const enriched = await Promise.all(
     data.birthdayPosts.map(async (post) => {
       const user = await getUserById(post.userId);
       const commentCount = await countCommentsForPost(post.id);
-      return {
-        ...post,
-        user: user ? toPublicUser(user) : null,
-        commentCount,
-      };
+      return { post, user, commentCount };
     })
   );
+  const eligible = enriched
+    .filter(({ user }) => isCommunityBirthdayUser(user))
+    .map(({ post, user, commentCount }) => {
+      const birthdayTier = communityBirthdayTierLabel(user);
+      const publicUser = toPublicUser(user);
+      return {
+        ...post,
+        birthdayTier,
+        user: publicUser ? { ...publicUser, birthdayTier } : null,
+        commentCount,
+      };
+    });
+  const paged = pageRows(eligible, page, limit);
 
   return res.status(200).json({
     status: true,
-    birthdayPosts,
-    pagination: data.pagination,
+    birthdayPosts: paged.rows,
+    pagination: paged.pagination,
   });
 });
 

@@ -7,6 +7,7 @@ const { listByPartitionKey } = require("../utils/dynamoList");
 const { todayInTimezone } = require("../utils/birthdayTimezone");
 const { parseDateOnly } = require("../utils/dateOnly");
 const { computeDobMonthDay, pad2, isLeapYear } = require("../utils/dobMonthDay");
+const { isCommunityBirthdayUser } = require("../models/userAssignmentLogic");
 
 const IST_TZ = "Asia/Kolkata";
 const BIRTHDAY_LIMIT = 10;
@@ -372,10 +373,20 @@ async function getDashboardLeaderboard(actor, monthYear) {
   };
 }
 
+function selectCommunityBirthdayUsers(users) {
+  return (users || []).filter(isCommunityBirthdayUser);
+}
+
+async function listUpcomingCommunityBirthdays(limit = BIRTHDAY_LIMIT) {
+  const users = selectCommunityBirthdayUsers(await loadBirthdayUsers({ role: "admin" }));
+  return pickUpcomingBirthdays(users, limit);
+}
+
 async function getDashboardCommunity(actor) {
   try {
-    const users = await loadBirthdayUsers(actor);
-    const allowedIds = await loadAllowedUserIds(actor, users);
+    const scopedUsers = await loadBirthdayUsers(actor);
+    const users = selectCommunityBirthdayUsers(scopedUsers);
+    const allowedIds = await loadAllowedUserIds(actor, scopedUsers);
     const champData = await loadChampionsAndLeaderboard(allowedIds);
     return {
       birthdays: pickUpcomingBirthdays(users, BIRTHDAY_LIMIT),
@@ -391,6 +402,8 @@ async function getDashboardCommunity(actor) {
 module.exports = {
   getDashboardCommunity,
   getDashboardLeaderboard,
+  listUpcomingCommunityBirthdays,
+  selectCommunityBirthdayUsers,
   formatBirthdayWhen,
   formatScoreDisplay,
   nextBirthdayFromDob,
