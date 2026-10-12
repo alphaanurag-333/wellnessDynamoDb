@@ -10,6 +10,7 @@ import {
   adminCreateHealthConcern,
   adminDeleteHealthConcern,
   adminListHealthConcerns,
+  adminReorderHealthConcerns,
   adminUpdateHealthConcern,
   mapConcernsToDropdownList,
 } from "../api/healthConcernApi.js";
@@ -478,6 +479,28 @@ export function DropdownsSection({ lists, setLists, onToast }) {
     }
   }
 
+  async function moveHealthConcern(list, index, direction) {
+    if (busy) return;
+    const source = lists.find((entry) => entry.id === list.id) ?? list;
+    const next = index + direction;
+    if (next < 0 || next >= source.options.length) return;
+    const reordered = [...source.options];
+    [reordered[index], reordered[next]] = [reordered[next], reordered[index]];
+    const ranked = reordered.map((option, idx) => ({ ...option, sortOrder: idx + 1 }));
+    const previous = lists;
+    setLists((prev) => prev.map((row) => (row.id === list.id ? { ...row, options: ranked } : row)));
+    setBusy(true);
+    try {
+      await adminReorderHealthConcerns(null, ranked.map((option) => option.id));
+      onToast("Order saved");
+    } catch (error) {
+      setLists(previous);
+      onToast(error?.message || "Failed to save order");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function truncateLabel(raw, max = 60) {
     const text = asCopyString(raw).trim();
     return text.length > max ? `${text.slice(0, max)}…` : text;
@@ -577,6 +600,8 @@ export function DropdownsSection({ lists, setLists, onToast }) {
             const source = lists.find((entry) => entry.id === list.id) ?? list;
             const onCount = source.options.filter((entry) => entry.on).length;
             const supportsIcons = list.slug === "health-concern";
+            const supportsReorder = list.slug === "health-concern";
+            const reorderBlocked = Boolean(query) || filter !== "All options";
             const supportsAnswerType = list.slug === "medical-questions";
             const labelMax = labelLimitForList(list.slug);
             const draftValue = asCopyString(drafts[list.id]);
@@ -605,7 +630,7 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                 </div>
 
                 <div className="ua-cfg-dd-card__list">
-                  {list.options.length ? list.options.map((entry) => {
+                  {list.options.length ? list.options.map((entry, entryIndex) => {
                     const isEditing = editing === `${list.id}:${entry.id}`;
                     const editValidation = isEditing
                       ? validateDropdownLabel(editValue, {
@@ -710,6 +735,29 @@ export function DropdownsSection({ lists, setLists, onToast }) {
                             </div>
                           ) : (
                             <>
+                              {supportsReorder ? (
+                                <span
+                                  className="ua-cfg-dd-row__move"
+                                  title={reorderBlocked ? "Clear search and filter to reorder" : "Change order"}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-label={`Move ${asCopyString(entry.label)} up`}
+                                    disabled={busy || reorderBlocked || entryIndex === 0}
+                                    onClick={() => moveHealthConcern(list, entryIndex, -1)}
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-label={`Move ${asCopyString(entry.label)} down`}
+                                    disabled={busy || reorderBlocked || entryIndex === list.options.length - 1}
+                                    onClick={() => moveHealthConcern(list, entryIndex, 1)}
+                                  >
+                                    ↓
+                                  </button>
+                                </span>
+                              ) : null}
                               <button
                                 type="button"
                                 className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dd-row__edit"

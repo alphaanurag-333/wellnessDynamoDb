@@ -56366,6 +56366,32 @@ scrollbar-width: thin;
   font-weight: 400;
 }
 
+.updated-admin .ua-cfg-dd-row__move {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.updated-admin .ua-cfg-dd-row__move button {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgb(203, 213, 230);
+  border-radius: 7px;
+  background: #fff;
+  color: rgb(94, 106, 210);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+}
+
+.updated-admin .ua-cfg-dd-row__move button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .updated-admin .ua-cfg-dd-add {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

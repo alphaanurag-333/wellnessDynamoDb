@@ -861,7 +861,7 @@ export function AdminDashboard({
           option.on !== false &&
           String(option.label || "").trim().toLowerCase() !== "everyday wellness",
       )
-      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER))
       .map((option, index) => {
         const palette = paletteForConcern(option, index);
         const count = asNumber(

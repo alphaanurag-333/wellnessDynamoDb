@@ -19,9 +19,15 @@ function mapConcern(row) {
     description: row.description || "",
     icon: row.icon || "",
     status: row.status === "inactive" ? "inactive" : "active",
+    sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+export function sortConcernsByOrder(concerns = []) {
+  const rank = (row) => (Number.isFinite(row?.sortOrder) ? row.sortOrder : Number.MAX_SAFE_INTEGER);
+  return [...concerns].sort((a, b) => rank(a) - rank(b));
 }
 
 export function mapConcernsToDropdownList(concerns = []) {
@@ -32,14 +38,14 @@ export function mapConcernsToDropdownList(concerns = []) {
     wide: true,
     status: "active",
     sortOrder: 0,
-    options: concerns.map((row) => ({
+    options: sortConcernsByOrder(concerns).map((row) => ({
       id: row.id,
       label: row.title || "",
       value: row.id,
       icon: row.icon || "",
       description: row.description || "",
       on: row.status !== "inactive",
-      sortOrder: 0,
+      sortOrder: row.sortOrder ?? null,
     })),
   };
 }
@@ -125,6 +131,19 @@ export async function adminUpdateHealthConcern(token, id, fields, file) {
     else if (fields.on !== undefined) payload.status = fields.on ? "active" : "inactive";
     const { data } = await api.patch(`${healthConcernBase()}/${encodeURIComponent(id)}`, payload, { headers });
     return mapConcern(data.healthConcern);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminReorderHealthConcerns(token, orderedIds) {
+  try {
+    const { data } = await api.put(
+      `${healthConcernBase()}/reorder`,
+      { orderedIds },
+      { headers: authHeader(tokenOrStored(token)) },
+    );
+    return (Array.isArray(data.healthConcerns) ? data.healthConcerns : []).map(mapConcern).filter(Boolean);
   } catch (error) {
     normalizeApiError(error);
   }

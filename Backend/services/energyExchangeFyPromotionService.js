@@ -72,6 +72,7 @@ async function runEnergyExchangeFyPromotion(now = new Date()) {
     } catch (err) {
       console.error("[fy-promotion] failed Seek conversion for user", userId, err.message);
       result.errors += 1;
+
     }
   }
 

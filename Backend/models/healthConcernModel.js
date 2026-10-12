@@ -143,6 +143,35 @@ async function listHealthConcerns({ page = 1, limit = 10, status, search } = {})
   };
 }
 
+/**
+ * Persist display order. `orderedIds` is the desired order (1-based sortOrder);
+ * concerns not listed keep their current sortOrder.
+ */
+async function reorderHealthConcerns(orderedIds = []) {
+  const ids = Array.isArray(orderedIds)
+    ? orderedIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+
+  if (!ids.length) {
+    throw new Error("orderedIds is required");
+  }
+  if (new Set(ids).size !== ids.length) {
+    throw new Error("orderedIds must be unique");
+  }
+
+  const existing = await Promise.all(ids.map((id) => getHealthConcernRecordById(id)));
+  const missingIndex = existing.findIndex((item) => !item);
+  if (missingIndex >= 0) {
+    const err = new Error(`Health concern not found: ${ids[missingIndex]}`);
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return Promise.all(
+    ids.map((id, index) => updateHealthConcern(id, { sortOrder: index + 1 })),
+  );
+}
+
 function isOtherHealthConcernTitle(title) {
   return String(title || "").trim().toLowerCase() === "other";
 }
@@ -182,6 +211,7 @@ module.exports = {
   updateHealthConcern,
   deleteHealthConcern,
   listHealthConcerns,
+  reorderHealthConcerns,
   findOtherHealthConcern,
   ensureOtherHealthConcern,
   isOtherHealthConcernTitle,
