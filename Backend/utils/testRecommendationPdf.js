@@ -92,8 +92,9 @@ function generateTestRecommendationPdf({
 
       doc.fillColor(COLORS.primaryDark).font("Helvetica-Bold").fontSize(11).text(test.name || test.testId, PAGE.margin, y);
       y += 14;
+      const kind = test.fastingType || (test.type === "PROFILE" ? "Profile" : test.type === "SINGLE" ? "Single" : "");
       doc.fillColor(COLORS.muted).font("Helvetica").fontSize(9).text(
-        [test.category, test.type].filter(Boolean).join(" · "),
+        [test.category, kind, test.duration].filter(Boolean).join(" · "),
         PAGE.margin,
         y
       );

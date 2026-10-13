@@ -912,7 +912,7 @@ function TestCatalogPreview({ tests, surface, item }) {
               {live.map((entry) => (
                 <div key={entry.id} className="ua-cfg-preview-dp__item">
                   <strong>{entry.name}</strong>
-                  <p>{entry.category} · {entry.type === "PROFILE" ? "Profile" : "Single"}</p>
+                  <p>{[entry.category, entry.fastingType || (entry.type === "PROFILE" ? "Profile" : "Single"), entry.duration].filter(Boolean).join(" · ")}</p>
                 </div>
               ))}
             </div>

@@ -1,8 +1,15 @@
 import api, { authHeader, normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
+import {
+  adminCreateConfigDropdown,
+  adminGetConfigDropdown,
+  fetchActiveConfigDropdown,
+} from "./configDropdownApi.js";
 
 export const TEST_CATALOG_PAGE_SIZE = 20;
+export const BLOOD_TEST_CATEGORY_SLUG = "blood-test-category";
 
+/** Fallback labels. Live options come from Configs → Dropdowns (blood-test-category). */
 export const TEST_CATEGORIES = [
   "Hematology",
   "Diabetes",
@@ -17,8 +24,62 @@ export const TEST_CATEGORIES = [
   "Other",
 ];
 
-export function testCategoryOptions(extra = []) {
-  const set = new Set(TEST_CATEGORIES);
+function labelsFromDropdown(list) {
+  return (Array.isArray(list?.options) ? list.options : [])
+    .filter((row) => row && row.on !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => String(row.label || row.value || "").trim())
+    .filter(Boolean);
+}
+
+function bloodTestCategoryPayload() {
+  return {
+    slug: BLOOD_TEST_CATEGORY_SLUG,
+    title: "Blood test categories",
+    status: "active",
+    options: TEST_CATEGORIES.map((label, index) => ({
+      label,
+      value: label,
+      on: true,
+      sortOrder: index + 1,
+    })),
+  };
+}
+
+/** Creates the dropdown list on first use so Configs → Dropdowns can edit it. */
+export async function ensureBloodTestCategoryDropdown(existingLists) {
+  const found = (existingLists || []).find((row) => row?.slug === BLOOD_TEST_CATEGORY_SLUG);
+  if (found) return found;
+  try {
+    const list = await adminGetConfigDropdown(null, BLOOD_TEST_CATEGORY_SLUG);
+    if (list) return list;
+  } catch {
+    /* missing on this server — create it below */
+  }
+  try {
+    return await adminCreateConfigDropdown(null, bloodTestCategoryPayload());
+  } catch {
+    try {
+      return await fetchActiveConfigDropdown(BLOOD_TEST_CATEGORY_SLUG);
+    } catch {
+      return null;
+    }
+  }
+}
+
+/** Active blood-test categories from the common dropdowns page. */
+export async function fetchTestCategories() {
+  const list = await ensureBloodTestCategoryDropdown();
+  const labels = labelsFromDropdown(list);
+  return labels.length ? labels : [...TEST_CATEGORIES];
+}
+
+export function testCategoryOptions(extra = [], base = TEST_CATEGORIES) {
+  const set = new Set();
+  (base || []).forEach((value) => {
+    const next = String(value || "").trim();
+    if (next) set.add(next);
+  });
   extra.forEach((value) => {
     const next = String(value || "").trim();
     if (next) set.add(next);
@@ -61,6 +122,16 @@ export function mapTestCatalog(row) {
     name: String(row.name || "").trim(),
     type: String(row.type || "SINGLE").toUpperCase() === "PROFILE" ? "PROFILE" : "SINGLE",
     category: String(row.category || "").trim(),
+    fastingType: String(row.fastingType || "").trim(),
+    duration: String(row.duration || "").trim(),
+    lines: Array.isArray(row.lines)
+      ? row.lines.map((line) => ({
+          category: String(line?.category || "").trim(),
+          name: String(line?.name || "").trim(),
+          fastingType: String(line?.fastingType || "").trim(),
+          duration: String(line?.duration || "").trim(),
+        }))
+      : [],
     status: row.status === "inactive" ? "inactive" : "active",
     live: row.status !== "inactive",
     sequence: Number(row.sequence) || 0,
@@ -100,6 +171,9 @@ export async function adminCreateTestCatalog(token, fields) {
         testId: String(fields.testId ?? "").trim() || undefined,
         type: fields.type || "SINGLE",
         category: String(fields.category ?? "").trim(),
+        fastingType: String(fields.fastingType ?? "").trim(),
+        duration: String(fields.duration ?? "").trim(),
+        lines: Array.isArray(fields.lines) ? fields.lines : [],
         status: fields.status || (fields.live === false ? "inactive" : "active"),
         sequence: Number(fields.sequence) || 0,
         parameters: Array.isArray(fields.parameters) ? fields.parameters : [],
@@ -118,6 +192,9 @@ export async function adminUpdateTestCatalog(token, id, fields) {
   if (fields.testId !== undefined) payload.testId = String(fields.testId).trim();
   if (fields.type !== undefined) payload.type = fields.type;
   if (fields.category !== undefined) payload.category = String(fields.category).trim();
+  if (fields.fastingType !== undefined) payload.fastingType = String(fields.fastingType).trim();
+  if (fields.duration !== undefined) payload.duration = String(fields.duration).trim();
+  if (fields.lines !== undefined) payload.lines = fields.lines;
   if (fields.sequence !== undefined) payload.sequence = Number(fields.sequence) || 0;
   if (fields.parameters !== undefined) payload.parameters = fields.parameters;
   if (fields.status !== undefined) payload.status = String(fields.status);

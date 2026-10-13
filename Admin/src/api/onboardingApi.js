@@ -583,7 +583,10 @@ function liveCatalogRows(rows) {
       name: row.name,
       type: row.type,
       category: row.category || "Other",
+      fastingType: row.fastingType || "",
+      duration: row.duration || "",
       status: row.status === "inactive" ? "inactive" : "active",
+      lines: Array.isArray(row.lines) ? row.lines : [],
       parameters: Array.isArray(row.parameters) ? row.parameters : [],
     }))
     .filter((row) => row.id && row.status !== "inactive");

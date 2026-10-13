@@ -235,7 +235,7 @@ export function eagleToHealConversionPrompt(user) {
   const name = String(user?.name || "this client").trim() || "this client";
   return {
     title: `Convert ${name} from EAGLE to HEAL?`,
-    body: `${name} leaves Eagle and stays on the Heal plan. Maintenance and Seek are still available after that.`,
+    body: `${name} leaves Eagle and stays on the Heal plan. Maintenance is still available after that.`,
     confirm: "Convert to HEAL",
     kicker: "Conversion",
   };
@@ -270,6 +270,14 @@ export function conversionPrompt(user, direction) {
       kicker: "Conversion",
     };
   }
+  if (isEagleClient(user)) {
+    return {
+      title: `Move ${name} from EAGLE to SEEK?`,
+      body: `${name} leaves Eagle and moves back to Seek. Paid coaching entitlements end, and their history stays on the account.`,
+      confirm: "Move to SEEK",
+      kicker: "Conversion",
+    };
+  }
   if (t === "Maintenance") {
     return {
       title: `Move ${name} back from MAINTENANCE to HEAL?`,
@@ -287,10 +295,8 @@ export function conversionPrompt(user, direction) {
     };
   }
   return {
-    title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to SEEK?`,
-    body: isEagleClient(user)
-      ? `${name} leaves Eagle and moves back to Seek. Paid coaching entitlements end, and their history stays on the account.`
-      : `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
+    title: `Move ${name} from HEAL to SEEK?`,
+    body: `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
     confirm: "Move to SEEK",
     kicker: "Conversion",
   };
@@ -320,7 +326,12 @@ export function listPaidUpgradeOptions(tier, ageDays) {
 export function listTierMoveOptions(tier, ageDays, user) {
   const t = normalizeTier(tier);
   const options = [];
-  if (isEagleClient(user) && t === "Seek to Heal") {
+  const eagle = isEagleClient(user);
+  // Eagle on Heal already has its own → HEAL action. Offer Seek before Maintenance
+  // so Eagle → Seek stays on the first line of the tier cell.
+  const eagleOnHeal = eagle && t === "Seek to Heal";
+
+  if (eagleOnHeal) {
     options.push({
       direction: "up",
       kind: "leave-eagle",
@@ -328,8 +339,7 @@ export function listTierMoveOptions(tier, ageDays, user) {
       label: "→ HEAL",
       title: "Convert this Eagle client back to HEAL. They stay on the Heal plan.",
     });
-  }
-  if (canConvertTier(t)) {
+  } else if (canConvertTier(t)) {
     const target = nextTier(t);
     options.push({
       direction: "up",
@@ -342,7 +352,15 @@ export function listTierMoveOptions(tier, ageDays, user) {
           : "Convert this client from SEEK to HEAL when payment did not go through",
     });
   }
-  if (canDowngradeTier(t, ageDays)) {
+  if (eagle) {
+    options.push({
+      direction: "down",
+      kind: "eagle-to-seek",
+      target: "Seek",
+      label: "↓ SEEK",
+      title: "Move this Eagle client back to SEEK. They leave Eagle and paid coaching entitlements end.",
+    });
+  } else if (canDowngradeTier(t, ageDays)) {
     const target = prevTier(t);
     options.push({
       direction: "down",
@@ -353,6 +371,14 @@ export function listTierMoveOptions(tier, ageDays, user) {
         : t === "Consultancy"
           ? "Move this client back down to SEEK — ends consultancy entitlements"
           : "Move this client back down to SEEK — ends paid coaching entitlements",
+    });
+  }
+  if (eagleOnHeal) {
+    options.push({
+      direction: "up",
+      target: "Maintenance",
+      label: "→ MAINTENANCE",
+      title: "Move this Eagle client into MAINTENANCE. They leave Eagle.",
     });
   }
   return options;

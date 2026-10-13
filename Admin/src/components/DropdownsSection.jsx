@@ -6,6 +6,7 @@ import {
   adminListConfigDropdowns,
   adminUpdateConfigDropdownOption,
 } from "../api/configDropdownApi.js";
+import { ensureBloodTestCategoryDropdown } from "../api/testCatalogApi.js";
 import {
   adminCreateHealthConcern,
   adminDeleteHealthConcern,
@@ -170,12 +171,16 @@ export function DropdownsSection({ lists, setLists, onToast }) {
       const filtered = (rows || []).filter(
         (list) => !["program-category", "health-concern", "medical-questions", "supplement-pool"].includes(list.slug),
       );
+      const bloodTests = await ensureBloodTestCategoryDropdown(filtered);
+      const dropdowns = bloodTests && !filtered.some((list) => list.slug === bloodTests.slug)
+        ? [...filtered, bloodTests]
+        : filtered;
       const concerns = concernsResult?.healthConcerns || [];
       const questions = questionsResult?.questions || [];
       setLists(sortDropdownListsForPage([
         mapConcernsToDropdownList(concerns),
         mapQuestionsToDropdownList(questions),
-        ...filtered,
+        ...dropdowns,
       ]));
     } catch (error) {
       onToast(error?.message || "Failed to load dropdowns");

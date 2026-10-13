@@ -11,6 +11,7 @@ const { isCommunityBirthdayUser } = require("../models/userAssignmentLogic");
 
 const IST_TZ = "Asia/Kolkata";
 const BIRTHDAY_LIMIT = 10;
+const BIRTHDAY_WINDOW_DAYS = 15;
 const CLIENT_CARD_LIMIT = 2;
 const COACH_CARD_LIMIT = 1;
 const LEADERBOARD_LIMIT = 10;
@@ -161,13 +162,14 @@ function nextBirthdayFromDob(dobIso, todayDateOnly) {
   return { dateOnly, offset };
 }
 
-function pickUpcomingBirthdays(users, limit = BIRTHDAY_LIMIT, todayDateOnly = todayInTimezone().dateOnly) {
+function pickUpcomingBirthdays(users, limit = BIRTHDAY_LIMIT, todayDateOnly = todayInTimezone().dateOnly, withinDays = null) {
   const byId = new Map();
   for (const user of users || []) {
     const id = userIdOf(user);
     if (!id || byId.has(id)) continue;
     const next = nextBirthdayFromDob(user.dob, todayDateOnly);
     if (!next) continue;
+    if (withinDays != null && next.offset > withinDays) continue;
     byId.set(id, {
       id,
       name: displayName(user),
@@ -389,7 +391,7 @@ async function getDashboardCommunity(actor) {
     const allowedIds = await loadAllowedUserIds(actor, scopedUsers);
     const champData = await loadChampionsAndLeaderboard(allowedIds);
     return {
-      birthdays: pickUpcomingBirthdays(users, BIRTHDAY_LIMIT),
+      birthdays: pickUpcomingBirthdays(users, BIRTHDAY_LIMIT, undefined, BIRTHDAY_WINDOW_DAYS),
       champions: champData.champions,
       leaderboard: champData.leaderboard,
     };

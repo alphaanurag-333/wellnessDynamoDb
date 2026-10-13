@@ -186,23 +186,41 @@ async function passwordMatchesAnyStaffAccount(plainPassword) {
 
 exports.loginAccount = asyncHandler(async (req, res) => {
   const { email, password, activeRole } = req.body || {};
-  if (!email || !password) {
+  const phone = normalizePhone(req.body?.phone || req.body?.mobile);
+  const usePhone = !email && Boolean(phone);
+
+  if (usePhone) {
+    if (!password) {
+      throw new AppError("Mobile number and password are required", 400);
+    }
+  } else if (!email || !password) {
     throw new AppError("Email and password are required", 400);
   }
 
-  let account = await getAccountByEmail(email);
-  if (!account && config.accountDualRead !== false) {
-    account = await resolveAccountByEmail(email);
-  }
-
-  if (!account) {
-    const passwordFound = await passwordMatchesAnyStaffAccount(password);
-    throw new AppError(invalidLoginMessage(false, passwordFound), 401);
+  let account;
+  if (usePhone) {
+    const phoneCountryCode = normalizeCountryCode(req.body?.phoneCountryCode || req.body?.countryCode);
+    account = await getAccountByPhone(phoneCountryCode, phone);
+    if (!account || account.status === "deleted") {
+      throw new AppError("No account found with this mobile number", 401);
+    }
+    if (!account.password) {
+      throw new AppError("Password login is not set up for this account. Use OTP login.", 400);
+    }
+  } else {
+    account = await getAccountByEmail(email);
+    if (!account && config.accountDualRead !== false) {
+      account = await resolveAccountByEmail(email);
+    }
+    if (!account) {
+      const passwordFound = await passwordMatchesAnyStaffAccount(password);
+      throw new AppError(invalidLoginMessage(false, passwordFound), 401);
+    }
   }
 
   const matched = account.password ? await comparePassword(password, account.password) : false;
   if (!matched) {
-    throw new AppError(invalidLoginMessage(true, false), 401);
+    throw new AppError(usePhone ? "Invalid password" : invalidLoginMessage(true, false), 401);
   }
   if (account.status === "deleted") {
     throw new AppError("Account has been deleted", 401);
@@ -391,6 +409,7 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
 
   const {
     name,
+    email,
     phone,
     phoneCountryCode,
     designation,
@@ -407,6 +426,20 @@ exports.updateAccountProfile = asyncHandler(async (req, res) => {
   const updates = {};
 
   if (name !== undefined) updates.name = String(name).trim();
+  if (email !== undefined) {
+    const nextEmail = normalizeEmail(email);
+    if (!nextEmail) throw new AppError("Email is required", 400);
+    if (nextEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      throw new AppError("Enter a valid email address", 400);
+    }
+    if (nextEmail !== normalizeEmail(account.email)) {
+      const existing = await resolveAccountByEmail(nextEmail);
+      if (existing && existing.id !== account.id) {
+        throw new AppError("This email is already in use", 409);
+      }
+      updates.email = nextEmail;
+    }
+  }
   if (phone !== undefined) updates.phone = phone ? String(phone).trim() : null;
   if (phoneCountryCode !== undefined) {
     updates.phoneCountryCode = phoneCountryCode ? String(phoneCountryCode).trim() : null;
@@ -529,7 +562,7 @@ exports.sendAccountLoginOtp = asyncHandler(async (req, res) => {
   if (account.status === "deleted") {
     throw new AppError("Account has been deleted", 401);
   }
-  if (account.status === "inactive") {
+  if (account.status === "inactive" || account.status === "blocked") {
     throw new AppError("Account is inactive", 403);
   }
 
@@ -542,7 +575,7 @@ exports.sendAccountLoginOtp = asyncHandler(async (req, res) => {
 
   const body = {
     status: true,
-    message: "OTP sent",
+    message: "OTP has been sent successfully on WhatsApp",
   };
   if (config.exposeOtpInResponse) {
     body.otp = otp;
@@ -563,6 +596,12 @@ exports.verifyAccountLoginOtp = asyncHandler(async (req, res) => {
   const account = await getAccountByPhone(phoneCountryCode, phone);
   if (!account) {
     throw new AppError("No account found with this mobile number", 404);
+  }
+  if (account.status === "deleted") {
+    throw new AppError("Account has been deleted", 401);
+  }
+  if (account.status === "inactive" || account.status === "blocked") {
+    throw new AppError("Account is inactive", 403);
   }
   if (!anyStaticOtpMatch(otp, [phone, account.phone])) {
     if (account.otp && isOtpExpired(account.otpExpire)) {

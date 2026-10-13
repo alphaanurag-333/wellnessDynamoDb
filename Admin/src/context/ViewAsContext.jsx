@@ -5,6 +5,8 @@ import {
   accountLogin,
   accountLoginTotp,
   accountMe,
+  accountSendLoginOtp,
+  accountVerifyLoginOtp,
   accountSwitchRole,
   clearAccountAuth,
   readAccountAuth,
@@ -155,10 +157,8 @@ export function ViewAsProvider({ children }) {
     }
   }, []);
 
-  const login = useCallback(
-    async ({ email, password, activeRole }) => {
-      setAuthError("");
-      const result = await accountLogin({ email, password, activeRole });
+  const finishLogin = useCallback(
+    async (result) => {
       if (result?.mfaRequired) {
         return result;
       }
@@ -172,18 +172,33 @@ export function ViewAsProvider({ children }) {
     [dispatch, reloadLiveRoles, setViewAsLocal],
   );
 
+  const login = useCallback(
+    async ({ email, phone, phoneCountryCode, password, activeRole }) => {
+      setAuthError("");
+      return finishLogin(await accountLogin({ email, phone, phoneCountryCode, password, activeRole }));
+    },
+    [finishLogin],
+  );
+
+  const sendLoginOtp = useCallback(async ({ phone, phoneCountryCode }) => {
+    setAuthError("");
+    return accountSendLoginOtp({ phone, phoneCountryCode });
+  }, []);
+
+  const loginWithOtp = useCallback(
+    async ({ phone, phoneCountryCode, otp, activeRole }) => {
+      setAuthError("");
+      return finishLogin(await accountVerifyLoginOtp({ phone, phoneCountryCode, otp, activeRole }));
+    },
+    [finishLogin],
+  );
+
   const completeTotpLogin = useCallback(
     async ({ mfaToken, code }) => {
       setAuthError("");
-      const stored = await accountLoginTotp({ mfaToken, code });
-      setAuth(stored);
-      setViewAsLocal(uiFromAccount(stored.account));
-      if (stored?.account) dispatch(setAdminProfile(stored.account));
-      loadAppConfig();
-      await reloadLiveRoles();
-      return stored;
+      return finishLogin(await accountLoginTotp({ mfaToken, code }));
     },
-    [dispatch, reloadLiveRoles, setViewAsLocal],
+    [finishLogin],
   );
 
   const logout = useCallback(() => {
@@ -415,6 +430,8 @@ export function ViewAsProvider({ children }) {
       authError,
       setAuthError,
       login,
+      sendLoginOtp,
+      loginWithOtp,
       completeTotpLogin,
       logout,
       setAccount,
@@ -443,6 +460,8 @@ export function ViewAsProvider({ children }) {
       bootstrapping,
       authError,
       login,
+      sendLoginOtp,
+      loginWithOtp,
       completeTotpLogin,
       logout,
       setAccount,

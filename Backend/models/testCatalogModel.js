@@ -17,6 +17,7 @@ const {
 const TABLE = "TestCatalog";
 const ALLOWED_STATUS = ["active", "inactive"];
 const ALLOWED_TYPES = ["PROFILE", "SINGLE"];
+const FASTING_TYPES = ["Fasting", "Non-fasting", "Post-prandial"];
 const STATUS = new Set(ALLOWED_STATUS);
 const TYPES = new Set(ALLOWED_TYPES);
 const NAME_MIN_LEN = 2;
@@ -24,6 +25,7 @@ const NAME_MAX_LEN = 200;
 const CATEGORY_MIN_LEN = 2;
 const CATEGORY_MAX_LEN = 100;
 const TEST_ID_MAX_LEN = 80;
+const DURATION_MAX_LEN = 80;
 const PARAM_NAME_MAX_LEN = 100;
 const UNIT_MAX_LEN = 40;
 const REF_RANGE_MAX_LEN = 120;
@@ -107,6 +109,76 @@ function normalizeCategory(value) {
   return category;
 }
 
+function normalizeFastingType(value, { required = false } = {}) {
+  const next = String(value ?? "").trim();
+  if (!next) {
+    if (!required) return "";
+    const err = new Error("fasting type is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const match = FASTING_TYPES.find((entry) => entry.toLowerCase() === next.toLowerCase());
+  if (!match) {
+    const err = new Error(`fasting type must be one of: ${FASTING_TYPES.join(", ")}`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return match;
+}
+
+function normalizeDuration(value, { required = false } = {}) {
+  const duration = String(value ?? "").trim();
+  if (!duration) {
+    if (!required) return "";
+    const err = new Error("duration is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (duration.length > DURATION_MAX_LEN) {
+    const err = new Error(`duration cannot exceed ${DURATION_MAX_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return duration;
+}
+
+function normalizeLines(lines) {
+  if (lines === undefined || lines === null) return [];
+  if (!Array.isArray(lines)) {
+    const err = new Error("lines must be an array");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (lines.length > MAX_PARAMETERS) {
+    const err = new Error(`A test cannot have more than ${MAX_PARAMETERS} lines`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return lines.map((line, index) => {
+    try {
+      return {
+        category: normalizeCategory(line?.category),
+        name: normalizeName(line?.name),
+        fastingType: normalizeFastingType(line?.fastingType, { required: true }),
+        duration: normalizeDuration(line?.duration, { required: true }),
+      };
+    } catch (err) {
+      err.message = `Line ${index + 1}: ${err.message}`;
+      throw err;
+    }
+  });
+}
+
+function publicLines(lines) {
+  if (!Array.isArray(lines)) return [];
+  return lines.map((line) => ({
+    category: String(line?.category || "").trim(),
+    name: String(line?.name || "").trim(),
+    fastingType: String(line?.fastingType || "").trim(),
+    duration: String(line?.duration || "").trim(),
+  }));
+}
+
 function normalizeSequence(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
@@ -188,6 +260,9 @@ function toTestCatalogPublic(item) {
     type: normalizeType(row.type),
     category: row.category,
     status: normalizeStatus(row.status),
+    fastingType: String(row.fastingType || "").trim(),
+    duration: String(row.duration || "").trim(),
+    lines: publicLines(row.lines),
     parameters: Array.isArray(row.parameters) ? row.parameters : [],
     sequence: normalizeSequence(row.sequence),
     createdBy: row.createdBy || null,
@@ -200,10 +275,14 @@ function snapshotTest(item) {
   const pub = toTestCatalogPublic(item);
   if (!pub) return null;
   return {
+    catalogId: pub.id,
     testId: pub.testId,
     name: pub.name,
     type: pub.type,
     category: pub.category,
+    fastingType: pub.fastingType,
+    duration: pub.duration,
+    lines: pub.lines,
     parameters: pub.parameters,
   };
 }
@@ -229,6 +308,9 @@ async function createTestCatalog({
   type = "SINGLE",
   category,
   status = "active",
+  fastingType = "",
+  duration = "",
+  lines,
   parameters,
   sequence = 0,
   createdBy,
@@ -249,6 +331,9 @@ async function createTestCatalog({
     type: normalizeType(type),
     category: normalizeCategory(category),
     status: normalizeStatus(status),
+    fastingType: normalizeFastingType(fastingType),
+    duration: normalizeDuration(duration),
+    lines: normalizeLines(lines),
     parameters: normalizeParameters(parameters, { type: normalizeType(type) }),
     sequence: normalizeSequence(sequence),
     createdBy: String(createdBy || "").trim() || null,
@@ -434,6 +519,9 @@ async function updateTestCatalog(id, updates) {
     else if (key === "type") entries.push([key, normalizeType(value)]);
     else if (key === "name") entries.push([key, normalizeName(value)]);
     else if (key === "category") entries.push([key, normalizeCategory(value)]);
+    else if (key === "fastingType") entries.push([key, normalizeFastingType(value)]);
+    else if (key === "duration") entries.push([key, normalizeDuration(value)]);
+    else if (key === "lines") entries.push([key, normalizeLines(value)]);
     else if (key === "sequence") entries.push([key, normalizeSequence(value)]);
     else if (key === "parameters") {
       const nextType =
@@ -499,9 +587,13 @@ module.exports = {
   TABLE,
   ALLOWED_STATUS,
   ALLOWED_TYPES,
+  FASTING_TYPES,
   slugify,
   normalizeStatus,
   normalizeType,
+  normalizeFastingType,
+  normalizeDuration,
+  normalizeLines,
   normalizeTestId,
   normalizeParameters,
   toTestCatalogPublic,

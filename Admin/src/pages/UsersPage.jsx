@@ -848,7 +848,12 @@ export function UsersPage() {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, direction: "down", ...conversionPrompt(user, "down") });
+    setConversionAsk({
+      user,
+      direction: "down",
+      ...(isEagleClient(user) ? { kind: "eagle-to-seek" } : {}),
+      ...conversionPrompt(user, "down"),
+    });
   };
 
   const confirmConversion = async () => {
@@ -923,11 +928,16 @@ export function UsersPage() {
       return;
     }
     const fromTier = user.tier;
-    const toTier = ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier);
+    const eagleToSeek = ask.kind === "eagle-to-seek";
+    const toTier = eagleToSeek
+      ? "Seek"
+      : (ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier));
     setActionBusy(true);
     try {
       let updated;
-      if (ask.direction === "up") {
+      if (eagleToSeek) {
+        updated = await moveUserToSeek(key);
+      } else if (ask.direction === "up") {
         updated = user.tier === "Seek to Heal"
           ? await moveUserToMaintenance(key)
           : await moveUserToHeal(key);
@@ -954,9 +964,11 @@ export function UsersPage() {
         }
         return next;
       });
-      onToast(ask.direction === "up"
-        ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
-        : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
+      onToast(eagleToSeek
+        ? `${user.name} moved to SEEK`
+        : ask.direction === "up"
+          ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
+          : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
       setConversionAsk(null);
       refreshUsers();
     } catch (err) {
@@ -1499,7 +1511,9 @@ export function UsersPage() {
                               onClick={() => (
                                 move.kind === "leave-eagle"
                                   ? convertFromEagle(u)
-                                  : (move.direction === "up" ? convertTier(u) : downgradeTier(u))
+                                  : move.kind === "eagle-to-seek"
+                                    ? downgradeTier(u)
+                                    : (move.direction === "up" ? convertTier(u) : downgradeTier(u))
                               )}
                             >
                               {move.label}

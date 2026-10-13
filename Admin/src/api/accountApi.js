@@ -54,26 +54,57 @@ function authHeader(token) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-export async function accountLogin({ email, password, activeRole }) {
+function storeLoginResult(data) {
+  if (data?.mfaRequired) {
+    return {
+      mfaRequired: true,
+      mfaMethod: data.mfaMethod || "totp",
+      mfaToken: data.mfaToken,
+      message: data.message,
+    };
+  }
+  const stored = {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    account: data.account,
+  };
+  writeAccountAuth(stored);
+  return stored;
+}
+
+export async function accountLogin({ email, phone, phoneCountryCode, password, activeRole }) {
   try {
-    const body = { email, password };
+    const body = phone ? { phone, phoneCountryCode: phoneCountryCode || "+91", password } : { email, password };
     if (activeRole) body.activeRole = UI_TO_ROLE_KEY[activeRole] || activeRole;
     const { data } = await api.post("/account/auth/login", body);
-    if (data?.mfaRequired) {
-      return {
-        mfaRequired: true,
-        mfaMethod: data.mfaMethod || "totp",
-        mfaToken: data.mfaToken,
-        message: data.message,
-      };
-    }
-    const stored = {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      account: data.account,
+    return storeLoginResult(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function accountSendLoginOtp({ phone, phoneCountryCode }) {
+  try {
+    const { data } = await api.post("/account/auth/otp/send", {
+      phone,
+      phoneCountryCode: phoneCountryCode || "+91",
+    });
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function accountVerifyLoginOtp({ phone, phoneCountryCode, otp, activeRole }) {
+  try {
+    const body = {
+      phone,
+      phoneCountryCode: phoneCountryCode || "+91",
+      otp: String(otp || "").trim(),
     };
-    writeAccountAuth(stored);
-    return stored;
+    if (activeRole) body.activeRole = UI_TO_ROLE_KEY[activeRole] || activeRole;
+    const { data } = await api.post("/account/auth/otp/verify", body);
+    return storeLoginResult(data);
   } catch (error) {
     normalizeApiError(error);
   }
@@ -165,6 +196,7 @@ export async function accountUpdateMe(fields = {}, file) {
       const form = new FormData();
       if (fields.bio !== undefined) form.append("bio", fields.bio ?? "");
       if (fields.name !== undefined) form.append("name", fields.name ?? "");
+      if (fields.email !== undefined) form.append("email", fields.email ?? "");
       if (fields.phone !== undefined) form.append("phone", fields.phone ?? "");
       if (fields.phoneCountryCode !== undefined) {
         form.append("phoneCountryCode", fields.phoneCountryCode ?? "");
@@ -182,6 +214,7 @@ export async function accountUpdateMe(fields = {}, file) {
       body = {};
       if (fields.bio !== undefined) body.bio = fields.bio;
       if (fields.name !== undefined) body.name = fields.name;
+      if (fields.email !== undefined) body.email = fields.email;
       if (fields.phone !== undefined) body.phone = fields.phone;
       if (fields.phoneCountryCode !== undefined) body.phoneCountryCode = fields.phoneCountryCode;
       if (fields.address !== undefined) body.address = fields.address;

@@ -11,6 +11,9 @@ const {
   ALLOWED_TYPES,
   normalizeTestId,
   normalizeParameters,
+  normalizeFastingType,
+  normalizeDuration,
+  normalizeLines,
 } = require("../../models/testCatalogModel");
 const { isTestCatalogReferenced } = require("../../models/coachRecommendedTestModel");
 
@@ -37,9 +40,20 @@ exports.createTestCatalogController = asyncHandler(async (req, res) => {
   const category = String(req.body.category || "").trim();
   const status = String(req.body.status || "active").toLowerCase();
   const sequence = Number(req.body.sequence) || 0;
+  let fastingType = "";
+  let duration = "";
+  let lines = [];
 
   if (!name) throw new AppError("name is required", 400);
   if (!category) throw new AppError("category is required", 400);
+  try {
+    fastingType = normalizeFastingType(req.body.fastingType, { required: true });
+    duration = normalizeDuration(req.body.duration, { required: true });
+    lines = normalizeLines(req.body.lines);
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    throw err;
+  }
   if (!ALLOWED_TYPES.includes(type)) {
     throw new AppError(`type must be one of: ${ALLOWED_TYPES.join(", ")}`, 400);
   }
@@ -63,6 +77,9 @@ exports.createTestCatalogController = asyncHandler(async (req, res) => {
       type,
       category,
       status,
+      fastingType,
+      duration,
+      lines,
       parameters,
       sequence,
       createdBy: req.auth?.sub,
@@ -95,6 +112,9 @@ exports.updateTestCatalogController = asyncHandler(async (req, res) => {
     updates.type = type;
   }
   if (req.body.category !== undefined) updates.category = req.body.category;
+  if (req.body.fastingType !== undefined) updates.fastingType = req.body.fastingType;
+  if (req.body.duration !== undefined) updates.duration = req.body.duration;
+  if (req.body.lines !== undefined) updates.lines = req.body.lines;
   if (req.body.status !== undefined) {
     const status = String(req.body.status || "").toLowerCase();
     if (!ALLOWED_STATUS.includes(status)) {

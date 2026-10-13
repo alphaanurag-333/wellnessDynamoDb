@@ -366,20 +366,21 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function downgradeTier() {
-    if (!canChangeTier || !tierActions.canDowngrade || !userId || tierBusy) return;
+    const eagleToSeek = isEagleClient(user);
+    if (!canChangeTier || (!tierActions.canDowngrade && !eagleToSeek) || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
     setTierBusy(true);
     try {
-      if (currentTier === "Maintenance") {
+      if (!eagleToSeek && currentTier === "Maintenance") {
         const updated = await moveMaintenanceUserToHeal(userId);
         onUserUpdated?.(updated);
         onToast(`${user.name} moved back to HEAL`);
         return;
       }
-      if (currentTier === "Seek to Heal") {
+      if (eagleToSeek || currentTier === "Seek to Heal") {
         const updated = await moveUserToSeek(userId);
         onUserUpdated?.(updated);
         onToast(`${user.name} moved down to SEEK`);
@@ -563,15 +564,19 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             Convert to EAGLE
           </button>
         ) : null}
-        {canChangeTier && tierActions.canDowngrade ? (
+        {canChangeTier && (tierActions.canDowngrade || isEagleClient(user)) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--down"
-            title={tierChangeBlocked ? WC_OR_AWC_REQUIRED_MESSAGE : tierActions.downgradeTitle}
+            title={tierChangeBlocked
+              ? WC_OR_AWC_REQUIRED_MESSAGE
+              : (isEagleClient(user)
+                ? "Move this Eagle client back to SEEK. They leave Eagle and paid coaching entitlements end."
+                : tierActions.downgradeTitle)}
             onClick={downgradeTier}
             disabled={tierBusy || tierChangeBlocked}
           >
-            {tierActions.downgradeLabel}
+            {isEagleClient(user) ? "Move down to SEEK" : tierActions.downgradeLabel}
           </button>
         ) : null}
         <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>

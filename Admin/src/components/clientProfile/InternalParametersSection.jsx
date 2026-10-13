@@ -244,6 +244,32 @@ function reportAiStatusText(report) {
   return "ready for AI analysis";
 }
 
+function formatTestDuration(value) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  if (/^\d+(\.\d+)?$/.test(text)) return `${text} ${Number(text) === 1 ? "hr" : "hrs"}`;
+  return text;
+}
+
+/** One pickable item per catalog line; entries without lines stay a single item. */
+function catalogItems(catalog) {
+  return (catalog || []).flatMap((entry) => {
+    const lines = Array.isArray(entry?.lines) ? entry.lines.filter((line) => line?.name) : [];
+    if (!lines.length) return [{ ...entry, catalogId: entry.id }];
+    return lines.map((line, index) => ({
+      id: `${entry.id}::${index}`,
+      catalogId: entry.id,
+      lineIndex: index,
+      testId: entry.testId,
+      panelName: entry.name,
+      name: line.name,
+      category: line.category || entry.category,
+      fastingType: line.fastingType || "",
+      duration: line.duration || "",
+    }));
+  });
+}
+
 function catalogGroups(catalog) {
   const map = new Map();
   (catalog || []).forEach((test) => {
@@ -253,6 +279,25 @@ function catalogGroups(catalog) {
     map.get(id).tests.push(test);
   });
   return [...map.values()];
+}
+
+/** One group per catalog entry (e.g. "Glucose Test"), holding that entry's lines. */
+function testTitleGroups(items) {
+  const map = new Map();
+  (items || []).forEach((item) => {
+    const id = String(item.catalogId || item.id);
+    if (!map.has(id)) {
+      map.set(id, { id, name: item.panelName || item.name || "Test", tests: [], searchText: "" });
+    }
+    map.get(id).tests.push(item);
+  });
+  return [...map.values()].map((group) => ({
+    ...group,
+    searchText: [group.name, ...group.tests.flatMap((test) => [test.name, test.category])]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+  }));
 }
 
 function EditActions({ editing, onEdit, onCancel, onSave }) {
@@ -561,7 +606,16 @@ function pinnedGroupIds(groups, selectedMap) {
     .map((group) => group.id);
 }
 
-function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false }) {
+function NamespaceSearch({
+  groups,
+  namespaces,
+  onAdd,
+  onToast,
+  disabled = false,
+  placeholder = "+ Add a test category…",
+  allAddedLabel = "All categories added",
+  noMatchLabel = "No matching categories",
+}) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -576,7 +630,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
     return namespaces.filter((ns) => {
       if (existingIds.has(ns.id)) return false;
       if (!q) return true;
-      return String(ns.name || "").toLowerCase().includes(q);
+      return String(ns.searchText || ns.name || "").toLowerCase().includes(q);
     });
   }, [search, existingIds, namespaces]);
 
@@ -670,7 +724,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
         <input
           ref={inputRef}
           type="text"
-          placeholder="+ Add a test category…"
+          placeholder={placeholder}
           value={search}
           disabled={disabled}
           onChange={(e) => {
@@ -705,7 +759,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
             </li>
           )) : (
             <li className="ua-cp-ip-ns-dropdown__empty">
-              {existingIds.size >= namespaces.length ? "All categories added" : "No matching categories"}
+              {existingIds.size >= namespaces.length ? allAddedLabel : noMatchLabel}
             </li>
           )}
         </ul>
@@ -917,22 +971,30 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
   );
 }
 
-function selectedFromRecommendation(catalog, recommended) {
+function selectedFromRecommendation(items, recommended) {
   const map = {};
-  const assigned = new Set();
+  const assignedItems = new Set();
+  const assignedLegacy = new Set();
   (recommended?.tests || []).forEach((test) => {
+    const itemId = String(test.itemId || "").trim();
+    if (itemId) {
+      assignedItems.add(itemId);
+      return;
+    }
     [test.testId, test.id, test.catalogId].forEach((value) => {
       const next = String(value || "").trim();
-      if (next) assigned.add(next);
+      if (next) assignedLegacy.add(next);
     });
     const name = String(test.name || "").trim().toLowerCase();
-    if (name) assigned.add(`name:${name}`);
+    if (name) assignedLegacy.add(`name:${name}`);
   });
-  catalog.forEach((test) => {
-    const id = String(test.id || "").trim();
-    const testId = String(test.testId || "").trim();
-    const name = String(test.name || "").trim().toLowerCase();
-    map[id] = assigned.has(id) || assigned.has(testId) || Boolean(name && assigned.has(`name:${name}`));
+  items.forEach((item) => {
+    const id = String(item.id || "").trim();
+    const name = String(item.name || "").trim().toLowerCase();
+    map[id] = assignedItems.has(id)
+      || assignedLegacy.has(String(item.catalogId || ""))
+      || assignedLegacy.has(String(item.testId || ""))
+      || Boolean(name && assignedLegacy.has(`name:${name}`));
   });
   return map;
 }
@@ -1023,24 +1085,26 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
 }
 
 function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, canEdit = true, canExport = true }) {
-  const allGroups = useMemo(() => catalogGroups(catalog), [catalog]);
-  const [selected, setSelected] = useState(() => selectedFromRecommendation(catalog, recommended));
+  const items = useMemo(() => catalogItems(catalog), [catalog]);
+  const allGroups = useMemo(() => testTitleGroups(items), [items]);
+  const [selected, setSelected] = useState(() => selectedFromRecommendation(catalogItems(catalog), recommended));
   const [presets, setPresets] = useState([]);
   const [focusedPreset, setFocusedPreset] = useState("");
   const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
   const [dirty, setDirty] = useState(!recommended);
   const [pinnedIds, setPinnedIds] = useState(() => {
-    const initial = selectedFromRecommendation(catalog, recommended);
-    return pinnedGroupIds(catalogGroups(catalog), initial);
+    const initialItems = catalogItems(catalog);
+    const initial = selectedFromRecommendation(initialItems, recommended);
+    return pinnedGroupIds(testTitleGroups(initialItems), initial);
   });
 
   useEffect(() => {
-    const nextSelected = selectedFromRecommendation(catalog, recommended);
+    const nextSelected = selectedFromRecommendation(items, recommended);
     setSelected(nextSelected);
     setReportDate(recommended?.reportDate || todayIso());
     setDirty(!recommended);
-    setPinnedIds(pinnedGroupIds(catalogGroups(catalog), nextSelected));
-  }, [catalog, recommended]);
+    setPinnedIds(pinnedGroupIds(testTitleGroups(items), nextSelected));
+  }, [items, recommended]);
 
   const selectedIds = useMemo(
     () => Object.entries(selected).filter(([, on]) => on).map(([id]) => id),
@@ -1089,7 +1153,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     }
     setPinnedIds((ids) => ids.filter((entry) => entry !== id));
     markDirty();
-    onToast("Category removed");
+    onToast("Test removed");
   }
 
   function addCategory(group) {
@@ -1110,7 +1174,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
     const matched = applying ? groupsForPreset(allGroups, goal) : [];
     const nextSelected = {};
-    catalog.forEach((test) => { nextSelected[test.id] = false; });
+    items.forEach((test) => { nextSelected[test.id] = false; });
     matched.forEach((group) => {
       group.tests.forEach((test) => { nextSelected[test.id] = true; });
     });
@@ -1130,7 +1194,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
   async function downloadList() {
     const selectedTests = selectedIds
-      .map((id) => catalog.find((test) => test.id === id))
+      .map((id) => items.find((test) => test.id === id))
       .filter(Boolean);
     await downloadRecommendationList({
       userId: user?.id,
@@ -1214,6 +1278,9 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
               onAdd={addCategory}
               onToast={onToast}
               disabled={busy}
+              placeholder="+ Search a test, e.g. Glucose Test…"
+              allAddedLabel="All tests added"
+              noMatchLabel="No matching tests"
             />
           ) : null}
           {visibleGroups.length ? visibleGroups.map((group) => {
@@ -1233,27 +1300,53 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
                   </button>
                   <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
                   <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
-                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove category">×</button>
+                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove test">×</button>
                 </div>
-                <div className="ua-cp-ip-test-group__grid" style={{padding:"10px 40px 10px"}}>
-                  {group.tests.map((test) => (
-                    <label key={test.id} className="ua-cp-ip-test-item" onMouseDown={(e) => e.preventDefault()}>
-                      <input
-                        type="checkbox"
-                        checked={!!selected[test.id]}
-                        onChange={() => toggleTest(test.id)}
-                      />
-                      <span style={{borderRadius:"5px"}} className={`ua-cp-ip-check${selected[test.id] ? " ua-cp-ip-check--on" : ""}`}>
-                        {selected[test.id] ? "✓" : ""}
-                      </span>
-                      <span className="ua-cp-ip-test-item__label">{test.name}</span>
-                    </label>
-                  ))}
+                <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} tests`}>
+                  <div className="ua-cp-ip-line-table__head" role="row">
+                    <span role="columnheader" aria-label="Select" />
+                    <span role="columnheader">Category</span>
+                    <span role="columnheader">Test Name</span>
+                    <span role="columnheader">Fasting Type</span>
+                    <span role="columnheader">Duration</span>
+                  </div>
+                  {group.tests.map((test) => {
+                    const on = !!selected[test.id];
+                    return (
+                      <label
+                        key={test.id}
+                        role="row"
+                        className={`ua-cp-ip-line-table__row${on ? " is-on" : ""}`}
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <span role="cell" className="ua-cp-ip-line-table__check">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => toggleTest(test.id)}
+                          />
+                          <span style={{borderRadius:"5px"}} className={`ua-cp-ip-check${on ? " ua-cp-ip-check--on" : ""}`}>
+                            {on ? "✓" : ""}
+                          </span>
+                        </span>
+                        <span role="cell" data-label="Category">{test.category || "—"}</span>
+                        <span role="cell" data-label="Test Name" className="ua-cp-ip-line-table__name">{test.name}</span>
+                        <span role="cell" data-label="Fasting Type">
+                          {test.fastingType ? (
+                            <span className={`ua-cp-ip-fast-pill ua-cp-ip-fast-pill--${slugify(test.fastingType)}`}>
+                              {test.fastingType}
+                            </span>
+                          ) : "—"}
+                        </span>
+                        <span role="cell" data-label="Duration">{formatTestDuration(test.duration)}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             );
           }) : (
-            <p className="ua-cp-ip-assign-history__empty">No categories added yet. Search above to add tests from the catalog.</p>
+            <p className="ua-cp-ip-assign-history__empty">No tests added yet. Search above to add a test from the catalog.</p>
           )}
         </>
       ) : (

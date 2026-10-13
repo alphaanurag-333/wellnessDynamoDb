@@ -24,6 +24,7 @@ const {
   isAlreadyAssignedClient,
   shouldKeepExistingAssignment,
   buildLeaveEagleUpdates,
+  isEagleClientCategory,
 } = require("./userAssignmentLogic");
 const { buildPaidOnboardingResetUpdates } = require("../utils/paidOnboardingHelpers");
 
@@ -297,8 +298,9 @@ async function convertSeekToHeal(userId, { referralCode, allowFromSeek = false }
 }
 
 /**
- * Downgrade Heal or Maintenance → Seek (free).
+ * Downgrade Heal, Maintenance, or Eagle → Seek (free).
  * Clears paid-tier assignment and entitlements; keeps referral code + referral history.
+ * Eagle is a category, so this also drops it even when the plan is already Seek.
  */
 async function convertToSeek(userId) {
   const user = await getUserById(userId);
@@ -309,8 +311,9 @@ async function convertToSeek(userId) {
   }
 
   const tier = normalizeTier(user.userTier);
-  if (tier !== "heal" && tier !== "maintenance") {
-    const err = new Error("User is not a Heal or Maintenance member");
+  const leavingEagle = isEagleClientCategory(user.clientCategory);
+  if (tier !== "heal" && tier !== "maintenance" && !leavingEagle) {
+    const err = new Error("User is not a Heal, Maintenance, or Eagle member");
     err.name = "InvalidTierError";
     throw err;
   }
@@ -349,7 +352,7 @@ async function convertToSeek(userId) {
   return updateUser(userId, updates);
 }
 
-/** Admin downgrade: Heal (paid subscription) → Seek (free). */
+/** Admin downgrade: Heal or Eagle → Seek (free). */
 async function convertHealToSeek(userId) {
   const user = await getUserById(userId);
   if (!user) {
@@ -357,8 +360,8 @@ async function convertHealToSeek(userId) {
     err.name = "NotFoundError";
     throw err;
   }
-  if (!isHealTier(user.userTier)) {
-    const err = new Error("User is not a Heal (paid) member");
+  if (!isHealTier(user.userTier) && !isEagleClientCategory(user.clientCategory)) {
+    const err = new Error("User is not a Heal or Eagle member");
     err.name = "InvalidTierError";
     throw err;
   }

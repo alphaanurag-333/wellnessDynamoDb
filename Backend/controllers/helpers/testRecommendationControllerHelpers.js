@@ -22,6 +22,7 @@ const {
 } = require("./dietPlanControllerHelpers");
 
 const S3_FOLDER = "test-recommendations";
+const LINE_ID_SEPARATOR = "::";
 
 function readRecommendationIdParam(req) {
   return String(req.params.recommendationId || req.params.id || "").trim();
@@ -60,15 +61,38 @@ async function buildTestSnapshots(input) {
     throw new AppError("At least one test must be selected", 400);
   }
 
-  const tests = await getActiveTestCatalogByIds(ids);
-  if (tests.length !== ids.length) {
+  const picks = ids.map((id) => {
+    const [catalogId, lineIndex] = id.split(LINE_ID_SEPARATOR);
+    return { id, catalogId, lineIndex: lineIndex === undefined ? null : Number(lineIndex) };
+  });
+  const catalogIds = [...new Set(picks.map((pick) => pick.catalogId))];
+  const tests = await getActiveTestCatalogByIds(catalogIds);
+  if (tests.length !== catalogIds.length) {
     throw new AppError("One or more selected tests are invalid or inactive", 400);
   }
+  const byId = new Map(tests.map((test) => [test.id, test]));
 
-  const order = new Map(ids.map((id, index) => [id, index]));
-  tests.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-
-  return tests.map((test) => snapshotTest(test)).filter(Boolean);
+  return picks.map((pick) => {
+    const test = byId.get(pick.catalogId);
+    if (pick.lineIndex === null) return snapshotTest(test);
+    const line = Array.isArray(test.lines) ? test.lines[pick.lineIndex] : null;
+    if (!Number.isInteger(pick.lineIndex) || !line) {
+      throw new AppError("One or more selected tests are invalid or inactive", 400);
+    }
+    const param = (test.parameters || [])[pick.lineIndex];
+    return {
+      itemId: pick.id,
+      catalogId: test.id,
+      testId: test.testId,
+      panelName: test.name,
+      name: line.name,
+      type: "SINGLE",
+      category: line.category,
+      fastingType: line.fastingType,
+      duration: line.duration,
+      parameters: param ? [param] : [],
+    };
+  });
 }
 
 async function generateAndUploadRecommendationPdf({ user, coach, reportDate, tests }) {

@@ -70,6 +70,42 @@ function asNumber(value) {
   return Number.isFinite(number) ? number : 0;
 }
 
+const BIRTHDAY_WINDOW_DAYS = 15;
+const BIRTHDAY_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function todayKeyInKolkata(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function birthdayOffsetDays(row, todayKey = todayKeyInKolkata()) {
+  const offset = Number(row?.offset);
+  if (Number.isFinite(offset)) return offset;
+  const when = String(row?.when || "").trim();
+  if (/^today$/i.test(when)) return 0;
+  const match = /^(\d{1,2})\s+([A-Za-z]{3})$/.exec(when);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = BIRTHDAY_MONTHS.findIndex((label) => label.toLowerCase() === match[2].toLowerCase());
+  if (month < 0 || !day) return null;
+  const [year, monthNow, dayNow] = todayKey.split("-").map(Number);
+  const start = Date.UTC(year, monthNow - 1, dayNow);
+  let next = Date.UTC(year, month, day);
+  if (next < start) next = Date.UTC(year + 1, month, day);
+  return Math.round((next - start) / 86400000);
+}
+
+function birthdaysWithinWindow(rows, days = BIRTHDAY_WINDOW_DAYS) {
+  return (rows || []).filter((row) => {
+    const offset = birthdayOffsetDays(row);
+    return offset != null && offset >= 0 && offset <= days;
+  });
+}
+
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 
@@ -974,7 +1010,7 @@ export function AdminDashboard({
       );
   const teamCards = catalogTeamCards;
   const liveCommunity = statistics?.community || null;
-  const birthdayRows = liveCommunity ? (liveCommunity.birthdays || []) : [];
+  const birthdayRows = birthdaysWithinWindow(liveCommunity ? (liveCommunity.birthdays || []) : []);
   const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : [];
   const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : [];
   const liveLeaderboard = liveCommunity?.leaderboard;
@@ -2193,7 +2229,7 @@ export function AdminDashboard({
             <div className="community-card__head"><span>🎂</span> Birthdays</div>
             <div className="birthday-scroll">
               {birthdayRows.length === 0 ? (
-                <div className="community-card__empty" style={{justifyContent:"center",textAlign:"center"}}>No upcoming birthdays</div>
+                <div className="community-card__empty" style={{justifyContent:"center",textAlign:"center"}}>No birthdays in the next 15 days</div>
               ) : birthdayRows.map((b) => (
                 <div key={b.id || `${b.name}-${b.when}`} className={`birthday-chip${b.isCoach ? " birthday-chip--coach" : ""}`}>
                   <span className="birthday-chip__name"><span>{b.mark}</span>{b.name}</span>
