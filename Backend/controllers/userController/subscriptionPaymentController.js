@@ -10,7 +10,7 @@ const {
   listTransactionsByUserId,
   toPublicTransaction,
 } = require("../../models/consultancyTransactionModel");
-const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier } = require("../../models/userAssignmentLogic");
+const { isConsultancyOnlyTier, isHealTier, isMaintenanceTier, isEagleClientCategory } = require("../../models/userAssignmentLogic");
 const { getUserById } = require("../../models/userModel");
 const { getActiveCoachCheckoutOffer } = require("../../services/coachCheckoutService");
 const { resolveSubscriptionPlanFromItem } = require("../../services/subscriptionCategoryService");
@@ -37,6 +37,9 @@ exports.getSubscriptionCheckoutPreviewController = asyncHandler(async (req, res)
   });
 
   if (plan.kind === "maintenance") {
+    if (isEagleClientCategory(user.clientCategory)) {
+      throw new AppError("An Eagle client cannot move to Maintenance. Convert them to Heal first.", 400);
+    }
     if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
       throw new AppError("Maintenance plan is available after the Heal course period ends", 400);
     }

@@ -412,7 +412,8 @@ function sanitizeUpdateField(key, value) {
     key === "presentablePicsEnabled" ||
     key === "dietPlanEnabled" ||
     key === "heartRateEnabled" ||
-    key === "sleepTrackingEnabled"
+    key === "sleepTrackingEnabled" ||
+    key === "labReportSubmissionLocked"
   ) {
     return Boolean(value);
   }

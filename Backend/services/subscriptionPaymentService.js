@@ -5,6 +5,7 @@ const {
   isConsultancyOnlyTier,
   isHealTier,
   isMaintenanceTier,
+  isEagleClientCategory,
 } = require("../models/userAssignmentLogic");
 const { buildSubscriptionCheckoutPreview } = require("../services/subscriptionPricingService");
 const { resolveSubscriptionPlanForPayment } = require("../services/subscriptionCategoryService");
@@ -76,6 +77,11 @@ async function createSubscriptionOrder(userId, { paymentMethod = "upi" } = {}) {
   });
 
   if (plan.kind === "maintenance") {
+    if (isEagleClientCategory(user.clientCategory)) {
+      const err = new Error("An Eagle client cannot move to Maintenance. Convert them to Heal first.");
+      err.name = "ValidationError";
+      throw err;
+    }
     if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
       const err = new Error("Maintenance plan is available after the Heal course period ends");
       err.name = "ValidationError";
@@ -244,7 +250,7 @@ async function resolveSubscriptionPlanFromTransaction(transaction) {
 
 async function applyPaidSubscriptionOutcome(user, plan) {
   if (plan.kind === "maintenance") {
-    if (isMaintenanceTier(user.userTier)) return;
+    if (isMaintenanceTier(user.userTier) || isEagleClientCategory(user.clientCategory)) return;
     try {
       await convertHealToMaintenance(user.id);
     } catch (err) {

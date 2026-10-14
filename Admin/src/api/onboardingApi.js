@@ -368,7 +368,23 @@ export async function fetchUserLabReports(userId) {
       `/account/heal-users/${encodeURIComponent(userId)}/lab-reports`,
       { headers: authHeader() },
     );
-    return data.reports || [];
+    return {
+      reports: data.reports || [],
+      submissionLocked: Boolean(data.submissionLocked),
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserLabReportSubmission(userId, enabled) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-report-submission`,
+      { enabled: Boolean(enabled) },
+      { headers: authHeader() },
+    );
+    return Boolean(data.submissionLocked);
   } catch (error) {
     normalizeApiError(error);
   }

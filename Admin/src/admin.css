@@ -17077,10 +17077,57 @@ scrollbar-width: thin;
   color: #16233f;
 }
 
+.updated-admin .ua-cp-ip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .updated-admin .ua-cp-ip-head__sub {
   margin: 6px 0 0;
   font-size: 12.5px;
   color: #8a97ac;
+}
+
+.updated-admin .ua-cp-ip-submit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-ip-submit--locked {
+  background: #fdf6ec;
+  border-color: #f6e2c2;
+}
+
+.updated-admin .ua-cp-ip-submit__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.updated-admin .ua-cp-ip-submit__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-ip-submit__status {
+  font-size: 12px;
+  font-weight: 650;
+  color: #1f6b45;
+}
+
+.updated-admin .ua-cp-ip-submit--locked .ua-cp-ip-submit__status {
+  color: #9a6a1c;
 }
 
 .updated-admin .ua-cp-ip-summary {

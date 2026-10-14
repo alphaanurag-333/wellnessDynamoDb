@@ -929,6 +929,11 @@ export function UsersPage() {
     }
     const fromTier = user.tier;
     const eagleToSeek = ask.kind === "eagle-to-seek";
+    if (!eagleToSeek && ask.direction === "up" && isEagleClient(user) && fromTier === "Seek to Heal") {
+      onToast("An Eagle client cannot move to Maintenance. Convert them to Heal first.");
+      setConversionAsk(null);
+      return;
+    }
     const toTier = eagleToSeek
       ? "Seek"
       : (ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier));

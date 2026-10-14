@@ -25,6 +25,7 @@ const {
   downloadCoachUserTestRecommendationPdfController,
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
+  updateCoachUserLabReportSubmissionController,
   reviewCoachUserLabReportController,
   analyzeCoachUserLabReportController,
   updateCoachUserLabReportAiController,
@@ -253,6 +254,7 @@ router.post("/:userId/test-recommendations", testsWrite, createCoachUserTestReco
 router.get("/:userId/test-recommendations/:recommendationId/pdf", tests, downloadCoachUserTestRecommendationPdfController);
 router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
+router.patch("/:userId/lab-report-submission", testsWrite, updateCoachUserLabReportSubmissionController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
 router.post("/:userId/lab-reports/:reportId/analyze", testsWrite, analyzeCoachUserLabReportController);
 router.patch("/:userId/lab-reports/:reportId/ai-analysis", testsWrite, updateCoachUserLabReportAiController);

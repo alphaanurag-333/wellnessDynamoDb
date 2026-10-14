@@ -351,6 +351,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
+    if (isEagleClient(user) && currentTier === "Seek to Heal") return;
     setTierBusy(true);
     try {
       const updated = currentTier === "Seek to Heal"
@@ -539,8 +540,8 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             Convert to HEAL
           </button>
         ) : null}
-        {(canChangeTier && tierActions.canConvert)
-          || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy")) ? (
+        {((canChangeTier && tierActions.canConvert && !(isEagleClient(user) && currentTier === "Seek to Heal"))
+          || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy"))) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"

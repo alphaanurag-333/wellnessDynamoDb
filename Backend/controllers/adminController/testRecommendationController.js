@@ -14,6 +14,8 @@ const {
   updateUserLabReportAiAnalysis,
 } = require("../../models/userLabReportModel");
 const { analyzeLabReportFile } = require("../../services/labReportAiService");
+const { isLabReportSubmissionLocked } = require("../../utils/labReportSubmission");
+const { updateUser } = require("../../models/userModel");
 const { normalizeAiAnalysis, panelsToAnalysis } = require("../../utils/labReportAi");
 const { listActiveTestCatalog } = require("../../models/testCatalogModel");
 const {
@@ -125,6 +127,7 @@ exports.listCoachUserLabReportsController = asyncHandler(async (req, res) => {
     status: true,
     message: "User lab reports fetched successfully",
     reports,
+    submissionLocked: isLabReportSubmissionLocked(user, { hasReports: reports.length > 0 }),
   });
 });
 
@@ -276,6 +279,41 @@ exports.updateCoachUserLabReportAiController = asyncHandler(async (req, res) => 
     status: true,
     message: "AI interpretation saved",
     report,
+  });
+});
+
+function parseEnabledFlag(body) {
+  const raw = body?.enabled !== undefined ? body.enabled : body?.submissionEnabled;
+  if (raw === true || raw === false) return raw;
+  const next = String(raw ?? "").trim().toLowerCase();
+  if (next === "true") return true;
+  if (next === "false") return false;
+  return null;
+}
+
+exports.updateCoachUserLabReportSubmissionController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const enabled = parseEnabledFlag(req.body);
+  if (enabled == null) {
+    throw new AppError("enabled must be true or false", 400);
+  }
+
+  const updated = await updateUser(userId, { labReportSubmissionLocked: !enabled });
+
+  return res.status(200).json({
+    status: true,
+    message: enabled
+      ? "Submit panel enabled for the client"
+      : "Submit panel locked for the client",
+    submissionLocked: isLabReportSubmissionLocked(updated),
+    submissionEnabled: enabled,
   });
 });
 

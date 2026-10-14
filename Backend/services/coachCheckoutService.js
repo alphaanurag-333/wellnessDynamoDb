@@ -30,6 +30,7 @@ const {
   isConsultancyOnlyTier,
   isHealTier,
   isMaintenanceTier,
+  isEagleClientCategory,
   clientHasWcOrAwc,
   WC_OR_AWC_REQUIRED_MESSAGE,
 } = require("../models/userAssignmentLogic");
@@ -632,6 +633,9 @@ async function triggerCoachCheckout({
   if (type === "subscription") {
     const plan = resolveSubscriptionPlanFromItem(item);
     if (plan.kind === "maintenance") {
+      if (isEagleClientCategory(user.clientCategory)) {
+        throw new AppError("An Eagle client cannot move to Maintenance. Convert them to Heal first.", 400);
+      }
       if (!isHealTier(user.userTier) && !isMaintenanceTier(user.userTier)) {
         throw new AppError("Maintenance plan is available after the Heal course period ends", 400);
       }

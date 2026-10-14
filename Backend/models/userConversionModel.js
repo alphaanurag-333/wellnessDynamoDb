@@ -396,6 +396,11 @@ async function convertHealToMaintenance(userId) {
     err.name = "InvalidTierError";
     throw err;
   }
+  if (isEagleClientCategory(user.clientCategory)) {
+    const err = new Error("An Eagle client cannot move to Maintenance. Convert them to Heal first.");
+    err.name = "InvalidTierError";
+    throw err;
+  }
   const updated = await updateUser(userId, {
     userTier: "maintenance",
     paidOnboardingCompleted: true,

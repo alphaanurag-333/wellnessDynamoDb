@@ -12,6 +12,7 @@ import {
   downloadUserTestRecommendationPdf,
   fetchTestCatalog,
   fetchUserLabReports,
+  updateUserLabReportSubmission,
   fetchUserTestRecommendations,
   reviewUserLabReport,
   analyzeUserLabReport,
@@ -2101,6 +2102,14 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const [busy, setBusy] = useState(false);
   const [stepBusy, setStepBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submissionLocked, setSubmissionLocked] = useState(
+    user?.labReportSubmissionLocked === true
+      ? true
+      : user?.labReportSubmissionLocked === false
+        ? false
+        : null,
+  );
+  const [submissionBusy, setSubmissionBusy] = useState(false);
 
   const userId = user?.id;
   const live = Boolean(userId && !/^\d+$/.test(String(userId)));
@@ -2123,7 +2132,8 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       setHistory(Array.isArray(rec.value?.history) ? rec.value.history : []);
     }
     if (labs.status === "fulfilled") {
-      setReports(Array.isArray(labs.value) ? labs.value : []);
+      setReports(Array.isArray(labs.value?.reports) ? labs.value.reports : []);
+      setSubmissionLocked(Boolean(labs.value?.submissionLocked));
     }
     if (tests.status === "fulfilled") {
       const list = Array.isArray(tests.value) ? tests.value : tests.value?.tests || [];
@@ -2212,6 +2222,24 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  async function handleSubmissionEnabled(enabled) {
+    if (!userId || !live) return;
+    const previous = submissionLocked;
+    setSubmissionLocked(!enabled);
+    setSubmissionBusy(true);
+    try {
+      const locked = await updateUserLabReportSubmission(userId, enabled);
+      setSubmissionLocked(locked);
+      onUserUpdated?.({ ...user, labReportSubmissionLocked: locked });
+      onToast?.(enabled ? "Submit panel enabled for the client" : "Submit panel locked for the client");
+    } catch (err) {
+      setSubmissionLocked(previous);
+      onToast?.(err?.message || "Failed to update the submit panel");
+    } finally {
+      setSubmissionBusy(false);
+    }
+  }
+
   async function handlePublish(payload) {
     try {
       setBusy(true);
@@ -2258,6 +2286,31 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
           <h2 className="ua-cp-ip-head__title">Internal parameters</h2>
           <p className="ua-cp-ip-head__sub">Coach-recommended blood tests, report uploads, and reviewed results.</p>
         </div>
+        {live && submissionLocked != null ? (
+          <div
+            className={`ua-cp-ip-submit${submissionLocked ? " ua-cp-ip-submit--locked" : ""}`}
+            title={submissionLocked
+              ? "The client submitted a report. Turn this on to let them submit again."
+              : "Turns off automatically after the client submits a report."}
+          >
+            <div className="ua-cp-ip-submit__text">
+              <span className="ua-cp-ip-submit__label">Submit panel</span>
+              <span className="ua-cp-ip-submit__status">
+                {submissionLocked ? "Locked for the client" : "Open for the client"}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`ua-toggle${submissionLocked ? "" : " ua-toggle--on"}`}
+              aria-pressed={!submissionLocked}
+              aria-label={submissionLocked ? "Enable submit panel for the client" : "Lock submit panel for the client"}
+              disabled={submissionBusy || !canEdit}
+              onClick={() => handleSubmissionEnabled(submissionLocked)}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {live && loading ? <p>Loading internal parameters…</p> : null}

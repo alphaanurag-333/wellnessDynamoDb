@@ -247,10 +247,8 @@ export function conversionPrompt(user, direction) {
   if (direction === "up") {
     if (t === "Seek to Heal") {
       return {
-        title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to MAINTENANCE?`,
-        body: isEagleClient(user)
-          ? `${name} leaves Eagle and moves into maintenance. They stay on the roster without an active Heal program.`
-          : `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
+        title: `Move ${name} from HEAL to MAINTENANCE?`,
+        body: `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
         confirm: "Move to MAINTENANCE",
         kicker: "Conversion",
       };
@@ -327,8 +325,8 @@ export function listTierMoveOptions(tier, ageDays, user) {
   const t = normalizeTier(tier);
   const options = [];
   const eagle = isEagleClient(user);
-  // Eagle on Heal already has its own → HEAL action. Offer Seek before Maintenance
-  // so Eagle → Seek stays on the first line of the tier cell.
+  // Eagle stays Eagle. Heal and Seek are the only moves from here.
+  // Maintenance is available only after the client leaves Eagle and is on Heal.
   const eagleOnHeal = eagle && t === "Seek to Heal";
 
   if (eagleOnHeal) {
@@ -371,14 +369,6 @@ export function listTierMoveOptions(tier, ageDays, user) {
         : t === "Consultancy"
           ? "Move this client back down to SEEK — ends consultancy entitlements"
           : "Move this client back down to SEEK — ends paid coaching entitlements",
-    });
-  }
-  if (eagleOnHeal) {
-    options.push({
-      direction: "up",
-      target: "Maintenance",
-      label: "→ MAINTENANCE",
-      title: "Move this Eagle client into MAINTENANCE. They leave Eagle.",
     });
   }
   return options;
