@@ -132,8 +132,25 @@ export function mapTestCatalog(row) {
           duration: String(line?.duration || "").trim(),
         }))
       : [],
+    kind: row.kind === "goal" ? "goal" : "test",
     status: row.status === "inactive" ? "inactive" : "active",
     live: row.status !== "inactive",
+    sections: Array.isArray(row.sections)
+      ? row.sections.map((section, sectionIndex) => ({
+          id: String(section?.id || `section-${sectionIndex + 1}`),
+          category: String(section?.category || "").trim(),
+          tests: (Array.isArray(section?.tests) ? section.tests : []).map((test, testIndex) => ({
+            id: String(test?.id || `test-${sectionIndex + 1}-${testIndex + 1}`),
+            name: String(test?.name || "").trim(),
+            code: String(test?.code || "").trim(),
+            hours: Number.isFinite(Number(test?.hours)) ? Math.max(0, Math.round(Number(test.hours))) : 0,
+            selected: test?.selected !== false,
+          })),
+        }))
+      : [],
+    dismissedCategories: Array.isArray(row.dismissedCategories)
+      ? row.dismissedCategories.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
     sequence: Number(row.sequence) || 0,
     parameters,
     createdAt: row.createdAt,
@@ -204,6 +221,46 @@ export async function adminUpdateTestCatalog(token, id, fields) {
     const { data } = await api.patch(`${catalogBase()}/${encodeURIComponent(id)}`, payload, {
       headers: authHeader(tokenOrStored(token)),
     });
+    return mapTestCatalog(data.test);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminListTestGoals(token) {
+  try {
+    const { data } = await api.get(`${catalogBase()}/goals`, {
+      headers: authHeader(tokenOrStored(token)),
+    });
+    return (Array.isArray(data.goals) ? data.goals : []).map(mapTestCatalog).filter((row) => row?.kind === "goal");
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminSaveTestGoal(token, goal) {
+  const sections = (Array.isArray(goal?.sections) ? goal.sections : [])
+    .map((section) => ({
+      ...section,
+      category: String(section?.category || "").trim(),
+    }))
+    .filter((section) => section.category);
+  const payload = {
+    kind: "goal",
+    name: String(goal?.name || "").trim(),
+    category: sections[0]?.category || "Goal",
+    status: goal?.status === "inactive" ? "inactive" : "active",
+    sections,
+    dismissedCategories: Array.isArray(goal?.dismissedCategories) ? goal.dismissedCategories : [],
+  };
+  try {
+    const { data } = goal?.id
+      ? await api.patch(`${catalogBase()}/${encodeURIComponent(goal.id)}`, payload, {
+          headers: authHeader(tokenOrStored(token)),
+        })
+      : await api.post(catalogBase(), payload, {
+          headers: authHeader(tokenOrStored(token)),
+        });
     return mapTestCatalog(data.test);
   } catch (error) {
     normalizeApiError(error);

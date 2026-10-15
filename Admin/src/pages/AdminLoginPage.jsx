@@ -4,6 +4,7 @@ import defaultLogo from "../assets/logo/defaultlogo.png";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { consumePanelSessionNotice } from "../utils/panelSession.js";
 import { useAppSelector } from "../store/hooks.js";
 import { selectAdminLogoUrl, selectAppName } from "../store/slices/appConfigSlice.js";
 import "../admin.css";
@@ -75,7 +76,12 @@ export function AdminLoginPage() {
   const [otp, setOtp] = useState("");
   const [resendIn, setResendIn] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(() => {
+    const reason = consumePanelSessionNotice();
+    if (reason === "day") return "Your session ended because the date changed. Please sign in again.";
+    if (reason === "idle") return "Your session ended after 15 minutes of inactivity. Please sign in again.";
+    return "";
+  });
   const [mfaToken, setMfaToken] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const appName = useAppSelector(selectAppName);

@@ -500,6 +500,7 @@ function CreateMemberModal({
     [roles],
   );
   const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [dob, setDob] = useState("");
@@ -533,6 +534,8 @@ function CreateMemberModal({
   }
 
   const isEdit = Boolean(member?.id);
+  // An email can be added later, but once set it cannot be changed here.
+  const emailLocked = isEdit && Boolean(String(member?.email || "").trim());
   const memberId = member?.id || "";
   const memberParentId = member?.parentAccountId || "";
 
@@ -548,6 +551,7 @@ function CreateMemberModal({
     skipNameSearchRef.current = true;
     setName(sanitizePersonName(user.name || ""));
     setDob(parseDateOfBirthIso(user.dobIso) || "");
+    setWhatsapp(nationalPhoneDigits(user.whatsapp || user.phone));
     setPhone(nationalPhoneDigits(user.phone));
     setEmail(sanitizeEmailInput(user.email || ""));
     setCountry(String(user.country || "").trim());
@@ -558,6 +562,7 @@ function CreateMemberModal({
       const next = { ...prev };
       delete next.name;
       delete next.dob;
+      delete next.whatsapp;
       delete next.phone;
       delete next.email;
       delete next.country;
@@ -573,7 +578,8 @@ function CreateMemberModal({
     if (!open || !member?.id) return;
     setErrors({});
     setName(sanitizePersonName(member.name || ""));
-    setPhone(nationalPhoneDigits(member.phone));
+    setWhatsapp(nationalPhoneDigits(member.whatsappPhone || member.phone));
+    setPhone(nationalPhoneDigits(member.mobilePhone));
     setEmail(sanitizeEmailInput(member.email || ""));
     setDob(parseDateOfBirthIso(member.dateOfBirth) || "");
     setCountry(member.country || "");
@@ -595,6 +601,7 @@ function CreateMemberModal({
     if (!open || memberId) return;
     setErrors({});
     setName("");
+    setWhatsapp("");
     setPhone("");
     setEmail("");
     setDob("");
@@ -710,10 +717,14 @@ function CreateMemberModal({
     const next = {};
     const nameErr = validatePersonName(name);
     if (nameErr) next.name = nameErr;
-    const phoneErr = validatePhoneDigits(phone);
-    if (phoneErr) next.phone = phoneErr;
-    if (!isEdit) {
-      const emailErr = validateEmail(email);
+    const whatsappErr = validatePhoneDigits(whatsapp, { label: "WhatsApp number" });
+    if (whatsappErr) next.whatsapp = whatsappErr;
+    if (phone.trim()) {
+      const phoneErr = validatePhoneDigits(phone);
+      if (phoneErr) next.phone = phoneErr;
+    }
+    if (!emailLocked) {
+      const emailErr = validateEmail(email, { required: false });
       if (emailErr) next.email = emailErr;
     }
     const dobErr = validateDateOfBirth(dob, { required: true });
@@ -741,14 +752,17 @@ function CreateMemberModal({
       if (isEdit) {
         const result = await updateTeamMember(member.id, {
           name: name.trim(),
-          phone: phone.trim(),
-          phoneCountryCode: member.phoneCountryCode || "+91",
+          whatsappPhone: whatsapp.trim(),
+          whatsappCountryCode: member.whatsappCountryCode || member.phoneCountryCode || "+91",
+          mobilePhone: phone.trim() || null,
+          mobileCountryCode: phone.trim() ? member.mobileCountryCode || "+91" : null,
           dateOfBirth: dob,
           country: country.trim(),
           state: state.trim(),
           city: city.trim(),
           bio: String(bio || "").trim() || null,
           approvalStatus: approvalFromUiStatus(memberStatus),
+          ...(!emailLocked && email.trim() ? { email: email.trim() } : {}),
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
@@ -784,9 +798,11 @@ function CreateMemberModal({
       }
       const result = await createTeamMember({
         name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        phoneCountryCode: "+91",
+        email: email.trim() || null,
+        whatsappPhone: whatsapp.trim(),
+        whatsappCountryCode: "+91",
+        mobilePhone: phone.trim() || null,
+        mobileCountryCode: phone.trim() ? "+91" : null,
         dateOfBirth: dob,
         country: country.trim(),
         state: state.trim(),
@@ -864,7 +880,7 @@ function CreateMemberModal({
             </span>
             <div className="ua-teams-create__copy">
               <h2 id="ua-teams-create-title">{isEdit ? "Edit profile" : "Create a team member"}</h2>
-              <p>{isEdit ? "Same fields as create · email cannot be changed" : "Works for every role"}</p>
+              <p>{isEdit ? "Same fields as create · email cannot be changed once set" : "Works for every role"}</p>
             </div>
           </div>
           <button
@@ -998,11 +1014,28 @@ function CreateMemberModal({
             <div className="ua-teams-create__grid ua-teams-create__grid--contact">
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
-                  Mobile number <span aria-hidden="true">*</span>
+                  WhatsApp number <span aria-hidden="true">*</span>
                 </span>
                 <input
+                  className={`ua-teams-create__input${errors.whatsapp ? " is-invalid" : ""}`}
+                  placeholder="10-digit WhatsApp number"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={whatsapp}
+                  maxLength={PHONE_NATIONAL_LEN}
+                  onKeyDown={blockIndianMobileFirstDigitKeyDown}
+                  onChange={(event) => {
+                    setWhatsapp(sanitizePhoneDigits(event.target.value));
+                    clearError("whatsapp");
+                  }}
+                />
+                {errors.whatsapp ? <span className="ua-teams-create__error">{errors.whatsapp}</span> : null}
+              </label>
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">Mobile number</span>
+                <input
                   className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}`}
-                  placeholder="10-digit mobile"
+                  placeholder="10-digit mobile (optional)"
                   inputMode="numeric"
                   autoComplete="tel"
                   value={phone}
@@ -1015,30 +1048,28 @@ function CreateMemberModal({
                 />
                 {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : null}
               </label>
-              <label className="ua-teams-create__field">
+            </div>
+            <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label-row">
-                  <span className="ua-teams-create__label">
-                    Email address <span aria-hidden="true">*</span>
-                  </span>
+                  <span className="ua-teams-create__label">Email address</span>
                   <span className="ua-teams-create__count">{email.trim().length}/{EMAIL_MAX_LEN}</span>
                 </span>
                 <input
-                  className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
-                  placeholder="name@company.com"
+                  className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${emailLocked ? " is-readonly" : ""}`}
+                  placeholder="name@company.com (optional)"
                   type="email"
                   autoComplete="email"
                   value={email}
                   maxLength={EMAIL_MAX_LEN}
-                  readOnly={isEdit}
-                  aria-readonly={isEdit ? "true" : undefined}
-                  onChange={isEdit ? undefined : (event) => {
+                  readOnly={emailLocked}
+                  aria-readonly={emailLocked ? "true" : undefined}
+                  onChange={emailLocked ? undefined : (event) => {
                     setEmail(sanitizeEmailInput(event.target.value));
                     clearError("email");
                   }}
                 />
                 {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
               </label>
-            </div>
 
             {/* <div className="ua-teams-create__section">Location</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--location">
@@ -1708,8 +1739,13 @@ export function TeamsPage() {
                     totpRequired: Boolean(account.totpRequired),
                     totpConfigured: Boolean(account.totpConfigured),
                     name: account.name || prev.name,
+                    email: account.email ?? prev.email,
                     phone: account.phone ?? prev.phone,
                     phoneCountryCode: account.phoneCountryCode || prev.phoneCountryCode,
+                    whatsappPhone: account.whatsappPhone ?? prev.whatsappPhone,
+                    whatsappCountryCode: account.whatsappCountryCode ?? prev.whatsappCountryCode,
+                    mobilePhone: account.mobilePhone ?? null,
+                    mobileCountryCode: account.mobileCountryCode ?? null,
                     approvalStatus: account.approvalStatus ?? prev.approvalStatus,
                     displayStatus:
                       String(account.status || "").toLowerCase() === "inactive"

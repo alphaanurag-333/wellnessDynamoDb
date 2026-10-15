@@ -13,6 +13,7 @@ export const BODY_ANALYTICS = {
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
 const MEASURE_FIELDS = [
+  { label: "Height", field: "heightCm" },
   { label: "Neck", field: "neckCm" },
   { label: "Shoulder", field: "shoulderCm" },
   { label: "Chest", field: "chestCm" },
@@ -230,10 +231,13 @@ export function formatPeriodOption(mode, key) {
 export function formatPhotoDate(value) {
   const date = validDate(value);
   if (!date) return "-";
-  return date.toLocaleDateString("en-GB", {
+  return date.toLocaleString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 

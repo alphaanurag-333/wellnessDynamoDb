@@ -1,4 +1,5 @@
 import api, { normalizeApiError } from "../api.js";
+import { clearPanelSession, startPanelSession } from "../utils/panelSession.js";
 
 export const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";
 
@@ -44,6 +45,7 @@ export function writeAccountAuth(payload) {
 export function clearAccountAuth() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(ACCOUNT_AUTH_STORAGE_KEY);
+  clearPanelSession();
 }
 
 export function getAccountToken() {
@@ -69,6 +71,7 @@ function storeLoginResult(data) {
     account: data.account,
   };
   writeAccountAuth(stored);
+  startPanelSession();
   return stored;
 }
 
@@ -122,6 +125,7 @@ export async function accountLoginTotp({ mfaToken, code }) {
       account: data.account,
     };
     writeAccountAuth(stored);
+    startPanelSession();
     return stored;
   } catch (error) {
     normalizeApiError(error);

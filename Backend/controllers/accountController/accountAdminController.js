@@ -47,6 +47,7 @@ const {
   assertValidLocationState,
   assertValidLocationCity,
 } = require("../../utils/personFieldValidation");
+const { assertValidMobile } = require("../../utils/phoneValidation");
 const { generateTotpSecret, buildOtpauthUrl } = require("../../utils/totp");
 const { hasPermission } = require("../../utils/permissions");
 
@@ -281,9 +282,48 @@ exports.getAccountHandler = asyncHandler(async (req, res) => {
   return res.json({ status: true, account: toPublicAccount(account) });
 });
 
+/** WhatsApp is the primary staff number, stored as `phone`; a `phone` body field is accepted as an alias. */
+function readWhatsappInput(body) {
+  const src = body || {};
+  const hasWhatsapp = src.whatsappPhone !== undefined;
+  return {
+    provided: hasWhatsapp || src.phone !== undefined,
+    phone: hasWhatsapp ? src.whatsappPhone : src.phone,
+    countryCode: src.whatsappCountryCode !== undefined ? src.whatsappCountryCode : src.phoneCountryCode,
+  };
+}
+
+function readMobileInput(body) {
+  const src = body || {};
+  return {
+    provided: src.mobilePhone !== undefined,
+    phone: src.mobilePhone,
+    countryCode: src.mobileCountryCode,
+  };
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function parseOptionalEmail(value) {
+  const normalized = normalizeEmail(value);
+  if (!normalized) return null;
+  if (normalized.length > 50 || !EMAIL_PATTERN.test(normalized)) {
+    throw new AppError("Enter a valid email address", 400);
+  }
+  return normalized;
+}
+
+function parseOptionalMobile({ phone, countryCode }) {
+  const nextPhone = phone ? normalizePhone(phone) : "";
+  if (!nextPhone) return { mobilePhone: null, mobileCountryCode: null };
+  const cc = normalizeCountryCode(countryCode || "+91");
+  assertValidMobile(nextPhone, { field: "Mobile number", countryCode: cc });
+  return { mobilePhone: nextPhone, mobileCountryCode: cc };
+}
+
 /**
  * Create a staff Account (Teams page).
- * Body: name, email, phone?, phoneCountryCode?, password?,
+ * Body: name, email, whatsappPhone (or phone), whatsappCountryCode?, mobilePhone?, mobileCountryCode?, password?,
  *       roleKey (ui/account) and/or consoleRoleId (Access Control role id),
  *       parentAccountId?
  */
@@ -295,8 +335,6 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
   const {
     name,
     email,
-    phone,
-    phoneCountryCode,
     password,
     roleKey: rawRole,
     consoleRoleId,
@@ -311,7 +349,6 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
   } = req.body || {};
 
   assertValidPersonName(name);
-  if (!email || !String(email).trim()) throw new AppError("email is required", 400);
   const normalizedName = String(name).trim();
   const normalizedDob = assertValidDateOfBirth(dateOfBirth ?? dob);
   const normalizedCountry = assertValidLocationCountry(country);
@@ -323,9 +360,20 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     consoleRoleId,
   });
 
-  const normalized = normalizeEmail(email);
-  const existing = await getAccountByEmail(normalized);
-  if (existing) throw new AppError("An account already exists with this email", 409);
+  const normalized = parseOptionalEmail(email);
+  if (normalized) {
+    const existing = await getAccountByEmail(normalized);
+    if (existing) throw new AppError("An account already exists with this email", 409);
+  }
+
+  const whatsappInput = readWhatsappInput(req.body);
+  const whatsappPhone = whatsappInput.phone ? normalizePhone(whatsappInput.phone) : "";
+  if (!whatsappPhone) throw new AppError("WhatsApp number is required", 400);
+  const whatsappCountryCode = normalizeCountryCode(whatsappInput.countryCode || "+91");
+  assertValidMobile(whatsappPhone, { field: "WhatsApp number", countryCode: whatsappCountryCode });
+  const existingPhone = await getAccountByPhone(whatsappCountryCode, whatsappPhone);
+  if (existingPhone) throw new AppError("An account already exists with this WhatsApp number", 409);
+  const { mobilePhone, mobileCountryCode } = parseOptionalMobile(readMobileInput(req.body));
 
   const tempPassword = password ? String(password) : DEFAULT_TEMP_PASSWORD;
   assertPasswordPolicy(tempPassword);
@@ -369,8 +417,10 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     name: normalizedName,
     email: normalized,
     password: passwordHash,
-    phone: phone ? normalizePhone(phone) : null,
-    phoneCountryCode: phoneCountryCode ? normalizeCountryCode(phoneCountryCode) : "+91",
+    phone: whatsappPhone,
+    phoneCountryCode: whatsappCountryCode,
+    mobilePhone,
+    mobileCountryCode,
     dateOfBirth: normalizedDob,
     country: normalizedCountry,
     state: normalizedState,
@@ -411,13 +461,14 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     account: toPublicAccount(account),
     temporaryPassword: password ? undefined : tempPassword,
     totpSecret,
-    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: account.email }),
+    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: account.email || account.name }),
   });
 });
 
 /**
  * Update a staff Account profile (Teams page).
- * Body: name?, email?, phone?, phoneCountryCode?, approvalStatus?|memberStatus? (Active|Pending)
+ * Body: name?, email?, whatsappPhone?|phone?, whatsappCountryCode?, mobilePhone?, mobileCountryCode?,
+ *       approvalStatus?|memberStatus? (Active|Pending)
  */
 exports.updateAccountHandler = asyncHandler(async (req, res) => {
   if (!hasPermission(req.auth, "console.tm.edit")) {
@@ -433,8 +484,6 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
   const {
     name,
     email,
-    phone,
-    phoneCountryCode,
     profileImage,
     dateOfBirth,
     dob,
@@ -453,28 +502,36 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
   }
 
   if (email !== undefined) {
-    const normalized = normalizeEmail(email);
-    if (!normalized) throw new AppError("email is required", 400);
-    const existing = await getAccountByEmail(normalized);
-    if (existing && existing.id !== account.id) {
-      throw new AppError("An account already exists with this email", 409);
+    const normalized = parseOptionalEmail(email);
+    if (normalized) {
+      const existing = await getAccountByEmail(normalized);
+      if (existing && existing.id !== account.id) {
+        throw new AppError("An account already exists with this email", 409);
+      }
     }
     updates.email = normalized;
   }
 
-  if (phoneCountryCode !== undefined) {
-    updates.phoneCountryCode = normalizeCountryCode(phoneCountryCode);
+  const whatsappInput = readWhatsappInput(req.body);
+  if (whatsappInput.countryCode !== undefined) {
+    updates.phoneCountryCode = normalizeCountryCode(whatsappInput.countryCode);
   }
 
-  if (phone !== undefined) {
-    const nextPhone = phone ? normalizePhone(phone) : null;
-    if (!nextPhone) throw new AppError("phone is required", 400);
-    updates.phone = nextPhone;
+  if (whatsappInput.provided) {
+    const nextPhone = whatsappInput.phone ? normalizePhone(whatsappInput.phone) : null;
+    if (!nextPhone) throw new AppError("WhatsApp number is required", 400);
     const nextCc = updates.phoneCountryCode || account.phoneCountryCode || "+91";
+    assertValidMobile(nextPhone, { field: "WhatsApp number", countryCode: nextCc });
+    updates.phone = nextPhone;
     const existingPhone = await getAccountByPhone(nextCc, nextPhone);
     if (existingPhone && existingPhone.id !== account.id) {
-      throw new AppError("An account already exists with this phone number", 409);
+      throw new AppError("An account already exists with this WhatsApp number", 409);
     }
+  }
+
+  const mobileInput = readMobileInput(req.body);
+  if (mobileInput.provided) {
+    Object.assign(updates, parseOptionalMobile(mobileInput));
   }
 
   if (dateOfBirth !== undefined || dob !== undefined) {
@@ -1025,7 +1082,7 @@ exports.patchAccountTotpHandler = asyncHandler(async (req, res) => {
   };
   if (issuedSecret) {
     body.totpSecret = issuedSecret;
-    body.totpOtpauthUrl = buildOtpauthUrl({ secret: issuedSecret, email: updated.email });
+    body.totpOtpauthUrl = buildOtpauthUrl({ secret: issuedSecret, email: updated.email || updated.name });
   }
   return res.json(body);
 });
@@ -1056,6 +1113,6 @@ exports.regenerateAccountTotpHandler = asyncHandler(async (req, res) => {
     message: "Authenticator key regenerated — share the new key with the team member",
     account: toPublicAccount(updated),
     totpSecret,
-    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: updated.email }),
+    totpOtpauthUrl: buildOtpauthUrl({ secret: totpSecret, email: updated.email || updated.name }),
   });
 });

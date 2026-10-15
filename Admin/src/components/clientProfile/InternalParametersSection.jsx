@@ -255,8 +255,9 @@ function formatTestDuration(value) {
 /** One pickable item per catalog line; entries without lines stay a single item. */
 function catalogItems(catalog) {
   return (catalog || []).flatMap((entry) => {
+    const kind = entry?.kind === "goal" ? "goal" : "test";
     const lines = Array.isArray(entry?.lines) ? entry.lines.filter((line) => line?.name) : [];
-    if (!lines.length) return [{ ...entry, catalogId: entry.id }];
+    if (!lines.length) return [{ ...entry, catalogId: entry.id, kind }];
     return lines.map((line, index) => ({
       id: `${entry.id}::${index}`,
       catalogId: entry.id,
@@ -267,6 +268,7 @@ function catalogItems(catalog) {
       category: line.category || entry.category,
       fastingType: line.fastingType || "",
       duration: line.duration || "",
+      kind,
     }));
   });
 }
@@ -282,19 +284,41 @@ function catalogGroups(catalog) {
   return [...map.values()];
 }
 
-/** One group per catalog entry (e.g. "Glucose Test"), holding that entry's lines. */
+/** Active admin-created goals from Configs → Goals & Tests. */
+function catalogGoalPresets(catalog) {
+  return (catalog || [])
+    .filter((row) => row?.kind === "goal" && row.status !== "inactive")
+    .filter((row) => Array.isArray(row.lines) && row.lines.some((line) => line?.name))
+    .map((row) => ({
+      id: String(row.id),
+      name: String(row.name || "").trim() || "Goal",
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** One group per catalog entry (e.g. "Glucose Test" or a goal), holding that entry's lines. */
 function testTitleGroups(items) {
   const map = new Map();
   (items || []).forEach((item) => {
     const id = String(item.catalogId || item.id);
     if (!map.has(id)) {
-      map.set(id, { id, name: item.panelName || item.name || "Test", tests: [], searchText: "" });
+      map.set(id, {
+        id,
+        name: item.panelName || item.name || "Test",
+        kind: item.kind === "goal" ? "goal" : "test",
+        tests: [],
+        searchText: "",
+      });
     }
     map.get(id).tests.push(item);
   });
   return [...map.values()].map((group) => ({
     ...group,
-    searchText: [group.name, ...group.tests.flatMap((test) => [test.name, test.category])]
+    searchText: [
+      group.name,
+      group.kind === "goal" ? "goal" : "",
+      ...group.tests.flatMap((test) => [test.name, test.category]),
+    ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase(),
@@ -755,7 +779,12 @@ function NamespaceSearch({
                   pick(ns);
                 }}
               >
-                {ns.name}
+                <span>{ns.name}</span>
+                {ns.kind === "goal" ? (
+                  <span className="ua-cp-ip-ns-dropdown__meta">Goal</span>
+                ) : ns.category ? (
+                  <span className="ua-cp-ip-ns-dropdown__meta">{ns.category}</span>
+                ) : null}
               </button>
             </li>
           )) : (
@@ -765,6 +794,134 @@ function NamespaceSearch({
           )}
         </ul>
       ) : null}
+    </div>
+  );
+}
+
+function sameCategoryName(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function testIdentityKey(test) {
+  return `${String(test?.category || "").trim().toLowerCase()}::${String(test?.name || "").trim().toLowerCase()}`;
+}
+
+function catalogExtraOptions(items, { excludeTests = [], currentGoalId, preferCategory } = {}) {
+  const excluded = new Set((excludeTests || []).map(testIdentityKey));
+  const excludedIds = new Set((excludeTests || []).map((test) => String(test?.id || "")).filter(Boolean));
+  const excludedNames = new Set(
+    (excludeTests || []).map((test) => String(test?.name || "").trim().toLowerCase()).filter(Boolean),
+  );
+  const seen = new Set();
+  const preferred = [];
+  const rest = [];
+
+  (items || []).forEach((item) => {
+    const catalogId = String(item.catalogId || item.id || "");
+    if (currentGoalId && catalogId === String(currentGoalId)) return;
+    if (excludedIds.has(String(item.id || ""))) return;
+    if (excluded.has(testIdentityKey(item))) return;
+    const nameKey = String(item.name || "").trim().toLowerCase();
+    if (nameKey && excludedNames.has(nameKey)) return;
+    const identity = testIdentityKey(item);
+    if (seen.has(identity) || seen.has(item.id)) return;
+    seen.add(identity);
+    seen.add(item.id);
+
+    const option = {
+      id: item.id,
+      name: item.name,
+      kind: "test",
+      category: item.category || "",
+      searchText: [item.name, item.panelName, item.category].filter(Boolean).join(" ").toLowerCase(),
+      item,
+    };
+    if (preferCategory && sameCategoryName(item.category, preferCategory)) preferred.push(option);
+    else rest.push(option);
+  });
+
+  const byName = (a, b) => String(a.name || "").localeCompare(String(b.name || ""));
+  return [...preferred.sort(byName), ...rest.sort(byName)];
+}
+
+function extrasFromRecommendation({ items, goalGroups, selectedMap }) {
+  const extras = {};
+  const extraItemIds = new Set();
+  const pinnedGoals = (goalGroups || []).filter((group) =>
+    (group.tests || []).some((test) => selectedMap[test.id]),
+  );
+
+  pinnedGoals.forEach((group) => {
+    extras[group.id] = {};
+  });
+
+  const nativeKeys = new Set();
+  pinnedGoals.forEach((group) => {
+    group.tests.forEach((test) => nativeKeys.add(`${group.id}::${testIdentityKey(test)}`));
+  });
+
+  (items || []).forEach((item) => {
+    if (item?.kind === "goal" || !selectedMap[item.id]) return;
+    const host = pinnedGoals.find((group) => {
+      const native = group.tests.some((test) => sameCategoryName(test.category, item.category));
+      if (!native) return false;
+      return !nativeKeys.has(`${group.id}::${testIdentityKey(item)}`);
+    });
+    if (!host) return;
+    const category = String(
+      host.tests.find((test) => sameCategoryName(test.category, item.category))?.category || item.category || "Other",
+    ).trim() || "Other";
+    if (!extras[host.id][category]) extras[host.id][category] = [];
+    extras[host.id][category].push(item);
+    extraItemIds.add(item.id);
+  });
+
+  return { extras, extraItemIds };
+}
+
+function CategoryAddTests({
+  category,
+  options,
+  onAdd,
+  onToast,
+  disabled = false,
+}) {
+  const [open, setOpen] = useState(false);
+
+  if (!open) {
+    return (
+      <div className="ua-cp-ip-goal-add">
+        <button
+          type="button"
+          className="ua-cp-ip-goal-add__btn"
+          disabled={disabled || !options.length}
+          title={!options.length ? "No other catalog tests left to add" : `Add another test to ${category}`}
+          onClick={() => setOpen(true)}
+        >
+          + Add extra test
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ua-cp-ip-goal-add ua-cp-ip-goal-add--open">
+      <NamespaceSearch
+        groups={[]}
+        namespaces={options}
+        onAdd={(ns) => {
+          onAdd(ns.item || ns);
+          setOpen(false);
+        }}
+        onToast={onToast}
+        disabled={disabled}
+        placeholder={`+ Search a test to add under ${category}…`}
+        allAddedLabel="All catalog tests are already in this goal"
+        noMatchLabel="No matching tests in the catalog"
+      />
+      <button type="button" className="ua-cp-ip-goal-add__cancel" disabled={disabled} onClick={() => setOpen(false)}>
+        Cancel
+      </button>
     </div>
   );
 }
@@ -1085,14 +1242,26 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
   );
 }
 
+function groupTestsByCategory(tests) {
+  const map = new Map();
+  (tests || []).forEach((test) => {
+    const category = String(test.category || "Other").trim() || "Other";
+    if (!map.has(category)) map.set(category, []);
+    map.get(category).push(test);
+  });
+  return [...map.entries()].map(([name, rows]) => ({ name, tests: rows }));
+}
+
 function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, canEdit = true, canExport = true }) {
   const items = useMemo(() => catalogItems(catalog), [catalog]);
   const allGroups = useMemo(() => testTitleGroups(items), [items]);
+  const goalGroups = useMemo(() => allGroups.filter((group) => group.kind === "goal"), [allGroups]);
+  const testGroups = useMemo(() => allGroups.filter((group) => group.kind !== "goal"), [allGroups]);
+  const goalPresets = useMemo(() => catalogGoalPresets(catalog), [catalog]);
   const [selected, setSelected] = useState(() => selectedFromRecommendation(catalogItems(catalog), recommended));
-  const [presets, setPresets] = useState([]);
-  const [focusedPreset, setFocusedPreset] = useState("");
   const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
   const [dirty, setDirty] = useState(!recommended);
+  const [goalExtras, setGoalExtras] = useState({});
   const [pinnedIds, setPinnedIds] = useState(() => {
     const initialItems = catalogItems(catalog);
     const initial = selectedFromRecommendation(initialItems, recommended);
@@ -1101,10 +1270,25 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
   useEffect(() => {
     const nextSelected = selectedFromRecommendation(items, recommended);
+    const groups = testTitleGroups(items);
+    const nextGoals = groups.filter((group) => group.kind === "goal");
+    const { extras, extraItemIds } = extrasFromRecommendation({
+      items,
+      goalGroups: nextGoals,
+      selectedMap: nextSelected,
+    });
     setSelected(nextSelected);
     setReportDate(recommended?.reportDate || todayIso());
     setDirty(!recommended);
-    setPinnedIds(pinnedGroupIds(testTitleGroups(items), nextSelected));
+    setGoalExtras(extras);
+    setPinnedIds(
+      groups
+        .filter((group) => {
+          if (group.kind === "goal") return group.tests.some((test) => nextSelected[test.id]);
+          return group.tests.some((test) => nextSelected[test.id] && !extraItemIds.has(test.id));
+        })
+        .map((group) => group.id),
+    );
   }, [items, recommended]);
 
   const selectedIds = useMemo(
@@ -1112,18 +1296,32 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     [selected],
   );
 
-  const visibleGroups = useMemo(
-    () => allGroups.filter((group) => pinnedIds.includes(group.id)),
-    [allGroups, pinnedIds],
+  const visibleGoalGroups = useMemo(
+    () => goalGroups.filter((group) => pinnedIds.includes(group.id)),
+    [goalGroups, pinnedIds],
+  );
+  const visibleTestGroups = useMemo(
+    () => testGroups.filter((group) => pinnedIds.includes(group.id)),
+    [testGroups, pinnedIds],
   );
 
   function markDirty() {
     setDirty(true);
   }
 
+  function extrasForGoal(goalId) {
+    return Object.values(goalExtras[goalId] || {}).flat();
+  }
+
+  function testsForGroup(group) {
+    if (group?.kind === "goal") return [...group.tests, ...extrasForGoal(group.id)];
+    return group?.tests || [];
+  }
+
   function countGroup(group) {
-    const total = group.tests.length;
-    const n = group.tests.filter((test) => selected[test.id]).length;
+    const tests = testsForGroup(group);
+    const total = tests.length;
+    const n = tests.filter((test) => selected[test.id]).length;
     return { n, total };
   }
 
@@ -1133,31 +1331,70 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
   }
 
   function toggleGroup(group) {
-    const { n, total } = countGroup(group);
-    const next = n !== total;
+    const tests = testsForGroup(group);
+    const n = tests.filter((test) => selected[test.id]).length;
+    const next = n !== tests.length;
     setSelected((prev) => {
       const copy = { ...prev };
-      group.tests.forEach((test) => { copy[test.id] = next; });
+      tests.forEach((test) => { copy[test.id] = next; });
       return copy;
     });
     markDirty();
   }
 
-  function removeGroup(id) {
+  function removeGroup(id, kind = "test") {
     const group = allGroups.find((entry) => entry.id === id);
-    if (group) {
+    const extraTests = kind === "goal" ? extrasForGoal(id) : [];
+    if (group || extraTests.length) {
       setSelected((prev) => {
         const copy = { ...prev };
-        group.tests.forEach((test) => { copy[test.id] = false; });
+        (group?.tests || []).forEach((test) => { copy[test.id] = false; });
+        extraTests.forEach((test) => { copy[test.id] = false; });
         return copy;
+      });
+    }
+    if (kind === "goal") {
+      setGoalExtras((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
       });
     }
     setPinnedIds((ids) => ids.filter((entry) => entry !== id));
     markDirty();
-    onToast("Test removed");
+    onToast(kind === "goal" ? "Goal removed" : "Test removed");
   }
 
-  function addCategory(group) {
+  function addExtraToCategory(goalId, category, item) {
+    if (!item) return;
+    setGoalExtras((prev) => {
+      const byGoal = { ...(prev[goalId] || {}) };
+      const list = [...(byGoal[category] || [])];
+      if (list.some((test) => test.id === item.id)) return prev;
+      byGoal[category] = [...list, item];
+      return { ...prev, [goalId]: byGoal };
+    });
+    setSelected((prev) => ({ ...prev, [item.id]: true }));
+    setPinnedIds((ids) => ids.filter((entry) => entry !== item.catalogId && entry !== item.id));
+    markDirty();
+  }
+
+  function removeExtraFromCategory(goalId, category, itemId) {
+    setGoalExtras((prev) => {
+      const byGoal = { ...(prev[goalId] || {}) };
+      byGoal[category] = (byGoal[category] || []).filter((test) => test.id !== itemId);
+      if (!byGoal[category].length) delete byGoal[category];
+      const next = { ...prev, [goalId]: byGoal };
+      if (!Object.keys(byGoal).length) delete next[goalId];
+      return next;
+    });
+    setSelected((prev) => ({ ...prev, [itemId]: false }));
+    markDirty();
+    onToast("Extra test removed");
+  }
+
+  function addGroup(group) {
     if (!group || pinnedIds.includes(group.id)) return;
     setPinnedIds((ids) => [...ids, group.id]);
     setSelected((prev) => {
@@ -1168,29 +1405,18 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     markDirty();
   }
 
-  function togglePreset(goal) {
-    const applying = !presets.includes(goal);
-    setFocusedPreset(applying ? goal : "");
-    setPresets(applying ? [goal] : []);
-
-    const matched = applying ? groupsForPreset(allGroups, goal) : [];
-    const nextSelected = {};
-    items.forEach((test) => { nextSelected[test.id] = false; });
-    matched.forEach((group) => {
-      group.tests.forEach((test) => { nextSelected[test.id] = true; });
-    });
-    setSelected(nextSelected);
-    setPinnedIds(matched.map((group) => group.id));
-    markDirty();
-    onToast(
-      applying
-        ? (matched.length ? `${goal} preset applied` : `No tests in catalog for ${goal}`)
-        : `Removed ${goal} preset`,
-    );
-  }
-
-  function presetClass(goal) {
-    return presets.includes(goal) ? " ua-cp-ip-preset__pill--applied" : "";
+  function toggleGoalPreset(goal) {
+    if (pinnedIds.includes(goal.id)) {
+      removeGroup(goal.id, "goal");
+      return;
+    }
+    const group = goalGroups.find((entry) => entry.id === goal.id);
+    if (!group) {
+      onToast(`No tests in catalog for ${goal.name}`);
+      return;
+    }
+    addGroup(group);
+    onToast(`${goal.name} added`);
   }
 
   async function downloadList() {
@@ -1216,6 +1442,147 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     if (ok) setDirty(false);
   }
 
+  function renderTestRows(tests, { extraGoalId, extraCategory } = {}) {
+    return tests.map((test) => {
+      const on = !!selected[test.id];
+      const extra = Boolean(extraGoalId && extraCategory);
+      return (
+        <label
+          key={test.id}
+          role="row"
+          className={`ua-cp-ip-line-table__row${on ? " is-on" : ""}${extra ? " is-extra" : ""}`}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <span role="cell" className="ua-cp-ip-line-table__check">
+            <input
+              type="checkbox"
+              checked={on}
+              onChange={() => toggleTest(test.id)}
+              disabled={!canEdit || busy}
+            />
+            <span style={{ borderRadius: "5px" }} className={`ua-cp-ip-check${on ? " ua-cp-ip-check--on" : ""}`}>
+              {on ? "✓" : ""}
+            </span>
+          </span>
+          <span role="cell" data-label="Category">{test.category || "—"}</span>
+          <span role="cell" data-label="Test Name" className="ua-cp-ip-line-table__name">
+            {test.name}
+            {extra ? <span className="ua-cp-ip-extra-tag">Extra</span> : null}
+          </span>
+          <span role="cell" data-label="Fasting Type">
+            {test.fastingType ? (
+              <span className={`ua-cp-ip-fast-pill ua-cp-ip-fast-pill--${slugify(test.fastingType)}`}>
+                {test.fastingType}
+              </span>
+            ) : "—"}
+          </span>
+          <span role="cell" data-label="Duration" className={extra ? "ua-cp-ip-line-table__duration" : undefined}>
+            {formatTestDuration(test.duration)}
+            {extra && canEdit ? (
+              <button
+                type="button"
+                className="ua-cp-ip-extra-remove"
+                disabled={busy}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  removeExtraFromCategory(extraGoalId, extraCategory, test.id);
+                }}
+                aria-label={`Remove extra ${test.name}`}
+              >
+                ×
+              </button>
+            ) : null}
+          </span>
+        </label>
+      );
+    });
+  }
+
+  function renderGroupCard(group, { asGoal = false } = {}) {
+    const counts = countGroup(group);
+    const allOn = counts.total > 0 && counts.n === counts.total;
+    const partial = counts.n > 0 && !allOn;
+    const sections = asGoal ? groupTestsByCategory(group.tests) : null;
+
+    return (
+      <div key={group.id} className={`ua-cp-ip-test-group${asGoal ? " ua-cp-ip-test-group--goal" : ""}`}>
+        <div className="ua-cp-ip-test-group__head">
+          <button
+            style={{ borderRadius: "5px" }}
+            type="button"
+            className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
+            onClick={() => toggleGroup(group)}
+            disabled={!canEdit || busy}
+            aria-label={`Toggle ${group.name}`}
+          >
+            {allOn ? "✓" : partial ? "−" : ""}
+          </button>
+          <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
+          {asGoal ? <span className="ua-cp-ip-test-group__badge">Goal</span> : null}
+          <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
+          {canEdit ? (
+            <button
+              type="button"
+              className="ua-cp-ip-test-group__remove"
+              onClick={() => removeGroup(group.id, asGoal ? "goal" : "test")}
+              disabled={busy}
+              aria-label={asGoal ? "Remove goal" : "Remove test"}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+        {asGoal && sections?.length ? (
+          sections.map((section) => {
+            const extraTests = goalExtras[group.id]?.[section.name] || [];
+            const addOptions = catalogExtraOptions(items, {
+              currentGoalId: group.id,
+              preferCategory: section.name,
+              excludeTests: [...testsForGroup(group), ...extraTests],
+            });
+            return (
+              <div key={`${group.id}-${section.name}`} className="ua-cp-ip-goal-section">
+                <div className="ua-cp-ip-goal-section__label">{section.name}</div>
+                <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} · ${section.name}`}>
+                  <div className="ua-cp-ip-line-table__head" role="row">
+                    <span role="columnheader" aria-label="Select" />
+                    <span role="columnheader">Category</span>
+                    <span role="columnheader">Test Name</span>
+                    <span role="columnheader">Fasting Type</span>
+                    <span role="columnheader">Duration</span>
+                  </div>
+                  {renderTestRows(section.tests)}
+                  {extraTests.length ? renderTestRows(extraTests, { extraGoalId: group.id, extraCategory: section.name }) : null}
+                </div>
+                {canEdit ? (
+                  <CategoryAddTests
+                    category={section.name}
+                    options={addOptions}
+                    disabled={busy}
+                    onToast={onToast}
+                    onAdd={(item) => addExtraToCategory(group.id, section.name, item)}
+                  />
+                ) : null}
+              </div>
+            );
+          })
+        ) : (
+          <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} tests`}>
+            <div className="ua-cp-ip-line-table__head" role="row">
+              <span role="columnheader" aria-label="Select" />
+              <span role="columnheader">Category</span>
+              <span role="columnheader">Test Name</span>
+              <span role="columnheader">Fasting Type</span>
+              <span role="columnheader">Duration</span>
+            </div>
+            {renderTestRows(group.tests)}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   const published = Boolean(recommended) && !dirty;
 
   return (
@@ -1238,7 +1605,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
             </button>
           ) : null}
           {canExport ? (
-          <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
+            <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
           ) : null}
         </div>
       </div>
@@ -1257,101 +1624,88 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
       {catalog.length ? (
         <>
-          <div className="ua-cp-ip-preset">
-            <p className="ua-cp-ip-preset__label">Quick preset · goal</p>
-            <div className="ua-cp-ip-preset__pills">
-              {INTERNAL_PARAMS.goalPresets.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  className={`ua-cp-ip-preset__pill${presetClass(g)}`}
-                  onClick={() => togglePreset(g)}
-                >
-                  {g}
-                </button>
-              ))}
+          <section className="ua-cp-ip-assign-block">
+            <div className="ua-cp-ip-assign-block__head">
+              <div>
+                <h4 className="ua-cp-ip-assign-block__title">Assign by goal</h4>
+                <p className="ua-cp-ip-assign-block__sub">Add or remove admin-created goals. Tests stay grouped by section.</p>
+              </div>
             </div>
-          </div>
-          {canEdit ? (
-            <NamespaceSearch
-              groups={visibleGroups}
-              namespaces={allGroups}
-              onAdd={addCategory}
-              onToast={onToast}
-              disabled={busy}
-              placeholder="+ Search a test, e.g. Glucose Test…"
-              allAddedLabel="All tests added"
-              noMatchLabel="No matching tests"
-            />
-          ) : null}
-          {visibleGroups.length ? visibleGroups.map((group) => {
-            const counts = countGroup(group);
-            const allOn = counts.total > 0 && counts.n === counts.total;
-            const partial = counts.n > 0 && !allOn;
-            return (
-              <div key={group.id} className="ua-cp-ip-test-group">
-                <div className="ua-cp-ip-test-group__head">
-                  <button style={{borderRadius:"5px"}}
-                    type="button"
-                    className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
-                    onClick={() => toggleGroup(group)}
-                    aria-label={`Toggle ${group.name}`}
-                  >
-                    {allOn ? "✓" : partial ? "−" : ""}
-                  </button>
-                  <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
-                  <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
-                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove test">×</button>
-                </div>
-                <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} tests`}>
-                  <div className="ua-cp-ip-line-table__head" role="row">
-                    <span role="columnheader" aria-label="Select" />
-                    <span role="columnheader">Category</span>
-                    <span role="columnheader">Test Name</span>
-                    <span role="columnheader">Fasting Type</span>
-                    <span role="columnheader">Duration</span>
-                  </div>
-                  {group.tests.map((test) => {
-                    const on = !!selected[test.id];
+            {goalPresets.length ? (
+              <div className="ua-cp-ip-preset">
+                <p className="ua-cp-ip-preset__label">Quick add · goal</p>
+                <div className="ua-cp-ip-preset__pills">
+                  {goalPresets.map((g) => {
+                    const applied = pinnedIds.includes(g.id);
                     return (
-                      <label
-                        key={test.id}
-                        role="row"
-                        className={`ua-cp-ip-line-table__row${on ? " is-on" : ""}`}
-                        onMouseDown={(e) => e.preventDefault()}
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`ua-cp-ip-preset__pill${applied ? " ua-cp-ip-preset__pill--applied" : ""}`}
+                        onClick={() => toggleGoalPreset(g)}
+                        disabled={!canEdit || busy}
+                        title={applied ? `Remove ${g.name}` : `Add ${g.name}`}
                       >
-                        <span role="cell" className="ua-cp-ip-line-table__check">
-                          <input
-                            type="checkbox"
-                            checked={on}
-                            onChange={() => toggleTest(test.id)}
-                          />
-                          <span style={{borderRadius:"5px"}} className={`ua-cp-ip-check${on ? " ua-cp-ip-check--on" : ""}`}>
-                            {on ? "✓" : ""}
-                          </span>
-                        </span>
-                        <span role="cell" data-label="Category">{test.category || "—"}</span>
-                        <span role="cell" data-label="Test Name" className="ua-cp-ip-line-table__name">{test.name}</span>
-                        <span role="cell" data-label="Fasting Type">
-                          {test.fastingType ? (
-                            <span className={`ua-cp-ip-fast-pill ua-cp-ip-fast-pill--${slugify(test.fastingType)}`}>
-                              {test.fastingType}
-                            </span>
-                          ) : "—"}
-                        </span>
-                        <span role="cell" data-label="Duration">{formatTestDuration(test.duration)}</span>
-                      </label>
+                        {applied ? `✓ ${g.name}` : `+ ${g.name}`}
+                      </button>
                     );
                   })}
                 </div>
               </div>
-            );
-          }) : (
-            <p className="ua-cp-ip-assign-history__empty">No tests added yet. Search above to add a test from the catalog.</p>
-          )}
+            ) : (
+              <p className="ua-cp-ip-assign-history__empty">No active goals yet. Create them under Configs → Goals &amp; Tests.</p>
+            )}
+            {canEdit && goalGroups.length ? (
+              <NamespaceSearch
+                groups={visibleGoalGroups}
+                namespaces={goalGroups}
+                onAdd={addGroup}
+                onToast={onToast}
+                disabled={busy}
+                placeholder="+ Search a goal, e.g. Fat Loss…"
+                allAddedLabel="All goals added"
+                noMatchLabel="No matching goals"
+              />
+            ) : null}
+            {visibleGoalGroups.length
+              ? visibleGoalGroups.map((group) => renderGroupCard(group, { asGoal: true }))
+              : goalPresets.length || goalGroups.length
+                ? <p className="ua-cp-ip-assign-history__empty">No goals added yet. Use a quick add or search above.</p>
+                : null}
+          </section>
+
+          <section className="ua-cp-ip-assign-block">
+            <div className="ua-cp-ip-assign-block__head">
+              <div>
+                <h4 className="ua-cp-ip-assign-block__title">Assign individual tests</h4>
+                <p className="ua-cp-ip-assign-block__sub">Add or remove single tests without mixing them into goals.</p>
+              </div>
+            </div>
+            {canEdit && testGroups.length ? (
+              <NamespaceSearch
+                groups={visibleTestGroups}
+                namespaces={testGroups}
+                onAdd={addGroup}
+                onToast={onToast}
+                disabled={busy}
+                placeholder="+ Search a test, e.g. Glucose Test…"
+                allAddedLabel="All tests added"
+                noMatchLabel="No matching tests"
+              />
+            ) : null}
+            {visibleTestGroups.length
+              ? visibleTestGroups.map((group) => renderGroupCard(group))
+              : (
+                <p className="ua-cp-ip-assign-history__empty">
+                  {testGroups.length
+                    ? "No individual tests added yet. Search above to add one."
+                    : "No individual tests in the catalog. Use goals above, or add tests under Configs."}
+                </p>
+              )}
+          </section>
         </>
       ) : (
-        <p>No live tests in the catalog yet. Add them under Configs → Blood test catalog.</p>
+        <p>No live tests in the catalog yet. Add them under Configs → Goals &amp; Tests.</p>
       )}
 
       <AssignedTestHistory

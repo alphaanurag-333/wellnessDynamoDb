@@ -565,10 +565,18 @@ function memberLocation(member) {
   return [member.city, member.state, member.country].filter(Boolean).join(", ") || "—";
 }
 
-function memberPhone(member) {
-  if (!member.phone) return "—";
-  const prefix = member.phoneCountryCode ? `+${String(member.phoneCountryCode).replace(/^\+/, "")} ` : "";
-  return `${prefix}${member.phone}`;
+function formatMemberNumber(countryCode, number) {
+  if (!number) return "—";
+  const prefix = countryCode ? `+${String(countryCode).replace(/^\+/, "")} ` : "";
+  return `${prefix}${number}`;
+}
+
+function memberWhatsapp(member) {
+  return formatMemberNumber(member.whatsappCountryCode || member.phoneCountryCode, member.whatsappPhone || member.phone);
+}
+
+function memberMobile(member) {
+  return formatMemberNumber(member.mobileCountryCode, member.mobilePhone);
 }
 
 function ToggleSwitch({ on, disabled, onClick }) {
@@ -1297,7 +1305,8 @@ export function TeamMemberPage() {
               <dl className="ua-tm-profile-panel__rows">
                 <div><dt>Full name:</dt><dd title={member.name || undefined}>{member.name || "—"}</dd></div>
                 <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
-                <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
+                <div><dt>WhatsApp:</dt><dd>{memberWhatsapp(member)}</dd></div>
+                <div><dt>Mobile:</dt><dd>{memberMobile(member)}</dd></div>
                 <div><dt>Date of birth:</dt><dd>{formatMemberDob(member.dateOfBirth)}</dd></div>
                 <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
                 <div >

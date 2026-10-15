@@ -602,10 +602,12 @@ function liveCatalogRows(rows) {
       fastingType: row.fastingType || "",
       duration: row.duration || "",
       status: row.status === "inactive" ? "inactive" : "active",
+      kind: row.kind === "goal" ? "goal" : "test",
       lines: Array.isArray(row.lines) ? row.lines : [],
       parameters: Array.isArray(row.parameters) ? row.parameters : [],
     }))
-    .filter((row) => row.id && row.status !== "inactive");
+    .filter((row) => row.id && row.status !== "inactive")
+    .filter((row) => row.kind !== "goal" || row.lines.some((line) => line?.name));
 }
 
 async function listConfigsTestCatalog() {
