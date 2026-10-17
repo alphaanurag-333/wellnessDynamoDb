@@ -30,6 +30,7 @@ const {
   analyzeCoachUserLabReportController,
   updateCoachUserLabReportAiController,
   listCoachUserActiveTestCatalogController,
+  appendCoachUserGoalTestsController,
 } = require("../../controllers/adminController/testRecommendationController");
 const {
   listCoachUserWellnessPrescriptionsController,
@@ -253,6 +254,7 @@ router.get("/:userId/test-recommendations", tests, listCoachUserTestRecommendati
 router.post("/:userId/test-recommendations", testsWrite, createCoachUserTestRecommendationController);
 router.get("/:userId/test-recommendations/:recommendationId/pdf", tests, downloadCoachUserTestRecommendationPdfController);
 router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
+router.patch("/:userId/test-catalog/:goalId", testsWrite, appendCoachUserGoalTestsController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
 router.patch("/:userId/lab-report-submission", testsWrite, updateCoachUserLabReportSubmissionController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);

@@ -362,6 +362,18 @@ export async function createUserTestRecommendation(userId, payload) {
   }
 }
 
+export async function deleteUserTestRecommendation(userId, recommendationId) {
+  try {
+    const { data } = await api.delete(
+      `/account/heal-users/${encodeURIComponent(userId)}/test-recommendations/${encodeURIComponent(recommendationId)}`,
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserLabReports(userId) {
   try {
     const { data } = await api.get(
@@ -370,7 +382,7 @@ export async function fetchUserLabReports(userId) {
     );
     return {
       reports: data.reports || [],
-      submissionLocked: Boolean(data.submissionLocked),
+      submissionLocked: typeof data.submissionLocked === "boolean" ? data.submissionLocked : undefined,
     };
   } catch (error) {
     normalizeApiError(error);
@@ -384,7 +396,8 @@ export async function updateUserLabReportSubmission(userId, enabled) {
       { enabled: Boolean(enabled) },
       { headers: authHeader() },
     );
-    return Boolean(data.submissionLocked);
+    if (typeof data.submissionLocked === "boolean") return data.submissionLocked;
+    return !Boolean(enabled);
   } catch (error) {
     normalizeApiError(error);
   }
@@ -604,6 +617,8 @@ function liveCatalogRows(rows) {
       status: row.status === "inactive" ? "inactive" : "active",
       kind: row.kind === "goal" ? "goal" : "test",
       lines: Array.isArray(row.lines) ? row.lines : [],
+      sections: Array.isArray(row.sections) ? row.sections : [],
+      dismissedCategories: Array.isArray(row.dismissedCategories) ? row.dismissedCategories : [],
       parameters: Array.isArray(row.parameters) ? row.parameters : [],
     }))
     .filter((row) => row.id && row.status !== "inactive")
@@ -622,6 +637,19 @@ async function listConfigsTestCatalog() {
     ),
   );
   return tests.concat(...rest.map((page) => liveCatalogRows(page?.tests)));
+}
+
+export async function appendUserGoalTests(userId, goalId, tests) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/test-catalog/${encodeURIComponent(goalId)}`,
+      { tests },
+      { headers: authHeader() },
+    );
+    return data.test || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }
 
 export async function fetchTestCatalog(userId) {

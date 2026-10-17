@@ -246,10 +246,19 @@ function resolveTermsIp(user) {
 
 function buildTags(user, goal) {
   const tags = [];
-  if (goal) tags.push(goal);
-  const tierUi = mapApiTierToUi(user?.userTier);
-  const label = tierLabel(tierUi);
-  if (label && !tags.includes(label)) tags.push(label);
+  const seen = new Set();
+  function push(label) {
+    const text = String(label || "").trim();
+    if (!text) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    tags.push(text);
+  }
+  push(goal);
+  for (const token of parseWellnessJourneyTokens(user?.wellnessJourneyFor)) {
+    push(formatWellnessJourneyDisplay(token));
+  }
   return tags;
 }
 
@@ -317,6 +326,58 @@ function formatWellnessJourney(value) {
     return value.map(wellnessJourneyLabel).filter(Boolean).join(", ");
   }
   return wellnessJourneyLabel(value);
+}
+
+function extractWellnessJourneyToken(entry) {
+  if (entry == null) return "";
+  if (typeof entry === "object") {
+    const candidate =
+      entry.title ??
+      entry.name ??
+      entry.label ??
+      entry.value ??
+      entry.id ??
+      entry._id;
+    return String(candidate ?? "").trim();
+  }
+  return String(entry).trim();
+}
+
+/** Raw journey tokens for editing. Accepts arrays, objects, or comma-separated display text. */
+export function parseWellnessJourneyTokens(value) {
+  if (value == null) return [];
+  let raw = value;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    try {
+      raw = JSON.parse(trimmed);
+    } catch {
+      raw = trimmed.split(",").map((part) => part.trim()).filter(Boolean);
+    }
+  } else if (typeof raw === "object" && !Array.isArray(raw)) {
+    const token = extractWellnessJourneyToken(raw);
+    return token ? [token] : [];
+  }
+  if (!Array.isArray(raw)) {
+    const token = extractWellnessJourneyToken(raw);
+    return token ? [token] : [];
+  }
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw) {
+    const token = extractWellnessJourneyToken(entry);
+    if (!token) continue;
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(token);
+  }
+  return out;
+}
+
+export function formatWellnessJourneyDisplay(value) {
+  return formatWellnessJourney(value);
 }
 
 function formatOnboardingFieldDisplay(field) {
@@ -478,6 +539,7 @@ export function mapApiUserToRow(user, index = 0) {
   const onboardingDone = countOnboardingDone(paidOnboardingStepStatus);
   const onboardingTotal = PAID_ONBOARDING_STATUS_KEYS.length;
   const dietaryPreference = formatDietaryPreference(user?.dietaryPreference);
+  const wellnessJourneyForRaw = parseWellnessJourneyTokens(user?.wellnessJourneyFor);
   const wellnessJourneyFor = formatWellnessJourney(user?.wellnessJourneyFor);
   const gender = formatGender(user?.gender);
   const addressLine1 = String(user?.addressLine1 || "").trim();
@@ -514,6 +576,7 @@ export function mapApiUserToRow(user, index = 0) {
     healthConcernId: resolveHealthConcernId(user),
     dietaryPreference,
     wellnessJourneyFor,
+    wellnessJourneyForRaw,
     coach: coach || UNASSIGNED_COACH,
     awc: resolveAwcName(user),
     lastActive: formatLastActive(lastActiveAt),
@@ -570,6 +633,11 @@ export function mapApiUserToRow(user, index = 0) {
     onboardingTotal,
     onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
+    labReportSubmissionLocked: user?.labReportSubmissionLocked === true
+      ? true
+      : user?.labReportSubmissionLocked === false
+        ? false
+        : undefined,
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
   };

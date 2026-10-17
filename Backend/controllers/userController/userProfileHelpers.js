@@ -36,6 +36,8 @@ const { toPublicIntroVideo } = require("../../utils/coachContent");
 const {
   listSubscriptionsByUserId,
 } = require("../../models/energyExchangeSubscriptionModel");
+const { labReportSubmissionState } = require("../../utils/labReportSubmission");
+const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
 const {
   getUserById,
   getUserByEmail,
@@ -55,6 +57,7 @@ const {
   isPresentablePicsEnabled,
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
+  normalizeWellnessJourneyFor,
 } = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 
@@ -363,6 +366,28 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
     pub.subscriptionDaysLeft = 0;
   }
 
+  let submissionUser = source;
+  if (source.labReportSubmissionLocked !== true && source.id) {
+    try {
+      const reports = await listUserLabReportsByUserId(source.id);
+      const hasReports = reports.length > 0;
+      if (hasReports && source.labReportSubmissionLocked !== false) {
+        try {
+          submissionUser = await updateUser(source.id, { labReportSubmissionLocked: true });
+        } catch {
+          submissionUser = { ...source, labReportSubmissionLocked: true };
+        }
+        Object.assign(pub, labReportSubmissionState(submissionUser, { hasReports: true }));
+      } else {
+        Object.assign(pub, labReportSubmissionState(source, { hasReports }));
+      }
+    } catch {
+      Object.assign(pub, labReportSubmissionState(source));
+    }
+  } else {
+    Object.assign(pub, labReportSubmissionState(source));
+  }
+
   return pub;
 }
 
@@ -519,6 +544,19 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   }
   if (body.pincode !== undefined) {
     updates.pincode = String(body.pincode || "").trim() || null;
+  }
+  if (
+    body.wellnessJourneyFor !== undefined ||
+    body.wellness_journey_for !== undefined ||
+    body.wellnessJourney !== undefined ||
+    body.wellness_journey !== undefined
+  ) {
+    updates.wellnessJourneyFor = normalizeWellnessJourneyFor(
+      body.wellnessJourneyFor ??
+        body.wellness_journey_for ??
+        body.wellnessJourney ??
+        body.wellness_journey
+    );
   }
   if (body.primaryHealthConcern !== undefined) {
     const phc = String(body.primaryHealthConcern || "").trim() || null;

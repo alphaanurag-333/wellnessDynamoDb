@@ -1,20 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { userTierBadgeFromApi } from "../data/usersData.js";
 
-function tierLabel(tier) {
-  const key = String(tier || "").toLowerCase();
-  if (key === "heal") return "Heal";
-  if (key === "seek") return "Seek";
-  if (key === "consultancy_only") return "Consultancy";
-  if (key === "maintenance") return "Maintenance";
-  return tier || "";
-}
-
-function kindLabel(node) {
+function kindLabel(node, badge) {
   if (node?.nodeKind === "coach") return "Coach";
   if (node?.nodeKind === "awc") return "Assistant WC";
-  return tierLabel(node?.userTier) || "Client";
+  return badge?.label || "Client";
 }
 
 function shortLabel(value, max = 26) {
@@ -43,6 +35,11 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
   const name = node.name || (isStaff ? "Staff referrer" : "Unnamed user");
   const code = node.referralCode || "—";
   const via = node.joinedViaCode || node.referredByCode || null;
+  const hasTier = Boolean(
+    node.userTier || node.tier || String(node.clientCategory || "").toLowerCase() === "eagle"
+  );
+  const tierBadge = !isStaff && hasTier ? userTierBadgeFromApi(node) : null;
+  const nameStyle = tierBadge ? { color: tierBadge.style.color } : undefined;
 
   return (
     <div className={`ua-org-card${isStaff ? " ua-org-card--staff" : ""}`}>
@@ -51,19 +48,37 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
       </div>
       <div className="ua-org-card__body">
         {canOpenUser && !isStaff ? (
-          <Link className="ua-org-card__name" to={UPDATED_ADMIN_PATHS.userDetail(node.id)} title={name}>
+          <Link
+            className="ua-org-card__name"
+            to={UPDATED_ADMIN_PATHS.userDetail(node.id)}
+            title={name}
+            style={nameStyle}
+          >
             {shortLabel(name, 28)}
           </Link>
         ) : (
-          <span className="ua-org-card__name" title={name}>
+          <span className="ua-org-card__name" title={name} style={nameStyle}>
             {shortLabel(name, 28)}
           </span>
         )}
         <div className="ua-org-card__meta">
           <span className="ua-rt-chip">{code}</span>
-          <span className={`ua-rt-chip${isStaff ? " ua-rt-chip--staff" : " ua-rt-chip--muted"}`}>
-            {kindLabel(node)}
-          </span>
+          {tierBadge ? (
+            <span
+              className="ua-tier"
+              style={{
+                background: tierBadge.style.bg,
+                color: tierBadge.style.color,
+                borderColor: tierBadge.style.border,
+              }}
+            >
+              {kindLabel(node, tierBadge)}
+            </span>
+          ) : (
+            <span className={`ua-rt-chip${isStaff ? " ua-rt-chip--staff" : " ua-rt-chip--muted"}`}>
+              {kindLabel(node, tierBadge)}
+            </span>
+          )}
           {via ? <span className="ua-rt-chip ua-rt-chip--via">via {via}</span> : null}
         </div>
         {hasChildren ? (

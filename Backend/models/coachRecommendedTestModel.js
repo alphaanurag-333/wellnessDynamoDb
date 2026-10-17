@@ -51,10 +51,13 @@ function normalizeTests(tests) {
       category: String(test.category || "").trim(),
       parameters: Array.isArray(test.parameters) ? test.parameters : [],
     };
-    ["itemId", "catalogId", "panelName", "fastingType", "duration"].forEach((key) => {
+    ["itemId", "catalogId", "panelName", "fastingType", "duration", "code"].forEach((key) => {
       const value = String(test[key] || "").trim();
       if (value) row[key] = value;
     });
+    if (test.custom === true) row.custom = true;
+    const hours = Number(test.hours);
+    if (Number.isFinite(hours)) row.hours = Math.max(0, Math.min(168, Math.round(hours)));
     return row;
   });
 }

@@ -336,7 +336,7 @@ export function UserDetailPage() {
         refreshing={refreshing}
         onRefresh={refreshProfile}
         readOnly={isArchivedProfile}
-        backTo={isArchivedProfile ? `${UPDATED_ADMIN_PATHS.users}?tab=archived` : UPDATED_ADMIN_PATHS.users}
+        backTo={UPDATED_ADMIN_PATHS.users}
       />
       {isArchivedProfile ? (
         <div className="ua-cp-archived-banner" role="status">
@@ -354,7 +354,7 @@ export function UserDetailPage() {
           onSectionChange={(id) => setSection(id)}
           hidden={menuHidden}
           showAllTags={showAllTags}
-          onToggleTags={() => setShowAllTags(true)}
+          onToggleTags={() => setShowAllTags((open) => !open)}
           compact={profileDefinition.mode === "compact"}
           onUserUpdated={(updatedRow) => {
             setUser(profileFromListUser(updatedRow, userId));

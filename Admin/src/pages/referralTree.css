@@ -337,17 +337,15 @@
   overflow: hidden;
 }
 
-.updated-admin .ua-table--rt-top .ua-rt-name,
-.updated-admin .ua-table--rt-top .ua-rt-tier {
+.updated-admin .ua-table--rt-top .ua-rt-name {
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.35;
-  color: #0f172a;
 }
 
 .updated-admin .ua-table--rt-top .ua-rt-tier {
-  font-weight: 400;
+  min-width: 0;
 }
 
 .updated-admin .ua-rt-sub {
@@ -587,15 +585,20 @@
 }
 
 a.ua-org-card__name:hover {
-  color: #15803d;
   text-decoration: underline;
 }
 
 .updated-admin .ua-org-card__meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   margin-top: 6px;
+}
+
+.updated-admin .ua-org-card__meta .ua-tier {
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
 .updated-admin .ua-rt-chip--staff {
@@ -687,7 +690,6 @@ a.ua-org-card__name:hover {
 }
 
 a.ua-rt-name:hover {
-  color: #15803d;
   text-decoration: underline;
 }
 

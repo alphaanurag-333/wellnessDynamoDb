@@ -11541,6 +11541,12 @@
   align-items: center;
 }
 
+.updated-admin .ua-cp-tag--less {
+  border-color: #d7dee8;
+  background: #f5f7fb;
+  color: #5a6b85;
+}
+
 .updated-admin .ua-cp-main {
   flex: 1;
   min-width: 0;
@@ -15338,6 +15344,69 @@
   text-align-last: left;
 }
 
+.updated-admin .ua-cp-personal .ua-cp-journey {
+  position: relative;
+  justify-self: end;
+  width: min(100%, 18rem);
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey.is-open {
+  z-index: 8;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__btn {
+  width: 100%;
+  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  min-width: 100%;
+  max-height: 240px;
+  overflow: auto;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(16, 35, 63, 0.12);
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__opt:hover,
+.updated-admin .ua-cp-personal .ua-cp-journey__opt.is-on {
+  background: #f4faf7;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__opt input {
+  margin: 0;
+  accent-color: #2b8f5b;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-journey__empty {
+  margin: 0;
+  padding: 8px;
+  color: #8a97ac;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .updated-admin .ua-cp-personal .ua-cp-field__input:focus {
   border-color: #2b8f5b;
   background: #fff;
@@ -17069,6 +17138,48 @@ scrollbar-width: thin;
   padding: 0px 0 24px;
 }
 
+/* Recommended tests / Report & analysis — keep both tabs readable for WC */
+.updated-admin .ua-cp-internal > .ua-pill-tabs--md {
+  gap: 6px;
+  padding: 5px;
+  margin: 8px 0 16px;
+  background: #e6ebf3;
+  border: 1px solid #c5d0e0;
+  border-radius: 14px;
+}
+
+.updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn {
+  height: 38px;
+  padding: 0 20px;
+  border: 1px solid #c9d4e4;
+  border-radius: 10px;
+  background: #fff;
+  color: #2a3b55;
+  font-size: 13.5px;
+  font-weight: 650;
+  box-shadow: 0 1px 2px rgba(16, 35, 63, 0.06);
+}
+
+.updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn:hover {
+  color: #16233f;
+  border-color: #9aabc4;
+  background: #f7f9fc;
+}
+
+.updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn--active {
+  background: #16233f;
+  border-color: #16233f;
+  color: #fff;
+  font-weight: 750;
+  box-shadow: 0 2px 6px rgba(22, 35, 63, 0.28);
+}
+
+.updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn--active:hover {
+  color: #fff;
+  background: #1c2c4d;
+  border-color: #1c2c4d;
+}
+
 .updated-admin .ua-cp-ip-head__title {
   margin: 0;
   font-size: 19px;
@@ -17415,6 +17526,32 @@ scrollbar-width: thin;
   place-items: center;
   flex-shrink: 0;
   text-decoration: none;
+}
+
+.updated-admin .ua-cp-ip-history__delete {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #f0d4d0;
+  border-radius: 8px;
+  background: #fff7f6;
+  color: #b42318;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-ip-history__delete:hover:not(:disabled) {
+  background: #fdecea;
+}
+
+.updated-admin .ua-cp-ip-history__delete:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .updated-admin a.ua-cp-btn {
@@ -63603,6 +63740,11 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-personal .ua-cp-field__input--select {
     justify-self: start;
     max-width: 100%;
+  }
+
+  .updated-admin .ua-cp-personal .ua-cp-journey {
+    justify-self: start;
+    width: 100%;
   }
 
   .updated-admin .ua-cp-personal__head {

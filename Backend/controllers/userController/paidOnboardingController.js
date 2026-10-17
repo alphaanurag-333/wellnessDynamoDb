@@ -183,8 +183,12 @@ function normalizeAnswerForQuestion(question, raw) {
 
 function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsByStep = {}) {
   const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const paidOnboardingCompleted = Boolean(user.paidOnboardingCompleted);
   return {
-    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    paidOnboardingCompleted,
+    ...(paidOnboardingCompleted
+      ? { programInitiationCompletedAt: new Date().toISOString() }
+      : {}),
     paidOnboardingStep:
       user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
     paidOnboardingStepStatus: stepStatus,

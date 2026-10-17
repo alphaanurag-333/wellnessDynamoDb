@@ -87,6 +87,7 @@ export const DEFAULT_GRANTS = {
   awc: {
     dash: ["view"],
     cl: ["view", "edit"],
+    pii: ["view"],
     body: ["view"],
     rep: ["view"],
     diet: ["view"],

@@ -11,7 +11,18 @@ function isLabReportSubmissionLocked(user, { hasReports = false } = {}) {
   return Boolean(hasReports);
 }
 
+function labReportSubmissionState(user, { hasReports = false } = {}) {
+  const submissionLocked = isLabReportSubmissionLocked(user, { hasReports });
+  return {
+    labReportSubmissionLocked: submissionLocked,
+    submissionLocked,
+    canSubmitLabReport: !submissionLocked,
+    submissionLockedMessage: submissionLocked ? LAB_REPORT_SUBMISSION_LOCKED_MESSAGE : null,
+  };
+}
+
 module.exports = {
   LAB_REPORT_SUBMISSION_LOCKED_MESSAGE,
   isLabReportSubmissionLocked,
+  labReportSubmissionState,
 };

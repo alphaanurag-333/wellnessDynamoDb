@@ -14,6 +14,7 @@ const {
 const { getUserById, updateUser } = require("../../models/userModel");
 const {
   isLabReportSubmissionLocked,
+  labReportSubmissionState,
   LAB_REPORT_SUBMISSION_LOCKED_MESSAGE,
 } = require("../../utils/labReportSubmission");
 const {
@@ -47,12 +48,24 @@ function handleValidationError(err) {
   throw err;
 }
 
+async function persistLockIfNeeded(user, hasReports) {
+  if (!user?.id || !hasReports) return user;
+  if (user.labReportSubmissionLocked === true || user.labReportSubmissionLocked === false) return user;
+  try {
+    return await updateUser(user.id, { labReportSubmissionLocked: true });
+  } catch (err) {
+    console.error("Failed to persist lab report submission lock:", err?.message || err);
+    return { ...user, labReportSubmissionLocked: true };
+  }
+}
+
 async function submissionLockedForUser(userId, { reports } = {}) {
   const user = await getUserById(userId);
   const hasReports = Array.isArray(reports)
     ? reports.length > 0
     : (await listUserLabReportsByUserId(userId)).length > 0;
-  return isLabReportSubmissionLocked(user, { hasReports });
+  const next = await persistLockIfNeeded(user, hasReports);
+  return isLabReportSubmissionLocked(next, { hasReports });
 }
 
 async function assertLabReportSubmissionOpen(userId) {
@@ -69,11 +82,11 @@ async function assertLabReportSubmissionOpen(userId) {
 }
 
 async function lockLabReportSubmission(userId) {
-  try {
-    await updateUser(userId, { labReportSubmissionLocked: true });
-  } catch (err) {
-    console.error("Failed to lock lab report submission:", err?.message || err);
+  const updated = await updateUser(userId, { labReportSubmissionLocked: true });
+  if (!updated) {
+    throw new AppError("Failed to disable new report uploads after this submission", 500);
   }
+  return updated;
 }
 
 exports.getUserRecommendedTestsController = asyncHandler(async (req, res) => {
@@ -88,7 +101,7 @@ exports.getUserRecommendedTestsController = asyncHandler(async (req, res) => {
     message: "Recommended tests fetched successfully",
     recommended: recommendations[0] || null,
     history: recommendations.length > 1 ? recommendations.slice(1) : [],
-    submissionLocked,
+    ...labReportSubmissionState({ labReportSubmissionLocked: submissionLocked }),
   });
 });
 
@@ -103,7 +116,7 @@ exports.listUserLabReportsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Lab reports fetched successfully",
     reports,
-    submissionLocked,
+    ...labReportSubmissionState({ labReportSubmissionLocked: submissionLocked }),
   });
 });
 
@@ -129,12 +142,10 @@ exports.createUserLabReportController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
-  await lockLabReportSubmission(userId);
-
-  const user = await getUserById(userId);
-  if (user) {
+  const lockedUser = await lockLabReportSubmission(userId);
+  if (lockedUser) {
     dispatchLabReportUploadCoachNotificationAsync({
-      user,
+      user: lockedUser,
       reportId: report?.id,
     });
   }
@@ -143,7 +154,7 @@ exports.createUserLabReportController = asyncHandler(async (req, res) => {
     status: true,
     message: "Lab report submitted successfully",
     report,
-    submissionLocked: true,
+    ...labReportSubmissionState(lockedUser || { labReportSubmissionLocked: true }),
   });
 });
 
@@ -171,6 +182,6 @@ exports.deleteUserLabReportController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Lab report deleted successfully",
-    submissionLocked,
+    ...labReportSubmissionState({ labReportSubmissionLocked: submissionLocked }),
   });
 });

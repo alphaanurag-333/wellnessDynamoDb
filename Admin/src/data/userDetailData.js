@@ -517,6 +517,7 @@ function emptyProfileExtras(goal = "") {
     stateRaw: "",
     dietaryPreference: "",
     wellnessJourneyFor: "",
+    wellnessJourneyForRaw: [],
     joined: "",
     joinedAgo: "",
     lastReviewed: "",
@@ -591,6 +592,9 @@ export function profileFromListUser(row, userId) {
     stateRaw: base.stateRaw || extra.stateRaw,
     dietaryPreference: base.dietaryPreference || extra.dietaryPreference,
     wellnessJourneyFor: base.wellnessJourneyFor || extra.wellnessJourneyFor,
+    wellnessJourneyForRaw: Array.isArray(base.wellnessJourneyForRaw)
+      ? base.wellnessJourneyForRaw
+      : extra.wellnessJourneyForRaw,
     joined: base.joined || extra.joined,
     joinedAgo: base.joinedAgo || extra.joinedAgo,
     lastReviewed: base.lastReviewed || extra.lastReviewed,

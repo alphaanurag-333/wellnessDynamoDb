@@ -123,6 +123,7 @@ const DEFAULT_CONSOLE_GRANTS = {
   awc: {
     dash: ["view"],
     cl: ["view", "edit"],
+    pii: ["view"],
     body: ["view"],
     rep: ["view"],
     diet: ["view"],

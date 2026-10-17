@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   INTERNAL_PARAMS,
   cloneAiPanels,
@@ -8,7 +9,9 @@ import {
 } from "../../data/internalParametersData.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
+  appendUserGoalTests,
   createUserTestRecommendation,
+  deleteUserTestRecommendation,
   downloadUserTestRecommendationPdf,
   fetchTestCatalog,
   fetchUserLabReports,
@@ -75,9 +78,17 @@ function todayIso() {
 
 function formatDisplayDate(value) {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  const raw = String(value).trim();
+  const dayOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = dayOnly
+    ? new Date(Number(dayOnly[1]), Number(dayOnly[2]) - 1, Number(dayOnly[3]))
+    : new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function assignmentDate(entry) {
+  return entry?.createdAt || entry?.updatedAt || entry?.reportDate || "";
 }
 
 function triggerFileDownload(href, filename) {
@@ -252,12 +263,111 @@ function formatTestDuration(value) {
   return text;
 }
 
+function hoursFromDuration(duration, hours) {
+  const n = Number(hours);
+  if (Number.isFinite(n) && n >= 0) return Math.min(168, Math.round(n));
+  const match = String(duration || "").match(/(\d+)/);
+  return match ? Math.min(168, Number(match[1])) : 12;
+}
+
+function codeFromLine(line) {
+  const code = String(line?.code || "").trim().toUpperCase();
+  if (code) return code;
+  const fasting = String(line?.fastingType || "").trim();
+  if (/post/i.test(fasting)) return "PPBS";
+  if (/non/i.test(fasting)) return "NF";
+  return "FBS";
+}
+
+function fastingFromCodeHours(code, hours) {
+  const post = /^(pfbs|ppbs|pp|post)/i.test(String(code || ""));
+  const h = Number(hours) || 0;
+  return post ? "Post-prandial" : h > 0 ? "Fasting" : "Non-fasting";
+}
+
+function durationFromHours(hours) {
+  const h = Number(hours) || 0;
+  return h === 1 ? "1 hr" : `${h} hrs`;
+}
+
+function newCustomId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `custom::${crypto.randomUUID()}`;
+  }
+  return `custom::${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function emptyCustomTest(category) {
+  return {
+    id: newCustomId(),
+    custom: true,
+    name: "",
+    code: "FBS",
+    hours: 12,
+    category: category || "Other",
+    fastingType: "Fasting",
+    duration: "12 hrs",
+    kind: "test",
+  };
+}
+
+function isCustomAssignment(test) {
+  if (!test) return false;
+  if (test.custom === true) return true;
+  return String(test.itemId || test.id || "").trim().startsWith("custom::");
+}
+
+function moveItem(list, from, to) {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function GripIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <circle cx="4" cy="3" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="3" r="1.15" fill="currentColor" />
+      <circle cx="4" cy="7" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="7" r="1.15" fill="currentColor" />
+      <circle cx="4" cy="11" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="11" r="1.15" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CodeField({ value, disabled, onChange }) {
+  return (
+    <input
+      className="ua-cfg-goals-field ua-cfg-goals-field--code"
+      value={value}
+      disabled={disabled}
+      placeholder="Code"
+      aria-label="Code"
+      onChange={(event) => onChange(event.target.value.toUpperCase())}
+      onBlur={() => {
+        if (!String(value || "").trim()) onChange("FBS");
+      }}
+    />
+  );
+}
+
 /** One pickable item per catalog line; entries without lines stay a single item. */
 function catalogItems(catalog) {
   return (catalog || []).flatMap((entry) => {
     const kind = entry?.kind === "goal" ? "goal" : "test";
     const lines = Array.isArray(entry?.lines) ? entry.lines.filter((line) => line?.name) : [];
-    if (!lines.length) return [{ ...entry, catalogId: entry.id, kind }];
+    if (!lines.length) {
+      return [{
+        ...entry,
+        catalogId: entry.id,
+        kind,
+        code: codeFromLine(entry),
+        hours: hoursFromDuration(entry.duration, entry.hours),
+      }];
+    }
     return lines.map((line, index) => ({
       id: `${entry.id}::${index}`,
       catalogId: entry.id,
@@ -268,6 +378,8 @@ function catalogItems(catalog) {
       category: line.category || entry.category,
       fastingType: line.fastingType || "",
       duration: line.duration || "",
+      code: codeFromLine(line),
+      hours: hoursFromDuration(line.duration, line.hours),
       kind,
     }));
   });
@@ -806,44 +918,6 @@ function testIdentityKey(test) {
   return `${String(test?.category || "").trim().toLowerCase()}::${String(test?.name || "").trim().toLowerCase()}`;
 }
 
-function catalogExtraOptions(items, { excludeTests = [], currentGoalId, preferCategory } = {}) {
-  const excluded = new Set((excludeTests || []).map(testIdentityKey));
-  const excludedIds = new Set((excludeTests || []).map((test) => String(test?.id || "")).filter(Boolean));
-  const excludedNames = new Set(
-    (excludeTests || []).map((test) => String(test?.name || "").trim().toLowerCase()).filter(Boolean),
-  );
-  const seen = new Set();
-  const preferred = [];
-  const rest = [];
-
-  (items || []).forEach((item) => {
-    const catalogId = String(item.catalogId || item.id || "");
-    if (currentGoalId && catalogId === String(currentGoalId)) return;
-    if (excludedIds.has(String(item.id || ""))) return;
-    if (excluded.has(testIdentityKey(item))) return;
-    const nameKey = String(item.name || "").trim().toLowerCase();
-    if (nameKey && excludedNames.has(nameKey)) return;
-    const identity = testIdentityKey(item);
-    if (seen.has(identity) || seen.has(item.id)) return;
-    seen.add(identity);
-    seen.add(item.id);
-
-    const option = {
-      id: item.id,
-      name: item.name,
-      kind: "test",
-      category: item.category || "",
-      searchText: [item.name, item.panelName, item.category].filter(Boolean).join(" ").toLowerCase(),
-      item,
-    };
-    if (preferCategory && sameCategoryName(item.category, preferCategory)) preferred.push(option);
-    else rest.push(option);
-  });
-
-  const byName = (a, b) => String(a.name || "").localeCompare(String(b.name || ""));
-  return [...preferred.sort(byName), ...rest.sort(byName)];
-}
-
 function extrasFromRecommendation({ items, goalGroups, selectedMap }) {
   const extras = {};
   const extraItemIds = new Set();
@@ -879,51 +953,50 @@ function extrasFromRecommendation({ items, goalGroups, selectedMap }) {
   return { extras, extraItemIds };
 }
 
-function CategoryAddTests({
-  category,
-  options,
-  onAdd,
-  onToast,
-  disabled = false,
-}) {
-  const [open, setOpen] = useState(false);
-
-  if (!open) {
-    return (
-      <div className="ua-cp-ip-goal-add">
-        <button
-          type="button"
-          className="ua-cp-ip-goal-add__btn"
-          disabled={disabled || !options.length}
-          title={!options.length ? "No other catalog tests left to add" : `Add another test to ${category}`}
-          onClick={() => setOpen(true)}
-        >
-          + Add extra test
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="ua-cp-ip-goal-add ua-cp-ip-goal-add--open">
-      <NamespaceSearch
-        groups={[]}
-        namespaces={options}
-        onAdd={(ns) => {
-          onAdd(ns.item || ns);
-          setOpen(false);
-        }}
-        onToast={onToast}
-        disabled={disabled}
-        placeholder={`+ Search a test to add under ${category}…`}
-        allAddedLabel="All catalog tests are already in this goal"
-        noMatchLabel="No matching tests in the catalog"
-      />
-      <button type="button" className="ua-cp-ip-goal-add__cancel" disabled={disabled} onClick={() => setOpen(false)}>
-        Cancel
-      </button>
-    </div>
+function customRowsFromRecommendation(recommended, { items, extraItemIds, goalGroups, selectedMap }) {
+  const extras = {};
+  const standalone = [];
+  const knownIds = new Set((items || []).map((item) => String(item.id || "")));
+  const pinnedGoals = (goalGroups || []).filter((group) =>
+    (group.tests || []).some((test) => selectedMap[test.id]),
   );
+
+  (recommended?.tests || []).forEach((test) => {
+    if (!isCustomAssignment(test)) return;
+    const itemId = String(test.itemId || test.id || "").trim();
+    if (itemId && (extraItemIds.has(itemId) || knownIds.has(itemId))) return;
+
+    const hours = hoursFromDuration(test.duration, test.hours);
+    const code = String(test.code || "").trim().toUpperCase() || codeFromLine(test);
+    const category = String(test.category || "Other").trim() || "Other";
+    const row = {
+      id: itemId || newCustomId(),
+      custom: true,
+      name: test.name || "",
+      code,
+      hours,
+      category,
+      fastingType: test.fastingType || fastingFromCodeHours(code, hours),
+      duration: test.duration || durationFromHours(hours),
+      kind: "test",
+    };
+
+    const host = pinnedGoals.find((group) =>
+      group.tests.some((entry) => sameCategoryName(entry.category, category)),
+    );
+    if (host) {
+      if (!extras[host.id]) extras[host.id] = {};
+      const sectionName = String(
+        host.tests.find((entry) => sameCategoryName(entry.category, category))?.category || category,
+      ).trim() || "Other";
+      if (!extras[host.id][sectionName]) extras[host.id][sectionName] = [];
+      extras[host.id][sectionName].push(row);
+    } else {
+      standalone.push(row);
+    }
+  });
+
+  return { extras, standalone };
 }
 
 function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = true }) {
@@ -1157,8 +1230,9 @@ function selectedFromRecommendation(items, recommended) {
   return map;
 }
 
-function AssignedTestHistory({ userId, current, history, onToast }) {
+function AssignedTestHistory({ userId, current, history, onToast, onDelete, canEdit = false, busy = false }) {
   const [expandedId, setExpandedId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const rows = useMemo(() => {
     const list = [];
     if (current?.id) list.push({ ...current, status: "current" });
@@ -1181,19 +1255,23 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
   return (
     <div className="ua-cp-ip-assign-history">
       <h3 className="ua-cp-ip-assign-history__title">Assigned test history</h3>
-      <p className="ua-cp-ip-assign-history__intro">Every published list is kept, newest first.</p>
+      <p className="ua-cp-ip-assign-history__intro">Lists are shown by the date they were published, newest first.</p>
       {rows.map((entry) => {
         const tests = testsFromRecommendation(entry);
         const expanded = expandedId === entry.id;
         const preview = tests.slice(0, 3).map((test) => test.name || test.testId).filter(Boolean).join(", ");
+        const publishedOn = formatDisplayDate(assignmentDate(entry));
+        const reportOn = formatDisplayDate(entry.reportDate);
+        const showReportDate = Boolean(entry.reportDate) && reportOn !== publishedOn;
         return (
           <div key={entry.id} className="ua-cp-ip-history__item">
             <div className="ua-cp-ip-history__row">
               <div className="ua-cp-ip-history__info">
-                <strong>{formatDisplayDate(entry.reportDate || entry.createdAt)}</strong>
+                <strong>{publishedOn}</strong>
                 <span>
                   {tests.length} test{tests.length === 1 ? "" : "s"}
                   {preview ? ` · ${preview}${tests.length > 3 ? "…" : ""}` : ""}
+                  {showReportDate ? ` · Report date ${reportOn}` : ""}
                 </span>
               </div>
               <div className="ua-cp-ip-history__actions">
@@ -1210,18 +1288,29 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
                 <button
                   type="button"
                   className="ua-cp-ip-history__dl"
-                  aria-label={`Download assigned tests ${formatDisplayDate(entry.reportDate)}`}
+                  aria-label={`Download assigned tests ${publishedOn}`}
                   onClick={() => downloadRecommendationList({
                     userId,
                     recommendationId: entry.id,
                     pdfUrl: entry.pdfUrl,
-                    reportDate: entry.reportDate,
+                    reportDate: entry.reportDate || assignmentDate(entry),
                     tests,
                     onToast,
                   })}
                 >
                   ↓
                 </button>
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="ua-cp-ip-history__delete"
+                    disabled={busy}
+                    aria-label={`Delete assigned tests ${publishedOn}`}
+                    onClick={() => setPendingDelete(entry)}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             </div>
             {expanded ? (
@@ -1238,6 +1327,29 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
           </div>
         );
       })}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete recommended tests"
+        title={
+          pendingDelete?.status === "current"
+            ? "Delete the current recommended test list?"
+            : `Delete the list from ${formatDisplayDate(assignmentDate(pendingDelete))}?`
+        }
+        body={
+          pendingDelete?.status === "current"
+            ? "This removes the list sent to the client. The next older list, if any, becomes current."
+            : "This permanently removes this published list and its PDF."
+        }
+        cancelLabel="Keep list"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const id = pendingDelete?.id;
+          setPendingDelete(null);
+          if (id) onDelete?.(id);
+        }}
+      />
     </div>
   );
 }
@@ -1252,16 +1364,21 @@ function groupTestsByCategory(tests) {
   return [...map.entries()].map(([name, rows]) => ({ name, tests: rows }));
 }
 
-function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, canEdit = true, canExport = true }) {
+function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, onDelete, onReloadCatalog, canEdit = true, canExport = true }) {
   const items = useMemo(() => catalogItems(catalog), [catalog]);
   const allGroups = useMemo(() => testTitleGroups(items), [items]);
   const goalGroups = useMemo(() => allGroups.filter((group) => group.kind === "goal"), [allGroups]);
   const testGroups = useMemo(() => allGroups.filter((group) => group.kind !== "goal"), [allGroups]);
   const goalPresets = useMemo(() => catalogGoalPresets(catalog), [catalog]);
   const [selected, setSelected] = useState(() => selectedFromRecommendation(catalogItems(catalog), recommended));
-  const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
+  const [reportDate, setReportDate] = useState(todayIso());
   const [dirty, setDirty] = useState(!recommended);
   const [goalExtras, setGoalExtras] = useState({});
+  const [customRows, setCustomRows] = useState([]);
+  const [drag, setDrag] = useState(null);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const keepDirtyAfterGoalSaveRef = useRef(false);
+  const keepSelectedNamesRef = useRef(new Set());
   const [pinnedIds, setPinnedIds] = useState(() => {
     const initialItems = catalogItems(catalog);
     const initial = selectedFromRecommendation(initialItems, recommended);
@@ -1277,10 +1394,39 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
       goalGroups: nextGoals,
       selectedMap: nextSelected,
     });
-    setSelected(nextSelected);
-    setReportDate(recommended?.reportDate || todayIso());
-    setDirty(!recommended);
+    const customHydrate = customRowsFromRecommendation(recommended, {
+      items,
+      extraItemIds,
+      goalGroups: nextGoals,
+      selectedMap: nextSelected,
+    });
+    Object.entries(customHydrate.extras).forEach(([goalId, byCategory]) => {
+      extras[goalId] = extras[goalId] || {};
+      Object.entries(byCategory).forEach(([category, rows]) => {
+        extras[goalId][category] = [...(extras[goalId][category] || []), ...rows];
+      });
+    });
+    const customSelected = {};
+    Object.values(customHydrate.extras).forEach((byCategory) => {
+      Object.values(byCategory).forEach((rows) => {
+        rows.forEach((row) => { customSelected[row.id] = true; });
+      });
+    });
+    customHydrate.standalone.forEach((row) => { customSelected[row.id] = true; });
+    if (keepSelectedNamesRef.current.size) {
+      items.forEach((item) => {
+        const key = String(item.name || "").trim().toLowerCase();
+        if (key && keepSelectedNamesRef.current.has(key)) customSelected[item.id] = true;
+      });
+      keepSelectedNamesRef.current = new Set();
+    }
+    setSelected({ ...nextSelected, ...customSelected });
+    setReportDate(todayIso());
+    const keepDirty = keepDirtyAfterGoalSaveRef.current;
+    keepDirtyAfterGoalSaveRef.current = false;
+    setDirty(keepDirty || !recommended);
     setGoalExtras(extras);
+    setCustomRows(customHydrate.standalone);
     setPinnedIds(
       groups
         .filter((group) => {
@@ -1313,8 +1459,17 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     return Object.values(goalExtras[goalId] || {}).flat();
   }
 
+  function allAssignableTests() {
+    return [...items, ...extrasForGoalAll(), ...customRows];
+  }
+
+  function extrasForGoalAll() {
+    return Object.values(goalExtras).flatMap((byCategory) => Object.values(byCategory || {}).flat());
+  }
+
   function testsForGroup(group) {
     if (group?.kind === "goal") return [...group.tests, ...extrasForGoal(group.id)];
+    if (group?.kind === "custom") return customRows;
     return group?.tests || [];
   }
 
@@ -1366,17 +1521,48 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     onToast(kind === "goal" ? "Goal removed" : "Test removed");
   }
 
-  function addExtraToCategory(goalId, category, item) {
-    if (!item) return;
+  function addCustomToCategory(goalId, category) {
+    const row = emptyCustomTest(category);
     setGoalExtras((prev) => {
       const byGoal = { ...(prev[goalId] || {}) };
-      const list = [...(byGoal[category] || [])];
-      if (list.some((test) => test.id === item.id)) return prev;
-      byGoal[category] = [...list, item];
+      byGoal[category] = [...(byGoal[category] || []), row];
       return { ...prev, [goalId]: byGoal };
     });
-    setSelected((prev) => ({ ...prev, [item.id]: true }));
-    setPinnedIds((ids) => ids.filter((entry) => entry !== item.catalogId && entry !== item.id));
+    setSelected((prev) => ({ ...prev, [row.id]: true }));
+    markDirty();
+  }
+
+  function addStandaloneCustom() {
+    const row = emptyCustomTest("Other");
+    setCustomRows((list) => [...list, row]);
+    setSelected((prev) => ({ ...prev, [row.id]: true }));
+    markDirty();
+  }
+
+  function patchCustomTest(id, patch, { goalId, category } = {}) {
+    const nextPatch = { ...patch };
+    if (patch.code != null || patch.hours != null) {
+      const current = goalId
+        ? (goalExtras[goalId]?.[category] || []).find((test) => test.id === id)
+        : customRows.find((test) => test.id === id);
+      const code = patch.code != null ? patch.code : current?.code;
+      const hours = patch.hours != null ? patch.hours : current?.hours;
+      nextPatch.fastingType = fastingFromCodeHours(code, hours);
+      nextPatch.duration = durationFromHours(hours);
+    }
+    if (goalId) {
+      setGoalExtras((prev) => ({
+        ...prev,
+        [goalId]: {
+          ...(prev[goalId] || {}),
+          [category]: (prev[goalId]?.[category] || []).map((test) => (
+            test.id === id ? { ...test, ...nextPatch } : test
+          )),
+        },
+      }));
+    } else {
+      setCustomRows((list) => list.map((test) => (test.id === id ? { ...test, ...nextPatch } : test)));
+    }
     markDirty();
   }
 
@@ -1391,7 +1577,36 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     });
     setSelected((prev) => ({ ...prev, [itemId]: false }));
     markDirty();
-    onToast("Extra test removed");
+    onToast("Test removed");
+  }
+
+  function removeStandaloneCustom(id) {
+    setCustomRows((list) => list.filter((test) => test.id !== id));
+    setSelected((prev) => ({ ...prev, [id]: false }));
+    markDirty();
+    onToast("Test removed");
+  }
+
+  function onCustomDrop({ goalId, category, index }) {
+    if (!drag || drag.type !== "custom") return;
+    const sameList = drag.goalId === goalId && drag.category === category;
+    if (!sameList) {
+      setDrag(null);
+      return;
+    }
+    if (goalId) {
+      setGoalExtras((prev) => ({
+        ...prev,
+        [goalId]: {
+          ...(prev[goalId] || {}),
+          [category]: moveItem(prev[goalId]?.[category] || [], drag.index, index),
+        },
+      }));
+    } else {
+      setCustomRows((list) => moveItem(list, drag.index, index));
+    }
+    setDrag(null);
+    markDirty();
   }
 
   function addGroup(group) {
@@ -1421,7 +1636,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
 
   async function downloadList() {
     const selectedTests = selectedIds
-      .map((id) => items.find((test) => test.id === id))
+      .map((id) => allAssignableTests().find((test) => test.id === id))
       .filter(Boolean);
     await downloadRecommendationList({
       userId: user?.id,
@@ -1434,69 +1649,187 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
   }
 
   async function publish() {
-    if (!selectedIds.length) {
+    const catalogIds = selectedIds.filter((id) => !String(id).startsWith("custom::"));
+    const customTests = allAssignableTests()
+      .filter((test) => test.custom && selected[test.id])
+      .map((test) => ({
+        id: test.id,
+        itemId: test.id,
+        name: String(test.name || "").trim(),
+        code: String(test.code || "FBS").trim().toUpperCase() || "FBS",
+        hours: hoursFromDuration(test.duration, test.hours),
+        category: test.category || "Other",
+      }));
+    if (customTests.some((test) => test.name.length < 2)) {
+      onToast("Test names need at least 2 characters");
+      return;
+    }
+    if (!catalogIds.length && !customTests.length) {
       onToast("Select at least one test");
       return;
     }
-    const ok = await onPublish({ reportDate, testIds: selectedIds });
+    const ok = await onPublish({ reportDate, testIds: catalogIds, customTests });
     if (ok) setDirty(false);
   }
 
-  function renderTestRows(tests, { extraGoalId, extraCategory } = {}) {
-    return tests.map((test) => {
+  function extrasToSave(goalId) {
+    return extrasForGoal(goalId)
+      .filter((test) => test.custom)
+      .map((test) => ({
+        id: test.id,
+        name: String(test.name || "").trim(),
+        code: String(test.code || "FBS").trim().toUpperCase() || "FBS",
+        hours: hoursFromDuration(test.duration, test.hours),
+        category: test.category || "Other",
+        selected: selected[test.id] !== false,
+      }))
+      .filter((test) => test.name.length >= 2);
+  }
+
+  async function saveToGoal(goalId) {
+    const ids = goalId ? [goalId] : visibleGoalGroups.map((group) => group.id);
+    const payloads = ids
+      .map((id) => ({ id, tests: extrasToSave(id) }))
+      .filter((entry) => entry.tests.length);
+    if (!payloads.length) {
+      onToast("Add a named test under a goal first");
+      return;
+    }
+    const userId = user?.id;
+    if (!userId || !onReloadCatalog) return;
+    setSavingGoal(true);
+    try {
+      keepSelectedNamesRef.current = new Set(
+        payloads.flatMap((entry) => entry.tests.map((test) => test.name.toLowerCase())),
+      );
+      keepDirtyAfterGoalSaveRef.current = true;
+      for (const entry of payloads) {
+        await appendUserGoalTests(userId, entry.id, entry.tests);
+      }
+      onToast(payloads.length === 1
+        ? "Tests saved to the goal. Publish when you want to send the list to the client."
+        : "Tests saved to the goals. Publish when you want to send the list to the client.");
+      await onReloadCatalog();
+    } catch (err) {
+      keepDirtyAfterGoalSaveRef.current = false;
+      keepSelectedNamesRef.current = new Set();
+      onToast(err?.message || "Failed to save tests to the goal");
+    } finally {
+      setSavingGoal(false);
+    }
+  }
+
+  function renderTestRows(tests, { goalId, category } = {}) {
+    return tests.map((test, testIndex) => {
       const on = !!selected[test.id];
-      const extra = Boolean(extraGoalId && extraCategory);
+      const custom = Boolean(test.custom);
+      const editable = custom && canEdit && !busy;
       return (
-        <label
+        <div
           key={test.id}
-          role="row"
-          className={`ua-cp-ip-line-table__row${on ? " is-on" : ""}${extra ? " is-extra" : ""}`}
-          onMouseDown={(e) => e.preventDefault()}
+          className={`ua-cfg-goals-lines__row${on ? " is-on" : ""}${custom ? " is-extra" : ""}`}
+          onDragOver={(event) => {
+            if (drag?.type === "custom" && drag.goalId === goalId && drag.category === category) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onCustomDrop({ goalId, category, index: testIndex });
+          }}
         >
-          <span role="cell" className="ua-cp-ip-line-table__check">
+          <span
+            className="ua-cfg-goals-grip"
+            draggable={editable}
+            aria-hidden="true"
+            onDragStart={(event) => {
+              if (!editable) return;
+              event.stopPropagation();
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", test.id);
+              setDrag({ type: "custom", goalId, category, index: testIndex });
+            }}
+            onDragEnd={() => setDrag(null)}
+          >
+            <GripIcon />
+          </span>
+          <input
+            type="checkbox"
+            className="ua-cfg-goals-check"
+            checked={on}
+            disabled={!canEdit || busy}
+            aria-label={`Include ${test.name || "test"}`}
+            onChange={() => toggleTest(test.id)}
+          />
+          <input
+            className="ua-cfg-goals-field"
+            value={test.name}
+            disabled={!editable}
+            readOnly={!custom}
+            placeholder="Test name"
+            aria-label="Test name"
+            onChange={(event) => patchCustomTest(test.id, { name: event.target.value }, { goalId, category })}
+          />
+          <CodeField
+            value={test.code || "FBS"}
+            disabled={!editable}
+            onChange={(code) => patchCustomTest(test.id, { code }, { goalId, category })}
+          />
+          <label className="ua-cfg-goals-hours">
             <input
-              type="checkbox"
-              checked={on}
-              onChange={() => toggleTest(test.id)}
-              disabled={!canEdit || busy}
+              type="number"
+              min="0"
+              max="168"
+              className="ua-cfg-goals-field ua-cfg-goals-field--hours"
+              value={test.hours ?? hoursFromDuration(test.duration)}
+              disabled={!editable}
+              aria-label="Fasting or prep hours"
+              onChange={(event) => {
+                const hours = event.target.value === "" ? "" : Number(event.target.value);
+                patchCustomTest(test.id, { hours }, { goalId, category });
+              }}
             />
-            <span style={{ borderRadius: "5px" }} className={`ua-cp-ip-check${on ? " ua-cp-ip-check--on" : ""}`}>
-              {on ? "✓" : ""}
-            </span>
-          </span>
-          <span role="cell" data-label="Category">{test.category || "—"}</span>
-          <span role="cell" data-label="Test Name" className="ua-cp-ip-line-table__name">
-            {test.name}
-            {extra ? <span className="ua-cp-ip-extra-tag">Extra</span> : null}
-          </span>
-          <span role="cell" data-label="Fasting Type">
-            {test.fastingType ? (
-              <span className={`ua-cp-ip-fast-pill ua-cp-ip-fast-pill--${slugify(test.fastingType)}`}>
-                {test.fastingType}
-              </span>
-            ) : "—"}
-          </span>
-          <span role="cell" data-label="Duration" className={extra ? "ua-cp-ip-line-table__duration" : undefined}>
-            {formatTestDuration(test.duration)}
-            {extra && canEdit ? (
-              <button
-                type="button"
-                className="ua-cp-ip-extra-remove"
-                disabled={busy}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  removeExtraFromCategory(extraGoalId, extraCategory, test.id);
-                }}
-                aria-label={`Remove extra ${test.name}`}
-              >
-                ×
-              </button>
-            ) : null}
-          </span>
-        </label>
+            <span>hrs</span>
+          </label>
+          {custom && canEdit ? (
+            <button
+              type="button"
+              className="ua-cfg-goals-icon"
+              aria-label="Remove test"
+              disabled={busy}
+              onClick={() => {
+                if (goalId) removeExtraFromCategory(goalId, category, test.id);
+                else removeStandaloneCustom(test.id);
+              }}
+            >
+              ×
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
       );
     });
+  }
+
+  function renderTestEditor(tests, { goalId, category, label, onAdd } = {}) {
+    return (
+      <div className="ua-cfg-goals-lines ua-cp-ip-test-editor" aria-label={label}>
+        <div className="ua-cfg-goals-lines__head" aria-hidden="true">
+          <span />
+          <span />
+          <span>Test</span>
+          <span>BM/PM</span>
+          <span>Duration</span>
+          <span />
+        </div>
+        {renderTestRows(tests, { goalId, category })}
+        {canEdit && onAdd ? (
+          <button type="button" className="ua-cfg-goals-add" disabled={busy} onClick={onAdd}>
+            + Add test
+          </button>
+        ) : null}
+      </div>
+    );
   }
 
   function renderGroupCard(group, { asGoal = false } = {}) {
@@ -1521,6 +1854,16 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
           <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
           {asGoal ? <span className="ua-cp-ip-test-group__badge">Goal</span> : null}
           <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
+          {asGoal && canEdit && extrasToSave(group.id).length ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              disabled={busy || savingGoal}
+              onClick={() => saveToGoal(group.id)}
+            >
+              {savingGoal ? "Saving…" : "Save to goal"}
+            </button>
+          ) : null}
           {canEdit ? (
             <button
               type="button"
@@ -1536,48 +1879,22 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
         {asGoal && sections?.length ? (
           sections.map((section) => {
             const extraTests = goalExtras[group.id]?.[section.name] || [];
-            const addOptions = catalogExtraOptions(items, {
-              currentGoalId: group.id,
-              preferCategory: section.name,
-              excludeTests: [...testsForGroup(group), ...extraTests],
-            });
             return (
               <div key={`${group.id}-${section.name}`} className="ua-cp-ip-goal-section">
                 <div className="ua-cp-ip-goal-section__label">{section.name}</div>
-                <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} · ${section.name}`}>
-                  <div className="ua-cp-ip-line-table__head" role="row">
-                    <span role="columnheader" aria-label="Select" />
-                    <span role="columnheader">Category</span>
-                    <span role="columnheader">Test Name</span>
-                    <span role="columnheader">Fasting Type</span>
-                    <span role="columnheader">Duration</span>
-                  </div>
-                  {renderTestRows(section.tests)}
-                  {extraTests.length ? renderTestRows(extraTests, { extraGoalId: group.id, extraCategory: section.name }) : null}
-                </div>
-                {canEdit ? (
-                  <CategoryAddTests
-                    category={section.name}
-                    options={addOptions}
-                    disabled={busy}
-                    onToast={onToast}
-                    onAdd={(item) => addExtraToCategory(group.id, section.name, item)}
-                  />
-                ) : null}
+                {renderTestEditor([...section.tests, ...extraTests], {
+                  goalId: group.id,
+                  category: section.name,
+                  label: `${group.name} · ${section.name}`,
+                  onAdd: () => addCustomToCategory(group.id, section.name),
+                })}
               </div>
             );
           })
         ) : (
-          <div className="ua-cp-ip-line-table" role="table" aria-label={`${group.name} tests`}>
-            <div className="ua-cp-ip-line-table__head" role="row">
-              <span role="columnheader" aria-label="Select" />
-              <span role="columnheader">Category</span>
-              <span role="columnheader">Test Name</span>
-              <span role="columnheader">Fasting Type</span>
-              <span role="columnheader">Duration</span>
-            </div>
-            {renderTestRows(group.tests)}
-          </div>
+          renderTestEditor(group.tests, {
+            label: `${group.name} tests`,
+          })
         )}
       </div>
     );
@@ -1597,10 +1914,20 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
             <span>Report date</span>
             <input type="date" value={reportDate} onChange={(e) => { setReportDate(e.target.value); markDirty(); }} />
           </label>
+          {canEdit && visibleGoalGroups.some((group) => extrasToSave(group.id).length) ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline"
+              disabled={busy || savingGoal}
+              onClick={() => saveToGoal()}
+            >
+              {savingGoal ? "Saving…" : "Save to goal"}
+            </button>
+          ) : null}
           {published ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--muted" disabled>Published</button>
           ) : canEdit ? (
-            <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy} onClick={publish}>
+            <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy || savingGoal} onClick={publish}>
               {busy ? "Publishing…" : "Publish"}
             </button>
           ) : null}
@@ -1617,7 +1944,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
           </div>
         ) : (
           <div className="ua-cp-ip-banner">
-            Unpublished changes — publishing sends the updated list to {firstName(user)} on WhatsApp and in the app.
+            Unpublished changes — Save to goal updates the goal catalog without notifying the client. Publish sends the list to {firstName(user)} on WhatsApp and in the app.
           </div>
         )
       ) : null}
@@ -1628,7 +1955,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
             <div className="ua-cp-ip-assign-block__head">
               <div>
                 <h4 className="ua-cp-ip-assign-block__title">Assign by goal</h4>
-                <p className="ua-cp-ip-assign-block__sub">Add or remove admin-created goals. Tests stay grouped by section.</p>
+                <p className="ua-cp-ip-assign-block__sub">Add tests with + Add test, then Save to goal. That updates the goal without publishing to the client.</p>
               </div>
             </div>
             {goalPresets.length ? (
@@ -1713,6 +2040,9 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
         current={recommended}
         history={history}
         onToast={onToast}
+        onDelete={onDelete}
+        canEdit={canEdit}
+        busy={busy}
       />
     </div>
   );
@@ -2486,8 +2816,13 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       setHistory(Array.isArray(rec.value?.history) ? rec.value.history : []);
     }
     if (labs.status === "fulfilled") {
-      setReports(Array.isArray(labs.value?.reports) ? labs.value.reports : []);
-      setSubmissionLocked(Boolean(labs.value?.submissionLocked));
+      const nextReports = Array.isArray(labs.value?.reports) ? labs.value.reports : [];
+      setReports(nextReports);
+      if (typeof labs.value?.submissionLocked === "boolean") {
+        setSubmissionLocked(labs.value.submissionLocked);
+      } else {
+        setSubmissionLocked(nextReports.length > 0);
+      }
     }
     if (tests.status === "fulfilled") {
       const list = Array.isArray(tests.value) ? tests.value : tests.value?.tests || [];
@@ -2499,6 +2834,13 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     const failed = [tests, rec, labs].find((result) => result.status === "rejected");
     if (failed) throw failed.reason;
   };
+
+  async function handleReloadCatalog() {
+    if (!live) return;
+    const tests = await fetchTestCatalog(userId);
+    const list = Array.isArray(tests) ? tests : tests?.tests || [];
+    setCatalog(list);
+  }
 
   useEffect(() => {
     if (!live) return undefined;
@@ -2585,12 +2927,27 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       const locked = await updateUserLabReportSubmission(userId, enabled);
       setSubmissionLocked(locked);
       onUserUpdated?.({ ...user, labReportSubmissionLocked: locked });
-      onToast?.(enabled ? "Submit panel enabled for the client" : "Submit panel locked for the client");
+      onToast?.(enabled
+        ? "Client can submit a new report in the app"
+        : "Client report upload disabled in the app");
     } catch (err) {
       setSubmissionLocked(previous);
-      onToast?.(err?.message || "Failed to update the submit panel");
+      onToast?.(err?.message || "Failed to update client report upload");
     } finally {
       setSubmissionBusy(false);
+    }
+  }
+
+  async function handleDeleteRecommendation(recommendationId) {
+    try {
+      setBusy(true);
+      await deleteUserTestRecommendation(userId, recommendationId);
+      onToast?.("Recommended test list deleted");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to delete recommended tests");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -2640,24 +2997,24 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
           <h2 className="ua-cp-ip-head__title">Internal parameters</h2>
           <p className="ua-cp-ip-head__sub">Coach-recommended blood tests, report uploads, and reviewed results.</p>
         </div>
-        {live && submissionLocked != null ? (
+        {live ? (
           <div
             className={`ua-cp-ip-submit${submissionLocked ? " ua-cp-ip-submit--locked" : ""}`}
             title={submissionLocked
-              ? "The client submitted a report. Turn this on to let them submit again."
-              : "Turns off automatically after the client submits a report."}
+              ? "The client cannot submit or update a blood report in the app. Turn this on to allow a new upload."
+              : "The client can submit a blood report in the app. Turn this off to disable new uploads."}
           >
             <div className="ua-cp-ip-submit__text">
-              <span className="ua-cp-ip-submit__label">Submit panel</span>
+              <span className="ua-cp-ip-submit__label">Client report upload</span>
               <span className="ua-cp-ip-submit__status">
-                {submissionLocked ? "Locked for the client" : "Open for the client"}
+                {submissionLocked ? "Disabled in the app" : "Allowed in the app"}
               </span>
             </div>
             <button
               type="button"
               className={`ua-toggle${submissionLocked ? "" : " ua-toggle--on"}`}
               aria-pressed={!submissionLocked}
-              aria-label={submissionLocked ? "Enable submit panel for the client" : "Lock submit panel for the client"}
+              aria-label={submissionLocked ? "Allow the client to upload a new report" : "Disable new report uploads in the app"}
               disabled={submissionBusy || !canEdit}
               onClick={() => handleSubmissionEnabled(submissionLocked)}
             >
@@ -2734,6 +3091,8 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
             busy={busy}
             onToast={onToast}
             onPublish={handlePublish}
+            onDelete={handleDeleteRecommendation}
+            onReloadCatalog={handleReloadCatalog}
             canEdit={canEdit}
             canExport={canExport}
           />

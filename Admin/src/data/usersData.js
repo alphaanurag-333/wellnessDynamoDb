@@ -129,14 +129,18 @@ export function buildUserTypeTabs(pool, activeTab, countPool = pool) {
 
 const TIER_ALIASES = {
   HEAL: "Seek to Heal",
+  SEEK_TO_HEAL: "Seek to Heal",
   MAINTENANCE: "Maintenance",
   PWC: "Consultancy",
+  CONSULTANCY: "Consultancy",
+  CONSULTANCY_ONLY: "Consultancy",
   SEEK: "Seek",
 };
 
 export function normalizeTier(tier) {
   if (!tier) return tier;
-  return TIER_ALIASES[tier] || tier;
+  const key = String(tier).trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return TIER_ALIASES[key] || tier;
 }
 
 export function tierStyle(tier) {
@@ -219,6 +223,14 @@ export function userTierBadge(user) {
     return { label: "EAGLE", style: EAGLE_TIER_STYLE };
   }
   return { label: tierLabel(user?.tier), style: tierStyle(user?.tier) };
+}
+
+/** Badge for API payloads that expose `userTier` instead of UI `tier`. */
+export function userTierBadgeFromApi(user) {
+  return userTierBadge({
+    ...user,
+    tier: user?.tier || user?.userTier,
+  });
 }
 
 export function eagleConversionPrompt(user) {
