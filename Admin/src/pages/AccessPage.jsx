@@ -97,7 +97,7 @@ function mapApiRolesToUi(apiRoles) {
   }));
 }
 
-function ToggleSwitch({ kind, onClick, disabled }) {
+function ToggleSwitch({ kind, onClick, disabled, label }) {
   if (kind === "na") return <span className="ua-ac-dash">—</span>;
   return (
     <button
@@ -106,6 +106,8 @@ function ToggleSwitch({ kind, onClick, disabled }) {
       onClick={onClick}
       disabled={disabled}
       aria-pressed={kind === "on" || kind === "added" || kind === "inherited"}
+      aria-label={label || undefined}
+      title={label || undefined}
     >
       <span className="ua-ac-switch__knob" />
     </button>
@@ -1415,6 +1417,7 @@ function RolesPermissionsTab({ onToast }) {
                               <ToggleSwitch
                                 kind={kind}
                                 disabled={role.locked}
+                                label={fid === "rep" && act === "create" ? "Submit blood report to AI" : undefined}
                                 onClick={() => handleToggle(fid, act)}
                               />
                             </div>

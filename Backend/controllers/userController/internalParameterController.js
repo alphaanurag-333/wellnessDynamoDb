@@ -89,6 +89,22 @@ async function lockLabReportSubmission(userId) {
   return updated;
 }
 
+exports.getUserLabReportSubmissionController = asyncHandler(async (req, res) => {
+  const userId = req.auth?.sub || req.user?.id;
+  if (!userId) throw new AppError("Unauthorized", 401);
+
+  const submissionLocked = await submissionLockedForUser(userId);
+  const state = labReportSubmissionState({ labReportSubmissionLocked: submissionLocked });
+
+  return res.status(200).json({
+    status: true,
+    message: submissionLocked
+      ? "Submit panel locked for the client"
+      : "Submit panel open for the client",
+    ...state,
+  });
+});
+
 exports.getUserRecommendedTestsController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
   if (!userId) throw new AppError("Unauthorized", 401);

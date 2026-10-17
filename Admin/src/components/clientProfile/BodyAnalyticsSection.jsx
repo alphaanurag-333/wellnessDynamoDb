@@ -41,12 +41,57 @@ function SegToggle({ options, value, onChange, size = "sm" }) {
   );
 }
 
-function HistoryTable({ title, labelCol, columns, rows, unitToggle }) {
+const DOB_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function parseDobParts(user) {
+  const iso = String(user?.dobIso || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) };
+  }
+  const display = String(user?.dob || "").trim().match(/^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})$/);
+  if (!display) return null;
+  const month = DOB_MONTHS.findIndex((name) => name.toLowerCase() === display[2].toLowerCase());
+  if (month < 0) return null;
+  return { year: Number(display[3]), month: month + 1, day: Number(display[1]) };
+}
+
+function clientAgeYears(user) {
+  const parts = parseDobParts(user);
+  if (!parts) return null;
+  const today = new Date();
+  let age = today.getFullYear() - parts.year;
+  const monthDelta = today.getMonth() + 1 - parts.month;
+  if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < parts.day)) age -= 1;
+  if (!Number.isFinite(age) || age < 0 || age > 120) return null;
+  return age;
+}
+
+function ClientAgeGender({ user }) {
+  const age = clientAgeYears(user);
+  const gender = String(user?.gender || "").trim();
+  return (
+    <div className="ua-cp-ba-client-facts" aria-label="Client age and gender">
+      <span className="ua-cp-ba-client-facts__item">
+        <span className="ua-cp-ba-client-facts__label">Age</span>
+        <span className="ua-cp-ba-client-facts__value">{age == null ? "—" : `${age} yrs`}</span>
+      </span>
+      <span className="ua-cp-ba-client-facts__item">
+        <span className="ua-cp-ba-client-facts__label">Gender</span>
+        <span className="ua-cp-ba-client-facts__value">{gender || "—"}</span>
+      </span>
+    </div>
+  );
+}
+
+function HistoryTable({ title, labelCol, columns, rows, unitToggle, clientFacts }) {
   return (
     <section className="ua-cp-ba-block">
       <div className="ua-cp-ba-block__head">
         <h3 className="ua-cp-ba-block__title">{title}</h3>
-        {unitToggle}
+        <div className="ua-cp-ba-block__tools">
+          {clientFacts}
+          {unitToggle}
+        </div>
       </div>
       <div className="ua-cp-ba-table-wrap">
         <table className="ua-cp-ba-table">
@@ -218,17 +263,11 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
           Review this photo
         </p>
         <h3 id="photo-review-title" className="ua-cp-present-modal__title">
-          {rejecting
-            ? angle === "Weight"
-              ? `Reject this ${angle} photo?`
-              : "Reject this upload?"
-            : `Accept this ${angle} photo?`}
+          {rejecting ? `Reject this ${angle} photo?` : `Accept this ${angle} photo?`}
         </h3>
         <p className="ua-cp-present-modal__body">
           {rejecting
-            ? angle === "Weight"
-              ? "The client is notified and can upload a clearer photo. Add a reason if you want them to see why."
-              : `Rejecting this ${angle.toLowerCase()} photo also rejects the front, right, and left photos from the same upload. The client will not see that set until they upload it again.`
+            ? "The client is notified and can upload a clearer photo. Add a reason if you want them to see why."
             : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
         </p>
         {rejecting ? (
@@ -328,13 +367,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
         rejectionReason: action === "rejected" ? rejectReason.trim() : "",
       });
       onReviewed?.(result?.photo, photo.angle);
-      onToast?.(
-        action === "approved"
-          ? `Accepted ${angle} photo (${photo.date})`
-          : angle === "Weight"
-            ? `Rejected ${angle} photo (${photo.date})`
-            : `Rejected front, right, and left photos (${photo.date})`,
-      );
+      onToast?.(action === "approved" ? `Accepted ${angle} photo (${photo.date})` : `Rejected ${angle} photo (${photo.date})`);
       setReviewTarget(null);
       setRejectReason("");
     } catch (error) {
@@ -650,6 +683,7 @@ export function BodyAnalyticsSection({ user, onToast }) {
         columns={historyColumns}
         rows={measureRows}
         unitToggle={unitToggle}
+        clientFacts={<ClientAgeGender user={user} />}
       />
 
       <HistoryTable

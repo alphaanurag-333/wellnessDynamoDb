@@ -26,6 +26,7 @@ describe("labReportSubmissionState", () => {
     const locked = labReportSubmissionState({ labReportSubmissionLocked: true });
     assert.equal(locked.canSubmitLabReport, false);
     assert.equal(locked.submissionLocked, true);
+    assert.equal(locked.submissionEnabled, false);
     assert.match(locked.submissionLockedMessage, /wellness coach/i);
   });
 
@@ -33,6 +34,7 @@ describe("labReportSubmissionState", () => {
     const open = labReportSubmissionState({ labReportSubmissionLocked: false }, { hasReports: true });
     assert.equal(open.canSubmitLabReport, true);
     assert.equal(open.submissionLocked, false);
+    assert.equal(open.submissionEnabled, true);
     assert.equal(open.submissionLockedMessage, null);
   });
 });

@@ -434,7 +434,7 @@ function DomainAccordion({
   );
 }
 
-function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onToast, canWrite = true }) {
+function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onSave, saving = false, onToast, canWrite = true }) {
   const [point, setPoint] = useState("");
   const merged = [...autoPoints, ...extraPoints];
 
@@ -443,7 +443,7 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
     if (!trimmed) return;
     onAddPoint(trimmed);
     setPoint("");
-    onToast("Focus point added — save assessment to sync to the app");
+    onToast("Focus point added — save areas to focus to sync to the app");
   }
 
   return (
@@ -499,6 +499,18 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
         />
         <button type="button" className="ua-cp-launch-focus__add-btn" onClick={addPoint}>Add point</button>
       </div>
+      ) : null}
+      {canWrite ? (
+        <div className="ua-cp-launch-focus__actions">
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+            disabled={saving}
+            onClick={onSave}
+          >
+            {saving ? "Saving…" : "Save focus areas"}
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -598,8 +610,11 @@ function LifestyleTab({
   const [scoringRef, setScoringRef] = useState(null);
   const [selectedFocus, setSelectedFocus] = useState([]);
   const [extraPoints, setExtraPoints] = useState([]);
+  const [pointsToNote, setPointsToNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingFocus, setSavingFocus] = useState(false);
   const hydratedFocusRef = useRef(null);
+  const hydratedNotesRef = useRef(null);
 
   const ratingOptions = config.ratings || [];
   const totals = useMemo(
@@ -631,7 +646,6 @@ function LifestyleTab({
     });
     setRatings(nextRatings);
     setReplies(nextReplies);
-    if (Array.isArray(latest?.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
   }, [latest]);
 
   const autoPoints = totals.domainRows
@@ -644,7 +658,15 @@ function LifestyleTab({
     const saved = Array.isArray(latest.focusPoints) ? latest.focusPoints : [];
     const isAutoPoint = (text) => / is below 50% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
     setExtraPoints(saved.filter((point) => !isAutoPoint(point)));
+    if (Array.isArray(latest.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
     hydratedFocusRef.current = latest.id;
+  }, [latest]);
+
+  useEffect(() => {
+    if (!latest?.id) return;
+    if (hydratedNotesRef.current === latest.id) return;
+    setPointsToNote(String(latest.pointsToNote || ""));
+    hydratedNotesRef.current = latest.id;
   }, [latest]);
 
   function handleRate(questionId, ratingId) {
@@ -681,8 +703,7 @@ function LifestyleTab({
     const payload = {
       assessmentDate: today,
       totalScore: Math.round(totals.overall),
-      focusAreaIds: selectedFocus,
-      focusPoints: [...autoPoints, ...extraPoints],
+      pointsToNote,
       answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
         questionId,
         ratingId: ratings[questionId] || "",
@@ -700,7 +721,11 @@ function LifestyleTab({
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
-      if (saved?.id) hydratedFocusRef.current = saved.id;
+      if (saved?.id) {
+        hydratedFocusRef.current = saved.id;
+        hydratedNotesRef.current = saved.id;
+        setPointsToNote(String(saved.pointsToNote || ""));
+      }
 
       const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
       const shouldCompleteLaunch =
@@ -733,6 +758,34 @@ function LifestyleTab({
       onToast(err?.message || "Failed to save LAUNCH assessment");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveFocusAreas() {
+    const userId = user?.id;
+    if (!userId) return;
+    const target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then save areas to focus");
+      return;
+    }
+    try {
+      setSavingFocus(true);
+      const saved = await updateUserLaunchAssessment(userId, target.id, {
+        focusAreaIds: selectedFocus,
+        focusPoints: [...autoPoints, ...extraPoints],
+      });
+      const next = [
+        saved,
+        ...(assessments || []).filter((row) => row.id !== saved.id),
+      ];
+      hydratedFocusRef.current = saved.id;
+      onAssessmentsChange(next);
+      onToast("Areas to focus saved");
+    } catch (err) {
+      onToast(err?.message || "Failed to save areas to focus");
+    } finally {
+      setSavingFocus(false);
     }
   }
 
@@ -812,6 +865,21 @@ function LifestyleTab({
         />
       ))}
       </div>
+      {canWrite || pointsToNote ? (
+      <div className="ua-cp-launch-notes">
+        <label className="ua-cp-launch-notes__label" htmlFor="launch-points-to-note">Points to Note</label>
+        <textarea
+          id="launch-points-to-note"
+          className="ua-cp-launch-notes__input"
+          rows={4}
+          value={pointsToNote}
+          readOnly={!canWrite}
+          maxLength={2000}
+          placeholder="Write points to note for this assessment"
+          onChange={(e) => setPointsToNote(e.target.value)}
+        />
+      </div>
+      ) : null}
       {canWrite ? (
       <div className="ua-cp-launch-savebar">
         <div className="ua-cp-launch-savebar__copy">
@@ -838,6 +906,8 @@ function LifestyleTab({
         extraPoints={extraPoints}
         onAddPoint={(item) => setExtraPoints((list) => [...list, item])}
         onRemovePoint={(index) => setExtraPoints((list) => list.filter((_, i) => i !== index))}
+        onSave={saveFocusAreas}
+        saving={savingFocus}
         onToast={onToast}
         canWrite={canWrite}
       />

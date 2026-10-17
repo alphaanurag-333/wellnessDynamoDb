@@ -76,6 +76,38 @@ function resolveHealthProgressSettings(user) {
   };
 }
 
+function programLookupText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function trackerFeatureKeysForProgramLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return [];
+
+  const keys = [];
+  if (/\b(fat loss|weight loss|fatloss)\b/.test(text)) keys.push("weightPic");
+  if (/\bdiabetes\b/.test(text)) keys.push("glucose");
+  if (/\b(pcod|pcos|pmos)\b/.test(text)) keys.push("menstrualCycle");
+  if (/\b(hypertension|blood pressure|heart)\b/.test(text)) keys.push("bloodPressure");
+  return keys;
+}
+
+function applyPurchasedProgramTrackers(settings, labels, user) {
+  const next = normalizeHealthProgressFeatures(settings);
+  const female = isFemaleUser(user);
+  for (const label of labels || []) {
+    for (const key of trackerFeatureKeysForProgramLabel(label)) {
+      if (key === "menstrualCycle" && !female) continue;
+      next[key] = true;
+    }
+  }
+  if (!female) next.menstrualCycle = false;
+  return next;
+}
+
 function hasAnyHealthProgressFeature(settings) {
   if (!settings) return false;
   return HEALTH_PROGRESS_FEATURE_KEYS.some((key) => Boolean(settings[key]));
@@ -132,13 +164,39 @@ function toNumberOrNull(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+const HEALTH_PROGRESS_TIME_ZONE = "Asia/Kolkata";
+
 function healthProgressToday() {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function healthProgressDateKey(value) {
+  if (value === undefined || value === null || value === "") return "";
+  const str = String(value).trim();
+  if (!str) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str) && isValidDateOnly(str)) return str;
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function healthProgressDayBounds(dateOnly) {
+  const key = healthProgressDateKey(dateOnly);
+  if (!key) return null;
+  const start = new Date(`${key}T00:00:00.000+05:30`);
+  const end = new Date(`${key}T23:59:59.999+05:30`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 function extractDateOnlyInput(value) {
@@ -260,6 +318,8 @@ module.exports = {
   normalizeHealthProgressFeatures,
   isFemaleUser,
   resolveHealthProgressSettings,
+  trackerFeatureKeysForProgramLabel,
+  applyPurchasedProgramTrackers,
   hasAnyHealthProgressFeature,
   normalizeGlucoseType,
   normalizeBodyPart,
@@ -279,6 +339,8 @@ module.exports = {
   parseMenstrualDates,
   parseConditionBodyPart,
   healthProgressToday,
+  healthProgressDateKey,
+  healthProgressDayBounds,
   formatChartDate,
   formatSummaryDate,
 };

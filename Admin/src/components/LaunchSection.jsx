@@ -62,6 +62,19 @@ function parseWeight(value) {
   return Math.min(100, Math.max(0, amount));
 }
 
+const KNOWN_RATING_TONES = new Set(["excellent", "good", "average", "below", "poor"]);
+
+function inferRatingTone(rating) {
+  const label = `${rating?.badge || ""} ${rating?.name || ""}`.toLowerCase();
+  if (/\bbelow\b/.test(label)) return "below";
+  if (/\bpoor\b/.test(label)) return "poor";
+  if (/\bexcellent\b/.test(label)) return "excellent";
+  if (/\bgood\b/.test(label)) return "good";
+  if (/\b(fair|average)\b/.test(label)) return "average";
+  const stored = String(rating?.tone || "").toLowerCase();
+  return KNOWN_RATING_TONES.has(stored) ? stored : "default";
+}
+
 function ScoringInfoModal({ open, ratings, onClose }) {
   if (!open) return null;
   const maxRating = ratings.reduce((max, row) => Math.max(max, Number(row.points) || 0), 0) || 100;
@@ -80,7 +93,7 @@ function ScoringInfoModal({ open, ratings, onClose }) {
         <p className="ua-cfg-launch-info-modal__hint">{launchScoringHint(ratings)}</p>
         <ul className="ua-cfg-launch-info-modal__ratings">
           {ratings.map((rating) => (
-            <li key={rating.id} className={`is-${rating.tone}`}>
+            <li key={rating.id} className={`is-${inferRatingTone(rating)}`}>
               <strong>{rating.name}</strong>
               <span>{rating.points} / {maxRating} pts</span>
               <em>{rating.description}</em>
@@ -128,8 +141,22 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     setLoading(true);
     try {
       const data = await adminGetLaunchConfig(null);
-      setRatings(data.ratings);
+      const ratingsWithTone = (data.ratings || []).map((row) => {
+        const tone = inferRatingTone(row);
+        return tone === row.tone ? row : { ...row, tone };
+      });
+      setRatings(ratingsWithTone);
       setDomains(data.domains);
+      const staleTones = (data.ratings || []).filter((row) => inferRatingTone(row) !== row.tone);
+      if (staleTones.length) {
+        Promise.all(
+          staleTones.map((row) =>
+            adminUpdateLaunchRating(null, row.id, { tone: inferRatingTone(row) }),
+          ),
+        ).catch((error) => {
+          onToast(error?.message || "Failed to save rating colors");
+        });
+      }
       setExpanded(new Set(data.domains.map((entry) => entry.id)));
     } catch (error) {
       onToast(error?.message || "Failed to load LAUNCH config");
@@ -238,7 +265,12 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
     setBusy(true);
     try {
-      const created = await adminCreateLaunchRating(null, { name, points, description });
+      const created = await adminCreateLaunchRating(null, {
+        name,
+        points,
+        description,
+        tone: inferRatingTone({ name, badge: name }),
+      });
       setRatings((prev) => [...prev, created]);
       setRatingDraft({ name: "", points: "", description: "" });
       onToast(`${name} rating added`);
@@ -293,6 +325,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       async () => {
         await adminDeleteLaunchDomain(null, domain.id);
         onToast(`${domain.name} removed`);
+      },
+      () => setDomains(previous),
+    );
+  }
+
+  async function moveDomain(index, direction) {
+    const target = index + direction;
+    const previous = domainsRef.current;
+    if (target < 0 || target >= previous.length) return;
+    const next = [...previous];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    const ranked = next.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    setDomains(ranked);
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = previous.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) => adminUpdateLaunchDomain(null, entry.id, { sortOrder: entry.sortOrder })),
+        );
       },
       () => setDomains(previous),
     );
@@ -384,6 +440,36 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     );
   }
 
+  async function moveQuestion(domainId, index, direction) {
+    const previous = domainsRef.current;
+    const domain = previous.find((entry) => entry.id === domainId);
+    const questions = domain?.questions || [];
+    const target = index + direction;
+    if (!domain || target < 0 || target >= questions.length) return;
+    const nextQuestions = [...questions];
+    const [moved] = nextQuestions.splice(index, 1);
+    nextQuestions.splice(target, 0, moved);
+    const ranked = nextQuestions.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    setDomains(
+      previous.map((entry) => (entry.id === domainId ? { ...entry, questions: ranked } : entry)),
+    );
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = questions.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) =>
+              adminUpdateLaunchQuestion(null, domainId, entry.id, { sortOrder: entry.sortOrder }),
+            ),
+        );
+      },
+      () => setDomains(previous),
+    );
+  }
+
   async function toggleQuestionEnabled(domainId, question) {
     const nextEnabled = !question.enabled;
     const domain = domains.find((entry) => entry.id === domainId);
@@ -438,16 +524,21 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       >
         <div className="ua-cfg-launch-ratings__list">
           {ratings.map((rating) => (
-            <div key={rating.id} className={`ua-cfg-launch-rating is-${rating.tone}`}>
+            <div key={rating.id} className={`ua-cfg-launch-rating is-${inferRatingTone(rating)}`}>
               <span  className="ua-cfg-launch-rating__badge" style={{width: "85px"}}>{rating.badge}</span>
               <input
                 type="text"
                 className="ua-cfg-launch-rating__name"
                 value={rating.name}
                 disabled={busy}
-                onChange={(event) =>
-                  persistRating(rating.id, { name: event.target.value, badge: event.target.value })
-                }
+                onChange={(event) => {
+                  const name = event.target.value;
+                  persistRating(rating.id, {
+                    name,
+                    badge: name,
+                    tone: inferRatingTone({ name, badge: name }),
+                  });
+                }}
               />
               <div className="ua-cfg-launch-rating__points">
                 <input
@@ -536,7 +627,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         )}
       >
         <div className="ua-cfg-drf-sections">
-          {domains.map((domain) => {
+          {domains.map((domain, index) => {
             const isOpen = expanded.has(domain.id);
             const questions = domain.questions ?? [];
             const pointsTotal = launchDomainPointsTotal({ ...domain, questions }, { enabledOnly: true });
@@ -567,6 +658,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
+                  <div className="ua-cfg-launch-domain__sort">
+                    <button
+                      type="button"
+                      aria-label={`Move ${domain.name} up`}
+                      title="Move up"
+                      disabled={busy || index === 0}
+                      onClick={() => moveDomain(index, -1)}
+                    >
+                      <svg viewBox="0 0 12 8" aria-hidden="true">
+                        <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move ${domain.name} down`}
+                      title="Move down"
+                      disabled={busy || index === domains.length - 1}
+                      onClick={() => moveDomain(index, 1)}
+                    >
+                      <svg viewBox="0 0 12 8" aria-hidden="true">
+                        <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     className="ua-cfg-drf-section__name"
@@ -635,6 +750,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       questions.map((question, index) => (
                         <div key={question.id} className="ua-cfg-drf-question ua-cfg-launch-question">
                           <span className="ua-cfg-drf-question__num">{index + 1}</span>
+                          <div className="ua-cfg-launch-question__sort">
+                            <button
+                              type="button"
+                              aria-label={`Move question ${index + 1} up`}
+                              title="Move up"
+                              disabled={busy || index === 0}
+                              onClick={() => moveQuestion(domain.id, index, -1)}
+                            >
+                              <svg viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Move question ${index + 1} down`}
+                              title="Move down"
+                              disabled={busy || index === questions.length - 1}
+                              onClick={() => moveQuestion(domain.id, index, 1)}
+                            >
+                              <svg viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             className="ua-cfg-drf-question__name"

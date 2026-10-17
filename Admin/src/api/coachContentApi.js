@@ -92,7 +92,8 @@ export function mapAccountToLetterCoach(account, letterVersion = 1, index = 0) {
 export function mapCommitmentLetterConfig(config = {}) {
   const text = normalizeCommitmentLetterText(config.commitment_letter_text);
   const version = Math.max(1, Number(config.commitment_letter_version) || 1);
-  return { text, version };
+  const templateUrl = String(config.commitment_letter_template || config.templateUrl || "").trim();
+  return { text, version, templateUrl };
 }
 
 const COACH_ROLE_LABELS = {

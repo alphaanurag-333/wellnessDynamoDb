@@ -2110,7 +2110,7 @@ function AiReadingCell({ reading, editing, onChange }) {
   );
 }
 
-function MockReportAnalysisTab({ onToast }) {
+function MockReportAnalysisTab({ onToast, canCreate = false }) {
   const { aiDates, protocol, nutritionSummary: initialNutrition } = INTERNAL_PARAMS;
   const [analysed, setAnalysed] = useState(INTERNAL_PARAMS.reportUpload.analysed);
   const [aiPanels, setAiPanels] = useState(() => cloneAiPanels(INTERNAL_PARAMS.aiPanels));
@@ -2199,14 +2199,19 @@ function MockReportAnalysisTab({ onToast }) {
         </div>
         <div className="ua-cp-ip-upload__actions">
           <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Downloading report")}>↓ Download</button>
-          {analysed ? (
-            <>
-              <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Resubmitting to AI"); }}>⚡ Resubmit to AI</button>
-            </>
-          ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Submitted to AI"); }}>⚡ Submit to AI</button>
-          )}
+          {analysed ? <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span> : null}
+          {canCreate ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+              onClick={() => {
+                setAnalysed(true);
+                onToast(analysed ? "Resubmitting to AI" : "Submitted to AI");
+              }}
+            >
+              ⚡ {analysed ? "Resubmit to AI" : "Submit to AI"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -2381,7 +2386,7 @@ function LiveReportAnalysisTab({
   onToast,
   clientName,
   canEdit = true,
-  canUpload = true,
+  canCreate = false,
   canExport = true,
   showMarkStepComplete = false,
   stepBusy = false,
@@ -2525,7 +2530,7 @@ function LiveReportAnalysisTab({
                 {reportAnalysed && report.aiStatus === "analysed" ? (
                   <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
                 ) : null}
-                {canUpload ? (
+                {canCreate ? (
                 <button
                   type="button"
                   className="ua-cp-btn ua-cp-btn--ai ua-cp-btn--sm"
@@ -2802,7 +2807,7 @@ function LiveReportAnalysisTab({
 
 export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const { can } = useViewAs();
-  const { canEdit, canUpload, canExport } = useClientSectionPermissions("internal");
+  const { canEdit, canCreate, canExport } = useClientSectionPermissions("internal");
   const canEditOnboarding = can("console.cl.edit");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -3156,14 +3161,14 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
           onToast={onToast}
           clientName={firstName(user)}
           canEdit={canEdit}
-          canUpload={canUpload}
+          canCreate={canCreate}
           canExport={canExport}
           showMarkStepComplete={internalStepPending && canEditOnboarding}
           stepBusy={stepBusy}
           onMarkStepComplete={handleMarkStepComplete}
         />
       ) : (
-        <MockReportAnalysisTab onToast={onToast} />
+        <MockReportAnalysisTab onToast={onToast} canCreate={canCreate} />
       )}
     </div>
   );

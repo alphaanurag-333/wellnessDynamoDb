@@ -28,6 +28,7 @@ import {
   moveMaintenanceUserToHeal,
   updateUserPersonalDetails,
   GENDER_UI_OPTIONS,
+  isGirlOnlyHealthConcern,
   toApiGender,
   parseWellnessJourneyTokens,
   formatWellnessJourneyDisplay,
@@ -352,6 +353,14 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       return;
     }
 
+    if (apiGender !== "female" && form.healthConcernId) {
+      const selectedConcern = goalOptions.find((opt) => opt.id === form.healthConcernId);
+      if (isGirlOnlyHealthConcern(selectedConcern?.title)) {
+        onToast("PCOD / PCOS is available for Girl only.");
+        return;
+      }
+    }
+
     const phoneParts = parsePhoneDisplay(form.phone);
     if (form.phone.trim()) {
       const phoneError = validatePhoneDigits(phoneParts.phone, {
@@ -557,9 +566,12 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           onChange={(e) => setForm((prev) => ({ ...prev, healthConcernId: e.target.value }))}
         >
           <option value="">Select goal</option>
-          {goalOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.title}</option>
-          ))}
+          {goalOptions.map((opt) => {
+            const girlOnly = isGirlOnlyHealthConcern(opt.title) && toApiGender(form.gender) !== "female";
+            return (
+              <option key={opt.id} value={opt.id} disabled={girlOnly}>{opt.title}</option>
+            );
+          })}
         </select>
       );
     }
@@ -579,7 +591,17 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           className="ua-cp-field__input ua-cp-field__input--select"
           value={form.gender}
           disabled={saveBusy}
-          onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+          onChange={(e) => {
+            const gender = e.target.value;
+            setForm((prev) => {
+              const next = { ...prev, gender };
+              if (toApiGender(gender) !== "female") {
+                const selected = goalOptions.find((opt) => opt.id === prev.healthConcernId);
+                if (isGirlOnlyHealthConcern(selected?.title)) next.healthConcernId = "";
+              }
+              return next;
+            });
+          }}
         >
           <option value="">Select gender</option>
           {GENDER_UI_OPTIONS.map((opt) => (

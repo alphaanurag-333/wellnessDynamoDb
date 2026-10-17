@@ -3,7 +3,7 @@ import State from "country-state-city/lib/state.js";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { adminListHealthConcerns } from "../api/healthConcernApi.js";
-import { createUser, GENDER_UI_OPTIONS } from "../api/usersApi.js";
+import { createUser, GENDER_UI_OPTIONS, isGirlOnlyHealthConcern, toApiGender } from "../api/usersApi.js";
 import { PHONE_COUNTRY_OPTIONS, INDIA_STATE_CITIES, phoneLengthForDial } from "../data/indiaLocations.js";
 import {
   DOB_MAX_AGE_YEARS,
@@ -274,6 +274,12 @@ function isOtherConcern(concerns, id) {
   return String(row?.title || "").trim().toLowerCase() === "other";
 }
 
+function girlOnlyConcernBlocked(gender, concerns, concernId) {
+  if (!concernId || toApiGender(gender) === "female") return false;
+  const row = concerns.find((c) => c.id === concernId);
+  return isGirlOnlyHealthConcern(row?.title);
+}
+
 export function CreateUserModal({ open, onClose, onCreated, onToast }) {
   const fileRef = useRef(null);
   const imagePreviewRef = useRef("");
@@ -432,6 +438,9 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
     const pinErr = validatePincode(form.pincode, { country: form.country || "India" });
     if (pinErr) next.pincode = pinErr;
     if (!form.primaryHealthConcern) next.primaryHealthConcern = "Primary health concern is required.";
+    else if (girlOnlyConcernBlocked(form.gender, concerns, form.primaryHealthConcern)) {
+      next.primaryHealthConcern = "PCOD / PCOS is available for Girl only.";
+    }
     if (showOtherConcern && !String(form.primaryHealthConcernOther || "").trim()) {
       next.primaryHealthConcernOther = "Please describe the health concern.";
     }
@@ -610,7 +619,15 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 className="ua-create-user__input"
                 value={form.gender}
                 disabled={busy}
-                onChange={(e) => patch({ gender: e.target.value })}
+                onChange={(e) => {
+                  const gender = e.target.value;
+                  const next = { gender };
+                  if (girlOnlyConcernBlocked(gender, concerns, form.primaryHealthConcern)) {
+                    next.primaryHealthConcern = "";
+                    next.primaryHealthConcernOther = "";
+                  }
+                  patch(next);
+                }}
               >
                 {GENDER_UI_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -815,7 +832,12 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
 
           <div className="ua-create-user__section">ACCOUNT & PREFERENCES</div>
           <div className="ua-create-user__grid">
-            <Field label="Primary health concern" required error={errors.primaryHealthConcern}>
+            <Field
+              label="Primary health concern"
+              required
+              hint={toApiGender(form.gender) === "female" ? undefined : "PCOD / PCOS is available for Girl only."}
+              error={errors.primaryHealthConcern}
+            >
               <select
                 className="ua-create-user__input"
                 value={form.primaryHealthConcern}
@@ -823,9 +845,14 @@ export function CreateUserModal({ open, onClose, onCreated, onToast }) {
                 onChange={(e) => patch({ primaryHealthConcern: e.target.value, primaryHealthConcernOther: "" })}
               >
                 <option value="">Select primary health concern</option>
-                {concerns.map((row) => (
-                  <option key={row.id} value={row.id}>{row.title}</option>
-                ))}
+                {concerns.map((row) => {
+                  const girlOnly = isGirlOnlyHealthConcern(row.title) && toApiGender(form.gender) !== "female";
+                  return (
+                    <option key={row.id} value={row.id} disabled={girlOnly}>
+                      {row.title}
+                    </option>
+                  );
+                })}
               </select>
             </Field>
             <Field label="Account status" required error={errors.status}>

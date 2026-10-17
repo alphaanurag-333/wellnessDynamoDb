@@ -1,11 +1,10 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 
 const TABLE = "UserProtocolSetting";
 const MAX_POINTS = 50;
-const MAX_POINT_LENGTH = 500;
 
 function withLegacyId(item) {
   if (!item) return null;
@@ -32,14 +31,6 @@ function normalizePoints(points) {
     const err = new Error("At least one protocol point is required");
     err.name = "ValidationError";
     throw err;
-  }
-
-  for (let i = 0; i < next.length; i += 1) {
-    if (next[i].length > MAX_POINT_LENGTH) {
-      const err = new Error(`Point ${i + 1} cannot exceed ${MAX_POINT_LENGTH} characters`);
-      err.name = "ValidationError";
-      throw err;
-    }
   }
 
   return next;
@@ -130,14 +121,40 @@ async function createProtocolVersion({
   return item;
 }
 
+async function deleteProtocolVersion({ userId, versionId }) {
+  const uid = String(userId || "").trim();
+  const id = String(versionId || "").trim();
+  if (!uid || !id) {
+    const err = new Error("Protocol version is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const item = await getProtocolVersionById(id);
+  if (!item || String(item.userId || "") !== uid) {
+    const err = new Error("Protocol version not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE,
+      Key: { id },
+    })
+  );
+
+  return item;
+}
+
 module.exports = {
   TABLE,
   MAX_POINTS,
-  MAX_POINT_LENGTH,
   normalizePoints,
   toPublicProtocolVersion,
   listProtocolVersionsByUserId,
   getLatestProtocolVersion,
   getProtocolVersionById,
   createProtocolVersion,
+  deleteProtocolVersion,
 };

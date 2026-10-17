@@ -993,6 +993,14 @@ export function AdminDashboard({
       ? asNumber(liveProgress.hba1c?.[A1C_METRIC_KEYS[metric.label]]?.count)
       : 0,
   }));
+  const rosterTotal = statisticsForView
+    ? asNumber(
+        Object.hasOwn(statisticsForView, "totalClients")
+          ? statisticsForView.totalClients
+          : statisticsForView.totalUsers,
+      )
+    : (Array.isArray(clients) ? clients.length : 0);
+  const a1cRosterEmpty = rosterTotal <= 0;
   const opsOverdue = statisticsForView?.opsOverdue || {
     title: OPS_OVERDUE.title,
     total: "0 pending",
@@ -2050,6 +2058,13 @@ export function AdminDashboard({
 
           <div className="prog-card prog-card--a1c">
             <div className="prog-card__head"><span>🩸</span> HbA1c</div>
+            {a1cRosterEmpty ? (
+              <div className="prog-card__inner prog-card__inner--a1c">
+                <div className="prog-card__tag prog-card__tag--green">No clients</div>
+                <div className="prog-card__value prog-card__value--green">0</div>
+                <div className="prog-card__link">HbA1c change shows once clients are on the roster</div>
+              </div>
+            ) : (
             <div className={`prog-metrics prog-metrics--${a1cMetrics.length}`}>
               {a1cMetrics.map((m) => (
                 <button
@@ -2063,6 +2078,7 @@ export function AdminDashboard({
                 </button>
               ))}
             </div>
+            )}
           </div>
         </div>
       </section>

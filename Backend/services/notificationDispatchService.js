@@ -879,7 +879,6 @@ async function dispatchProgressPhotoReviewedNotification({
   angle,
   status,
   rejectionReason = "",
-  rejectedSet = false,
   coachName,
   actorUserId = null,
 }) {
@@ -892,13 +891,9 @@ async function dispatchProgressPhotoReviewedNotification({
     kind: "progress_photo_reviewed",
     message: approved
       ? `${name} accepted your ${label} progress photo.`
-      : rejectedSet
-        ? reason
-          ? `${name} rejected your front, right, and left progress photos from this upload. ${reason}`
-          : `${name} rejected your front, right, and left progress photos from this upload. Please upload them again.`
-        : reason
-          ? `${name} rejected your ${label} progress photo. ${reason}`
-          : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`,
+      : reason
+        ? `${name} rejected your ${label} progress photo. ${reason}`
+        : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`,
     referenceId: photoId ? String(photoId) : null,
     referenceType: "progress_photo",
     actorUserId,

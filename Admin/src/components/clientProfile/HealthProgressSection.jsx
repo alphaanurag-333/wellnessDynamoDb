@@ -60,6 +60,52 @@ function sortByDateAsc(items, key = "recordedAt") {
   return [...items].sort((a, b) => new Date(a[key] || 0).getTime() - new Date(b[key] || 0).getTime());
 }
 
+function calendarDateKey(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function weightLogRecency(row) {
+  const time = new Date(row?.updatedAt || row?.createdAt || row?.recordedAt || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function collapseWeightLogsByDate(logs) {
+  const groups = new Map();
+  for (const row of logs || []) {
+    const key = calendarDateKey(row?.recordedAt) || String(row?.id || row?._id || "");
+    if (!key) continue;
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(row);
+    else groups.set(key, [row]);
+  }
+
+  const collapsed = [];
+  for (const rows of groups.values()) {
+    rows.sort((a, b) => weightLogRecency(b) - weightLogRecency(a));
+    const latest = rows[0];
+    const withPhoto = rows.find((row) => row.weightPicUrl);
+    if (!withPhoto || latest.weightPicUrl || withPhoto === latest) {
+      collapsed.push(latest);
+      continue;
+    }
+    collapsed.push({
+      ...latest,
+      weightPicUrl: withPhoto.weightPicUrl,
+      weightPicKey: withPhoto.weightPicKey,
+      photoLogId: withPhoto.id || withPhoto._id,
+    });
+  }
+  return collapsed;
+}
+
 function sortByDateDesc(items, key = "recordedAt") {
   return [...items].sort((a, b) => new Date(b[key] || 0).getTime() - new Date(a[key] || 0).getTime());
 }
@@ -611,22 +657,24 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
     if (weightPhotoPreview) URL.revokeObjectURL(weightPhotoPreview);
   }, [weightPhotoPreview]);
 
+  const dailyLogs = useMemo(() => collapseWeightLogsByDate(logs), [logs]);
+
   const photos = useMemo(() => (
-    sortByDateDesc(logs)
+    sortByDateDesc(dailyLogs)
       .filter((row) => row.weightPicUrl)
       .map((row) => ({
-        id: row.id || row._id,
+        id: row.photoLogId || row.id || row._id,
         date: formatDisplayDate(row.recordedAt),
         weight: Number.isFinite(Number(row.weightKg)) ? Number(row.weightKg) : "—",
         unit: "kg",
         url: row.weightPicUrl,
       }))
-  ), [logs]);
+  ), [dailyLogs]);
 
   const latestPhoto = photos[0] || null;
 
   const series = useMemo(() => {
-    const filtered = applyRange(sortByDateAsc(logs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
+    const filtered = applyRange(sortByDateAsc(dailyLogs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
     const dates = filtered.map((row) => formatChartDate(row.recordedAt));
     const values = filtered.map((row) => Number(Number(row.weightKg).toFixed(1)));
     const first = filtered[0];
@@ -647,7 +695,7 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
         change,
       } : null,
     };
-  }, [logs, range]);
+  }, [dailyLogs, range]);
 
   function openDatePicker() {
     const input = dateInputRef.current;

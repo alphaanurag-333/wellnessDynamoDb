@@ -39,6 +39,10 @@ const {
   listConditionLogsByUser,
   toPublicConditionLog,
 } = require("../../models/healthProgressConditionModel");
+const {
+  ensurePurchasedProgramTrackers,
+  withPurchasedProgramTrackers,
+} = require("../../services/healthProgressProgramTrackerService");
 
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
@@ -52,21 +56,23 @@ async function coachContext(req) {
 
 exports.getCoachHealthProgressSettingsController = asyncHandler(async (req, res) => {
   const { user } = await coachContext(req);
-  const stored = resolveHealthProgressSettings(user);
+  const synced = await ensurePurchasedProgramTrackers(user);
+  const stored = resolveHealthProgressSettings(synced);
 
   return res.status(200).json({
     status: true,
     message: "Health progress settings fetched",
     settings: stored,
-    storedSettings: user.healthProgressFeatures || {},
-    gender: user.gender,
-    isFemale: isFemaleUser(user),
+    storedSettings: synced.healthProgressFeatures || {},
+    gender: synced.gender,
+    isFemale: isFemaleUser(synced),
   });
 });
 
 exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, res) => {
   const { userId, user } = await coachContext(req);
-  const nextFeatures = parseCoachSettingsUpdate(req.body || {}, user);
+  const requested = parseCoachSettingsUpdate(req.body || {}, user);
+  const nextFeatures = await withPurchasedProgramTrackers(user, requested);
   const updated = await updateUser(userId, { healthProgressFeatures: nextFeatures });
 
   return res.status(200).json({

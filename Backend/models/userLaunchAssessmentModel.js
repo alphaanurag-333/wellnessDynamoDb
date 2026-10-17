@@ -96,6 +96,19 @@ function normalizeFocusPoints(value) {
   return value.map((row) => String(row || "").trim()).filter(Boolean);
 }
 
+const POINTS_TO_NOTE_MAX = 2000;
+
+function normalizePointsToNote(value) {
+  if (value === undefined) return undefined;
+  const text = String(value ?? "").trim();
+  if (text.length > POINTS_TO_NOTE_MAX) {
+    const err = new Error(`pointsToNote must be at most ${POINTS_TO_NOTE_MAX} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return text;
+}
+
 function mergeAreasToFocus(focusPoints = [], focusAreas = []) {
   const seen = new Set();
   const out = [];
@@ -132,6 +145,7 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     answers: Array.isArray(row.answers) ? normalizeAnswers(row.answers) || [] : [],
     focusAreaIds,
     focusPoints,
+    pointsToNote: normalizePointsToNote(row.pointsToNote) || "",
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -211,6 +225,7 @@ async function createUserLaunchAssessment({
   totalScore,
   focusAreaIds = [],
   focusPoints = [],
+  pointsToNote = "",
   answers = [],
   createdByRole = "wellness_coach",
   createdById,
@@ -243,6 +258,7 @@ async function createUserLaunchAssessment({
     answers: normalizeAnswers(answers) || [],
     focusAreaIds: validatedFocusAreaIds,
     focusPoints: normalizedFocusPoints,
+    pointsToNote: normalizePointsToNote(pointsToNote) || "",
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
@@ -260,7 +276,7 @@ async function createUserLaunchAssessment({
   return enrichAssessmentPublic(item);
 }
 
-async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, focusPoints, answers } = {}) {
+async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, focusPoints, pointsToNote, answers } = {}) {
   const current = await getUserLaunchAssessmentRecordById(id);
   if (!current) {
     const err = new Error("Assessment not found");
@@ -289,6 +305,9 @@ async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focu
   }
   if (focusPoints !== undefined) {
     updates.focusPoints = normalizeFocusPoints(focusPoints) || [];
+  }
+  if (pointsToNote !== undefined) {
+    updates.pointsToNote = normalizePointsToNote(pointsToNote) || "";
   }
   if (answers !== undefined) {
     updates.answers = normalizeAnswers(answers) || [];
@@ -349,6 +368,7 @@ module.exports = {
   normalizeTotalScore,
   normalizeAnswers,
   normalizeFocusPoints,
+  normalizePointsToNote,
   normalizeCreatedByRole,
   createUserLaunchAssessment,
   getUserLaunchAssessmentById,

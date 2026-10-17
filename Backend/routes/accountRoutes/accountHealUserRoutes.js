@@ -153,6 +153,7 @@ const {
 const {
   getStaffUserProtocolSettingsController,
   saveStaffUserProtocolSettingsController,
+  deleteStaffUserProtocolSettingsController,
 } = require("../../controllers/adminController/protocolSettingsController");
 const {
   getStaffUserGutResetsController,
@@ -260,7 +261,11 @@ router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
 router.delete("/:userId/lab-reports/:reportId", staff("console.rep.delete", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }), deleteCoachUserLabReportController);
 router.patch("/:userId/lab-report-submission", testsWrite, updateCoachUserLabReportSubmissionController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
-router.post("/:userId/lab-reports/:reportId/analyze", testsWrite, analyzeCoachUserLabReportController);
+router.post(
+  "/:userId/lab-reports/:reportId/analyze",
+  staff("console.rep.create", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }),
+  analyzeCoachUserLabReportController
+);
 router.patch("/:userId/lab-reports/:reportId/ai-analysis", testsWrite, updateCoachUserLabReportAiController);
 router.delete("/:userId/test-recommendations/:recommendationId", staff("console.rep.delete", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }), deleteCoachUserTestRecommendationController);
 
@@ -430,6 +435,7 @@ const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.m
 const protocolWrite = staff("console.diet.edit", { admin: "users.edit", coach: "nav.my-users" });
 router.get("/:userId/protocol-settings", protocol, getStaffUserProtocolSettingsController);
 router.post("/:userId/protocol-settings", protocolWrite, saveStaffUserProtocolSettingsController);
+router.delete("/:userId/protocol-settings/:versionId", protocolWrite, deleteStaffUserProtocolSettingsController);
 
 const gutReset = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });
 const gutResetWrite = staff(["console.diet.edit", "console.diet.create"], { admin: "users.edit", coach: "nav.my-users" });

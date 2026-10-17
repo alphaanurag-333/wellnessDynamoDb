@@ -213,7 +213,7 @@ exports.createLaunchRatingController = asyncHandler(async (req, res) => {
     throw new AppError(`description cannot exceed ${DESCRIPTION_MAX} characters`, 400);
   }
   if (req.body.tone && !ALLOWED_TONES.has(tone)) {
-    throw new AppError("tone must be excellent, good, average, poor, or default", 400);
+    throw new AppError("tone must be excellent, good, average, below, poor, or default", 400);
   }
 
   const rating = await createLaunchRating({
@@ -261,7 +261,7 @@ exports.updateLaunchRatingController = asyncHandler(async (req, res) => {
   if (req.body.tone !== undefined) {
     const tone = normalizeTone(req.body.tone);
     if (!ALLOWED_TONES.has(String(req.body.tone || "").toLowerCase().trim()) && String(req.body.tone || "").trim()) {
-      throw new AppError("tone must be excellent, good, average, poor, or default", 400);
+      throw new AppError("tone must be excellent, good, average, below, poor, or default", 400);
     }
     updates.tone = tone;
   }

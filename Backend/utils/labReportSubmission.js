@@ -16,6 +16,7 @@ function labReportSubmissionState(user, { hasReports = false } = {}) {
   return {
     labReportSubmissionLocked: submissionLocked,
     submissionLocked,
+    submissionEnabled: !submissionLocked,
     canSubmitLabReport: !submissionLocked,
     submissionLockedMessage: submissionLocked ? LAB_REPORT_SUBMISSION_LOCKED_MESSAGE : null,
   };

@@ -9,6 +9,8 @@ const {
   parseMenstrualDates,
   parseConditionBodyPart,
   healthProgressToday,
+  healthProgressDateKey,
+  healthProgressDayBounds,
   normalizeGlucoseType,
 } = require("../utils/healthProgressHelpers");
 
@@ -81,6 +83,23 @@ describe("health progress dates", () => {
       () => parseMenstrualDates({ startDate: "2099-01-01", endDate: "2099-01-02" }),
       /future/
     );
+  });
+});
+
+describe("health progress same-day key", () => {
+  it("maps a calendar date and noon UTC timestamp to the same India date", () => {
+    assert.equal(healthProgressDateKey("2026-10-12"), "2026-10-12");
+    assert.equal(healthProgressDateKey("2026-10-12T12:00:00.000Z"), "2026-10-12");
+    assert.equal(healthProgressDateKey("2026-10-11T20:00:00.000Z"), "2026-10-12");
+    assert.equal(healthProgressDateKey(""), "");
+  });
+
+  it("bounds a Kolkata day so noon UTC on that date is inside", () => {
+    const bounds = healthProgressDayBounds("2026-10-12");
+    assert.ok(bounds);
+    assert.ok(bounds.start <= "2026-10-12T12:00:00.000Z");
+    assert.ok(bounds.end >= "2026-10-12T12:00:00.000Z");
+    assert.equal(healthProgressDayBounds(""), null);
   });
 });
 

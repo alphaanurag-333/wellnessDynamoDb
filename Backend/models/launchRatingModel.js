@@ -11,7 +11,7 @@ const { listByPartitionKey } = require("../utils/dynamoList");
 
 const TABLE = "LaunchRating";
 const ALLOWED_STATUS = new Set(["active", "inactive"]);
-const ALLOWED_TONES = new Set(["excellent", "good", "average", "poor", "default"]);
+const ALLOWED_TONES = new Set(["excellent", "good", "average", "below", "poor", "default"]);
 const SORT_ORDER_MIN = 0;
 const SORT_ORDER_MAX = 100000;
 const POINTS_MIN = 1;

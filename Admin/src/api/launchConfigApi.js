@@ -153,6 +153,7 @@ export async function adminUpdateLaunchDomain(token, id, fields) {
   if (fields.weight !== undefined) payload.weight = Number(fields.weight);
   if (fields.live !== undefined) payload.live = Boolean(fields.live);
   if (fields.fixed !== undefined) payload.fixed = Boolean(fields.fixed);
+  if (fields.sortOrder !== undefined) payload.sortOrder = Number(fields.sortOrder);
   try {
     const { data } = await api.patch(
       `${launchConfigBase()}/domains/${encodeURIComponent(id)}`,
@@ -201,6 +202,7 @@ export async function adminUpdateLaunchQuestion(token, domainId, id, fields) {
   if (fields.enabled !== undefined) payload.enabled = Boolean(fields.enabled);
   if (fields.fixed !== undefined) payload.fixed = Boolean(fields.fixed);
   if (fields.hasInfo !== undefined) payload.hasInfo = Boolean(fields.hasInfo);
+  if (fields.sortOrder !== undefined) payload.sortOrder = Number(fields.sortOrder);
   try {
     const { data } = await api.patch(
       `${launchConfigBase()}/domains/${encodeURIComponent(domainId)}/questions/${encodeURIComponent(id)}`,

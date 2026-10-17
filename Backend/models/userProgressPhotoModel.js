@@ -69,7 +69,7 @@ async function getProgressPhotoById(id) {
   return Item || null;
 }
 
-async function listProgressPhotosByUser(userId, { page = 1, limit = 20, excludeRejected = false } = {}) {
+async function listProgressPhotosByUser(userId, { page = 1, limit = 20 } = {}) {
   if (!userId) {
     return { items: [], pagination: { page: 1, limit, total: 0, pages: 1 } };
   }
@@ -81,18 +81,6 @@ async function listProgressPhotosByUser(userId, { page = 1, limit = 20, excludeR
     page,
     limit,
     scanIndexForward: false,
-    ...(excludeRejected
-      ? {
-          filterExpression: PROGRESS_PHOTO_ANGLES.map(
-            (angle) =>
-              `(attribute_not_exists(#${angle}ReviewStatus) OR #${angle}ReviewStatus <> :rejectedPhotoStatus)`
-          ).join(" AND "),
-          exprNames: Object.fromEntries(
-            PROGRESS_PHOTO_ANGLES.map((angle) => [`#${angle}ReviewStatus`, `${angle}ReviewStatus`])
-          ),
-          exprValues: { ":rejectedPhotoStatus": "rejected" },
-        }
-      : {}),
   });
 }
 
@@ -108,40 +96,26 @@ async function reviewProgressPhotoAngle(id, angle, { status, reviewedById, rejec
     ? String(rejectionReason || "").trim() || null
     : null;
 
-  const expressionAttributeNames = { "#updatedAt": "updatedAt" };
-  const expressionAttributeValues = {
-    ":status": nextStatus,
-    ":reviewedAt": now,
-    ":reviewedById": reviewedById || null,
-    ":reason": reason,
-    ":updatedAt": now,
-  };
-  const assignments = ["#updatedAt = :updatedAt"];
-
-  // One rejected angle rejects the whole upload. Front, right, and left
-  // share recordedAt, so the client must resubmit the set together.
-  const anglesToUpdate = nextStatus === "rejected" ? PROGRESS_PHOTO_ANGLES : [angle];
-  for (const itemAngle of anglesToUpdate) {
-    expressionAttributeNames[`#${itemAngle}Status`] = `${itemAngle}ReviewStatus`;
-    expressionAttributeNames[`#${itemAngle}ReviewedAt`] = `${itemAngle}ReviewedAt`;
-    expressionAttributeNames[`#${itemAngle}ReviewedById`] = `${itemAngle}ReviewedById`;
-    expressionAttributeNames[`#${itemAngle}Reason`] = `${itemAngle}RejectionReason`;
-    assignments.push(
-      `#${itemAngle}Status = :status`,
-      `#${itemAngle}ReviewedAt = :reviewedAt`,
-      `#${itemAngle}ReviewedById = :reviewedById`,
-      `#${itemAngle}Reason = :reason`
-    );
-  }
-
   const { Attributes } = await docClient.send(
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
-      UpdateExpression: `SET ${assignments.join(", ")}`,
+      UpdateExpression:
+        "SET #status = :status, #reviewedAt = :reviewedAt, #reviewedById = :reviewedById, #reason = :reason, updatedAt = :updatedAt",
       ConditionExpression: "attribute_exists(id)",
-      ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
+      ExpressionAttributeNames: {
+        "#status": `${angle}ReviewStatus`,
+        "#reviewedAt": `${angle}ReviewedAt`,
+        "#reviewedById": `${angle}ReviewedById`,
+        "#reason": `${angle}RejectionReason`,
+      },
+      ExpressionAttributeValues: {
+        ":status": nextStatus,
+        ":reviewedAt": now,
+        ":reviewedById": reviewedById || null,
+        ":reason": reason,
+        ":updatedAt": now,
+      },
       ReturnValues: "ALL_NEW",
     })
   );

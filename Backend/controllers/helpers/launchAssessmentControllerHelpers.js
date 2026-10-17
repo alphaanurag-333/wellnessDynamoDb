@@ -85,6 +85,14 @@ function parseFocusPoints(body) {
   return body.focusPoints;
 }
 
+function parsePointsToNote(body) {
+  if (body?.pointsToNote === undefined) return undefined;
+  if (body.pointsToNote !== null && typeof body.pointsToNote !== "string") {
+    throw new AppError("pointsToNote must be a string", 400);
+  }
+  return body.pointsToNote == null ? "" : String(body.pointsToNote);
+}
+
 function parseAnswers(body) {
   if (body?.answers === undefined) return undefined;
   if (!Array.isArray(body.answers)) {
@@ -302,6 +310,7 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
           totalScore: parseTotalScore(req.body),
           focusAreaIds: parseFocusAreaIds(req.body) ?? [],
           focusPoints: parseFocusPoints(req.body) ?? [],
+          pointsToNote: parsePointsToNote(req.body) ?? "",
           answers: parseAnswers(req.body) ?? [],
           createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
@@ -344,6 +353,10 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       const focusPoints = parseFocusPoints(req.body);
       if (focusPoints !== undefined) {
         updates.focusPoints = focusPoints;
+      }
+      const pointsToNote = parsePointsToNote(req.body);
+      if (pointsToNote !== undefined) {
+        updates.pointsToNote = pointsToNote;
       }
       const answers = parseAnswers(req.body);
       if (answers !== undefined) {

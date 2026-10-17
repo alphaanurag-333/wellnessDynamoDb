@@ -2,6 +2,7 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   createProtocolVersion,
+  deleteProtocolVersion,
   listProtocolVersionsByUserId,
   toPublicProtocolVersion,
 } = require("../../models/userProtocolSettingModel");
@@ -74,6 +75,30 @@ exports.saveStaffUserProtocolSettingsController = asyncHandler(async (req, res) 
   return res.status(201).json({
     status: true,
     message: `Protocol saved as v${current?.version || created?.version}`,
+    current,
+    history,
+  });
+});
+
+exports.deleteStaffUserProtocolSettingsController = asyncHandler(async (req, res) => {
+  const { userId } = await staffProtocolContext(req);
+  const versionId = String(req.params.versionId || "").trim();
+  if (!versionId) throw new AppError("Protocol version is required", 400);
+
+  try {
+    await deleteProtocolVersion({ userId, versionId });
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
+    handleValidationError(err);
+  }
+
+  const result = await listProtocolVersionsByUserId(userId, { page: 1, limit: 100 });
+  const history = mapHistory(result.items);
+  const current = history[0] || null;
+
+  return res.status(200).json({
+    status: true,
+    message: "Protocol version deleted",
     current,
     history,
   });

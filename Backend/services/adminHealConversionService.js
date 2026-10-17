@@ -134,21 +134,23 @@ async function ensureWellnessProgramForPaidClient(user, { catalogProgramId, now 
       purchasedAt,
       enabled: true,
     });
-    return updateUser(userId, {
+    const updated = await updateUser(userId, {
       assignedProgramId: existing.id,
       programEnabled: true,
       programPurchased: true,
       programPurchasedAt: purchasedAt,
     });
+    return syncPurchasedProgramTrackers(updated);
   }
 
   if (existing && normalizeStatus(existing.status) === "purchased") {
-    return updateUser(userId, {
+    const updated = await updateUser(userId, {
       assignedProgramId: existing.id,
       programEnabled: true,
       programPurchased: true,
       programPurchasedAt: existing.purchasedAt || now || new Date().toISOString(),
     });
+    return syncPurchasedProgramTrackers(updated);
   }
 
   const catalog = await resolveCatalogProgram(catalogProgramId, user);
@@ -171,12 +173,18 @@ async function ensureWellnessProgramForPaidClient(user, { catalogProgramId, now 
     purchasedAt,
   });
 
-  return updateUser(userId, {
+  const updated = await updateUser(userId, {
     assignedProgramId: program.id,
     programEnabled: true,
     programPurchased: true,
     programPurchasedAt: purchasedAt,
   });
+  return syncPurchasedProgramTrackers(updated);
+}
+
+async function syncPurchasedProgramTrackers(user) {
+  const { ensurePurchasedProgramTrackers } = require("./healthProgressProgramTrackerService");
+  return ensurePurchasedProgramTrackers(user);
 }
 
 async function ensureEnergyExchangeForPaidClient(user) {

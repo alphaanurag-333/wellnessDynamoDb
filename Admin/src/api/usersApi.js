@@ -302,6 +302,11 @@ export const GENDER_UI_OPTIONS = [
   { value: "other", label: "Guess" },
 ];
 
+/** PCOD / PCOS is a girl-only primary health concern. */
+export function isGirlOnlyHealthConcern(title) {
+  return /\b(pcod|pcos|pmos)\b/i.test(String(title || ""));
+}
+
 function formatDietaryPreference(value) {
   return titleCaseToken(value);
 }

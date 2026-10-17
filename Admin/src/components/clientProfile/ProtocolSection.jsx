@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   PROTOCOL_MAX_POINTS,
-  PROTOCOL_MAX_POINT_LENGTH,
   PROTOCOL_ONBOARDING_STEP,
   pointCountLabel,
   sanitizeProtocolPoint,
@@ -9,26 +8,40 @@ import {
   validateProtocolPoints,
 } from "../../data/protocolSettingsData.js";
 import {
+  deleteUserProtocolSettings,
   fetchUserProtocolSettings,
   saveUserProtocolSettings,
 } from "../../api/protocolSettingsApi.js";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function pointsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function HistoryVersionCard({ entry, expanded, onToggle, onRestore }) {
+function HistoryVersionCard({ entry, expanded, onToggle, onRestore, onDelete, canDelete, deleting }) {
   return (
     <div className={`ua-cp-proto-ver${expanded ? " ua-cp-proto-ver--open" : ""}`}>
-      <button type="button" className="ua-cp-proto-ver__head" onClick={onToggle} aria-expanded={expanded}>
-        <span className="ua-cp-proto-ver__badge">v{entry.version}</span>
-        <div className="ua-cp-proto-ver__copy">
-          <strong>{pointCountLabel(entry.points.length)} · {entry.savedAt}</strong>
-          <span>Saved by {entry.savedByLabel} · {entry.deltaLabel}</span>
-        </div>
-        <span className={`ua-cp-proto-ver__chev${expanded ? " ua-cp-proto-ver__chev--open" : ""}`} aria-hidden="true">›</span>
-      </button>
+      <div className="ua-cp-proto-ver__head">
+        <button type="button" className="ua-cp-proto-ver__toggle" onClick={onToggle} aria-expanded={expanded}>
+          <span className="ua-cp-proto-ver__badge">v{entry.version}</span>
+          <div className="ua-cp-proto-ver__copy">
+            <strong>{pointCountLabel(entry.points.length)} · {entry.savedAt}</strong>
+            <span>Saved by {entry.savedByLabel} · {entry.deltaLabel}</span>
+          </div>
+          <span className={`ua-cp-proto-ver__chev${expanded ? " ua-cp-proto-ver__chev--open" : ""}`} aria-hidden="true">›</span>
+        </button>
+        {canDelete ? (
+          <button
+            type="button"
+            className="ua-cp-proto-ver__delete"
+            disabled={deleting}
+            onClick={onDelete}
+          >
+            Delete
+          </button>
+        ) : null}
+      </div>
       {expanded ? (
         <div className="ua-cp-proto-ver__body">
           <ol className="ua-cp-proto-ver__list">
@@ -62,6 +75,8 @@ export function ProtocolSection({ user, onToast }) {
   const [expandedVersion, setExpandedVersion] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [loadError, setLoadError] = useState("");
 
   const clientName = user?.name?.split(" ")[0] || "Client";
@@ -215,6 +230,31 @@ export function ProtocolSection({ user, onToast }) {
     }
   }
 
+  async function confirmDeleteVersion() {
+    const entry = pendingDelete;
+    if (!entry || !userId || deletingId) return;
+    const syncWorking = pointsEqual(workingPoints, savedPoints);
+    setPendingDelete(null);
+    setDeletingId(entry.id);
+    try {
+      const data = await deleteUserProtocolSettings(userId, entry.id);
+      const nextPoints = (data?.current?.points || []).map((point) => sanitizeProtocolPoint(point));
+      setHistory(data?.history || []);
+      setSavedPoints([...nextPoints]);
+      if (syncWorking) {
+        setWorkingPoints([...nextPoints]);
+        setPointErrors([]);
+        setFormError("");
+      }
+      setExpandedVersion((current) => (current === entry.version ? (data?.current?.version ?? null) : current));
+      onToast?.(`Deleted protocol v${entry.version}`);
+    } catch (err) {
+      onToast?.(err?.message || "Could not delete protocol version");
+    } finally {
+      setDeletingId("");
+    }
+  }
+
   function restoreVersion(entry) {
     const points = (entry.points || []).map((point) => sanitizeProtocolPoint(point));
     setWorkingPoints([...points]);
@@ -286,7 +326,6 @@ export function ProtocolSection({ user, onToast }) {
                       type="text"
                       className={`ua-cp-proto-point__text${error ? " ua-cp-proto-point__text--error" : ""}`}
                       value={point}
-                      maxLength={PROTOCOL_MAX_POINT_LENGTH}
                       onChange={(e) => updatePoint(index, e.target.value)}
                       disabled={saving || !canWrite}
                       aria-invalid={Boolean(error)}
@@ -310,7 +349,6 @@ export function ProtocolSection({ user, onToast }) {
               className={`ua-cp-proto-add__input${(draftError || draftLiveError) ? " ua-cp-proto-add__input--error" : ""}`}
               placeholder="Add a protocol point"
               value={draft}
-              maxLength={PROTOCOL_MAX_POINT_LENGTH}
               onChange={(e) => {
                 setDraft(sanitizeProtocolPoint(e.target.value));
                 setDraftError("");
@@ -334,13 +372,8 @@ export function ProtocolSection({ user, onToast }) {
                 || draftLiveError
                 || (atPointLimit
                   ? `Maximum of ${PROTOCOL_MAX_POINTS} points reached.`
-                  : `Max ${PROTOCOL_MAX_POINT_LENGTH} characters · ${workingPoints.length}/${PROTOCOL_MAX_POINTS} points`)}
+                  : `${workingPoints.length}/${PROTOCOL_MAX_POINTS} points`)}
             </span>
-            {draft.trim() ? (
-              <span className="ua-cp-proto__hint">
-                {draft.length}/{PROTOCOL_MAX_POINT_LENGTH}
-              </span>
-            ) : null}
           </div>
         </div>
         ) : null}
@@ -358,8 +391,11 @@ export function ProtocolSection({ user, onToast }) {
                 key={entry.id}
                 entry={entry}
                 expanded={expandedVersion === entry.version}
+                canDelete={canWrite}
+                deleting={deletingId === entry.id}
                 onToggle={() => setExpandedVersion((v) => (v === entry.version ? null : entry.version))}
                 onRestore={() => restoreVersion(entry)}
+                onDelete={() => setPendingDelete(entry)}
               />
             ))}
           </div>
@@ -369,6 +405,18 @@ export function ProtocolSection({ user, onToast }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete protocol version"
+        title={pendingDelete ? `Delete v${pendingDelete.version}?` : "Delete this version?"}
+        body="This removes the saved version from history. You can't undo this."
+        cancelLabel="Keep version"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => !deletingId && setPendingDelete(null)}
+        onConfirm={confirmDeleteVersion}
+      />
     </div>
   );
 }

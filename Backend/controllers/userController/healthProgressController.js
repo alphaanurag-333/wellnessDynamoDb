@@ -41,9 +41,12 @@ const {
   listConditionLogsByUser,
   toPublicConditionLog,
 } = require("../../models/healthProgressConditionModel");
+const {
+  ensurePurchasedProgramTrackers,
+} = require("../../services/healthProgressProgramTrackerService");
 
 exports.getHealthProgressSettingsController = asyncHandler(async (req, res) => {
-  const user = req.currentUser;
+  const user = await ensurePurchasedProgramTrackers(req.currentUser);
   const settings = resolveHealthProgressSettings(user);
 
   return res.status(200).json({

@@ -4168,6 +4168,11 @@
   padding: 10px 12px;
 }
 
+.updated-admin .prog-card__inner--a1c {
+  background: #fff;
+  border: 1px solid #d7ecdf;
+}
+
 .updated-admin .prog-card__tag {
   font-size: 8.5px;
   font-weight: 800;
@@ -4175,6 +4180,10 @@
   text-transform: uppercase;
   color: var(--accent-blue);
   margin-bottom: 3px;
+}
+
+.updated-admin .prog-card__tag--green {
+  color: var(--brand-green-solid);
 }
 
 .updated-admin .prog-card__value {
@@ -4186,6 +4195,10 @@
 
 .updated-admin .prog-card__value--blue {
   color: var(--accent-blue);
+}
+
+.updated-admin .prog-card__value--green {
+  color: var(--brand-green-solid);
 }
 
 .updated-admin .prog-card__link {
@@ -16631,6 +16644,45 @@
   color: #8a97ac;
 }
 
+.updated-admin .ua-cp-ba-block__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.updated-admin .ua-cp-ba-client-facts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-ba-client-facts__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #e6ebf2;
+  border-radius: 999px;
+  background: #fff;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cp-ba-client-facts__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-ba-client-facts__value {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #16233f;
+}
+
 .updated-admin .ua-cp-ba-block__meta {
   display: inline-flex;
   align-items: center;
@@ -19757,6 +19809,12 @@ scrollbar-width: thin;
   color: #c2661d;
 }
 
+.updated-admin .ua-cp-launch-rating--active.ua-cp-launch-rating--below {
+  background: #ffedd5;
+  border-color: #ea580c;
+  color: #c2410c;
+}
+
 .updated-admin .ua-cp-launch-rating--active.ua-cp-launch-rating--poor {
   background: #fdeaea;
   border-color: #e5484d;
@@ -19941,6 +19999,12 @@ scrollbar-width: thin;
   filter: brightness(0.97);
 }
 
+.updated-admin .ua-cp-launch-focus__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 .updated-admin .ua-cp-launch-savebar {
   display: flex;
   align-items: center;
@@ -19973,6 +20037,51 @@ scrollbar-width: thin;
   font-size: 11px;
   color: #8a97ac;
   margin-top: 2px;
+}
+
+.updated-admin .ua-cp-launch-notes {
+  margin: 16px auto 0;
+  max-width: 680px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cp-launch-notes__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-launch-notes__input {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  border: 1px solid #e6ebf2;
+  border-radius: 9px;
+  background: #fff;
+  color: #16233f;
+  font-size: 13px;
+  line-height: 1.45;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.updated-admin .ua-cp-launch-notes__input:focus {
+  border-color: #16a34a;
+}
+
+.updated-admin .ua-cp-launch-notes__input[readonly] {
+  background: #f8fafc;
+  color: #3a4a63;
 }
 
 .updated-admin .ua-cp-launch-meet {
@@ -20211,6 +20320,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-launch-rating-pill--average {
   background: #fff5ec;
   color: #c2661d;
+}
+
+.updated-admin .ua-cp-launch-rating-pill--below {
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 .updated-admin .ua-cp-launch-rating-pill--poor {
@@ -24126,6 +24240,26 @@ scrollbar-width: thin;
   white-space: nowrap;
 }
 
+.updated-admin .ua-commit__save {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid #dcdff7;
+  background: #eef0fc;
+  color: #5e6ad2;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-commit__save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .updated-admin .ua-commit__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -24186,7 +24320,8 @@ scrollbar-width: thin;
   font-family: inherit;
 }
 
-.updated-admin .ua-commit__preview.has-media {
+.updated-admin .ua-commit__preview.has-media,
+.updated-admin .ua-commit__preview[role="button"] {
   border-style: solid;
   border-color: #e6ebf2;
   cursor: pointer;
@@ -34633,6 +34768,7 @@ scrollbar-width: thin;
   height: min(70vh, 720px);
   border: 0;
   background: #f8fafc;
+  object-fit: contain;
 }
 
 .updated-admin .ua-cp-present-letter__empty {
@@ -35591,14 +35727,41 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-proto-ver__head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
+  background: #fafbfd;
+}
+
+.updated-admin .ua-cp-proto-ver__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   padding: 12px 14px;
   border: none;
-  background: #fafbfd;
+  background: transparent;
   cursor: pointer;
   text-align: left;
   font: inherit;
+}
+
+.updated-admin .ua-cp-proto-ver__delete {
+  margin-right: 14px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #f3c1be;
+  border-radius: 8px;
+  background: #fff;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-proto-ver__delete:hover {
+  background: #fff6f5;
 }
 
 .updated-admin .ua-cp-proto-ver__badge {
@@ -46727,6 +46890,11 @@ scrollbar-width: thin;
   color: #b45309;
 }
 
+.updated-admin .ua-cfg-launch-rating.is-below .ua-cfg-launch-rating__badge {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
 .updated-admin .ua-cfg-launch-rating.is-poor .ua-cfg-launch-rating__badge {
   background: #fee2e2;
   color: #dc2626;
@@ -46840,6 +47008,49 @@ scrollbar-width: thin;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
+}
+
+.updated-admin .ua-cfg-launch-domain__sort,
+.updated-admin .ua-cfg-launch-question__sort {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cfg-launch-domain__sort button,
+.updated-admin .ua-cfg-launch-question__sort button {
+  width: 22px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid #dbe1ea;
+  border-radius: 4px;
+  background: #fff;
+  color: #5a6b85;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-launch-domain__sort button:hover:not(:disabled),
+.updated-admin .ua-cfg-launch-question__sort button:hover:not(:disabled) {
+  border-color: #c7d2fe;
+  color: #4338ca;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cfg-launch-domain__sort button:disabled,
+.updated-admin .ua-cfg-launch-question__sort button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.updated-admin .ua-cfg-launch-domain__sort svg,
+.updated-admin .ua-cfg-launch-question__sort svg {
+  width: 10px;
+  height: 8px;
+  display: block;
 }
 
 .updated-admin .ua-cfg-launch-domains .ua-cfg-drf-section__name,

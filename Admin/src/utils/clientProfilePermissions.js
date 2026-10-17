@@ -12,7 +12,7 @@ export const CLIENT_PROFILE_SECTIONS = {
     edit: "console.rep.edit",
     upload: "console.rep.upload",
     export: "console.rep.export",
-    create: "console.rep.upload",
+    create: "console.rep.create",
   },
   launch: { view: "console.cl.view", edit: "console.cl.edit", create: "console.diet.create" },
   food: {

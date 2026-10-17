@@ -78,12 +78,28 @@ export async function saveUserProtocolSettings(userId, points) {
       { points: (Array.isArray(points) ? points : []).map((point) => String(point || "").trim()).filter(Boolean) },
       { headers: authHeader(tokenOrStored()) },
     );
-    const history = mapHistory(data.history);
-    const current = mapProtocolVersion(
-      data.current,
-      history[1]?.points.length ?? 0
-    ) || history[0] || null;
-    return { current, history };
+    return mapProtocolPayload(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+function mapProtocolPayload(data) {
+  const history = mapHistory(data.history);
+  const current = mapProtocolVersion(
+    data.current,
+    history[1]?.points.length ?? 0
+  ) || history[0] || null;
+  return { current, history };
+}
+
+export async function deleteUserProtocolSettings(userId, versionId) {
+  try {
+    const { data } = await api.delete(
+      `${protocolBase(userId)}/${encodeURIComponent(versionId)}`,
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return mapProtocolPayload(data);
   } catch (error) {
     normalizeApiError(error);
   }
