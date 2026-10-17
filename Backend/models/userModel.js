@@ -424,6 +424,18 @@ function sanitizeUpdateField(key, value) {
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
   if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
+  if (key === "healthConcerns") {
+    if (!Array.isArray(value)) return null;
+    const seen = new Set();
+    const ids = [];
+    for (const entry of value) {
+      const id = String(entry || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    return ids.length ? ids : null;
+  }
   if (
     [
       "name",
@@ -505,6 +517,11 @@ function buildUserItem(input, { id, now } = {}) {
     city: input.city != null ? String(input.city).trim() || null : null,
     primaryHealthConcern:
       input.primaryHealthConcern != null ? String(input.primaryHealthConcern).trim() || null : null,
+    healthConcerns: Array.isArray(input.healthConcerns)
+      ? input.healthConcerns.map((id) => String(id || "").trim()).filter(Boolean)
+      : input.primaryHealthConcern
+        ? [String(input.primaryHealthConcern).trim()].filter(Boolean)
+        : null,
     primaryHealthConcernOther:
       input.primaryHealthConcernOther != null
         ? String(input.primaryHealthConcernOther).trim() || null

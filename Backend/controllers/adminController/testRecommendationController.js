@@ -9,6 +9,7 @@ const {
 const {
   listUserLabReportsByUserId,
   getUserLabReportRecordById,
+  deleteUserLabReport,
   reviewUserLabReport,
   saveUserLabReportAiAnalysis,
   updateUserLabReportAiAnalysis,
@@ -147,6 +148,34 @@ exports.listCoachUserLabReportsController = asyncHandler(async (req, res) => {
     message: "User lab reports fetched successfully",
     reports,
     ...labReportSubmissionState(lockedUser, { hasReports }),
+  });
+});
+
+exports.deleteCoachUserLabReportController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const reportId = String(req.params.reportId || "").trim();
+  if (!reportId) throw new AppError("reportId is required", 400);
+
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  await loadLabReportForUser(reportId, userId);
+
+  try {
+    await deleteUserLabReport(reportId);
+  } catch (err) {
+    if (err?.name === "NotFoundError") {
+      throw new AppError("Lab report not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Lab report deleted successfully",
   });
 });
 

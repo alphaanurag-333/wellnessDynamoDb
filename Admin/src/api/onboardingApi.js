@@ -374,6 +374,18 @@ export async function deleteUserTestRecommendation(userId, recommendationId) {
   }
 }
 
+export async function deleteUserLabReport(userId, reportId) {
+  try {
+    const { data } = await api.delete(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-reports/${encodeURIComponent(reportId)}`,
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserLabReports(userId) {
   try {
     const { data } = await api.get(

@@ -31,7 +31,7 @@ describe("energyExchangeFyPromotionService — Seek on expiry", () => {
       userTier: "maintenance",
     }));
     let converted = false;
-    mock.method(userConversionModel, "convertMaintenanceToSeek", async () => {
+    mock.method(userConversionModel, "convertToSeek", async () => {
       converted = true;
       return { id: "u1", userTier: "seek" };
     });
@@ -80,7 +80,7 @@ describe("energyExchangeFyPromotionService — Seek on expiry", () => {
       userTier: "maintenance",
     }));
     let converted = false;
-    mock.method(userConversionModel, "convertMaintenanceToSeek", async () => {
+    mock.method(userConversionModel, "convertToSeek", async () => {
       converted = true;
       return { id: "u1", userTier: "seek" };
     });
@@ -91,16 +91,59 @@ describe("energyExchangeFyPromotionService — Seek on expiry", () => {
     assert.equal(converted, false);
   });
 
-  it("maybeConvertExpiredUserToSeek skips Heal users", async () => {
+  it("converts Heal users to Seek when no coverage remains", async () => {
+    mock.method(subscriptionModel, "listSubscriptionsByUserId", async () => ({
+      items: [{ id: "sub-old", status: "expired", endsAt: "2026-03-31T23:59:59.999Z" }],
+    }));
     mock.method(userModel, "getUserById", async () => ({
       id: "u-heal",
       userTier: "heal",
     }));
     let converted = false;
-    mock.method(userConversionModel, "convertMaintenanceToSeek", async () => {
+    mock.method(userConversionModel, "convertToSeek", async () => {
+      converted = true;
+      return { id: "u-heal", userTier: "seek" };
+    });
+    const result = await maybeConvertExpiredUserToSeek(
+      "u-heal",
+      new Date("2026-04-01T00:00:00.000Z").getTime()
+    );
+    assert.equal(result, true);
+    assert.equal(converted, true);
+  });
+
+  it("converts Eagle users to Seek when no coverage remains", async () => {
+    mock.method(subscriptionModel, "listSubscriptionsByUserId", async () => ({
+      items: [{ id: "sub-old", status: "expired", endsAt: "2026-03-31T23:59:59.999Z" }],
+    }));
+    mock.method(userModel, "getUserById", async () => ({
+      id: "u-eagle",
+      userTier: "heal",
+      clientCategory: "eagle",
+    }));
+    let converted = false;
+    mock.method(userConversionModel, "convertToSeek", async () => {
+      converted = true;
+      return { id: "u-eagle", userTier: "seek", clientCategory: "individual" };
+    });
+    const result = await maybeConvertExpiredUserToSeek(
+      "u-eagle",
+      new Date("2026-04-01T00:00:00.000Z").getTime()
+    );
+    assert.equal(result, true);
+    assert.equal(converted, true);
+  });
+
+  it("maybeConvertExpiredUserToSeek skips Seek users", async () => {
+    mock.method(userModel, "getUserById", async () => ({
+      id: "u-seek",
+      userTier: "seek",
+    }));
+    let converted = false;
+    mock.method(userConversionModel, "convertToSeek", async () => {
       converted = true;
     });
-    const result = await maybeConvertExpiredUserToSeek("u-heal", Date.now());
+    const result = await maybeConvertExpiredUserToSeek("u-seek", Date.now());
     assert.equal(result, false);
     assert.equal(converted, false);
   });

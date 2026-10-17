@@ -25,6 +25,7 @@ const {
   downloadCoachUserTestRecommendationPdfController,
   deleteCoachUserTestRecommendationController,
   listCoachUserLabReportsController,
+  deleteCoachUserLabReportController,
   updateCoachUserLabReportSubmissionController,
   reviewCoachUserLabReportController,
   analyzeCoachUserLabReportController,
@@ -256,6 +257,7 @@ router.get("/:userId/test-recommendations/:recommendationId/pdf", tests, downloa
 router.get("/:userId/test-catalog", tests, listCoachUserActiveTestCatalogController);
 router.patch("/:userId/test-catalog/:goalId", testsWrite, appendCoachUserGoalTestsController);
 router.get("/:userId/lab-reports", tests, listCoachUserLabReportsController);
+router.delete("/:userId/lab-reports/:reportId", staff("console.rep.delete", { admin: "users.clientHub.care.internal-parameters", coach: "clientTab.care.internal-parameters" }), deleteCoachUserLabReportController);
 router.patch("/:userId/lab-report-submission", testsWrite, updateCoachUserLabReportSubmissionController);
 router.patch("/:userId/lab-reports/:reportId/review", testsWrite, reviewCoachUserLabReportController);
 router.post("/:userId/lab-reports/:reportId/analyze", testsWrite, analyzeCoachUserLabReportController);

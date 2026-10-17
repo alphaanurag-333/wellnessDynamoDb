@@ -21,7 +21,8 @@ const {
 } = require("../../models/userProgramModel");
 const {
   parseHealthConcernOtherFromBody,
-  resolveHealthConcernForConsultancy,
+  readHealthConcernListBody,
+  resolveHealthConcernList,
   isOtherHealthConcernTitle,
   MAX_HEALTH_CONCERN_OTHER_LENGTH,
 } = require("../../services/consultancyHealthConcern");
@@ -251,28 +252,35 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
   }
 
   const pub = toPublicUser(source);
-  const concernId = pub.primaryHealthConcern;
-  if (concernId && typeof concernId === "string") {
+  const storedConcernIds = Array.isArray(pub.healthConcerns)
+    ? pub.healthConcerns.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const primaryConcernId =
+    typeof pub.primaryHealthConcern === "string" ? pub.primaryHealthConcern.trim() : "";
+  const concernIds = storedConcernIds.length
+    ? storedConcernIds
+    : primaryConcernId
+      ? [primaryConcernId]
+      : [];
+  const customTitle = String(pub.primaryHealthConcernOther || "").trim();
+  const expandedConcerns = [];
+  for (const concernId of concernIds) {
     const concern = await getHealthConcernById(concernId);
-    if (concern) {
-      const isOther =
-        String(concern.title || "")
-          .trim()
-          .toLowerCase() === "other";
-      const customTitle =
-        isOther && pub.primaryHealthConcernOther
-          ? String(pub.primaryHealthConcernOther).trim()
-          : "";
-      pub.primaryHealthConcern = {
-        _id: concern._id || concern.id,
-        id: concern.id,
-        title: customTitle || concern.title || "",
-        description: concern.description || "",
-        icon: concern.icon || "",
-        status: concern.status || "",
-        recommendedCatalogProgramId: concern.recommendedCatalogProgramId || null,
-      };
-    }
+    if (!concern) continue;
+    const isOther = isOtherHealthConcernTitle(concern.title);
+    expandedConcerns.push({
+      _id: concern._id || concern.id,
+      id: concern.id,
+      title: isOther && customTitle ? customTitle : concern.title || "",
+      description: concern.description || "",
+      icon: concern.icon || "",
+      status: concern.status || "",
+      recommendedCatalogProgramId: concern.recommendedCatalogProgramId || null,
+    });
+  }
+  pub.healthConcerns = expandedConcerns;
+  if (expandedConcerns.length) {
+    pub.primaryHealthConcern = expandedConcerns[0];
   }
 
   if (pub.assignedProgramId) {
@@ -558,30 +566,23 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
         body.wellness_journey
     );
   }
-  if (body.primaryHealthConcern !== undefined) {
-    const phc = String(body.primaryHealthConcern || "").trim() || null;
-    if (phc) {
-      try {
-        const healthConcernOther = parseHealthConcernOtherFromBody(body);
-        const resolved = await resolveHealthConcernForConsultancy(phc, {
-          healthConcernOther,
-        });
-        updates.primaryHealthConcern = resolved.healthConcernId;
-        const concern = await getHealthConcernById(resolved.healthConcernId);
-        updates.primaryHealthConcernOther = isOtherHealthConcernTitle(
-          concern?.title,
-        )
-          ? String(healthConcernOther || "").trim() || null
-          : null;
-      } catch (err) {
-        if (err?.name === "ValidationError") {
-          throw new AppError(err.message, 400);
-        }
-        throw err;
+  const healthConcernInput = readHealthConcernListBody(body);
+  if (healthConcernInput !== undefined) {
+    try {
+      const healthConcernOther = parseHealthConcernOtherFromBody(body);
+      const resolved = await resolveHealthConcernList(healthConcernInput, {
+        healthConcernOther,
+      });
+      updates.healthConcerns = resolved.healthConcernIds.length
+        ? resolved.healthConcernIds
+        : null;
+      updates.primaryHealthConcern = resolved.primaryHealthConcern;
+      updates.primaryHealthConcernOther = resolved.primaryHealthConcernOther;
+    } catch (err) {
+      if (err?.name === "ValidationError") {
+        throw new AppError(err.message, 400);
       }
-    } else {
-      updates.primaryHealthConcern = null;
-      updates.primaryHealthConcernOther = null;
+      throw err;
     }
   } else if (
     body.primaryHealthConcernOther !== undefined ||

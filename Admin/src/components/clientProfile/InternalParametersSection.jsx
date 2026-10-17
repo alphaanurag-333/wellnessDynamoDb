@@ -12,6 +12,7 @@ import {
   appendUserGoalTests,
   createUserTestRecommendation,
   deleteUserTestRecommendation,
+  deleteUserLabReport,
   downloadUserTestRecommendationPdf,
   fetchTestCatalog,
   fetchUserLabReports,
@@ -601,11 +602,12 @@ function reportInRange(reportDate, range, fromDate, toDate) {
   return true;
 }
 
-function LiveReportHistory({ reports, busy, onToast, onReview }) {
+function LiveReportHistory({ reports, busy, onToast, onReview, onDelete, canEdit = false }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [viewing, setViewing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const filtered = reports.filter((report) => reportInRange(report.reportDate, range, fromDate, toDate));
 
   function openReport(report) {
@@ -714,6 +716,17 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
                     Mark reviewed
                   </button>
                 ) : null}
+                {canEdit ? (
+                  <button
+                    type="button"
+                    className="ua-cp-ip-history__delete"
+                    disabled={busy}
+                    aria-label={`Delete report ${formatDisplayDate(report.reportDate)}`}
+                    onClick={() => setPendingDelete(report)}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             </div>
             {outOfRange.length ? (
@@ -726,6 +739,21 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
           </div>
         );
       }) : <p>No lab reports in this range.</p>}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete blood report"
+        title={`Delete the report from ${formatDisplayDate(pendingDelete?.reportDate)}?`}
+        body="This removes the report from the client’s app. The file is deleted and cannot be restored."
+        cancelLabel="Keep report"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const id = pendingDelete?.id;
+          setPendingDelete(null);
+          if (id) onDelete?.(id);
+        }}
+      />
       <LabReportPdfModal
         open={Boolean(viewing)}
         url={viewing?.fileUrl || ""}
@@ -2856,6 +2884,19 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     };
   }, [userId]);
 
+  async function handleDeleteReport(reportId) {
+    try {
+      setBusy(true);
+      await deleteUserLabReport(userId, reportId);
+      onToast?.("Blood report deleted");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to delete blood report");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleReview(reportId) {
     try {
       setBusy(true);
@@ -3065,7 +3106,14 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
 
       {historyOpen && historyCount > 0 ? (
         live ? (
-          <LiveReportHistory reports={reports} busy={busy} onToast={onToast} onReview={handleReview} />
+          <LiveReportHistory
+            reports={reports}
+            busy={busy}
+            onToast={onToast}
+            onReview={handleReview}
+            onDelete={handleDeleteReport}
+            canEdit={canEdit}
+          />
         ) : (
           <MockReportHistory onToast={onToast} />
         )
