@@ -16,7 +16,7 @@ const ACTIVITY_CATALOG = [
   { key: "meditation", unit: "mins", name: "Meditation", section: "Mindfulness & Breath", defaultGoal: 10 },
   { key: "nadiSuddhi", unit: "mins", name: "Nadi Suddhi", section: "Mindfulness & Breath", defaultGoal: 10 },
   { key: "lnb", unit: "times", name: "LNB", section: "Mindfulness & Breath", defaultGoal: 21 },
-  { key: "pranayam", unit: "times", name: "Pranayam", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "pranayam", unit: "mins", name: "Pranayam", section: "Mindfulness & Breath", defaultGoal: 21 },
   { key: "gratitudeJournal", unit: "boolean", name: "Gratitude Journal", section: "Mindfulness & Breath", defaultGoal: 1 },
 ];
 

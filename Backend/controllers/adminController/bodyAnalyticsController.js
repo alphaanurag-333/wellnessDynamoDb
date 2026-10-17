@@ -162,12 +162,14 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
     }));
   }
 
+  const rejectedSet = action === "rejected" && angle !== "weight";
   dispatchProgressPhotoReviewedNotification({
     userId,
     photoId,
     angle,
     status: action,
     rejectionReason,
+    rejectedSet,
     coachName: actor.displayName || "Your coach",
     actorUserId: actor.id,
   }).catch((err) => {
@@ -177,7 +179,11 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   const label = PHOTO_ANGLE_LABELS[angle];
   return res.status(200).json({
     status: true,
-    message: action === "approved" ? `${label} photo accepted` : `${label} photo rejected`,
+    message: rejectedSet
+      ? "Front, right, and left photos from this upload were rejected"
+      : action === "approved"
+        ? `${label} photo accepted`
+        : `${label} photo rejected`,
     angle,
     photo: updated,
   });

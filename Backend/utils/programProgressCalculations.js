@@ -102,6 +102,29 @@ function onboardingState(user) {
   return { state: `${days} days idle`, stateTone: "warn" };
 }
 
+/** Wellness-coach ids on a client: owning coach, then a direct wellness-coach assignee. */
+function wellnessCoachIdsForUser(user) {
+  const parentId = String(user?.parentCoachId || "").trim();
+  const assignedType = String(user?.assignedCoachType || "").trim().toLowerCase();
+  const assignedId = String(user?.assignedCoachId || "").trim();
+  const ids = [];
+  if (parentId) ids.push(parentId);
+  if (assignedType === "wellness_coach" && assignedId && assignedId !== parentId) {
+    ids.push(assignedId);
+  }
+  return ids;
+}
+
+/** Prefer the owning wellness coach name, then a directly assigned wellness coach. */
+function coachNameFromMap(user, coachNames) {
+  const names = coachNames instanceof Map ? coachNames : new Map();
+  for (const id of wellnessCoachIdsForUser(user)) {
+    const name = String(names.get(id) || "").trim();
+    if (name && name !== "Not assigned") return name;
+  }
+  return "Not assigned";
+}
+
 function buildOnboardingRow(user, coachName = "Not assigned") {
   const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
   const completed = Boolean(user?.paidOnboardingCompleted) || computePaidOnboardingCompleted(status);
@@ -309,6 +332,8 @@ module.exports = {
   formatChangePts,
   isHealClient,
   isHealClientInOnboarding,
+  wellnessCoachIdsForUser,
+  coachNameFromMap,
   buildOnboardingRow,
   idealWeightKg,
   resolveGoalWeightKg,

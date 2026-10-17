@@ -6,6 +6,8 @@ const {
   looksLikeA1cSeries,
   isHealClientInOnboarding,
   buildOnboardingRow,
+  coachNameFromMap,
+  wellnessCoachIdsForUser,
   formatChangeKg,
   formatChangePts,
   resolveGoalWeightKg,
@@ -113,6 +115,34 @@ describe("onboarding journey", () => {
     const row = buildOnboardingRow(user, "Anita Rao");
     assert.match(row.step, /Step 2 of 10/);
     assert.equal(row.coach, "Anita Rao");
+  });
+
+  it("resolves the wellness coach from the account id, including a direct assignee", () => {
+    const user = {
+      parentCoachId: "coach-account-1",
+      assignedCoachId: "coach-account-1",
+      assignedCoachType: "wellness_coach",
+    };
+    assert.deepEqual(wellnessCoachIdsForUser(user), ["coach-account-1"]);
+    const names = new Map([["coach-account-1", "Rahul Mehta"]]);
+    assert.equal(coachNameFromMap(user, names), "Rahul Mehta");
+  });
+
+  it("uses a directly assigned wellness coach when the parent id has no name", () => {
+    const user = {
+      parentCoachId: "",
+      assignedCoachId: "coach-2",
+      assignedCoachType: "wellness_coach",
+    };
+    const names = new Map([["coach-2", "Anita Rao"]]);
+    assert.equal(coachNameFromMap(user, names), "Anita Rao");
+  });
+
+  it("stays unassigned when neither coach id resolves", () => {
+    assert.equal(
+      coachNameFromMap({ parentCoachId: "missing", assignedCoachType: "assistant_wellness_coach", assignedCoachId: "awc-1" }, new Map()),
+      "Not assigned",
+    );
   });
 
   it("excludes completed heal clients", () => {

@@ -218,11 +218,17 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
           Review this photo
         </p>
         <h3 id="photo-review-title" className="ua-cp-present-modal__title">
-          {rejecting ? `Reject this ${angle} photo?` : `Accept this ${angle} photo?`}
+          {rejecting
+            ? angle === "Weight"
+              ? `Reject this ${angle} photo?`
+              : "Reject this upload?"
+            : `Accept this ${angle} photo?`}
         </h3>
         <p className="ua-cp-present-modal__body">
           {rejecting
-            ? "The client is notified and can upload a clearer photo. Add a reason if you want them to see why."
+            ? angle === "Weight"
+              ? "The client is notified and can upload a clearer photo. Add a reason if you want them to see why."
+              : `Rejecting this ${angle.toLowerCase()} photo also rejects the front, right, and left photos from the same upload. The client will not see that set until they upload it again.`
             : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
         </p>
         {rejecting ? (
@@ -322,7 +328,13 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
         rejectionReason: action === "rejected" ? rejectReason.trim() : "",
       });
       onReviewed?.(result?.photo, photo.angle);
-      onToast?.(action === "approved" ? `Accepted ${angle} photo (${photo.date})` : `Rejected ${angle} photo (${photo.date})`);
+      onToast?.(
+        action === "approved"
+          ? `Accepted ${angle} photo (${photo.date})`
+          : angle === "Weight"
+            ? `Rejected ${angle} photo (${photo.date})`
+            : `Rejected front, right, and left photos (${photo.date})`,
+      );
       setReviewTarget(null);
       setRejectReason("");
     } catch (error) {
