@@ -190,6 +190,17 @@ function healthProgressDateKey(value) {
   }).format(d);
 }
 
+function alignWeightLogDates(item) {
+  const recordedAt = item?.recordedAt || null;
+  const date = healthProgressDateKey(recordedAt) || null;
+  return {
+    date,
+    recordedAt,
+    createdAt: recordedAt,
+    updatedAt: recordedAt,
+  };
+}
+
 function healthProgressDayBounds(dateOnly) {
   const key = healthProgressDateKey(dateOnly);
   if (!key) return null;
@@ -340,6 +351,7 @@ module.exports = {
   parseConditionBodyPart,
   healthProgressToday,
   healthProgressDateKey,
+  alignWeightLogDates,
   healthProgressDayBounds,
   formatChartDate,
   formatSummaryDate,

@@ -140,7 +140,7 @@ function resolveJourneyPayload(selected, options) {
   }).filter(Boolean);
 }
 
-function WellnessJourneyPicker({ options = [], selected = [], disabled, onChange }) {
+function WellnessJourneyPicker({ options = [], selected = [], disabled, onChange, isOptionLocked }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const selectedSlugs = new Set((selected || []).map(wellnessSlug).filter(Boolean));
@@ -163,6 +163,7 @@ function WellnessJourneyPicker({ options = [], selected = [], disabled, onChange
   }, [open]);
 
   function toggle(title) {
+    if (isOptionLocked?.(title)) return;
     const slug = wellnessSlug(title);
     const next = selectedSlugs.has(slug)
       ? (selected || []).filter((token) => wellnessSlug(token) !== slug)
@@ -184,13 +185,14 @@ function WellnessJourneyPicker({ options = [], selected = [], disabled, onChange
       {open ? (
         <div className="ua-cp-journey__menu" role="listbox" aria-multiselectable="true">
           {rows.length ? rows.map((row) => {
-            const checked = selectedSlugs.has(wellnessSlug(row.title));
+            const locked = Boolean(isOptionLocked?.(row.title));
+            const checked = !locked && selectedSlugs.has(wellnessSlug(row.title));
             return (
-              <label key={row.key} className={`ua-cp-journey__opt${checked ? " is-on" : ""}`}>
+              <label key={row.key} className={`ua-cp-journey__opt${checked ? " is-on" : ""}${locked ? " is-locked" : ""}`}>
                 <input
                   type="checkbox"
                   checked={checked}
-                  disabled={disabled}
+                  disabled={disabled || locked}
                   onChange={() => toggle(row.title)}
                 />
                 <span>{row.title}</span>
@@ -238,6 +240,21 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   useEffect(() => {
     if (!editing) setForm(formFromUser(user));
   }, [user, editing]);
+
+  useEffect(() => {
+    if (!editing || toApiGender(form.gender) === "female") return;
+    setForm((prev) => {
+      const journey = (prev.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+      const concern = goalOptions.find((opt) => opt.id === prev.healthConcernId);
+      const clearConcern = isGirlOnlyHealthConcern(concern?.title);
+      if (journey.length === (prev.wellnessJourneyFor || []).length && !clearConcern) return prev;
+      return {
+        ...prev,
+        wellnessJourneyFor: journey,
+        ...(clearConcern ? { healthConcernId: "" } : {}),
+      };
+    });
+  }, [editing, form.gender, goalOptions]);
 
   useEffect(() => {
     let cancelled = false;
@@ -316,7 +333,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     const payload = {};
 
     if (canEditWellnessJourney) {
-      payload.wellnessJourneyFor = resolveJourneyPayload(form.wellnessJourneyFor, goalOptions);
+      const journey = toApiGender(form.gender) === "female"
+        ? form.wellnessJourneyFor
+        : (form.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+      payload.wellnessJourneyFor = resolveJourneyPayload(journey, goalOptions);
     }
 
     if (!canEditPii) {
@@ -581,6 +601,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           options={goalOptions}
           selected={form.wellnessJourneyFor}
           disabled={saveBusy}
+          isOptionLocked={(title) => toApiGender(form.gender) !== "female" && isGirlOnlyHealthConcern(title)}
           onChange={(next) => setForm((prev) => ({ ...prev, wellnessJourneyFor: next }))}
         />
       );
@@ -598,6 +619,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
               if (toApiGender(gender) !== "female") {
                 const selected = goalOptions.find((opt) => opt.id === prev.healthConcernId);
                 if (isGirlOnlyHealthConcern(selected?.title)) next.healthConcernId = "";
+                const hadGirlOnlyJourney = (prev.wellnessJourneyFor || []).some((token) => isGirlOnlyHealthConcern(token));
+                if (hadGirlOnlyJourney) {
+                  next.wellnessJourneyFor = (prev.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+                }
               }
               return next;
             });

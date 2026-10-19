@@ -9,7 +9,11 @@ const {
 const {
   listAllMetabolicMetricLogsByUser,
 } = require("../models/healthProgressMetabolicMetricModel");
-const { buildDashboardFromLogs, ageFromDob } = require("../utils/metabolicMetricsCalculations");
+const {
+  buildDashboardFromLogs,
+  ageFromDob,
+  deriveMetricsFromBodyMeasurement,
+} = require("../utils/metabolicMetricsCalculations");
 const { formatChartDate } = require("../utils/healthProgressHelpers");
 const { getUserWaterHistory } = require("../models/waterTrackingModel");
 const { getUserStepsHistory } = require("../models/stepsTrackingModel");
@@ -127,18 +131,19 @@ function latestLogWithField(logs, field) {
 
 function buildMetabolicSnapshot({ user, bodyMeasurement, dashboard, metabolicLogs }) {
   const age = ageFromDob(user?.dob);
+  const derived = deriveMetricsFromBodyMeasurement(bodyMeasurement, user);
   const heightResolved =
+    derived?.heightCm ??
     bodyMeasurement?.heightCm ??
     latestLogWithField(metabolicLogs, "heightCm");
   const weightResolved =
-    bodyMeasurement?.weightKg ??
+    derived?.weightKg ??
     latestLogWithField(metabolicLogs, "weightKg");
-
-  const bmr = dashboard?.bmr?.current?.value ?? null;
-  const tdee = dashboard?.tdee?.current?.value ?? null;
-  const bodyFat = dashboard?.bodyFat?.current?.bodyFatPercent ?? null;
-  const leanMass = dashboard?.bodyFat?.current?.leanMuscleMassPercent ?? null;
-  const visceral = dashboard?.visceralFat?.current?.visceralFatPercent ?? null;
+  const bmr = derived?.bmr ?? dashboard?.bmr?.current?.value ?? null;
+  const tdee = derived?.tdee ?? dashboard?.tdee?.current?.value ?? null;
+  const bodyFat = derived?.bodyFatPercent ?? dashboard?.bodyFat?.current?.bodyFatPercent ?? null;
+  const leanMass = derived?.leanMuscleMassPercent ?? dashboard?.bodyFat?.current?.leanMuscleMassPercent ?? null;
+  const visceral = derived?.estimatedVisceralFat ?? null;
 
   return [
     {
@@ -178,7 +183,7 @@ function buildMetabolicSnapshot({ user, bodyMeasurement, dashboard, metabolicLog
     },
     {
       label: "Visceral",
-      value: visceral != null ? `${formatNumber(visceral, 1)}%` : EMPTY,
+      value: visceral != null ? `${formatNumber(visceral, 2)} cm²` : EMPTY,
       tone: "default",
     },
   ];

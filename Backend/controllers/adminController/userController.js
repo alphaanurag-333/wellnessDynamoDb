@@ -146,7 +146,10 @@ exports.getUserByIdController = asyncHandler(async (req, res) => {
   const user = await getUserById(req.params.id);
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
-  return res.status(200).json({ status: true, user: await enrichUser(user) });
+  return res.status(200).json({
+    status: true,
+    user: await enrichUser(user, { includeCoachMeetings: true }),
+  });
 });
 
 exports.createUserController = asyncHandler(async (req, res) => {

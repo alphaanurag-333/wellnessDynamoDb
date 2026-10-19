@@ -10,6 +10,7 @@ const {
   parseConditionBodyPart,
   healthProgressToday,
   healthProgressDateKey,
+  alignWeightLogDates,
   healthProgressDayBounds,
   normalizeGlucoseType,
 } = require("../utils/healthProgressHelpers");
@@ -92,6 +93,18 @@ describe("health progress same-day key", () => {
     assert.equal(healthProgressDateKey("2026-10-12T12:00:00.000Z"), "2026-10-12");
     assert.equal(healthProgressDateKey("2026-10-11T20:00:00.000Z"), "2026-10-12");
     assert.equal(healthProgressDateKey(""), "");
+  });
+
+  it("sends the recorded day as the app chart date", () => {
+    const aligned = alignWeightLogDates({
+      recordedAt: "2026-10-18T12:00:00.000Z",
+      createdAt: "2026-10-19T07:48:56.732Z",
+      updatedAt: "2026-10-19T07:48:56.732Z",
+    });
+    assert.equal(aligned.date, "2026-10-18");
+    assert.equal(aligned.recordedAt, "2026-10-18T12:00:00.000Z");
+    assert.equal(aligned.createdAt, "2026-10-18T12:00:00.000Z");
+    assert.equal(aligned.updatedAt, "2026-10-18T12:00:00.000Z");
   });
 
   it("bounds a Kolkata day so noon UTC on that date is inside", () => {

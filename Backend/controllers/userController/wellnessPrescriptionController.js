@@ -2,7 +2,7 @@ const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const { getUserById } = require("../../models/userModel");
 const {
-  listEnrichedWellnessPrescriptionsForUser,
+  loadCoachMeetingSnapshot,
 } = require("../../services/wellnessPrescriptionReviewService");
 
 function mapPrescriptionListResponse(assignments) {
@@ -19,12 +19,14 @@ exports.getUserWellnessPrescriptionsController = asyncHandler(async (req, res) =
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const user = await getUserById(userId);
-  const assignments = await listEnrichedWellnessPrescriptionsForUser(userId, user);
+  const snapshot = await loadCoachMeetingSnapshot(userId, user);
 
   return res.status(200).json({
     status: true,
     message: "Wellness prescriptions fetched successfully",
-    ...mapPrescriptionListResponse(assignments),
+    ...mapPrescriptionListResponse(snapshot.assignments),
+    meetings: snapshot.meetings,
+    lastReviewedAt: snapshot.lastReviewedAt,
   });
 });
 
@@ -33,11 +35,16 @@ exports.getUserReviewHistoryController = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const user = await getUserById(userId);
-  const assignments = await listEnrichedWellnessPrescriptionsForUser(userId, user);
+  const snapshot = await loadCoachMeetingSnapshot(userId, user);
+  const reviews = [...snapshot.assignments].sort((a, b) =>
+    String(b.date || "").localeCompare(String(a.date || "")),
+  );
 
   return res.status(200).json({
     status: true,
     message: "Review history fetched successfully",
-    reviews: assignments,
+    reviews,
+    meetings: snapshot.meetings,
+    lastReviewedAt: snapshot.lastReviewedAt,
   });
 });

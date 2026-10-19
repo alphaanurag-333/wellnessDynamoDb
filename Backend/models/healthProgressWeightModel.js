@@ -8,6 +8,7 @@ const {
   WEIGHT_KG_MAX,
   healthProgressDateKey,
   healthProgressDayBounds,
+  alignWeightLogDates,
 } = require("../utils/healthProgressHelpers");
 
 const TABLE = "HealthProgressWeight";
@@ -205,6 +206,15 @@ function toPublicWeightLog(item) {
   };
 }
 
+function toUserWeightLog(item) {
+  const log = toPublicWeightLog(item);
+  if (!log) return null;
+  return {
+    ...log,
+    ...alignWeightLogDates(log),
+  };
+}
+
 async function clearWeightLogPhoto(userId, logId) {
   const item = await getWeightLogById(logId);
   if (!item || String(item.userId) !== String(userId)) {
@@ -245,4 +255,5 @@ module.exports = {
   listWeightLogsByUser,
   clearWeightLogPhoto,
   toPublicWeightLog,
+  toUserWeightLog,
 };

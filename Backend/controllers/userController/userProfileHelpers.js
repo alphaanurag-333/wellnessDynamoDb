@@ -38,6 +38,7 @@ const {
   listSubscriptionsByUserId,
 } = require("../../models/energyExchangeSubscriptionModel");
 const { labReportSubmissionState } = require("../../utils/labReportSubmission");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
 const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
 const {
   getUserById,
@@ -229,7 +230,7 @@ function parseUserFields(body, { requirePassword = false, requireDob = false } =
   return { fields, password };
 }
 
-async function enrichUser(user, { ensureReferral = true } = {}) {
+async function enrichUser(user, { ensureReferral = true, includeCoachMeetings = false } = {}) {
   if (!user) return null;
 
   let source = user;
@@ -394,6 +395,16 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
     }
   } else {
     Object.assign(pub, labReportSubmissionState(source));
+  }
+
+  if (includeCoachMeetings && pub.id) {
+    try {
+      const snapshot = await loadCoachMeetingSnapshot(pub.id, source);
+      pub.lastReviewedAt = snapshot.lastReviewedAt;
+      pub.coachMeetings = snapshot.meetings;
+    } catch (err) {
+      console.error("[enrichUser] coach meetings failed", err.message);
+    }
   }
 
   return pub;

@@ -118,6 +118,24 @@ function ageDaysFrom(iso) {
   return Math.max(0, Math.round((today.getTime() - joined.getTime()) / 86400000));
 }
 
+/**
+ * Label for a Wellness Prescription review date.
+ * Date-only values are the prescription calendar day, not the save timestamp.
+ */
+export function formatPrescriptionReviewLabel(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const dayMatch = raw.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (!dayMatch) return formatRelativeDate(raw);
+
+  const day = dayMatch[1];
+  const today = calendarDayKey(new Date());
+  if (day === today) return "today";
+  const instant = `${day}T12:00:00+05:30`;
+  if (day > today) return formatLongDate(instant);
+  return formatRelativeDate(instant);
+}
+
 /** Relative date label suitable for profile activity badges. */
 export function formatRelativeDate(iso) {
   const d = parseIso(iso);
@@ -531,9 +549,7 @@ export function mapApiUserToRow(user, index = 0) {
   const createdAt = user?.createdAt || "";
   const updatedAt = user?.updatedAt || createdAt;
   const lastActiveAt = user?.lastActiveAt || "";
-  // Prefer a purpose-built review timestamp when the API provides one. Existing
-  // users still get a meaningful value from their latest persisted update.
-  const lastReviewedAt = user?.lastReviewedAt || updatedAt;
+  const lastReviewedAt = user?.lastReviewedAt || "";
   const tier = mapApiTierToUi(user?.userTier);
   const address = formatAddress(user);
   const stateRaw = String(user?.state || "").trim();
@@ -593,7 +609,7 @@ export function mapApiUserToRow(user, index = 0) {
     joined: formatLongDate(createdAt),
     joinedAgo: formatJoinedAgo(createdAt),
     lastUpdated: formatShortDate(updatedAt),
-    lastReviewed: formatRelativeDate(lastReviewedAt),
+    lastReviewed: formatPrescriptionReviewLabel(lastReviewedAt),
     termsIp: resolveTermsIp(user),
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),

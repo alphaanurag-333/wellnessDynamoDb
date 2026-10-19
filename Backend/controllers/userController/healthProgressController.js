@@ -19,7 +19,7 @@ const {
 const {
   createWeightLog,
   listWeightLogsByUser,
-  toPublicWeightLog,
+  toUserWeightLog,
 } = require("../../models/healthProgressWeightModel");
 const {
   createGlucoseLog,
@@ -95,7 +95,7 @@ exports.createWeightLogController = asyncHandler(async (req, res) => {
   return res.status(201).json({
     status: true,
     message: "Weight entry saved",
-    data: { log: toPublicWeightLog(log) },
+    data: { log: toUserWeightLog(log) },
   });
 });
 
@@ -108,7 +108,7 @@ exports.listWeightLogsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Weight history fetched",
     data: {
-      logs: result.items.map(toPublicWeightLog),
+      logs: result.items.map(toUserWeightLog),
       pagination: result.pagination,
     },
   });

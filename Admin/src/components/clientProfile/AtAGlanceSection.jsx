@@ -12,6 +12,7 @@ import {
   getNextOnboardingStepLabel,
   saveUserCoachInsight,
   deleteUserCoachInsight,
+  formatPrescriptionReviewLabel,
 } from "../../api/usersApi.js";
 import {
   acceptOnboardingMeetingRequest,
@@ -30,6 +31,11 @@ import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import {
+  assignmentsFromPrescriptionPayload,
+  latestActivePrescriptionDate,
+  listUserWellnessPrescriptions,
+} from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 
@@ -173,7 +179,7 @@ function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
 }
 
-function GlanceHeader({ user, onOpenReview }) {
+function GlanceHeader({ user, lastReviewed, onOpenReview }) {
   const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "");
   const name = String(user.name || "").trim() || "Client";
   return (
@@ -187,7 +193,7 @@ function GlanceHeader({ user, onOpenReview }) {
       </div>
       <div className="ua-cp-glance-head__badges">
         <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
-          ⏱️ Last reviewed {user.lastReviewed || "—"} ›
+          ⏱️ Last reviewed {lastReviewed || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
           ⚑ Updated {user.lastUpdated || "—"}
@@ -1470,10 +1476,32 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   const [glance, setGlance] = useState(null);
   const [glanceLoading, setGlanceLoading] = useState(false);
+  const [lastReviewed, setLastReviewed] = useState("");
 
   useEffect(() => {
     setOnboardingProgress(null);
+    setLastReviewed("");
   }, [user?.id]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || isMockNumericId(userId)) return undefined;
+
+    let cancelled = false;
+    listUserWellnessPrescriptions(userId)
+      .then((data) => {
+        if (cancelled) return;
+        const day = latestActivePrescriptionDate(assignmentsFromPrescriptionPayload(data));
+        setLastReviewed(formatPrescriptionReviewLabel(day));
+      })
+      .catch(() => {
+        if (!cancelled) setLastReviewed(user?.lastReviewed || "");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, user?.lastReviewed]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -1536,7 +1564,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       {rainActive && rainTip ? (
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
-      <GlanceHeader user={user} onOpenReview={() => setReviewOpen(true)} />
+      <GlanceHeader user={user} lastReviewed={lastReviewed} onOpenReview={() => setReviewOpen(true)} />
       <PreviewToggle mode={viewMode} onChange={setViewMode} />
 
       {viewMode === "onboarded" ? (

@@ -12,8 +12,22 @@ export const BODY_ANALYTICS = {
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
+const CM_PER_INCH = 2.54;
+const KG_TO_LB = 2.2046226218;
+
+// Calculator.net activity factors (Mifflin–St Jeor TDEE).
+const ACTIVITY_MULTIPLIERS = {
+  sedentary: 1.2,
+  lightly_active: 1.375,
+  moderately_active: 1.465,
+  highly_active: 1.55,
+  very_active: 1.725,
+  extra_active: 1.9,
+};
+
 const MEASURE_FIELDS = [
   { label: "Height", field: "heightCm" },
+  { label: "Weight", field: "weightKg", kind: "weight" },
   { label: "Neck", field: "neckCm" },
   { label: "Shoulder", field: "shoulderCm" },
   { label: "Chest", field: "chestCm" },
@@ -27,8 +41,8 @@ const METABOLIC_FIELDS = [
   { label: "BMR", field: "bmr", suffix: " kcal", decimals: 0 },
   { label: "TDEE", field: "tdee", suffix: " kcal", decimals: 0 },
   { label: "Body fat %", field: "bodyFatPercent", suffix: "%", decimals: 1 },
-  { label: "Visceral fat %", field: "visceralFatPercent", suffix: "%", decimals: 1 },
-  { label: "Est. visceral fat", field: "estimatedVisceralFat", decimals: 0 },
+  { label: "Visceral fat %", field: "visceralFatPercent", suffix: " cm²", decimals: 2 },
+  { label: "Est. visceral fat", field: "estimatedVisceralFat", suffix: " cm²", decimals: 2 },
   { label: "Waist - hip ratio", field: "waistHipRatio", decimals: 2 },
 ];
 
@@ -92,10 +106,7 @@ function previousPeriodKey(key, mode) {
 }
 
 export function getPeriodOptions(bodyAnalytics, mode) {
-  const records = [
-    ...(bodyAnalytics?.measurements || []),
-    ...(bodyAnalytics?.metabolicMetrics || []),
-  ];
+  const records = bodyAnalytics?.measurements || [];
   return [...new Set(records.map((row) => periodKey(row.recordedAt || row.createdAt, mode)).filter(Boolean))]
     .sort((a, b) => b.localeCompare(a));
 }
@@ -127,71 +138,191 @@ function formatValue(value, suffix = "", decimals = 1) {
   return `${number.toFixed(decimals)}${suffix}`;
 }
 
-function latestMetricValueByPeriod(records, mode, field) {
+function positiveNumber(value) {
+  const number = parseNum(value);
+  if (number == null || number <= 0) return null;
+  return number;
+}
+
+function weightToKg(row) {
+  const weight = positiveNumber(row?.weightKg);
+  if (weight == null) return null;
+  const unit = String(row?.weightUnit || "kg").toLowerCase().trim();
+  if (unit === "lb" || unit === "lbs" || unit === "pound" || unit === "pounds") {
+    return weight * 0.45359237;
+  }
+  return weight;
+}
+
+function heightToCm(row) {
+  const height = positiveNumber(row?.heightCm);
+  if (height == null) return null;
+  const unit = String(row?.heightUnit || "cm").toLowerCase().trim();
+  if (unit === "in" || unit === "inch" || unit === "inches") return height * CM_PER_INCH;
+  if (unit === "ft" || unit === "feet" || unit === "foot") return height * 30.48;
+  return height;
+}
+
+function lengthCm(row, field) {
+  if (field === "heightCm") return heightToCm(row);
+  return positiveNumber(row?.[field]);
+}
+
+function normalizeGender(value) {
+  const next = String(value || "").toLowerCase().trim();
+  if (next === "male" || next === "m" || next === "man" || next === "boy") return "male";
+  if (next === "female" || next === "f" || next === "woman" || next === "girl") return "female";
+  return "";
+}
+
+function ageYearsAt(dob, at) {
+  const birth = validDate(dob);
+  const when = validDate(at) || new Date();
+  if (!birth) return null;
+  let age = when.getFullYear() - birth.getFullYear();
+  const monthDiff = when.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && when.getDate() < birth.getDate())) age -= 1;
+  if (!Number.isFinite(age) || age <= 0 || age > 120) return null;
+  return age;
+}
+
+function roundTo(value, decimals) {
+  const factor = 10 ** decimals;
+  return Math.round((value + Math.sign(value) * 1e-8) * factor) / factor;
+}
+
+function bmiValue(heightCm, weightKg) {
+  if (!heightCm || !weightKg) return null;
+  const meters = heightCm / 100;
+  if (meters <= 0) return null;
+  const bmi = weightKg / (meters * meters);
+  return Number.isFinite(bmi) && bmi > 0 ? bmi : null;
+}
+
+function computeBmi(heightCm, weightKg) {
+  const bmi = bmiValue(heightCm, weightKg);
+  return bmi == null ? null : roundTo(bmi, 1);
+}
+
+function computeBmr({ gender, age, heightCm, weightKg }) {
+  if (!gender || !age || !heightCm || !weightKg) return null;
+  const base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  const result = gender === "female" ? base - 161 : base + 5;
+  if (!Number.isFinite(result) || result <= 0) return null;
+  return Math.round(result);
+}
+
+function computeBodyFatPercent({ gender, heightCm, neckCm, waistCm, hipCm }) {
+  if (!gender || !heightCm || !neckCm || !waistCm) return null;
+  let density;
+  if (gender === "female") {
+    if (!hipCm || waistCm + hipCm <= neckCm) return null;
+    density = 1.29579 - 0.35004 * Math.log10(waistCm + hipCm - neckCm) + 0.221 * Math.log10(heightCm);
+  } else if (waistCm <= neckCm) {
+    return null;
+  } else {
+    density = 1.0324 - 0.19077 * Math.log10(waistCm - neckCm) + 0.15456 * Math.log10(heightCm);
+  }
+  if (!Number.isFinite(density) || density <= 0) return null;
+  const percent = 495 / density - 450;
+  if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) return null;
+  return roundTo(percent, 1);
+}
+
+function computeVisceralFatCm2({ gender, age, heightCm, weightKg, waistCm, thighCm }) {
+  if (!gender || !age || !waistCm || !thighCm) return null;
+  let vat;
+  if (gender === "female") {
+    const bmi = bmiValue(heightCm, weightKg);
+    if (bmi == null) return null;
+    vat = 2.15 * waistCm - 3.63 * thighCm + 1.46 * age + 6.22 * bmi - 92.713;
+  } else {
+    vat = 6 * waistCm - 4.41 * thighCm + 1.19 * age - 213.65;
+  }
+  if (!Number.isFinite(vat) || vat <= 0) return null;
+  return roundTo(vat, 2);
+}
+
+function computeWaistHipRatio(waistCm, hipCm) {
+  if (!waistCm || !hipCm) return null;
+  return roundTo(waistCm / hipCm, 2);
+}
+
+function deriveMetabolicSnapshot(row, profile) {
+  const recordedAt = row?.recordedAt || row?.createdAt || "";
+  const gender = normalizeGender(profile?.gender);
+  const age = ageYearsAt(profile?.dob, recordedAt);
+  const heightCm = heightToCm(row);
+  const weightKg = weightToKg(row);
+  const neckCm = positiveNumber(row?.neckCm);
+  const waistCm = positiveNumber(row?.waistCm);
+  const hipCm = positiveNumber(row?.hipCm);
+  const thighCm = positiveNumber(row?.thighsCm);
+  const activityKey = String(row?.activityLevel || "moderately_active").toLowerCase().trim();
+  const multiplier = ACTIVITY_MULTIPLIERS[activityKey] || ACTIVITY_MULTIPLIERS.moderately_active;
+  const bmr = computeBmr({ gender, age, heightCm, weightKg });
+  const visceralFatCm2 = computeVisceralFatCm2({ gender, age, heightCm, weightKg, waistCm, thighCm });
+
+  return {
+    recordedAt,
+    bmi: computeBmi(heightCm, weightKg),
+    bmr,
+    tdee: bmr != null ? Math.round(bmr * multiplier) : null,
+    bodyFatPercent: computeBodyFatPercent({ gender, heightCm, neckCm, waistCm, hipCm }),
+    visceralFatPercent: visceralFatCm2,
+    estimatedVisceralFat: visceralFatCm2,
+    waistHipRatio: computeWaistHipRatio(waistCm, hipCm),
+  };
+}
+
+function latestMetricValueByPeriod(records, mode, field, readValue = (row) => row?.[field]) {
   const values = {};
   const sorted = [...(records || [])].sort((a, b) =>
     String(b.recordedAt || b.createdAt || "").localeCompare(String(a.recordedAt || a.createdAt || "")),
   );
   for (const row of sorted) {
     const key = periodKey(row.recordedAt || row.createdAt, mode);
-    if (key && values[key] == null && hasNumericValue(row[field])) {
-      values[key] = row[field];
+    const value = readValue(row);
+    if (key && values[key] == null && hasNumericValue(value)) {
+      values[key] = value;
     }
   }
   return values;
 }
 
 export function buildMeasurementRows(records, mode, unit, columns) {
-  const unitSuffix = unit === "cm" ? "cm" : "in";
-  const divisor = unit === "cm" ? 1 : 2.54;
+  const lengthSuffix = unit === "cm" ? "cm" : "in";
+  const weightSuffix = unit === "cm" ? "kg" : "lb";
 
-  return MEASURE_FIELDS.map(({ label, field }) => {
-    const history = latestMetricValueByPeriod(records, mode, field);
+  return MEASURE_FIELDS.map((spec) => {
+    const history = latestMetricValueByPeriod(records, mode, spec.field, (row) => (
+      spec.kind === "weight" ? weightToKg(row) : lengthCm(row, spec.field)
+    ));
     const values = columns.map((column) => {
       const raw = history[column];
-      return hasNumericValue(raw) ? formatValue(Number(raw) / divisor, "", 1) : "-";
+      if (!hasNumericValue(raw)) return "-";
+      if (spec.kind === "weight") {
+        const shown = unit === "cm" ? Number(raw) : Number(raw) * KG_TO_LB;
+        return formatValue(shown, ` ${weightSuffix}`, 1);
+      }
+      const shown = unit === "cm" ? Number(raw) : Number(raw) / CM_PER_INCH;
+      return formatValue(shown, "", 1);
     });
     const latest = values[0];
     const previous = values[1];
-    const delta = columns.length >= 2 ? formatDelta(latest, previous, unitSuffix) : "-";
-    return { label, values, delta, tone: deltaTone(delta) };
+    const deltaSuffix = spec.kind === "weight" ? weightSuffix : lengthSuffix;
+    const delta = columns.length >= 2 ? formatDelta(latest, previous, deltaSuffix) : "-";
+    return { label: spec.label, values, delta, tone: deltaTone(delta) };
   });
 }
 
-function latestWaistHipRatioByPeriod(records, mode) {
-  const stored = latestMetricValueByPeriod(records, mode, "waistHipRatio");
-  const waistHistory = latestMetricValueByPeriod(records, mode, "waistCm");
-  const hipHistory = latestMetricValueByPeriod(records, mode, "hipCm");
-  const keys = new Set([
-    ...Object.keys(stored),
-    ...Object.keys(waistHistory),
-    ...Object.keys(hipHistory),
-  ]);
-  const values = {};
-  for (const key of keys) {
-    if (hasNumericValue(stored[key])) {
-      values[key] = Number(stored[key]);
-      continue;
-    }
-    const waist = parseNum(waistHistory[key]);
-    const hip = parseNum(hipHistory[key]);
-    if (waist != null && hip != null && hip > 0) {
-      values[key] = Number((waist / hip).toFixed(2));
-    }
-  }
-  return values;
-}
-
-export function buildMetabolicRows(records, mode, columns, measurementRecords = []) {
-  const ratioSource = [
-    ...(Array.isArray(records) ? records : []),
-    ...(Array.isArray(measurementRecords) ? measurementRecords : []),
-  ];
+export function buildMetabolicRows(measurementRecords, mode, columns, profile = {}) {
+  const derived = (Array.isArray(measurementRecords) ? measurementRecords : []).map((row) => (
+    deriveMetabolicSnapshot(row, profile)
+  ));
 
   return METABOLIC_FIELDS.map(({ label, field, suffix = "", decimals = 1 }) => {
-    const history = field === "waistHipRatio"
-      ? latestWaistHipRatioByPeriod(ratioSource, mode)
-      : latestMetricValueByPeriod(records, mode, field);
+    const history = latestMetricValueByPeriod(derived, mode, field);
     const values = columns.map((column) => formatValue(history[column], suffix, decimals));
     const latest = values[0];
     const previous = values[1];

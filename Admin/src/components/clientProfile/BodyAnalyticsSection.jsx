@@ -593,22 +593,22 @@ export function BodyAnalyticsSection({ user, onToast }) {
 
   const measureRows = useMemo(
     () => buildMeasurementRows(
-      [...(bodyAnalytics?.measurements || []), ...(bodyAnalytics?.metabolicMetrics || [])],
+      bodyAnalytics?.measurements,
       historyMode,
       unit,
       historyWindow,
     ),
-    [bodyAnalytics?.measurements, bodyAnalytics?.metabolicMetrics, historyMode, historyWindow, unit],
+    [bodyAnalytics?.measurements, historyMode, historyWindow, unit],
   );
 
   const metabolicRows = useMemo(
     () => buildMetabolicRows(
-      bodyAnalytics?.metabolicMetrics,
+      bodyAnalytics?.measurements,
       historyMode,
       historyWindow,
-      bodyAnalytics?.measurements,
+      { gender: user?.gender, dob: user?.dobIso || user?.dob },
     ),
-    [bodyAnalytics?.measurements, bodyAnalytics?.metabolicMetrics, historyMode, historyWindow],
+    [bodyAnalytics?.measurements, historyMode, historyWindow, user?.dob, user?.dobIso, user?.gender],
   );
 
   function onHistoryChange(mode) {

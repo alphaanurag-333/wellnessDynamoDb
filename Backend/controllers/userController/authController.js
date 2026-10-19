@@ -80,7 +80,7 @@ async function sendAuthResponse(res, statusCode, user, message = "Authentication
     message,
     accessToken,
     refreshToken,
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 }
 
@@ -531,7 +531,7 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Profile fetched successfully",
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 });
 
@@ -577,7 +577,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Profile updated successfully",
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 });
 
@@ -669,7 +669,7 @@ exports.verifyProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Phone number updated successfully",
-    user: await enrichUser(updated),
+    user: await enrichUser(updated, { includeCoachMeetings: true }),
   });
 });
 
@@ -711,7 +711,7 @@ exports.verifyProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "WhatsApp number updated successfully",
-    user: await enrichUser(updated),
+    user: await enrichUser(updated, { includeCoachMeetings: true }),
   });
 });
 

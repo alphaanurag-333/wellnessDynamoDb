@@ -15407,6 +15407,13 @@
   background: #f4faf7;
 }
 
+.updated-admin .ua-cp-personal .ua-cp-journey__opt.is-locked,
+.updated-admin .ua-cp-personal .ua-cp-journey__opt.is-locked:hover {
+  background: transparent;
+  color: #98a2b3;
+  cursor: not-allowed;
+}
+
 .updated-admin .ua-cp-personal .ua-cp-journey__opt input {
   margin: 0;
   accent-color: #2b8f5b;

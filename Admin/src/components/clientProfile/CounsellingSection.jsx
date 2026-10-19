@@ -7,6 +7,11 @@ import {
   rejectHealConsultancyRequest,
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
+import {
+  assignmentsFromPrescriptionPayload,
+  coachMeetingsFromAssignments,
+  listUserWellnessPrescriptions,
+} from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
@@ -24,6 +29,11 @@ const PERIODS = [
   { key: "evening", label: "Evening", range: "18:00–20:00" },
 ];
 
+const REVIEW_STATUS_LABEL = {
+  active: "Active",
+  cancelled: "Cancelled",
+};
+
 const STATUS_LABEL = {
   requested: "Requested",
   periods_offered: "Periods offered",
@@ -34,6 +44,17 @@ const STATUS_LABEL = {
   follow_up_needed: "Follow-up needed",
   cancelled: "Cancelled",
 };
+
+function formatReviewDay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "—";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 function formatWhen(value) {
   if (!value) return "—";
@@ -79,6 +100,8 @@ export function CounsellingSection({ user, onToast }) {
   const canManage = canCreate || canEdit;
   const userId = String(user?.id || user?._id || "").trim();
   const [tracks, setTracks] = useState([]);
+  const [meetings, setMeetings] = useState([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(Boolean(userId));
   const [activeTrack, setActiveTrack] = useState(null);
   const [scheduledTrack, setScheduledTrack] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
@@ -113,6 +136,32 @@ export function CounsellingSection({ user, onToast }) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      setMeetings([]);
+      setMeetingsLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setMeetingsLoading(true);
+    listUserWellnessPrescriptions(userId)
+      .then((data) => {
+        if (cancelled) return;
+        setMeetings(coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(data)));
+      })
+      .catch(() => {
+        if (!cancelled) setMeetings([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMeetingsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   const selectedOffer = useMemo(() => {
@@ -581,42 +630,25 @@ export function CounsellingSection({ user, onToast }) {
 
       <div className="ua-cp-counselling__history">
         <h3>Review Tracking</h3>
-        <p className="ua-cp-counselling__muted">Same list the client sees as “When have I met my Wellness Coach?”</p>
-        {!tracks.length ? (
-          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No sessions yet.</p>
+        <p className="ua-cp-counselling__muted">Same list the client sees as “When have I met my Wellness Coach?” Dates come from each Wellness Prescription.</p>
+        {meetingsLoading ? (
+          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">Loading reviews…</p>
+        ) : !meetings.length ? (
+          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No reviews yet.</p>
         ) : (
           <div className="ua-cp-counselling__history-list">
-            {[...tracks]
-              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-              .map((track, index) => {
-                const reviewNumber = Math.max(tracks.length - index, 1);
-                const dateLabel = new Date(track.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                });
-                return (
-                  <div key={track.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
-                    <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
-                    <span className="ua-cp-counselling__history-date">{dateLabel}</span>
-                    <span className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${track.status}`}>
-                      {STATUS_LABEL[track.status] || track.status}
-                    </span>
-                    <div className="ua-cp-counselling__history-action">
-                      {canDelete && track.status === "scheduled" && track.id !== scheduledSession?.id ? (
-                        <button
-                          type="button"
-                          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-                          onClick={() => askCancel(track, { label: `Review ${reviewNumber}` })}
-                          disabled={busy}
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+            {meetings.map((meeting, index) => {
+              const reviewNumber = Math.max(meetings.length - index, 1);
+              return (
+                <div key={meeting.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
+                  <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
+                  <span className="ua-cp-counselling__history-date">{formatReviewDay(meeting.date)}</span>
+                  <span className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${meeting.reviewStatus}`}>
+                    {REVIEW_STATUS_LABEL[meeting.reviewStatus] || meeting.reviewStatus}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

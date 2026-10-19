@@ -131,6 +131,120 @@ function computeWaistHipRatio(waistCm, hipCm) {
   return Number((w / h).toFixed(2));
 }
 
+function roundMetric(value, decimals) {
+  const factor = 10 ** decimals;
+  return Math.round((Number(value) + Math.sign(Number(value)) * 1e-8) * factor) / factor;
+}
+
+function measurementWeightKg(measurement) {
+  const weight = Number(measurement?.weightKg);
+  if (!Number.isFinite(weight) || weight <= 0) return null;
+  const unit = String(measurement?.weightUnit || "kg").toLowerCase().trim();
+  if (unit === "lb" || unit === "lbs" || unit === "pound" || unit === "pounds") {
+    return weight * 0.45359237;
+  }
+  return weight;
+}
+
+function measurementHeightCm(measurement) {
+  const height = Number(measurement?.heightCm);
+  if (!Number.isFinite(height) || height <= 0) return null;
+  const unit = String(measurement?.heightUnit || "cm").toLowerCase().trim();
+  if (unit === "in" || unit === "inch" || unit === "inches") return height * 2.54;
+  if (unit === "ft" || unit === "feet" || unit === "foot") return height * 30.48;
+  return height;
+}
+
+function ageAtDate(dob, at) {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  const when = at ? new Date(at) : new Date();
+  if (Number.isNaN(birth.getTime()) || Number.isNaN(when.getTime())) return null;
+  let age = when.getFullYear() - birth.getFullYear();
+  const monthDiff = when.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && when.getDate() < birth.getDate())) age -= 1;
+  return age > 0 && age <= 120 ? age : null;
+}
+
+/**
+ * Samouda VAT (cm²), the LIH visceral-fat model.
+ * Women: 2.15×waist − 3.63×thigh + 1.46×age + 6.22×BMI − 92.713
+ * Men: 6×waist − 4.41×thigh + 1.19×age − 213.65
+ */
+function knownGender(value) {
+  const next = String(value || "").toLowerCase().trim();
+  if (next === "male" || next === "m" || next === "man" || next === "boy") return "male";
+  if (next === "female" || next === "f" || next === "woman" || next === "girl") return "female";
+  return "";
+}
+
+function computeSamoudaVisceralFat({ gender, age, heightCm, weightKg, waistCm, thighCm }) {
+  const sex = knownGender(gender);
+  const waist = Number(waistCm);
+  const thigh = Number(thighCm);
+  const years = Number(age);
+  if (!sex || !Number.isFinite(waist) || !Number.isFinite(thigh) || !Number.isFinite(years)) return null;
+  if (waist <= 0 || thigh <= 0 || years <= 0) return null;
+
+  let vat;
+  if (sex === "female") {
+    const h = Number(heightCm);
+    const w = Number(weightKg);
+    if (!h || !w || h <= 0 || w <= 0) return null;
+    const bmi = w / ((h / 100) * (h / 100));
+    vat = 2.15 * waist - 3.63 * thigh + 1.46 * years + 6.22 * bmi - 92.713;
+  } else {
+    vat = 6 * waist - 4.41 * thigh + 1.19 * years - 213.65;
+  }
+
+  if (!Number.isFinite(vat) || vat <= 0) return null;
+  return roundMetric(vat, 2);
+}
+
+function deriveMetricsFromBodyMeasurement(measurement, user) {
+  if (!measurement) return null;
+  const gender = knownGender(user?.gender);
+  const recordedAt = measurement.recordedAt || measurement.createdAt || null;
+  const age = ageAtDate(user?.dob, recordedAt);
+  const heightCm = measurementHeightCm(measurement);
+  const weightKg = measurementWeightKg(measurement);
+  const neckCm = Number(measurement.neckCm);
+  const waistCm = Number(measurement.waistCm);
+  const hipCm = Number(measurement.hipCm);
+  const thighCm = Number(measurement.thighsCm);
+  const bmr = gender ? computeBmr({ gender, age, heightCm, weightKg }) : null;
+  const activityLevel = measurement.activityLevel || "moderately_active";
+  const tdee = bmr != null ? resolvePrimaryTdee(bmr, activityLevel).tdee : null;
+  const bodyFat = gender
+    ? computeBodyFat({
+        gender,
+        heightCm,
+        neckCm,
+        waistCm,
+        hipCm,
+      })
+    : null;
+
+  return {
+    heightCm,
+    weightKg,
+    bmi: computeBmi(heightCm, weightKg),
+    bmr,
+    tdee,
+    bodyFatPercent: bodyFat?.bodyFatPercent ?? null,
+    leanMuscleMassPercent: bodyFat?.leanMuscleMassPercent ?? null,
+    estimatedVisceralFat: computeSamoudaVisceralFat({
+      gender,
+      age,
+      heightCm,
+      weightKg,
+      waistCm,
+      thighCm,
+    }),
+    waistHipRatio: computeWaistHipRatio(waistCm, hipCm),
+  };
+}
+
 function computeVisceralFat({ gender, age, heightCm, waistCm, hipCm }) {
   const h = Number(heightCm);
   const w = Number(waistCm);
@@ -517,6 +631,8 @@ module.exports = {
   computeWaistHipRatio,
   assessVisceralFatRisk,
   computeVisceralFat,
+  computeSamoudaVisceralFat,
+  deriveMetricsFromBodyMeasurement,
   computeFattyLiverIndex,
   getFliRiskCategory,
   buildFattyLiverSnapshot,

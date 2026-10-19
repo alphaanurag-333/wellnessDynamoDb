@@ -436,7 +436,7 @@ exports.getHealUserForStaffController = asyncHandler(async (req, res) => {
   await assertStaffCanAccessUser(req, user);
   return res.status(200).json({
     status: true,
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 });
 

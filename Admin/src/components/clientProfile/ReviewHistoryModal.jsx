@@ -15,6 +15,7 @@ function formatReviewDate(value) {
 function mapAssignmentsToReviewItems(assignments = []) {
   return (Array.isArray(assignments) ? assignments : [])
     .filter(Boolean)
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
     .map((assignment) => ({
       id: assignment.id,
       date: formatReviewDate(assignment.date || assignment.reviewAt || assignment.createdAt),

@@ -23,6 +23,21 @@ const {
   dispatchCounsellingPeriodSelectedCoachNotificationAsync,
   dispatchCounsellingTimeRequestedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
+const { getUserById } = require("../../models/userModel");
+
+async function coachMeetingFields(userId, user) {
+  try {
+    const snapshot = await loadCoachMeetingSnapshot(userId, user || null);
+    return {
+      coachMeetings: snapshot.meetings,
+      lastReviewedAt: snapshot.lastReviewedAt,
+    };
+  } catch (err) {
+    console.error("[heal consultancy] coach meetings failed", err?.message || err);
+    return { coachMeetings: [], lastReviewedAt: null };
+  }
+}
 
 exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) => {
   const user = req.currentUser;
@@ -72,6 +87,8 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
   const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  const user = req.currentUser || (await getUserById(userId));
+  const meetings = await coachMeetingFields(userId, user);
 
   return res.status(200).json({
     status: true,
@@ -81,6 +98,7 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
       activeTrack: toUserFacingHealConsultancyTrack(active),
       scheduledTrack: toUserFacingHealConsultancyTrack(scheduled),
       pagination: result.pagination,
+      ...meetings,
     },
   });
 });

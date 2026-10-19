@@ -26,6 +26,7 @@ const {
   handleValidationError,
 } = require("../helpers/healConsultancyTrackControllerHelpers");
 const { isScheduledAtInWindow } = require("../../utils/counsellingPeriodHelpers");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
 const {
   pickRequestedSlot,
   durationFromRange,
@@ -55,6 +56,15 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
   const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  let coachMeetings = [];
+  let lastReviewedAt = null;
+  try {
+    const snapshot = await loadCoachMeetingSnapshot(userId, user);
+    coachMeetings = snapshot.meetings;
+    lastReviewedAt = snapshot.lastReviewedAt;
+  } catch (err) {
+    console.error("[heal consultancy] coach meetings failed", err?.message || err);
+  }
 
   return res.status(200).json({
     status: true,
@@ -64,6 +74,8 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
       activeTrack: toPublicHealConsultancyTrack(active),
       scheduledTrack: toPublicHealConsultancyTrack(scheduled),
       pagination: result.pagination,
+      coachMeetings,
+      lastReviewedAt,
     },
   });
 });

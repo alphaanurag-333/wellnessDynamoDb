@@ -2,6 +2,7 @@ const { getUserById, updateUser } = require("../models/userModel");
 const {
   listCoachAssignedWellnessPrescriptionsByUserId,
   getLatestActiveReviewAt,
+  getReviewAt,
   toCoachAssignedWellnessPrescriptionPublic,
 } = require("../models/coachAssignedWellnessPrescriptionModel");
 
@@ -57,6 +58,38 @@ async function listEnrichedWellnessPrescriptionsForUser(userId, targetUser) {
   return enrichAssignmentsWithReviewMeta(assignments, targetUser);
 }
 
+function coachMeetingsFromAssignments(assignments) {
+  return (Array.isArray(assignments) ? assignments : [])
+    .map((row) => {
+      const date = getReviewAt(row);
+      if (!row || !date) return null;
+      const reviewStatus = String(row.reviewStatus || "active").toLowerCase();
+      return {
+        id: row.id,
+        date,
+        reviewStatus,
+        summary: row.summary || "",
+        authorName: row.authorName || "",
+        cancelled: reviewStatus === "cancelled",
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
+}
+
+async function loadCoachMeetingSnapshot(userId, targetUser) {
+  const uid = String(userId || "").trim();
+  if (!uid) return { assignments: [], meetings: [], lastReviewedAt: null };
+
+  const user = targetUser || (await getUserById(uid));
+  const assignments = await listEnrichedWellnessPrescriptionsForUser(uid, user);
+  return {
+    assignments,
+    meetings: coachMeetingsFromAssignments(assignments),
+    lastReviewedAt: getLatestActiveReviewAt(assignments) || null,
+  };
+}
+
 async function syncUserLastReviewedAt(userId) {
   const uid = String(userId || "").trim();
   if (!uid) return null;
@@ -70,6 +103,8 @@ async function syncUserLastReviewedAt(userId) {
 module.exports = {
   enrichAssignmentsWithReviewMeta,
   listEnrichedWellnessPrescriptionsForUser,
+  loadCoachMeetingSnapshot,
+  coachMeetingsFromAssignments,
   syncUserLastReviewedAt,
   resolveAuthorName,
 };
