@@ -1,50 +1,34 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, DeleteCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
+const {
+  MAX_POINTS,
+  flattenSectionPoints,
+  normalizePoints,
+  normalizeSections,
+  sectionsFromStored,
+} = require("../utils/protocolSections");
 
 const TABLE = "UserProtocolSetting";
-const MAX_POINTS = 50;
 
 function withLegacyId(item) {
   if (!item) return null;
   return { ...item, _id: item.id };
 }
 
-function normalizePoints(points) {
-  if (!Array.isArray(points) || points.length === 0) {
-    const err = new Error("At least one protocol point is required");
-    err.name = "ValidationError";
-    throw err;
-  }
-  if (points.length > MAX_POINTS) {
-    const err = new Error(`A protocol cannot have more than ${MAX_POINTS} points`);
-    err.name = "ValidationError";
-    throw err;
-  }
-
-  const next = points
-    .map((point) => String(point ?? "").trim())
-    .filter(Boolean);
-
-  if (!next.length) {
-    const err = new Error("At least one protocol point is required");
-    err.name = "ValidationError";
-    throw err;
-  }
-
-  return next;
-}
-
 function toPublicProtocolVersion(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const sections = sectionsFromStored(row);
+  const points = sections.length ? flattenSectionPoints(sections) : [];
   return {
     id: row.id,
     _id: row._id,
     userId: row.userId,
     version: Number(row.version) || 0,
-    points: Array.isArray(row.points) ? row.points : [],
+    sections,
+    points,
     savedById: row.savedById || null,
     savedByRole: row.savedByRole || null,
     savedByName: row.savedByName || null,
@@ -86,6 +70,7 @@ async function getProtocolVersionById(id) {
 
 async function createProtocolVersion({
   userId,
+  sections,
   points,
   savedById,
   savedByRole,
@@ -97,12 +82,16 @@ async function createProtocolVersion({
   const latest = await getLatestProtocolVersion(uid);
   const version = (Number(latest?.version) || 0) + 1;
   const now = new Date().toISOString();
+  const normalizedSections = Array.isArray(sections)
+    ? normalizeSections(sections)
+    : normalizeSections([{ heading: "Protocol", points }]);
 
   const item = {
     id: uuidv4(),
     userId: uid,
     version,
-    points: normalizePoints(points),
+    sections: normalizedSections,
+    points: flattenSectionPoints(normalizedSections),
     savedById: savedById ? String(savedById) : null,
     savedByRole: savedByRole ? String(savedByRole) : null,
     savedByName: savedByName ? String(savedByName).trim() || null : null,
@@ -119,6 +108,48 @@ async function createProtocolVersion({
   );
 
   return item;
+}
+
+async function updateProtocolVersion({ userId, versionId, sections }) {
+  const uid = String(userId || "").trim();
+  const id = String(versionId || "").trim();
+  if (!uid || !id) {
+    const err = new Error("Protocol version is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const item = await getProtocolVersionById(id);
+  if (!item || String(item.userId || "") !== uid) {
+    const err = new Error("Protocol version not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const normalizedSections = normalizeSections(sections);
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: "SET sections = :sections, points = :points, updatedAt = :updatedAt",
+      ConditionExpression: "attribute_exists(id) AND userId = :userId",
+      ExpressionAttributeValues: {
+        ":sections": normalizedSections,
+        ":points": flattenSectionPoints(normalizedSections),
+        ":updatedAt": now,
+        ":userId": uid,
+      },
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return Attributes || {
+    ...item,
+    sections: normalizedSections,
+    points: flattenSectionPoints(normalizedSections),
+    updatedAt: now,
+  };
 }
 
 async function deleteProtocolVersion({ userId, versionId }) {
@@ -156,5 +187,6 @@ module.exports = {
   getLatestProtocolVersion,
   getProtocolVersionById,
   createProtocolVersion,
+  updateProtocolVersion,
   deleteProtocolVersion,
 };

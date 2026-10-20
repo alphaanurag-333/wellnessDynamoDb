@@ -48,7 +48,7 @@ const PLACEHOLDER_META = {
   presentable: { title: "Presentable Pics", subtitle: "Client photo requests and approvals." },
   exchange: { title: "Energy Exchange", subtitle: "Energy Exchange program and billing." },
   protocol: { title: "Protocol Settings", subtitle: "Client protocol and settings configuration." },
-  gut: { title: "Load Preset", subtitle: "Gut reset program tracking." },
+  gut: { title: "Gut Reset", subtitle: "Gut reset program tracking." },
 };
 
 function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectionNav) {
@@ -66,7 +66,7 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
         />
       );
     case "body":
-      return <BodyAnalyticsSection user={user} onToast={onToast} />;
+      return <BodyAnalyticsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "medical":
       return <MedicalConditionsSection user={user} onToast={onToast} />;
     case "internal":
@@ -274,14 +274,18 @@ export function UserDetailPage() {
         p.delete("mode");
       } else {
         p.set("section", safeNext);
+        const foodTabs = new Set(["macro", "water", "diet", "detailed-macro"]);
         if (safeNext === "launch" && tab) p.set("tab", tab);
         else if (safeNext === "bms" && tab) p.set("tab", tab);
-        else if (safeNext !== "food") p.delete("tab");
+        else if (safeNext === "food") {
+          if (tab) p.set("tab", tab);
+          else if (!foodTabs.has(p.get("tab"))) p.delete("tab");
+        } else p.delete("tab");
         if (safeNext === "health-progress" && program) p.set("program", program);
         else p.delete("program");
         if (safeNext === "bms") p.set("mode", "detailed");
         else if (mode) p.set("mode", mode);
-        else if (safeNext !== "food") p.delete("mode");
+        else p.delete("mode");
       }
       return p;
     }, { replace: true });
@@ -336,7 +340,7 @@ export function UserDetailPage() {
         refreshing={refreshing}
         onRefresh={refreshProfile}
         readOnly={isArchivedProfile}
-        backTo={UPDATED_ADMIN_PATHS.users}
+        backTo={isArchivedProfile ? `${UPDATED_ADMIN_PATHS.users}?tab=archived` : UPDATED_ADMIN_PATHS.users}
       />
       {isArchivedProfile ? (
         <div className="ua-cp-archived-banner" role="status">

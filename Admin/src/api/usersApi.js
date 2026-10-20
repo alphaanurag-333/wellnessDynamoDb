@@ -632,6 +632,7 @@ export function mapApiUserToRow(user, index = 0) {
     presentablePicHistory: Array.isArray(user?.presentablePicHistory) ? user.presentablePicHistory : [],
     presentablePicsEnabled: user?.presentablePicsEnabled !== false,
     dietPlanEnabled: user?.dietPlanEnabled !== false,
+    mealTrackingMode: user?.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro",
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     referralCode: String(user?.referralCode || "").trim(),

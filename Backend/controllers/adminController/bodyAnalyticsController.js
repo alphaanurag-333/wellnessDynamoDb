@@ -1,6 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById } = require("../../models/userModel");
+const { getUserById, updateUser } = require("../../models/userModel");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
 const {
   listBodyMeasurementsByUser,
@@ -16,6 +16,12 @@ const {
   normalizeReviewStatus,
 } = require("../../models/userProgressPhotoModel");
 const { dispatchProgressPhotoReviewedNotification } = require("../../services/notificationDispatchService");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const {
+  applyBodyAnalyticsPhotoReview,
+  buildOnboardingStatusUpdates,
+  countCompletedSteps,
+} = require("../../utils/paidOnboardingHelpers");
 const {
   listAllMetabolicMetricLogsByUser,
   toPublicMetabolicMetricLog,
@@ -174,11 +180,40 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
     console.error("Progress photo review notification failed:", err?.message || err);
   });
 
+  let onboarding = null;
+  if (angle !== "weight") {
+    try {
+      const nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+        angle,
+        action,
+        photo: updated,
+      });
+      if (nextStatus) {
+        const updates = buildOnboardingStatusUpdates(nextStatus);
+        const saved = await updateUser(userId, updates);
+        const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
+        onboarding = {
+          paidOnboardingStepStatus,
+          paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
+          completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
+        };
+        notifyOnboardingWhatsAppTransitions({
+          user: saved || user,
+          previousStatus: user.paidOnboardingStepStatus,
+          nextStatus: paidOnboardingStepStatus,
+        });
+      }
+    } catch (err) {
+      console.error("Body analytics onboarding sync failed:", err?.message || err);
+    }
+  }
+
   const label = PHOTO_ANGLE_LABELS[angle];
   return res.status(200).json({
     status: true,
     message: action === "approved" ? `${label} photo accepted` : `${label} photo rejected`,
     angle,
     photo: updated,
+    ...(onboarding || {}),
   });
 });

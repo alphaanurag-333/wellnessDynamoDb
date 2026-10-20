@@ -102,6 +102,62 @@ function syncDerivedOnboardingSteps(status) {
   return status;
 }
 
+/** Front, right, and left (back) progress photos. Weight is not part of this step. */
+const BODY_PHOTO_REVIEW_ANGLES = ["front", "right", "left"];
+
+function photoAngleReviewStatus(photo, angle) {
+  if (!photo || !photo[`${angle}PicKey`]) return "";
+  return String(photo[`${angle}ReviewStatus`] || "").toLowerCase().trim();
+}
+
+function photoHasRejectedAngle(photo) {
+  return BODY_PHOTO_REVIEW_ANGLES.some((angle) => photoAngleReviewStatus(photo, angle) === "rejected");
+}
+
+function photoAnglesAllApproved(photo) {
+  return BODY_PHOTO_REVIEW_ANGLES.every((angle) => photoAngleReviewStatus(photo, angle) === "approved");
+}
+
+/**
+ * Coach / admin / wellness-coach review of a progress photo drives the
+ * At a Glance Body Analytics step.
+ * Rejecting front, right, or left reopens the step.
+ * Accepting the set marks it done once every angle on that photo is approved.
+ * Returns null when onboarding should stay as it is.
+ */
+function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}) {
+  const normalizedAngle = String(angle || "").toLowerCase().trim();
+  if (!BODY_PHOTO_REVIEW_ANGLES.includes(normalizedAngle)) return null;
+
+  const normalizedAction = String(action || "").toLowerCase().trim();
+  const current = normalizePaidOnboardingStepStatus(stepStatus);
+  const reopen = normalizedAction === "rejected" || photoHasRejectedAngle(photo);
+
+  if (reopen) {
+    if (current.bodyAnalytics === "pending" && current.progressPhotos180 === "pending") {
+      return null;
+    }
+    return syncDerivedOnboardingSteps({
+      ...current,
+      bodyAnalytics: "pending",
+      progressPhotos180: "pending",
+    });
+  }
+
+  if (normalizedAction === "approved" && photoAnglesAllApproved(photo)) {
+    if (current.bodyAnalytics === "done" && current.progressPhotos180 === "done") {
+      return null;
+    }
+    return syncDerivedOnboardingSteps({
+      ...current,
+      bodyAnalytics: "done",
+      progressPhotos180: "done",
+    });
+  }
+
+  return null;
+}
+
 function normalizePaidOnboardingStepStatus(value) {
   const defaults = defaultPaidOnboardingStepStatus();
   if (!value || typeof value !== "object") return defaults;
@@ -343,4 +399,5 @@ module.exports = {
   buildOnboardingStatusUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,
+  applyBodyAnalyticsPhotoReview,
 };

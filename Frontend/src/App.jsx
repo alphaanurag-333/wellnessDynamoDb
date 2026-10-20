@@ -6,6 +6,7 @@ import { selectAppConfigData } from "./store/appConfigSelectors.js";
 import { fetchPublicAppConfig } from "./store/appConfigSlice.js";
 import { mediaUrl } from "./media.js";
 import { SiteLoader } from "./site/components/SiteLoader.jsx";
+import { ShareAppPage } from "./site/pages/ShareAppPage.jsx";
 
 const SiteNotFoundPage = lazy(() =>
   import("./site/pages/SiteNotFoundPage.jsx").then((mod) => ({ default: mod.SiteNotFoundPage })),
@@ -41,6 +42,7 @@ export default function App() {
       <AppConfigSync />
       <Suspense fallback={<SiteLoader variant="page" />}>
         <Routes>
+          <Route path="/share" element={<ShareAppPage />} />
           {publicRouteTree}
           <Route path="/admin" element={<Navigate to="/" replace />} />
           <Route path="/admin/*" element={<Navigate to="/" replace />} />

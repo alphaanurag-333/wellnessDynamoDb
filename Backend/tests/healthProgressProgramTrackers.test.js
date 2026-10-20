@@ -53,4 +53,21 @@ describe("purchased program health trackers", () => {
     );
     assert.equal(next.menstrualCycle, true);
   });
+
+  it("turns on the concern and matching wellness-journey trackers after purchase", () => {
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("fat_loss"), ["weightPic"]);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("diabetes_reversal"), ["glucose"]);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("Thyroid Care"), []);
+
+    const next = applyPurchasedProgramTrackers(
+      {},
+      ["Diabetes Reversal", "Fat Loss", "Thyroid Care"],
+      { gender: "male" }
+    );
+    assert.equal(next.glucose, true);
+    assert.equal(next.weightPic, true);
+    assert.equal(next.bloodPressure, false);
+    assert.equal(next.menstrualCycle, false);
+    assert.equal(next.conditionComparison, false);
+  });
 });

@@ -151,6 +151,17 @@ function resolveAwcId(user) {
   return "";
 }
 
+function awcOptionsForUser(options, user) {
+  const coachId = resolveWcId(user);
+  if (!coachId) return options;
+  const currentAwcId = resolveAwcId(user);
+  return options.filter((option) => {
+    if (!option.id) return true;
+    if (currentAwcId && option.id === currentAwcId) return true;
+    return String(option.parentAccountId || "") === coachId;
+  });
+}
+
 function SortButton({ label, active, direction, onClick }) {
   const caret = active ? (direction === "desc" ? " ↓" : " ↑") : " ⇅";
   return (
@@ -1089,6 +1100,18 @@ export function UsersPage() {
       return;
     }
 
+    const selectedWcId = resolveWcId(user);
+    if (
+      kind === "awc" &&
+      selectedWcId &&
+      parentCoachId &&
+      String(parentCoachId) !== selectedWcId
+    ) {
+      setSelectReset((n) => n + 1);
+      onToast("This assistant is not associated with the selected wellness coach");
+      return;
+    }
+
     setReassignAsk({
       user,
       kind,
@@ -1448,7 +1471,7 @@ export function UsersPage() {
                         onChange={(e) => askReassign(u, "awc", e.target.value)}
                         disabled={actionBusy}
                       >
-                        {awcSelectOptions.map((o) => (
+                        {awcOptionsForUser(awcSelectOptions, u).map((o) => (
                           <option key={o.id || "unassigned"} value={o.id}>{o.name}</option>
                         ))}
                       </select>

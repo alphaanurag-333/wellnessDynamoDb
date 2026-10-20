@@ -14,6 +14,7 @@ import {
 const API_BASE =  "https://wellness-development.developmentalphawizz.com";
 // const API_BASE = "http://localhost:5000";
 // const API_BASE = "https://irwellness.in";
+
 // Remote development still rejects mobile login with "Email and password are required".
 // const API_BASE = "https://wellness.developmentalphawizz.com:5005";
 // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";

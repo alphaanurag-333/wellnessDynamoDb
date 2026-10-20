@@ -12,6 +12,8 @@ function healUserPath(userId, suffix = "") {
   return `/account/heal-users/${encodeURIComponent(userId)}${suffix}`;
 }
 
+const CLIENT_UPLOAD_KEYS = ["weightPic", "glucose", "bloodPressure", "conditionComparison"];
+
 function emptySettings() {
   return {
     weightPic: false,
@@ -20,6 +22,12 @@ function emptySettings() {
     menstrualCycle: false,
     conditionComparison: false,
   };
+}
+
+function emptyClientUpload() {
+  const out = {};
+  for (const key of CLIENT_UPLOAD_KEYS) out[key] = { open: false, source: null };
+  return out;
 }
 
 function pickBooleans(source) {
@@ -31,11 +39,23 @@ function pickBooleans(source) {
   return out;
 }
 
+function pickClientUpload(source) {
+  const out = emptyClientUpload();
+  if (!source || typeof source !== "object") return out;
+  for (const key of CLIENT_UPLOAD_KEYS) {
+    const row = source[key];
+    const sourceName = row?.source === "saturday" || row?.source === "coach" ? row.source : null;
+    out[key] = { open: Boolean(row?.open), source: sourceName };
+  }
+  return out;
+}
+
 export function mapHealthProgressSettings(data = {}) {
   const settings = pickBooleans(data.settings);
   return {
     settings,
     storedSettings: pickBooleans(data.storedSettings || data.settings),
+    clientUpload: pickClientUpload(data.clientUpload),
     gender: String(data.gender || ""),
     isFemale: Boolean(data.isFemale),
   };
@@ -44,6 +64,17 @@ export function mapHealthProgressSettings(data = {}) {
 export async function fetchHealthProgressSettings(userId) {
   try {
     const { data } = await api.get(healUserPath(userId, "/health-progress-settings"));
+    return mapHealthProgressSettings(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function openHealthProgressClientUpload(userId, featureKey) {
+  try {
+    const { data } = await api.patch(healUserPath(userId, "/health-progress-settings"), {
+      clientUpload: { [featureKey]: true },
+    });
     return mapHealthProgressSettings(data);
   } catch (error) {
     normalizeApiError(error);
@@ -99,6 +130,18 @@ export async function createCoachWeightLog(userId, payload = {}) {
       unit,
       ...rest,
     });
+    return data?.log || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachWeightPhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/weight")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
     return data?.log || null;
   } catch (error) {
     normalizeApiError(error);

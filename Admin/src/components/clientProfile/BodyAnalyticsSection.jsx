@@ -12,6 +12,7 @@ import {
   formatPhotoDate,
   getHistoryWindow,
   getPeriodOptions,
+  latestAnglePhoto,
   latestPhotoStamp,
   photoReviewMeta,
   photoReviewSummary,
@@ -136,6 +137,55 @@ function photoCardHint(angle, photos) {
   return `${count} · ${status}`;
 }
 
+function PhotoCameraIcon({ compact }) {
+  const size = compact ? 18 : 26;
+  return (
+    <span className="ua-cp-ba-photo__icon" aria-hidden="true">
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+        <path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path>
+      </svg>
+    </span>
+  );
+}
+
+function PhotoAngleCard({ angle, photos, onOpen }) {
+  const latest = latestAnglePhoto(photos);
+  const [imageFailed, setImageFailed] = useState(false);
+  const summary = photoReviewSummary(photos);
+  const showImage = Boolean(latest?.url) && !imageFailed;
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [latest?.url]);
+
+  return (
+    <button
+      type="button"
+      className={`ua-cp-ba-photo${angle.single ? " ua-cp-ba-photo--weight" : ""}${showImage ? " ua-cp-ba-photo--has-image" : ""}`}
+      onClick={() => onOpen(angle.label)}
+      disabled={!photos.length}
+    >
+      {showImage ? (
+        <span className="ua-cp-ba-photo__thumb">
+          <img
+            src={latest.url}
+            alt=""
+            onError={() => setImageFailed(true)}
+          />
+        </span>
+      ) : (
+        <PhotoCameraIcon compact={angle.single} />
+      )}
+      <span className="ua-cp-ba-photo__label">{angle.label}</span>
+      <span className="ua-cp-ba-photo__hint">{photoCardHint(angle, photos)}</span>
+      {summary ? (
+        <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${summary.tone}`}>{summary.label}</span>
+      ) : null}
+    </button>
+  );
+}
+
 function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
   const pendingCount = PHOTO_ANGLES.reduce(
     (sum, angle) => sum + (photosByAngle[angle.label] || []).filter((photo) => photo.reviewStatus === "pending").length,
@@ -156,26 +206,14 @@ function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
         </div>
       </div>
       <div className="ua-cp-ba-photos">
-        {PHOTO_ANGLES.map((angle) => {
-          const photos = photosByAngle[angle.label] || [];
-          const summary = photoReviewSummary(photos);
-          return (
-            <button
-              key={angle.label}
-              type="button"
-              className={`ua-cp-ba-photo${angle.single ? " ua-cp-ba-photo--weight" : ""}`}
-              onClick={() => onOpen(angle.label)}
-              disabled={!photos.length}
-            >
-              <span className="ua-cp-ba-photo__icon" aria-hidden="true"><svg width={angle.single ? "18" : "26"} height={angle.single ? "18" : "26"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><path d="M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8"></path></svg></span>
-              <span className="ua-cp-ba-photo__label">{angle.label}</span>
-              <span className="ua-cp-ba-photo__hint">{photoCardHint(angle, photos)}</span>
-              {summary ? (
-                <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${summary.tone}`}>{summary.label}</span>
-              ) : null}
-            </button>
-          );
-        })}
+        {PHOTO_ANGLES.map((angle) => (
+          <PhotoAngleCard
+            key={angle.label}
+            angle={angle}
+            photos={photosByAngle[angle.label] || []}
+            onOpen={onOpen}
+          />
+        ))}
       </div>
     </section>
   );
@@ -366,8 +404,18 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
         action,
         rejectionReason: action === "rejected" ? rejectReason.trim() : "",
       });
-      onReviewed?.(result?.photo, photo.angle);
-      onToast?.(action === "approved" ? `Accepted ${angle} photo (${photo.date})` : `Rejected ${angle} photo (${photo.date})`);
+      onReviewed?.(result?.photo, photo.angle, result);
+      const glance = String(result?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase();
+      const glanceNote = glance === "pending"
+        ? " Body Analytics is open again."
+        : glance === "done"
+          ? " Body Analytics marked done."
+          : "";
+      onToast?.(
+        action === "approved"
+          ? `Accepted ${angle} photo (${photo.date}).${glanceNote}`
+          : `Rejected ${angle} photo (${photo.date}).${glanceNote}`,
+      );
       setReviewTarget(null);
       setRejectReason("");
     } catch (error) {
@@ -420,21 +468,26 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
               </div>
             </div>
             <div className="ua-cp-ba-photo-grid">
-              {photos.map((p) => (
+              {photos.map((p) => {
+                const review = photoReviewMeta(p.reviewStatus);
+                return (
                 <div key={p.id} className="ua-cp-ba-photo-card">
                   <button
                     type="button"
                     className="ua-cp-ba-photo-card__img"
                     onClick={() => setPreview(p)}
-                    aria-label={`Preview ${angle} photo from ${p.date}`}
+                    aria-label={`Preview ${angle} photo from ${p.date}, ${review.label}`}
                   >
                     <img src={p.url} alt={`${angle} progress from ${p.date}`} />
+                    <span className={`ua-cp-ba-photo-card__badge ua-cp-ba-photo__status ua-cp-ba-photo__status--${review.tone}`}>
+                      {review.label}
+                    </span>
                   </button>
                   <div className="ua-cp-ba-photo-card__foot">
                     <div className="ua-cp-ba-photo-card__meta">
                       <span>{p.date}</span>
-                      <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${photoReviewMeta(p.reviewStatus).tone}`}>
-                        {photoReviewMeta(p.reviewStatus).label}
+                      <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${review.tone}`}>
+                        {review.label}
                       </span>
                     </div>
                     {p.rejectionReason ? (
@@ -450,7 +503,8 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -536,7 +590,7 @@ function applyReviewedPhoto(current, record, angle) {
   };
 }
 
-export function BodyAnalyticsSection({ user, onToast }) {
+export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const { canEdit } = useClientSectionPermissions("body");
   const [historyMode, setHistoryMode] = useState("monthly");
   const [period, setPeriod] = useState("");
@@ -699,8 +753,20 @@ export function BodyAnalyticsSection({ user, onToast }) {
           angle={photoAngle}
           photos={photosByAngle[photoAngle] || []}
           canReview={canEdit}
-          onReviewed={(record, angle) => {
+          onReviewed={(record, angle, result) => {
             setBodyAnalytics((current) => applyReviewedPhoto(current, record, angle));
+            const status = result?.paidOnboardingStepStatus;
+            if (!status || !onUserUpdated) return;
+            const done = Number(result.completedStepsCount);
+            onUserUpdated({
+              ...user,
+              paidOnboardingStepStatus: status,
+              paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
+              ...(Number.isFinite(done) ? {
+                onboardingDone: done,
+                onboardingPct: Math.round((done / 10) * 100),
+              } : {}),
+            });
           }}
           onClose={() => setPhotoAngle(null)}
           onToast={onToast}

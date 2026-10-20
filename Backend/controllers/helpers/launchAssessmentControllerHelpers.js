@@ -85,6 +85,14 @@ function parseFocusPoints(body) {
   return body.focusPoints;
 }
 
+function parseHiddenFocusTitles(body) {
+  if (body?.hiddenFocusTitles === undefined) return undefined;
+  if (!Array.isArray(body.hiddenFocusTitles)) {
+    throw new AppError("hiddenFocusTitles must be an array", 400);
+  }
+  return body.hiddenFocusTitles;
+}
+
 function parsePointsToNote(body) {
   if (body?.pointsToNote === undefined) return undefined;
   if (body.pointsToNote !== null && typeof body.pointsToNote !== "string") {
@@ -310,6 +318,7 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
           totalScore: parseTotalScore(req.body),
           focusAreaIds: parseFocusAreaIds(req.body) ?? [],
           focusPoints: parseFocusPoints(req.body) ?? [],
+          hiddenFocusTitles: parseHiddenFocusTitles(req.body) ?? [],
           pointsToNote: parsePointsToNote(req.body) ?? "",
           answers: parseAnswers(req.body) ?? [],
           createdByRole: req.auth?.role || createdByRole,
@@ -353,6 +362,10 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       const focusPoints = parseFocusPoints(req.body);
       if (focusPoints !== undefined) {
         updates.focusPoints = focusPoints;
+      }
+      const hiddenFocusTitles = parseHiddenFocusTitles(req.body);
+      if (hiddenFocusTitles !== undefined) {
+        updates.hiddenFocusTitles = hiddenFocusTitles;
       }
       const pointsToNote = parsePointsToNote(req.body);
       if (pointsToNote !== undefined) {

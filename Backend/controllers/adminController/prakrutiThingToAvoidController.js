@@ -1,5 +1,6 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { normalizePrakrutiType, PRAKRUTI_TYPES } = require("../../utils/prakrutiConstants");
 const {
   createPrakrutiThingToAvoid,
   getPrakrutiThingToAvoidById,
@@ -23,8 +24,8 @@ function validateSortOrder(value) {
 }
 
 exports.listPrakrutiThingsToAvoidController = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status, search } = req.query;
-  const data = await listPrakrutiThingsToAvoid({ page, limit, status, search });
+  const { page = 1, limit = 10, status, search, prakrutiType } = req.query;
+  const data = await listPrakrutiThingsToAvoid({ page, limit, status, search, prakrutiType });
   return res.status(200).json({ status: true, thingsToAvoid: data.thingsToAvoid, pagination: data.pagination });
 });
 
@@ -35,9 +36,13 @@ exports.getPrakrutiThingToAvoidByIdController = asyncHandler(async (req, res) =>
 });
 
 exports.createPrakrutiThingToAvoidController = asyncHandler(async (req, res) => {
+  const prakrutiType = normalizePrakrutiType(req.body.prakrutiType);
   const title = String(req.body.title || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
 
+  if (!prakrutiType) {
+    throw new AppError(`prakrutiType is required (${PRAKRUTI_TYPES.join(", ")})`, 400);
+  }
   if (!title) throw new AppError("title is required", 400);
   if (title.length > TITLE_MAX_LEN) throw new AppError(`title cannot exceed ${TITLE_MAX_LEN} characters`, 400);
   if (!PRAKRUTI_THING_TO_AVOID_ALLOWED_STATUS.includes(status)) {
@@ -45,11 +50,18 @@ exports.createPrakrutiThingToAvoidController = asyncHandler(async (req, res) => 
   }
   validateSortOrder(req.body.sortOrder);
 
-  const thingToAvoid = await createPrakrutiThingToAvoid({
-    title,
-    sortOrder: req.body.sortOrder,
-    status,
-  });
+  let thingToAvoid;
+  try {
+    thingToAvoid = await createPrakrutiThingToAvoid({
+      prakrutiType,
+      title,
+      sortOrder: req.body.sortOrder,
+      status,
+    });
+  } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    throw err;
+  }
 
   return res.status(201).json({
     status: true,
@@ -63,6 +75,13 @@ exports.updatePrakrutiThingToAvoidController = asyncHandler(async (req, res) => 
   if (!current) throw new AppError("Thing to avoid not found", 404);
 
   const updates = {};
+  if (req.body.prakrutiType !== undefined) {
+    const prakrutiType = normalizePrakrutiType(req.body.prakrutiType);
+    if (!prakrutiType) {
+      throw new AppError(`Invalid prakrutiType (${PRAKRUTI_TYPES.join(", ")})`, 400);
+    }
+    updates.prakrutiType = prakrutiType;
+  }
   if (req.body.title !== undefined) {
     const title = String(req.body.title || "").trim();
     if (!title) throw new AppError("title cannot be empty", 400);
@@ -89,6 +108,7 @@ exports.updatePrakrutiThingToAvoidController = asyncHandler(async (req, res) => 
   try {
     thingToAvoid = await updatePrakrutiThingToAvoid(req.params.id, updates);
   } catch (err) {
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     if (err?.name === "ConditionalCheckFailedException") {
       throw new AppError("Thing to avoid not found", 404);
     }

@@ -2,7 +2,7 @@ const PANEL_SESSION_STORAGE_KEY = "wellness_account_panel_session";
 
 export const PANEL_SESSION_EXPIRED_EVENT = "wellness:panel-session-expired";
 export const PANEL_SESSION_NOTICE_KEY = "wellness_panel_session_notice";
-export const PANEL_IDLE_MS = 15 * 60 * 1000;
+export const PANEL_IDLE_MS = 30 * 60 * 1000;
 
 export function localCalendarDateKey(date = new Date()) {
   const year = date.getFullYear();

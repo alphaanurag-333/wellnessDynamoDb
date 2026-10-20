@@ -100,6 +100,7 @@ const {
 const {
   defaultHealthProgressFeatures,
   normalizeHealthProgressFeatures,
+  normalizeHealthProgressClientUpload,
 } = require("../utils/healthProgressHelpers");
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
@@ -423,6 +424,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
   if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
+  if (key === "healthProgressClientUpload") return normalizeHealthProgressClientUpload(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
   if (key === "healthConcerns") {
     if (!Array.isArray(value)) return null;

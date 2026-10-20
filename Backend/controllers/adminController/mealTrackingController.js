@@ -21,7 +21,7 @@ const {
 const { assertStaffCanAccessUser } = require("../staffAccess");
 const { isValidDateOnly } = require("../../utils/dateOnly");
 const { updateUser, toPublicUser, normalizeMealTrackingMode } = require("../../models/userModel");
-const { analyzeMealPhoto } = require("../../services/mealPhotoAiService");
+const { analyzeMealPhoto, analyzeMealItems } = require("../../services/mealPhotoAiService");
 const { ZERO_MACROS } = require("../../utils/mealPhotoAi");
 
 exports.adminGetUserMealTrackingController = asyncHandler(async (req, res) => {
@@ -128,6 +128,8 @@ exports.createCoachUserMealLogController = asyncHandler(async (req, res) => {
       ...(photoKey !== undefined ? { photoKey } : {}),
       loggedByRole: "wellness_coach",
       loggedById: actingCoachId,
+      trackingMode: req.body?.trackingMode,
+      userMealTrackingMode: user?.mealTrackingMode,
       assignedCoachId: actingCoachId,
       assignedCoachType: "wellness_coach",
     });
@@ -228,6 +230,17 @@ exports.updateCoachUserMealTrackingModeController = asyncHandler(async (req, res
   });
 });
 
+function isDetailsQuantityMeal(record) {
+  if (record?.aiSource === "photo") return false;
+  const items = Array.isArray(record?.items) ? record.items : [];
+  const named = items.filter((item) => String(item?.name || "").trim());
+  if (!named.length) return false;
+  const hasMacros = named.some((item) =>
+    Number(item?.proteinGm) || Number(item?.fatsGm) || Number(item?.carbsGm) || Number(item?.caloriesKcal)
+  );
+  return !hasMacros;
+}
+
 exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
   const actingCoachId = req.auth?.sub;
   if (!actingCoachId) throw new AppError("Unauthorized", 401);
@@ -242,18 +255,21 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
   if (!record || String(record.userId || "") !== String(userId)) {
     throw new AppError("Meal log not found", 404);
   }
-  if (!record.photoKey) {
+  const fromFoodList = isDetailsQuantityMeal(record);
+  if (!fromFoodList && !record.photoKey) {
     throw new AppError("This meal has no photo to analyse", 422);
   }
 
   let analysis;
   try {
-    analysis = await analyzeMealPhoto({
-      fileKey: record.photoKey,
-      category: record.category,
-      mealType: record.mealType,
-      description: record.description,
-    });
+    analysis = fromFoodList
+      ? await analyzeMealItems({ items: record.items })
+      : await analyzeMealPhoto({
+        fileKey: record.photoKey,
+        category: record.category,
+        mealType: record.mealType,
+        description: record.description,
+      });
   } catch (err) {
     await updateMealLog(logId, {
       aiStatus: "failed",
@@ -272,12 +288,14 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
     carbsGm: declined ? ZERO_MACROS.carbsGm : analysis.carbsGm,
     caloriesKcal: declined ? ZERO_MACROS.caloriesKcal : analysis.caloriesKcal,
     items: declined ? [] : analysis.items,
-    description: declined ? record.description : (analysis.description ?? record.description),
+    description: declined ? record.description : (record.description || analysis.description || null),
     rejectionReason: declined ? analysis.message : null,
     aiStatus: declined ? "declined" : "analysed",
     aiError: declined ? analysis.message : null,
     aiAnalysedAt: new Date().toISOString(),
     aiAnalysedById: actingCoachId,
+    aiSource: fromFoodList ? "items" : "photo",
+    ...(fromFoodList ? { trackingMode: "detailed_macro" } : {}),
   });
 
   return res.status(200).json({
@@ -285,7 +303,9 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
     related: analysis.related,
     message: declined
       ? analysis.message
-      : "Meal photo analysed. Review the macros and save.",
+      : fromFoodList
+        ? "Macros calculated from the food name and quantity. Review and save."
+        : "Meal photo analysed. Review the macros and save.",
     mealLog,
   });
 });

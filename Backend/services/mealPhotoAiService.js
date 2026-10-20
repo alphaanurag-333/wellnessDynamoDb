@@ -4,7 +4,9 @@ const { getStoredObjectBuffer } = require("../utils/s3");
 const { parseAiJson } = require("../utils/labReportAi");
 const {
   buildMealPhotoAiPrompt,
+  buildMealItemsAiPrompt,
   normalizeMealPhotoAi,
+  normalizeMealItemsAi,
 } = require("../utils/mealPhotoAi");
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -93,6 +95,75 @@ async function callOpenAi({ buffer, mimeType, prompt }, { jsonFormat = true } = 
   return text;
 }
 
+async function callOpenAiText({ prompt }) {
+  const body = {
+    model: config.openaiModel || "gpt-4.1-mini",
+    temperature: 0.2,
+    input: [
+      {
+        role: "user",
+        content: [{ type: "input_text", text: prompt }],
+      },
+    ],
+    text: { format: { type: "json_object" } },
+  };
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.openaiApiKey}`,
+    },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    body: JSON.stringify(body),
+  });
+
+  const payload = await readJson(response);
+  if (!response.ok) {
+    const detail = payload?.error?.message || payload?.message || `OpenAI request failed (${response.status})`;
+    throw new AppError(detail, response.status >= 400 && response.status < 500 ? response.status : 502);
+  }
+
+  const text = extractOpenAiText(payload);
+  if (!text) throw new AppError("AI returned no macro calculation for this food list", 502);
+  return text;
+}
+
+async function analyzeMealItems({ items }) {
+  assertAiConfigured();
+  const sourceItems = (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      name: String(item?.name || "").trim(),
+      quantityGm: Number(item?.quantityGm) || 0,
+    }))
+    .filter((item) => item.name);
+  if (!sourceItems.length) {
+    throw new AppError("This details meal has no foods to calculate", 422);
+  }
+
+  const prompt = buildMealItemsAiPrompt(sourceItems);
+  let rawText;
+  try {
+    rawText = await callOpenAiText({ prompt });
+  } catch (err) {
+    if (err.name === "TimeoutError" || err.name === "AbortError") {
+      throw new AppError("AI calculation timed out. Try again.", 504);
+    }
+    throw err;
+  }
+
+  let parsed;
+  try {
+    parsed = parseAiJson(rawText);
+  } catch (err) {
+    const preview = String(rawText || "").replace(/\s+/g, " ").slice(0, 180);
+    if (preview) console.warn("[mealItemsAi] JSON parse failed:", preview);
+    throw new AppError("AI did not return valid macros for this food list.", 502);
+  }
+
+  return normalizeMealItemsAi(parsed, sourceItems);
+}
+
 async function analyzeMealPhoto({ fileKey, category, mealType, description }) {
   assertAiConfigured();
 
@@ -135,5 +206,6 @@ async function analyzeMealPhoto({ fileKey, category, mealType, description }) {
 
 module.exports = {
   analyzeMealPhoto,
+  analyzeMealItems,
   assertAiConfigured,
 };

@@ -107,6 +107,7 @@ const {
   listCoachWeightLogsController,
   createCoachWeightLogController,
   deleteCoachWeightPhotoController,
+  reviewCoachWeightPhotoController,
   listCoachGlucoseLogsController,
   listCoachBloodPressureLogsController,
   listCoachMenstrualCycleLogsController,
@@ -153,6 +154,7 @@ const {
 const {
   getStaffUserProtocolSettingsController,
   saveStaffUserProtocolSettingsController,
+  updateStaffUserProtocolSettingsController,
   deleteStaffUserProtocolSettingsController,
 } = require("../../controllers/adminController/protocolSettingsController");
 const {
@@ -373,6 +375,7 @@ router.patch("/:userId/health-progress-settings", hpWrite, updateCoachHealthProg
 router.get("/:userId/health-progress/weight", hp, listCoachWeightLogsController);
 router.post("/:userId/health-progress/weight", hpWrite, optionalHealthProgressWeightPicFile, createCoachWeightLogController);
 router.delete("/:userId/health-progress/weight/:logId/photo", hpWrite, deleteCoachWeightPhotoController);
+router.patch("/:userId/health-progress/weight/:logId/photo-review", hpWrite, reviewCoachWeightPhotoController);
 router.get("/:userId/health-progress/glucose", hp, listCoachGlucoseLogsController);
 router.get("/:userId/health-progress/blood-pressure", hp, listCoachBloodPressureLogsController);
 router.get("/:userId/health-progress/menstrual-cycle", hp, listCoachMenstrualCycleLogsController);
@@ -435,6 +438,7 @@ const protocol = staff("console.diet.view", { admin: "users.view", coach: "nav.m
 const protocolWrite = staff("console.diet.edit", { admin: "users.edit", coach: "nav.my-users" });
 router.get("/:userId/protocol-settings", protocol, getStaffUserProtocolSettingsController);
 router.post("/:userId/protocol-settings", protocolWrite, saveStaffUserProtocolSettingsController);
+router.put("/:userId/protocol-settings/:versionId", protocolWrite, updateStaffUserProtocolSettingsController);
 router.delete("/:userId/protocol-settings/:versionId", protocolWrite, deleteStaffUserProtocolSettingsController);
 
 const gutReset = staff("console.diet.view", { admin: "users.view", coach: "nav.my-users" });

@@ -69,7 +69,7 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
       .catch((err) => {
         if (cancelled) return;
         setItems([]);
-        setError(err?.message || "Could not load review history");
+        setError(err?.message || "Could not load counselling history");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -92,7 +92,7 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
           <div className="ua-cp-review-modal__identity">
             <span className="ua-cp-review-modal__icon" aria-hidden="true">⏱️</span>
             <div>
-              <div id="review-history-title" className="ua-cp-review-modal__title">Review history</div>
+              <div id="review-history-title" className="ua-cp-review-modal__title">Counselling history</div>
               <div className="ua-cp-review-modal__sub">
                 {user?.name || "Client"} · coach check-ins over time
               </div>
@@ -106,7 +106,7 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
         <div className="ua-cp-review-modal__list">
           {loading ? (
             <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">Loading review history…</p>
+              <p className="ua-cp-review-modal__empty-text">Loading counselling history…</p>
             </div>
           ) : error ? (
             <div className="ua-cp-review-modal__empty">
@@ -114,7 +114,7 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
             </div>
           ) : items.length === 0 ? (
             <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">No coach reviews yet.</p>
+              <p className="ua-cp-review-modal__empty-text">No counselling history yet.</p>
             </div>
           ) : (
             items.map((item, index) => (

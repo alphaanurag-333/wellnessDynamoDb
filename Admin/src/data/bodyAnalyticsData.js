@@ -423,8 +423,21 @@ export function buildPhotosByAngle(photos, measurements = []) {
           .sort((a, b) => String(a.stamp).localeCompare(String(b.stamp)))
           .slice(0, 1)
       : mapped;
-    return [angle.label, list.map(({ stamp, ...photo }) => photo)];
+    return [angle.label, list];
   }));
+}
+
+/** Newest photo for an angle card. Photos keep `stamp` from `buildPhotosByAngle`. */
+export function latestAnglePhoto(photos) {
+  const list = (photos || []).filter((photo) => photo?.url);
+  if (!list.length) return null;
+  return list.reduce((latest, photo) => {
+    const latestKey = String(latest?.stamp || "");
+    const photoKey = String(photo?.stamp || "");
+    if (!photoKey) return latest;
+    if (!latestKey || photoKey > latestKey) return photo;
+    return latest;
+  });
 }
 
 export function latestPhotoStamp(photos, measurements = []) {

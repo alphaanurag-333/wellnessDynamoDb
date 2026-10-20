@@ -1032,7 +1032,7 @@ function PrakritiPreview({ questions, surface, item }) {
             <strong>Prakriti assessment</strong>
           </div>
           <p className="ua-cfg-preview-launch__intro">
-            Tick the statements that describe the client. Dominant dosha becomes their Prakṛti.
+            Tick the statements that describe the client. Dominant dosha becomes their Prakriti.
           </p>
           {shown.length ? (
             <div className="ua-cfg-preview-launch__domains">

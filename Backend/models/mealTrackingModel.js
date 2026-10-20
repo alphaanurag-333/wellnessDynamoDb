@@ -197,6 +197,37 @@ function normalizeItems(value) {
   });
 }
 
+function normalizeLogTrackingMode(value, fallback = "macro") {
+  const next = String(value ?? "").trim().toLowerCase();
+  if (next === "detailed" || next === "detailed_macro") return "detailed_macro";
+  if (next === "macro") return "macro";
+  const fb = String(fallback ?? "").trim().toLowerCase();
+  if (fb === "detailed" || fb === "detailed_macro") return "detailed_macro";
+  return "macro";
+}
+
+function hasClientEnteredItems(items) {
+  return Array.isArray(items) && items.some((entry) => String(entry?.name || "").trim());
+}
+
+/** Details-page logs include a food list. Photo-only logs, including ones AI later fills, stay on macro. */
+function resolveLogTrackingMode(item) {
+  if (item?.trackingMode === "detailed_macro" || item?.trackingMode === "macro") {
+    return item.trackingMode;
+  }
+  const ai = String(item?.aiStatus || "none");
+  if (hasClientEnteredItems(item?.items) && ai !== "analysed") return "detailed_macro";
+  return "macro";
+}
+
+function resolveCreateTrackingMode({ trackingMode, items, userMode }) {
+  const explicit = String(trackingMode ?? "").trim().toLowerCase();
+  if (explicit === "detailed" || explicit === "detailed_macro") return "detailed_macro";
+  if (hasClientEnteredItems(items)) return "detailed_macro";
+  if (explicit === "macro") return "macro";
+  return normalizeLogTrackingMode(userMode);
+}
+
 function toMealLogPublic(item) {
   if (!item) return null;
   return {
@@ -217,12 +248,14 @@ function toMealLogPublic(item) {
     caloriesKcal: Number(item.caloriesKcal ?? 0),
     loggedByRole: item.loggedByRole ?? "wellness_coach",
     loggedById: item.loggedById ?? null,
+    trackingMode: resolveLogTrackingMode(item),
     coachId: item.coachId ?? null,
     status: normalizeStatus(item.status, "approved"),
     aiStatus: normalizeAiStatus(item.aiStatus),
     aiError: item.aiError ?? null,
     aiAnalysedAt: item.aiAnalysedAt ?? null,
     aiAnalysedById: item.aiAnalysedById ?? null,
+    aiSource: item.aiSource === "items" || item.aiSource === "photo" ? item.aiSource : null,
     assignedCoachId: item.assignedCoachId ?? null,
     assignedCoachType: item.assignedCoachType ?? null,
     reviewedAt: item.reviewedAt ?? null,
@@ -261,6 +294,8 @@ async function createMealLog({
   caloriesKcal,
   loggedByRole,
   loggedById,
+  trackingMode,
+  userMealTrackingMode,
   status,
   assignedCoachId,
   assignedCoachType,
@@ -298,6 +333,7 @@ async function createMealLog({
 
   const now = new Date().toISOString();
   const trimmedCoachId = String(coachId || "").trim();
+  const normalizedItems = normalizeItems(items);
   const item = {
     id: uuidv4(),
     userId: uid,
@@ -306,7 +342,7 @@ async function createMealLog({
     category: normalizedCategory,
     mealType: normalizedMealType,
     description: normalizeDescription(description),
-    items: normalizeItems(items),
+    items: normalizedItems,
     photoKey: photoKey || null,
     proteinGm: normalizeMacro(proteinGm, "proteinGm"),
     fatsGm: normalizeMacro(fatsGm, "fatsGm"),
@@ -314,6 +350,11 @@ async function createMealLog({
     caloriesKcal: normalizeMacro(caloriesKcal, "caloriesKcal"),
     loggedByRole: role,
     loggedById: String(loggedById || "").trim() || null,
+    trackingMode: resolveCreateTrackingMode({
+      trackingMode,
+      items: normalizedItems,
+      userMode: userMealTrackingMode,
+    }),
     status: resolvedStatus,
     aiStatus: "none",
     aiError: null,
@@ -436,6 +477,13 @@ async function updateMealLog(id, updates) {
       "aiAnalysedById",
       updates.aiAnalysedById ? String(updates.aiAnalysedById).trim() : null
     );
+  }
+  if (updates.aiSource !== undefined) {
+    const source = String(updates.aiSource || "").trim().toLowerCase();
+    addField("aiSource", source === "items" || source === "photo" ? source : null);
+  }
+  if (updates.trackingMode !== undefined) {
+    addField("trackingMode", normalizeLogTrackingMode(updates.trackingMode));
   }
 
   const { Attributes } = await docClient.send(

@@ -76,7 +76,7 @@ const SECTION_LABELS = {
   exchange: "Energy Exchange",
   counselling: "Counselling Sessions",
   protocol: "Protocol Settings",
-  gut: "Load Preset",
+  gut: "Gut Reset",
   consultation: "Consultation",
 };
 

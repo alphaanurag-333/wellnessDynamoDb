@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   adminCreateLaunchDomain,
+  adminCreateLaunchFocusArea,
   adminCreateLaunchQuestion,
   adminCreateLaunchRating,
   adminDeleteLaunchDomain,
+  adminDeleteLaunchFocusArea,
   adminDeleteLaunchQuestion,
   adminDeleteLaunchRating,
   adminGetLaunchConfig,
+  adminListLaunchFocusAreas,
   adminUpdateLaunchDomain,
+  adminUpdateLaunchFocusArea,
   adminUpdateLaunchQuestion,
   adminUpdateLaunchRating,
 } from "../api/launchConfigApi.js";
@@ -116,8 +120,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const [questionDrafts, setQuestionDrafts] = useState({});
   const [ratingDraft, setRatingDraft] = useState({ name: "", points: "", description: "" });
   const [infoOpen, setInfoOpen] = useState(false);
+  const [focusAreas, setFocusAreas] = useState([]);
+  const [focusDraft, setFocusDraft] = useState("");
   const ratingsRef = useRef(ratings);
   const domainsRef = useRef(domains);
+  const focusRef = useRef([]);
   const persistTimers = useRef({});
 
   useEffect(() => {
@@ -127,6 +134,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   useEffect(() => {
     domainsRef.current = domains;
   }, [domains]);
+
+  useEffect(() => {
+    focusRef.current = focusAreas;
+  }, [focusAreas]);
 
   useEffect(() => () => {
     Object.values(persistTimers.current).forEach((timer) => window.clearTimeout(timer));
@@ -167,9 +178,22 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
   }, [onToast, setDomains, setRatings]);
 
+  const loadFocusAreas = useCallback(async () => {
+    try {
+      const rows = await adminListLaunchFocusAreas(null);
+      const withSaved = (rows || []).map((row) => ({ ...row, savedTitle: row.title }));
+      focusRef.current = withSaved;
+      setFocusAreas(withSaved);
+    } catch (error) {
+      onToast(error?.message || "Failed to load areas to focus");
+      setFocusAreas([]);
+    }
+  }, [onToast]);
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadFocusAreas();
+  }, [loadConfig, loadFocusAreas]);
 
   function schedulePersist(key, fn) {
     window.clearTimeout(persistTimers.current[key]);
@@ -177,6 +201,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       fn().catch((error) => {
         onToast(error?.message || "Failed to save LAUNCH config");
         loadConfig();
+        loadFocusAreas();
       });
     }, 450);
   }
@@ -503,6 +528,129 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         updateQuestionLocal(domainId, question.id, updated);
       },
       () => updateQuestionLocal(domainId, question.id, { fixed: question.fixed }),
+    );
+  }
+
+  function editFocusTitle(id, title) {
+    setFocusAreas((prev) => {
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, title } : entry));
+      focusRef.current = next;
+      return next;
+    });
+  }
+
+  async function saveFocusTitle(id) {
+    const area = focusRef.current.find((entry) => entry.id === id);
+    const title = String(area?.title || "").trim();
+    if (!area) return;
+    if (!title) {
+      onToast("Focus point text is required");
+      return;
+    }
+    if (title === area.savedTitle) return;
+    setBusy(true);
+    try {
+      const updated = await adminUpdateLaunchFocusArea(null, id, { title });
+      setFocusAreas((prev) => {
+        const next = prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          const typed = String(entry.title || "").trim();
+          return {
+            ...entry,
+            ...updated,
+            title: typed === title ? updated.title : entry.title,
+            savedTitle: updated?.title || title,
+          };
+        });
+        focusRef.current = next;
+        return next;
+      });
+      onToast("Focus point updated");
+    } catch (error) {
+      onToast(error?.message || "Failed to update focus point");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addFocusArea() {
+    const title = focusDraft.trim();
+    if (!title) {
+      onToast("Focus point text is required");
+      return;
+    }
+    const sortOrder = focusRef.current.reduce((max, row) => Math.max(max, Number(row.sortOrder) || 0), 0) + 1;
+    setBusy(true);
+    try {
+      const created = await adminCreateLaunchFocusArea(null, { title, sortOrder, status: "active" });
+      setFocusAreas((prev) => {
+        const next = [...prev, { ...created, savedTitle: created?.title || title }].sort((a, b) => a.sortOrder - b.sortOrder);
+        focusRef.current = next;
+        return next;
+      });
+      setFocusDraft("");
+      onToast("Focus point added");
+    } catch (error) {
+      onToast(error?.message || "Failed to add focus point");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeFocusArea(area) {
+    const previous = focusRef.current;
+    setFocusAreas((prev) => prev.filter((entry) => entry.id !== area.id));
+    await runImmediate(
+      async () => {
+        await adminDeleteLaunchFocusArea(null, area.id);
+        onToast("Focus point removed");
+      },
+      () => setFocusAreas(previous),
+    );
+  }
+
+  async function moveFocusArea(index, direction) {
+    const previous = focusRef.current;
+    const target = index + direction;
+    if (target < 0 || target >= previous.length) return;
+    const next = [...previous];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    const ranked = next.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    focusRef.current = ranked;
+    setFocusAreas(ranked);
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = previous.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) => adminUpdateLaunchFocusArea(null, entry.id, { sortOrder: entry.sortOrder })),
+        );
+      },
+      () => setFocusAreas(previous),
+    );
+  }
+
+  function patchFocus(id, patch) {
+    setFocusAreas((prev) => {
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+      focusRef.current = next;
+      return next;
+    });
+  }
+
+  async function toggleFocusStatus(area) {
+    const nextStatus = area.status === "inactive" ? "active" : "inactive";
+    patchFocus(area.id, { status: nextStatus });
+    await runImmediate(
+      async () => {
+        const updated = await adminUpdateLaunchFocusArea(null, area.id, { status: nextStatus });
+        patchFocus(area.id, { status: updated?.status || nextStatus });
+      },
+      () => patchFocus(area.id, { status: area.status }),
     );
   }
 
@@ -912,6 +1060,110 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
           />
           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addDomain}>
             + Add domain
+          </button>
+        </div>
+      </Panel>
+
+      <Panel
+        className="ua-cfg-launch-focus"
+        title="Areas to focus"
+        subtitle="These points show as suggestions on a client’s LAUNCH page. Coaches can add or remove points for one client without changing this list."
+        actions={<span className="ua-cfg-launch-ratings__count">{focusAreas.length} points</span>}
+      >
+        {focusAreas.length ? (
+          <div className="ua-cfg-launch-focus__list">
+            {focusAreas.map((area, index) => (
+              <div
+                key={area.id}
+                className={`ua-cfg-launch-focus__row${area.status === "inactive" ? " is-off" : ""}`}
+              >
+                <div className="ua-cfg-launch-domain__sort">
+                  <button
+                    type="button"
+                    aria-label={`Move focus point ${index + 1} up`}
+                    title="Move up"
+                    disabled={busy || index === 0}
+                    onClick={() => moveFocusArea(index, -1)}
+                  >
+                    <svg viewBox="0 0 12 8" aria-hidden="true">
+                      <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Move focus point ${index + 1} down`}
+                    title="Move down"
+                    disabled={busy || index === focusAreas.length - 1}
+                    onClick={() => moveFocusArea(index, 1)}
+                  >
+                    <svg viewBox="0 0 12 8" aria-hidden="true">
+                      <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="ua-cfg-launch-focus__title"
+                  value={area.title}
+                  onChange={(event) => editFocusTitle(area.id, event.target.value)}
+                  onBlur={() => saveFocusTitle(area.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      saveFocusTitle(area.id);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-launch-focus__save"
+                  disabled={busy || String(area.title || "").trim() === area.savedTitle}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => saveFocusTitle(area.id)}
+                >
+                  Update
+                </button>
+                <span className={`ua-cfg-drf-status${area.status !== "inactive" ? " is-on" : ""}`}>
+                  {area.status === "inactive" ? "Off" : "On"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${area.status !== "inactive" ? " ua-toggle--on" : ""}`}
+                  aria-pressed={area.status !== "inactive"}
+                  aria-label={area.status === "inactive" ? "Show this focus point" : "Hide this focus point"}
+                  disabled={busy}
+                  onClick={() => toggleFocusStatus(area)}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn ua-cfg-launch-focus__delete"
+                  aria-label={`Remove ${area.title || "focus point"}`}
+                  disabled={busy}
+                  onClick={() => removeFocusArea(area)}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="ua-cfg-launch-empty">No focus points yet. Add the suggestions coaches can pick on a client profile.</p>
+        )}
+        <div className="ua-cfg-launch-focus__add">
+          <input
+            type="text"
+            placeholder="Add a focus point · e.g. Improve morning hydration"
+            value={focusDraft}
+            disabled={busy}
+            onChange={(event) => setFocusDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") addFocusArea();
+            }}
+          />
+          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={addFocusArea}>
+            + Add point
           </button>
         </div>
       </Panel>

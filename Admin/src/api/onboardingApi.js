@@ -521,7 +521,7 @@ export async function fetchLaunchFocusAreas(userId) {
   try {
     const { data } = await api.get(
       `/account/heal-users/${encodeURIComponent(userId)}/launch-assessment/focus-areas`,
-      { params: { limit: 50 }, headers: authHeader() },
+      { params: { limit: 200 }, headers: authHeader() },
     );
     return data.focusAreas || data;
   } catch (error) {

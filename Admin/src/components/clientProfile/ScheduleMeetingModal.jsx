@@ -266,6 +266,7 @@ export function ScheduleMeetingModal({
   defaultNote,
   defaultDuration = 45,
   existingMeeting = null,
+  showClientNote = true,
   onClose,
   onSend,
 }) {
@@ -531,16 +532,18 @@ export function ScheduleMeetingModal({
             </p>
           </div>
 
-          <div className="ua-cp-launch-modal__section">
-            <span className="ua-cp-launch-modal__label">Note for the client</span>
-            <textarea
-              className="ua-cp-launch-modal__note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={defaultNote || "Add a short note for the client"}
-              rows={3}
-            />
-          </div>
+          {showClientNote ? (
+            <div className="ua-cp-launch-modal__section">
+              <span className="ua-cp-launch-modal__label">Note for the client</span>
+              <textarea
+                className="ua-cp-launch-modal__note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={defaultNote || "Add a short note for the client"}
+                rows={3}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="ua-cp-launch-modal__foot">

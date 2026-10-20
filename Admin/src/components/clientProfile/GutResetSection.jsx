@@ -154,7 +154,7 @@ export function GutResetSection({ user, onToast }) {
       setHistory(Array.isArray(rows) ? rows : []);
     } catch (err) {
       setHistory([]);
-      const message = err?.message || "Failed to load Load Preset history";
+      const message = err?.message || "Failed to load Gut Reset history";
       setLoadError(message);
       onToast?.(message);
     } finally {
@@ -224,7 +224,7 @@ export function GutResetSection({ user, onToast }) {
       clearDraft();
       onToast?.("Gut reset plan saved");
     } catch (err) {
-      onToast?.(err?.message || "Failed to save Load Preset plan");
+      onToast?.(err?.message || "Failed to save Gut Reset plan");
     } finally {
       setSaving(false);
     }
@@ -233,12 +233,12 @@ export function GutResetSection({ user, onToast }) {
   return (
     <div className="ua-cp-section ua-cp-gut">
       <div className="ua-cp-gut__head">
-        <h2 className="ua-cp-gut__title">Load Preset</h2>
+        <h2 className="ua-cp-gut__title">Gut Reset</h2>
         <p className="ua-cp-gut__sub">Plan the reset, set the three dates and save it to the client app.</p>
       </div>
 
       {loading ? (
-        <p className="ua-page-head__sub" style={{ margin: "0 0 12px" }}>Loading Load Preset history…</p>
+        <p className="ua-page-head__sub" style={{ margin: "0 0 12px" }}>Loading Gut Reset history…</p>
       ) : null}
       {loadError ? (
         <div className="ua-cp-proto__error" role="alert">
@@ -364,7 +364,7 @@ export function GutResetSection({ user, onToast }) {
         </div>
         </>
         ) : (
-          <p className="ua-cp-placeholder__note">You do not have permission to create or edit Load Preset plans.</p>
+          <p className="ua-cp-placeholder__note">You do not have permission to create or edit Gut Reset plans.</p>
         )}
       </div>
 

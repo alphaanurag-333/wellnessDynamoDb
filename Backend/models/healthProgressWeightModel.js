@@ -19,6 +19,10 @@ function buildWeightItem(input, { id, now, createdAt }) {
     userId: String(input.userId || "").trim(),
     weightKg: toNumberOrNull(input.weightKg),
     weightPicKey: input.weightPicKey ? String(input.weightPicKey) : null,
+    weightPicReviewStatus: input.weightPicReviewStatus || null,
+    weightPicRejectionReason: input.weightPicRejectionReason || null,
+    weightPicReviewedAt: input.weightPicReviewedAt || null,
+    weightPicReviewedById: input.weightPicReviewedById || null,
     recordedAt: input.recordedAt || now,
     createdAt: createdAt || now,
     updatedAt: now,
@@ -85,9 +89,22 @@ async function createWeightLog(input) {
   const keptPhotoKey = matches.find((row) => row?.weightPicKey)?.weightPicKey || null;
   const weightPicKey = input.weightPicKey ? String(input.weightPicKey) : keptPhotoKey;
   const previousPicKey = existing?.weightPicKey || null;
+  const samePhoto = Boolean(weightPicKey) && previousPicKey === weightPicKey;
+  const weightPicReviewStatus = !weightPicKey
+    ? null
+    : samePhoto
+      ? (existing?.weightPicReviewStatus || "pending")
+      : "pending";
 
   const item = buildWeightItem(
-    { ...input, weightPicKey },
+    {
+      ...input,
+      weightPicKey,
+      weightPicReviewStatus,
+      weightPicRejectionReason: weightPicReviewStatus === "rejected" ? (existing?.weightPicRejectionReason || null) : null,
+      weightPicReviewedAt: samePhoto ? (existing?.weightPicReviewedAt || null) : null,
+      weightPicReviewedById: samePhoto ? (existing?.weightPicReviewedById || null) : null,
+    },
     { id: existing?.id, now, createdAt: existing?.createdAt }
   );
   assertWeightItem(item);
@@ -247,6 +264,48 @@ async function clearWeightLogPhoto(userId, logId) {
   return Attributes;
 }
 
+async function reviewWeightLogPhoto(userId, logId, { status, reviewedById, rejectionReason } = {}) {
+  const nextStatus = status === "approved" || status === "rejected" ? status : "";
+  if (!nextStatus) {
+    const err = new Error("status must be approved or rejected");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const item = await getWeightLogById(logId);
+  if (!item || String(item.userId) !== String(userId)) {
+    const err = new Error("Weight log not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (!item.weightPicKey) {
+    const err = new Error("This weight entry has no photo");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const reason = nextStatus === "rejected"
+    ? String(rejectionReason || "").trim().slice(0, 500) || null
+    : null;
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: logId },
+      UpdateExpression: "SET weightPicReviewStatus = :status, weightPicRejectionReason = :reason, weightPicReviewedAt = :reviewedAt, weightPicReviewedById = :reviewedById, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":status": nextStatus,
+        ":reason": reason,
+        ":reviewedAt": now,
+        ":reviewedById": reviewedById ? String(reviewedById) : null,
+        ":updatedAt": now,
+      },
+      ReturnValues: "ALL_NEW",
+    })
+  );
+  return Attributes;
+}
+
 module.exports = {
   TABLE,
   buildWeightItem,
@@ -254,6 +313,7 @@ module.exports = {
   getWeightLogById,
   listWeightLogsByUser,
   clearWeightLogPhoto,
+  reviewWeightLogPhoto,
   toPublicWeightLog,
   toUserWeightLog,
 };

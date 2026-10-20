@@ -1,5 +1,5 @@
 export const HEALTH_TRACKERS = [
-  { id: "fatloss", name: "FatLoss", category: "Fat Loss", color: "#ec7a45", enabled: true, builtin: true },
+  { id: "fatloss", name: "Fat Loss", category: "Fat Loss", color: "#ec7a45", enabled: true, builtin: true },
   { id: "menstrual", name: "Menstrual cycle", category: "PCOD / PCOS", color: "#c2559a", enabled: true, builtin: true },
   { id: "glucose", name: "Glucose Panel", category: "Diabetes Reversal", color: "#d64545", enabled: true, builtin: true },
   { id: "thyroid", name: "Thyroid care", category: "Thyroid Care", color: "#0d9488", enabled: true, builtin: true },

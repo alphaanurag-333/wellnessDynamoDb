@@ -90,6 +90,8 @@ exports.createUserMealLogController = asyncHandler(async (req, res) => {
       ...(photoKey !== undefined ? { photoKey } : {}),
       loggedByRole: "user",
       loggedById: userId,
+      trackingMode: req.body?.trackingMode,
+      userMealTrackingMode: req.currentUser?.mealTrackingMode,
       status: "pending_review",
       assignedCoachId: coachAssignment.assignedCoachId,
       assignedCoachType: coachAssignment.assignedCoachType,

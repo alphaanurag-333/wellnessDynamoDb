@@ -17,6 +17,7 @@ import {
   sumMealMacros,
   sumItemsMacros,
   scaleItemQuantity,
+  sanitizeDecimalText,
   formatApproxMacro,
 } from "../../data/foodData.js";
 import { fetchUserBodyAnalytics, fetchUser } from "../../api/usersApi.js";
@@ -49,9 +50,9 @@ function defaultWaterRange(today = localToday()) {
   return { from, to };
 }
 
-function SegToggle({ options, value, onChange, disabled }) {
+function SegToggle({ options, value, onChange, disabled, emphasis = false }) {
   return (
-    <div className="ua-cp-seg ua-cp-seg--xs" role="tablist">
+    <div className={`ua-cp-seg ua-cp-seg--xs${emphasis ? " ua-cp-seg--emphasis" : ""}`} role="tablist">
       {options.map((opt) => (
         <button
           key={opt.id}
@@ -109,7 +110,23 @@ function TargetedMacrosCard({ consumed, targets }) {
   );
 }
 
-function MacroMini({ tone, label, value, unit, editing, onChange }) {
+function MacroMini({ tone, label, value, editing, onChange }) {
+  const inputRef = useRef(null);
+  const [text, setText] = useState(() => (value == null || value === "" ? "" : String(value)));
+
+  useEffect(() => {
+    if (inputRef.current && document.activeElement === inputRef.current) return;
+    setText(value == null || value === "" ? "" : String(value));
+  }, [value]);
+
+  function commitText(raw) {
+    const next = sanitizeDecimalText(raw);
+    setText(next);
+    if (next === "" || next === ".") return;
+    const n = Number(next);
+    if (Number.isFinite(n)) onChange(n);
+  }
+
   return (
     <div className={`ua-cp-food-meal-macro ua-cp-food-meal-macro--${tone}`}>
       <span className="ua-cp-food-meal-macro__label">
@@ -118,10 +135,18 @@ function MacroMini({ tone, label, value, unit, editing, onChange }) {
       </span>
       {editing ? (
         <input
-          type="number"
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
           className="ua-cp-food-meal-macro__input"
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value) || 0)}
+          value={text}
+          onChange={(e) => commitText(e.target.value)}
+          onBlur={() => {
+            if (text === "" || text === ".") {
+              onChange(0);
+              setText("0");
+            }
+          }}
         />
       ) : (
         <strong>{value}{label === "KCAL" ? " kcal" : " g"}</strong>
@@ -147,11 +172,19 @@ function CopyIcon() {
   );
 }
 
+const COUNTED_FOOD = /^(eggs?|rotis?|chapatis?|phulkas?|parathas?|idlis?|dosas?|bananas?|apples?|bread slices?)$/i;
+
+function formatEnteredQuantity(name, quantityGm) {
+  const qty = Number(quantityGm) || 0;
+  const counted = COUNTED_FOOD.test(String(name || "").trim()) && Number.isInteger(qty) && qty > 0 && qty <= 30;
+  return counted ? `${qty} no` : `${qty} g`;
+}
+
 function buildItemsCopyText(items) {
   const header = "Food Item\tCalories\tProtein\tCarbs\tFat";
   const rows = items.map((item) => {
     const label = item.quantityGm > 0 && !/\(\s*~?\s*\d/.test(item.name)
-      ? `${item.name} (~${item.quantityGm} g)`
+      ? `${item.name} (${formatEnteredQuantity(item.name, item.quantityGm)})`
       : item.name;
     return [
       label,
@@ -177,8 +210,14 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
     updateItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
-  function updateItemQuantity(index, newQuantityGm) {
-    const scaled = scaleItemQuantity(items[index], newQuantityGm);
+  function quantityFieldValue(item) {
+    if (item.quantityText != null) return item.quantityText;
+    const qty = Number(item.quantityGm);
+    return Number.isFinite(qty) && qty > 0 ? String(qty) : "";
+  }
+
+  function updateItemQuantity(index, rawValue) {
+    const scaled = scaleItemQuantity(items[index], rawValue);
     updateItems(items.map((item, i) => (i === index ? scaled : item)));
   }
 
@@ -255,24 +294,23 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
                       <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.carbsGm || 0, "g")}</span>
                       <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
                       <input
-                        type="number"
-                        min={0}
-                        step={0.1}
+                        type="text"
+                        inputMode="decimal"
                         className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
-                        value={item.quantityGm}
+                        value={quantityFieldValue(item)}
                         placeholder="Qty"
                         title="Quantity in grams"
-                        onChange={(e) => updateItemQuantity(index, Number(e.target.value) || 0)}
+                        onChange={(e) => updateItemQuantity(index, e.target.value)}
                       />
                     </>
                   ) : (
                     <input
-                      type="number"
-                      min={0}
-                      step={0.1}
+                      type="text"
+                      inputMode="decimal"
                       className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
-                      value={item.quantityGm}
-                      onChange={(e) => updateItem(index, { quantityGm: Number(e.target.value) || 0 })}
+                      value={quantityFieldValue(item)}
+                      placeholder="Qty"
+                      onChange={(e) => updateItemQuantity(index, e.target.value)}
                     />
                   )}
                   <button
@@ -288,7 +326,7 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
                 <>
                   <span className="ua-cp-food-meal-items__name">
                     {item.quantityGm > 0 && !/\(\s*~?\s*\d/.test(item.name)
-                      ? `${item.name} (~${item.quantityGm} g)`
+                      ? `${item.name} (${formatEnteredQuantity(item.name, item.quantityGm)})`
                       : item.name}
                   </span>
                   {showMacroTable ? (
@@ -299,7 +337,7 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
                       <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
                     </>
                   ) : (
-                    <span className="ua-cp-food-meal-items__qty">{item.quantityGm} g</span>
+                    <span className="ua-cp-food-meal-items__qty">{formatEnteredQuantity(item.name, item.quantityGm)}</span>
                   )}
                 </>
               )}
@@ -346,15 +384,19 @@ function MealCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(() => emptyMealDraft(meal));
-  const shownMacros = editing ? draft.macros : (meal.macros || draft.macros);
   const shownItems = editing ? draft.items : normalizeMealItems(meal.items);
+  const shownMacros = editing ? draft.macros : (meal.macros || draft.macros);
+  const itemsDriveMacros = shownItems.some(
+    (item) => Number(item.proteinGm) || Number(item.fatsGm) || Number(item.carbsGm) || Number(item.caloriesKcal),
+  );
   const shownDescription = editing ? draft.description : String(meal.description || "");
   const needsAi = meal.aiStatus === "none";
   const declined = meal.aiStatus === "declined";
   const canManualInsert = needsAi || declined;
   const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !declined);
+  const isDetailsMeal = meal.sourceLabel === "Details Meal";
   const canRunAi =
-    Boolean(meal.photoUrl)
+    (isDetailsMeal || Boolean(meal.photoUrl))
     && (meal.photoAiStatus === "none" || meal.photoAiStatus === "failed")
     && meal.aiStatus !== "rejected"
     && meal.aiStatus !== "declined";
@@ -433,7 +475,12 @@ function MealCard({
           <span className="ua-cp-food-meal__photo-swap" aria-hidden="true">⤢</span>
         </button>
         <div className="ua-cp-food-meal__info">
-          <strong>{meal.name}</strong>
+          <div className="ua-cp-food-meal__title-row">
+            <strong>{meal.name}</strong>
+            <span className={`ua-cp-food-meal__kind${meal.sourceLabel === "Details Meal" ? " ua-cp-food-meal__kind--details" : ""}`}>
+              {meal.sourceLabel}
+            </span>
+          </div>
           <span>{subtitle}</span>
           {editing ? (
             <textarea
@@ -511,10 +558,10 @@ function MealCard({
           <div className="ua-cp-food-meal__macros-wrap">
             <span className="ua-cp-food-meal__macros-title">Macro breakup</span>
             <div className="ua-cp-food-meal__macros">
-              <MacroMini tone="green" label="P" value={shownMacros.protein} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, protein: v } }))} />
-              <MacroMini tone="orange" label="C" value={shownMacros.carbs} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, carbs: v } }))} />
-              <MacroMini tone="blue" label="F" value={shownMacros.fat} editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, fat: v } }))} />
-              <MacroMini tone="purple" label="KCAL" value={shownMacros.calories} unit="" editing={editing} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, calories: v } }))} />
+              <MacroMini tone="green" label="P" value={shownMacros.protein} editing={editing && !itemsDriveMacros} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, protein: v } }))} />
+              <MacroMini tone="orange" label="C" value={shownMacros.carbs} editing={editing && !itemsDriveMacros} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, carbs: v } }))} />
+              <MacroMini tone="blue" label="F" value={shownMacros.fat} editing={editing && !itemsDriveMacros} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, fat: v } }))} />
+              <MacroMini tone="purple" label="KCAL" value={shownMacros.calories} editing={editing && !itemsDriveMacros} onChange={(v) => setDraft((d) => ({ ...d, macros: { ...d.macros, calories: v } }))} />
             </div>
           </div>
         </div>
@@ -551,7 +598,11 @@ function MealsPanel({ meals, mode, live, busyId, analyzingId, editAfterAiId, day
           />
         ))
       ) : (
-        <p className="ua-page-head__sub" style={{textAlign:"center"}}>No meals logged for this date.</p>
+        <p className="ua-page-head__sub" style={{textAlign:"center"}}>
+          {mode === "detailed"
+            ? "No detailed meals logged for this date."
+            : "No macro meals logged for this date."}
+        </p>
       )}
     </div>
   );
@@ -669,7 +720,9 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const userId = String(user?.id || "").trim();
   const live = isLiveUserId(userId);
   const today = useMemo(() => localToday(), []);
-  const mode = searchParams.get("mode") === "detailed" ? "detailed" : "macro";
+  const explicitMode = searchParams.get("mode");
+  const savedMode = user?.mealTrackingMode === "detailed_macro" ? "detailed" : "macro";
+  const mode = explicitMode === "detailed" || explicitMode === "macro" ? explicitMode : savedMode;
   const tabParam = searchParams.get("tab");
   const [dietPlanOn, setDietPlanOn] = useState(() => user?.dietPlanEnabled !== false);
   const [dietPlanBusy, setDietPlanBusy] = useState(false);
@@ -688,10 +741,15 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [mealsLoading, setMealsLoading] = useState(live);
   const [waterLoading, setWaterLoading] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
+  const [pendingMode, setPendingMode] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [editAfterAiId, setEditAfterAiId] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
   const jumpedToLatestRef = useRef(false);
+  const userRef = useRef(user);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  userRef.current = user;
+  onUserUpdatedRef.current = onUserUpdated;
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
   const waterChart = useMemo(() => {
@@ -703,14 +761,23 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   }, [live, today, waterHistory, waterRange.from, waterRange.to]);
 
   const tab = useMemo(() => {
-    if (tabParam === "water" || tabParam === "diet") return tabParam;
-    if (mode === "detailed") return tabParam === "water" || tabParam === "diet" ? tabParam : "detailed-macro";
-    return tabParam === "water" || tabParam === "diet" ? tabParam : "macro";
+    const allowed = mode === "detailed"
+      ? ["water", "detailed-macro", "diet"]
+      : ["macro", "water", "diet"];
+    if (allowed.includes(tabParam)) return tabParam;
+    return mode === "detailed" ? "detailed-macro" : "macro";
   }, [mode, tabParam]);
 
-  const consumed = useMemo(() => roundMacros(sumMealMacros(meals)), [meals]);
-  const dayTotal = consumed.calories;
-  const showMacroCard = meals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved");
+  const macroMeals = useMemo(
+    () => meals.filter((meal) => meal.trackingMode !== "detailed"),
+    [meals],
+  );
+  const detailedMeals = useMemo(
+    () => meals.filter((meal) => meal.trackingMode === "detailed"),
+    [meals],
+  );
+  const macroConsumed = useMemo(() => roundMacros(sumMealMacros(macroMeals)), [macroMeals]);
+  const detailedConsumed = useMemo(() => roundMacros(sumMealMacros(detailedMeals)), [detailedMeals]);
 
   useEffect(() => {
     setSelectedDate(today);
@@ -723,6 +790,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     jumpedToLatestRef.current = false;
     setEditAfterAiId("");
     setPendingDelete(null);
+    setPendingMode(null);
   }, [live, today, userId]);
 
   useEffect(() => {
@@ -731,22 +799,31 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
   useEffect(() => {
     if (!live) return;
-    const storedMode = user?.mealTrackingMode === "detailed_macro" ? "detailed" : "macro";
-    if (storedMode === mode) return;
-    // Prefer the user's saved meal mode when the URL didn't pin one.
-    if (searchParams.get("mode")) return;
+    const allowed = mode === "detailed"
+      ? ["water", "detailed-macro", "diet"]
+      : ["macro", "water", "diet"];
+    const explicit = searchParams.get("mode");
+    const rawTab = searchParams.get("tab");
+    const modeMissing = explicit !== "detailed" && explicit !== "macro";
+    const tabInvalid = !allowed.includes(rawTab);
+    if (!modeMissing && !tabInvalid) return;
+    if (modeMissing && savedMode !== "detailed" && !tabInvalid) return;
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
-      if (storedMode === "detailed") {
-        p.set("mode", "detailed");
-        if (!p.get("tab") || p.get("tab") === "macro") p.set("tab", "detailed-macro");
-      } else {
-        p.delete("mode");
-        if (p.get("tab") === "detailed-macro") p.delete("tab");
+      const nextMode = p.get("mode") === "detailed" || p.get("mode") === "macro"
+        ? p.get("mode")
+        : savedMode;
+      if (nextMode === "detailed") p.set("mode", "detailed");
+      else if (modeMissing) p.delete("mode");
+      const nextAllowed = nextMode === "detailed"
+        ? ["water", "detailed-macro", "diet"]
+        : ["macro", "water", "diet"];
+      if (!nextAllowed.includes(p.get("tab"))) {
+        p.set("tab", nextMode === "detailed" ? "detailed-macro" : "macro");
       }
       return p;
     }, { replace: true });
-  }, [live, mode, searchParams, setSearchParams, user?.mealTrackingMode]);
+  }, [live, mode, savedMode, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!live) return undefined;
@@ -780,6 +857,15 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
         const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
         logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
         setMeals(logs.map(mapMealLogToUi));
+        const serverMode = data?.mealTrackingMode;
+        const currentUser = userRef.current;
+        if (
+          serverMode
+          && currentUser
+          && !currentUser.mealTrackingMode
+        ) {
+          onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
+        }
         if (
           !jumpedToLatestRef.current
           && logs.length === 0
@@ -869,24 +955,35 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   }
 
   function setMode(next) {
+    const apiMode = next === "detailed" ? "detailed_macro" : "macro";
+    const previousMode = user?.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro";
+    onUserUpdated?.({ ...user, mealTrackingMode: apiMode });
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.set("section", "food");
-      if (next === "detailed") {
-        p.set("mode", "detailed");
-        p.set("tab", "detailed-macro");
-      } else {
-        p.delete("mode");
-        p.set("tab", "macro");
-      }
+      p.set("mode", next === "detailed" ? "detailed" : "macro");
+      p.set("tab", next === "detailed" ? "detailed-macro" : "macro");
       return p;
     }, { replace: true });
 
     if (!live || modeBusy) return;
     setModeBusy(true);
-    updateUserMealTrackingMode(userId, next === "detailed" ? "detailed_macro" : "macro")
-      .then(() => onToast(next === "detailed" ? "Detailed macro mode set for client app" : "Macro mode set for client app"))
-      .catch((err) => onToast(err?.message || "Failed to update meal tracking mode"))
+    updateUserMealTrackingMode(userId, apiMode)
+      .then((saved) => {
+        onUserUpdated?.({ ...user, mealTrackingMode: saved || apiMode });
+        onToast(next === "detailed" ? "Detailed macro mode set for client app" : "Macro mode set for client app");
+      })
+      .catch((err) => {
+        onUserUpdated?.({ ...user, mealTrackingMode: previousMode });
+        setSearchParams((prev) => {
+          const p = new URLSearchParams(prev);
+          p.set("section", "food");
+          p.set("mode", previousMode === "detailed_macro" ? "detailed" : "macro");
+          p.set("tab", previousMode === "detailed_macro" ? "detailed-macro" : "macro");
+          return p;
+        }, { replace: true });
+        onToast(err?.message || "Failed to update meal tracking mode");
+      })
       .finally(() => setModeBusy(false));
   }
 
@@ -903,7 +1000,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   async function submitAi(id) {
     const meal = meals.find((m) => m.id === id);
     if (!meal) return;
-    if (live && !meal.photoUrl) {
+    if (live && meal.sourceLabel !== "Details Meal" && !meal.photoUrl) {
       onToast("This meal has no photo to analyse");
       return;
     }
@@ -1085,6 +1182,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
           <div className="ua-cp-food__control">
             <span className="ua-cp-food__control-label">Mode</span>
             <SegToggle
+              emphasis
               options={[
                 { id: "macro", label: "Macro" },
                 { id: "detailed", label: "Detailed" },
@@ -1092,8 +1190,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
               value={mode}
               disabled={modeBusy || !canEdit}
               onChange={(next) => {
-                if (!canEdit) return;
-                setMode(next);
+                if (!canEdit || modeBusy || next === mode) return;
+                setPendingMode(next);
               }}
             />
           </div>
@@ -1128,15 +1226,17 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
           />
-          {showMacroCard ? <TargetedMacrosCard consumed={consumed} targets={macroTargets} /> : null}
+          {macroMeals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
+            <TargetedMacrosCard consumed={macroConsumed} targets={macroTargets} />
+          ) : null}
           <MealsPanel
-            meals={meals}
+            meals={macroMeals}
             mode="macro"
             live={live}
             busyId={busyId}
             analyzingId={busyId}
             editAfterAiId={editAfterAiId}
-            dayTotal={dayTotal}
+            dayTotal={macroConsumed.calories}
             listLabel="meals"
             dateLabel={dateLabel}
             loading={mealsLoading}
@@ -1159,15 +1259,17 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
           />
-          {showMacroCard ? <TargetedMacrosCard consumed={consumed} targets={macroTargets} /> : null}
+          {detailedMeals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
+            <TargetedMacrosCard consumed={detailedConsumed} targets={macroTargets} />
+          ) : null}
           <MealsPanel
-            meals={meals}
+            meals={detailedMeals}
             mode="detailed"
             live={live}
             busyId={busyId}
             analyzingId={busyId}
             editAfterAiId={editAfterAiId}
-            dayTotal={dayTotal}
+            dayTotal={detailedConsumed.calories}
             listLabel="logged food"
             dateLabel={dateLabel}
             loading={mealsLoading}
@@ -1220,6 +1322,25 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} appVisible={dietPlanOn} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
+
+      <ConfirmDialog
+        open={Boolean(pendingMode)}
+        tag="Meal tracking"
+        title={pendingMode === "detailed" ? "Switch to Detailed mode?" : "Switch to Macro mode?"}
+        body={
+          pendingMode === "detailed"
+            ? "This client’s app will switch to detailed macro tracking. Meal logs stay saved."
+            : "This client’s app will switch to macro tracking. Meal logs stay saved."
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pendingMode === "detailed" ? "Use Detailed" : "Use Macro"}
+        onCancel={() => setPendingMode(null)}
+        onConfirm={() => {
+          const next = pendingMode;
+          setPendingMode(null);
+          if (next) setMode(next);
+        }}
+      />
 
       <ConfirmDialog
         open={!!pendingDelete}

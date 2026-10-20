@@ -98,6 +98,32 @@ function normalizeFocusPoints(value) {
 
 const POINTS_TO_NOTE_MAX = 2000;
 
+function normalizeHiddenFocusTitles(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    const err = new Error("hiddenFocusTitles must be an array of strings");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const seen = new Set();
+  const out = [];
+  for (const row of value) {
+    const trimmed = String(row || "").trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    if (trimmed.length > 200) {
+      const err = new Error("A hidden focus title cannot exceed 200 characters");
+      err.name = "ValidationError";
+      throw err;
+    }
+    seen.add(key);
+    out.push(trimmed);
+    if (out.length >= 50) break;
+  }
+  return out;
+}
+
 function normalizePointsToNote(value) {
   if (value === undefined) return undefined;
   const text = String(value ?? "").trim();
@@ -145,6 +171,7 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     answers: Array.isArray(row.answers) ? normalizeAnswers(row.answers) || [] : [],
     focusAreaIds,
     focusPoints,
+    hiddenFocusTitles: normalizeHiddenFocusTitles(row.hiddenFocusTitles) || [],
     pointsToNote: normalizePointsToNote(row.pointsToNote) || "",
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
@@ -225,6 +252,7 @@ async function createUserLaunchAssessment({
   totalScore,
   focusAreaIds = [],
   focusPoints = [],
+  hiddenFocusTitles = [],
   pointsToNote = "",
   answers = [],
   createdByRole = "wellness_coach",
@@ -247,6 +275,7 @@ async function createUserLaunchAssessment({
 
   const validatedFocusAreaIds = await validateActiveFocusAreaIds(focusAreaIds);
   const normalizedFocusPoints = normalizeFocusPoints(focusPoints) || [];
+  const normalizedHiddenFocusTitles = normalizeHiddenFocusTitles(hiddenFocusTitles) || [];
 
   const now = new Date().toISOString();
   const item = {
@@ -258,6 +287,7 @@ async function createUserLaunchAssessment({
     answers: normalizeAnswers(answers) || [],
     focusAreaIds: validatedFocusAreaIds,
     focusPoints: normalizedFocusPoints,
+    hiddenFocusTitles: normalizedHiddenFocusTitles,
     pointsToNote: normalizePointsToNote(pointsToNote) || "",
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
@@ -276,7 +306,7 @@ async function createUserLaunchAssessment({
   return enrichAssessmentPublic(item);
 }
 
-async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, focusPoints, pointsToNote, answers } = {}) {
+async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focusAreaIds, focusPoints, hiddenFocusTitles, pointsToNote, answers } = {}) {
   const current = await getUserLaunchAssessmentRecordById(id);
   if (!current) {
     const err = new Error("Assessment not found");
@@ -305,6 +335,9 @@ async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focu
   }
   if (focusPoints !== undefined) {
     updates.focusPoints = normalizeFocusPoints(focusPoints) || [];
+  }
+  if (hiddenFocusTitles !== undefined) {
+    updates.hiddenFocusTitles = normalizeHiddenFocusTitles(hiddenFocusTitles) || [];
   }
   if (pointsToNote !== undefined) {
     updates.pointsToNote = normalizePointsToNote(pointsToNote) || "";
@@ -368,6 +401,7 @@ module.exports = {
   normalizeTotalScore,
   normalizeAnswers,
   normalizeFocusPoints,
+  normalizeHiddenFocusTitles,
   normalizePointsToNote,
   normalizeCreatedByRole,
   createUserLaunchAssessment,

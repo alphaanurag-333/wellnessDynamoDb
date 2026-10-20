@@ -21,6 +21,7 @@ const {
   createWeightLog,
   listWeightLogsByUser,
   clearWeightLogPhoto,
+  reviewWeightLogPhoto,
   toPublicWeightLog,
 } = require("../../models/healthProgressWeightModel");
 const {
@@ -43,6 +44,12 @@ const {
   ensurePurchasedProgramTrackers,
   withPurchasedProgramTrackers,
 } = require("../../services/healthProgressProgramTrackerService");
+const {
+  clientUploadWindows,
+  syncClientUploadWindow,
+  assertCoachCanOpenClientUpload,
+  openClientUploadForCoach,
+} = require("../../services/healthProgressClientUploadService");
 
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
@@ -56,7 +63,8 @@ async function coachContext(req) {
 
 exports.getCoachHealthProgressSettingsController = asyncHandler(async (req, res) => {
   const { user } = await coachContext(req);
-  const synced = await ensurePurchasedProgramTrackers(user);
+  const tracked = await ensurePurchasedProgramTrackers(user);
+  const synced = await syncClientUploadWindow(tracked);
   const stored = resolveHealthProgressSettings(synced);
 
   return res.status(200).json({
@@ -64,6 +72,7 @@ exports.getCoachHealthProgressSettingsController = asyncHandler(async (req, res)
     message: "Health progress settings fetched",
     settings: stored,
     storedSettings: synced.healthProgressFeatures || {},
+    clientUpload: clientUploadWindows(synced.healthProgressClientUpload).windows,
     gender: synced.gender,
     isFemale: isFemaleUser(synced),
   });
@@ -71,15 +80,27 @@ exports.getCoachHealthProgressSettingsController = asyncHandler(async (req, res)
 
 exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, res) => {
   const { userId, user } = await coachContext(req);
-  const requested = parseCoachSettingsUpdate(req.body || {}, user);
-  const nextFeatures = await withPurchasedProgramTrackers(user, requested);
-  const updated = await updateUser(userId, { healthProgressFeatures: nextFeatures });
+  const body = req.body || {};
+  let updated = user;
+
+  const uploadKey = Object.keys(body.clientUpload || {}).find((key) => body.clientUpload[key] === true);
+  if (uploadKey) {
+    assertCoachCanOpenClientUpload(req);
+    updated = await openClientUploadForCoach(updated, uploadKey);
+  }
+
+  if (body.healthProgressFeatures || !uploadKey) {
+    const requested = parseCoachSettingsUpdate(body, updated);
+    const nextFeatures = await withPurchasedProgramTrackers(updated, requested);
+    updated = await updateUser(userId, { healthProgressFeatures: nextFeatures });
+  }
 
   return res.status(200).json({
     status: true,
-    message: "Health progress settings updated",
+    message: uploadKey ? "Client update opened" : "Health progress settings updated",
     settings: resolveHealthProgressSettings(updated),
     storedSettings: updated.healthProgressFeatures,
+    clientUpload: clientUploadWindows(updated.healthProgressClientUpload).windows,
     user: toPublicUser(updated),
   });
 });
@@ -152,6 +173,34 @@ exports.deleteCoachWeightPhotoController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Weight photo deleted",
+    log: toPublicWeightLog(log),
+  });
+});
+
+exports.reviewCoachWeightPhotoController = asyncHandler(async (req, res) => {
+  const { userId } = await coachContext(req);
+  const logId = String(req.params.logId || "").trim();
+  const action = String(req.body?.action || req.body?.status || "").trim();
+  if (!logId) throw new AppError("logId is required", 400);
+  if (action !== "approved" && action !== "rejected") {
+    throw new AppError("action must be approved or rejected", 400);
+  }
+
+  let log;
+  try {
+    log = await reviewWeightLogPhoto(userId, logId, {
+      status: action,
+      reviewedById: req.auth?.sub,
+      rejectionReason: req.body?.rejectionReason,
+    });
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
+    handleValidationError(err);
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: action === "approved" ? "Weight photo accepted" : "Weight photo rejected",
     log: toPublicWeightLog(log),
   });
 });

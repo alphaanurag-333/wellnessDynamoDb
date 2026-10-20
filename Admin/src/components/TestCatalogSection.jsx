@@ -27,7 +27,7 @@ function goalCounts(sections) {
 }
 
 function emptyTest() {
-  return { id: newId(), name: "", code: "FBS", hours: 12, selected: true };
+  return { id: newId(), name: "", code: "", hours: 12, selected: true };
 }
 
 function mergeSections(saved, dismissed, master) {
@@ -46,7 +46,7 @@ function mergeSections(saved, dismissed, master) {
       tests: (section.tests || []).map((test) => ({
         id: test.id || newId(),
         name: test.name || "",
-        code: test.code || "FBS",
+        code: test.code || "",
         hours: Number.isFinite(Number(test.hours)) ? Number(test.hours) : 12,
         selected: test.selected !== false,
       })),
@@ -114,16 +114,32 @@ function moveItem(list, from, to) {
   return next;
 }
 
-function GripIcon() {
+function SortButtons({ label, disabled, isFirst, isLast, onMove }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      <circle cx="4" cy="3" r="1.15" fill="currentColor" />
-      <circle cx="10" cy="3" r="1.15" fill="currentColor" />
-      <circle cx="4" cy="7" r="1.15" fill="currentColor" />
-      <circle cx="10" cy="7" r="1.15" fill="currentColor" />
-      <circle cx="4" cy="11" r="1.15" fill="currentColor" />
-      <circle cx="10" cy="11" r="1.15" fill="currentColor" />
-    </svg>
+    <div className="ua-cfg-goals-sort">
+      <button
+        type="button"
+        aria-label={`Move ${label} up`}
+        title="Move up"
+        disabled={disabled || isFirst}
+        onClick={() => onMove(-1)}
+      >
+        <svg viewBox="0 0 12 8" aria-hidden="true">
+          <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label={`Move ${label} down`}
+        title="Move down"
+        disabled={disabled || isLast}
+        onClick={() => onMove(1)}
+      >
+        <svg viewBox="0 0 12 8" aria-hidden="true">
+          <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
@@ -146,9 +162,6 @@ function CodeField({ value, disabled, onChange }) {
       placeholder="Code"
       aria-label="Code"
       onChange={(event) => onChange(event.target.value.toUpperCase())}
-      onBlur={() => {
-        if (!String(value || "").trim()) onChange("FBS");
-      }}
     />
   );
 }
@@ -163,7 +176,6 @@ export function TestCatalogSection({ setTests, onToast }) {
   const [draft, setDraft] = useState(null);
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [pendingDeleteGoal, setPendingDeleteGoal] = useState(false);
-  const [drag, setDrag] = useState(null);
 
   const loadGoals = useCallback(async () => {
     setLoading(true);
@@ -338,21 +350,22 @@ export function TestCatalogSection({ setTests, onToast }) {
     }
   }
 
-  function onSectionDrop(index) {
-    if (!drag || drag.type !== "section") return;
-    setDraft((current) => ({ ...current, sections: moveItem(current.sections, drag.index, index) }));
-    setDrag(null);
+  function moveSection(index, delta) {
+    setDraft((current) => ({
+      ...current,
+      sections: moveItem(current.sections, index, index + delta),
+    }));
   }
 
-  function onTestDrop(sectionId, index) {
-    if (!drag || drag.type !== "test" || drag.sectionId !== sectionId) return;
+  function moveTest(sectionId, index, delta) {
     setDraft((current) => ({
       ...current,
       sections: current.sections.map((section) => (
-        section.id === sectionId ? { ...section, tests: moveItem(section.tests, drag.index, index) } : section
+        section.id === sectionId
+          ? { ...section, tests: moveItem(section.tests, index, index + delta) }
+          : section
       )),
     }));
-    setDrag(null);
   }
 
   return (
@@ -488,31 +501,15 @@ export function TestCatalogSection({ setTests, onToast }) {
           ) : null}
 
           {draft.sections.map((section, sectionIndex) => (
-            <section
-              key={section.id}
-              className={`ua-cfg-goals-section${drag?.type === "section" && drag.index === sectionIndex ? " is-dragging" : ""}`}
-              onDragOver={(event) => {
-                if (drag?.type === "section") event.preventDefault();
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                onSectionDrop(sectionIndex);
-              }}
-            >
+            <section key={section.id} className="ua-cfg-goals-section">
               <div className="ua-cfg-goals-section__head">
-                <span
-                  className="ua-cfg-goals-grip"
-                  draggable={!busy}
-                  aria-hidden="true"
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", section.id);
-                    setDrag({ type: "section", index: sectionIndex });
-                  }}
-                  onDragEnd={() => setDrag(null)}
-                >
-                  <GripIcon />
-                </span>
+                <SortButtons
+                  label={section.category}
+                  disabled={busy}
+                  isFirst={sectionIndex === 0}
+                  isLast={sectionIndex === draft.sections.length - 1}
+                  onMove={(delta) => moveSection(sectionIndex, delta)}
+                />
                 <span className="ua-cfg-goals-section__name">{section.category}</span>
                 <span className="ua-cfg-goals-section__count">{plural(section.tests.length, "test")}</span>
                 <button
@@ -536,32 +533,14 @@ export function TestCatalogSection({ setTests, onToast }) {
                   <span />
                 </div>
                 {section.tests.map((test, testIndex) => (
-                  <div
-                    key={test.id}
-                    className="ua-cfg-goals-lines__row"
-                    onDragOver={(event) => {
-                      if (drag?.type === "test" && drag.sectionId === section.id) event.preventDefault();
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onTestDrop(section.id, testIndex);
-                    }}
-                  >
-                    <span
-                      className="ua-cfg-goals-grip"
-                      draggable={!busy}
-                      aria-hidden="true"
-                      onDragStart={(event) => {
-                        event.stopPropagation();
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", test.id);
-                        setDrag({ type: "test", sectionId: section.id, index: testIndex });
-                      }}
-                      onDragEnd={() => setDrag(null)}
-                    >
-                      <GripIcon />
-                    </span>
+                  <div key={test.id} className="ua-cfg-goals-lines__row">
+                    <SortButtons
+                      label={test.name || "test"}
+                      disabled={busy}
+                      isFirst={testIndex === 0}
+                      isLast={testIndex === section.tests.length - 1}
+                      onMove={(delta) => moveTest(section.id, testIndex, delta)}
+                    />
                     <input
                       type="checkbox"
                       className="ua-cfg-goals-check"

@@ -8,6 +8,15 @@ const HEALTH_PROGRESS_FEATURE_KEYS = [
   "conditionComparison",
 ];
 
+const HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS = [
+  "weightPic",
+  "glucose",
+  "bloodPressure",
+  "conditionComparison",
+];
+
+const HEALTH_PROGRESS_TIME_ZONE = "Asia/Kolkata";
+
 const HEALTH_PROGRESS_BODY_PARTS = [
   "face",
   "skin",
@@ -108,6 +117,99 @@ function applyPurchasedProgramTrackers(settings, labels, user) {
   return next;
 }
 
+function emptyHealthProgressClientUpload() {
+  return {
+    weightPic: { open: false, closedAt: null, source: null },
+    glucose: { open: false, closedAt: null, source: null },
+    bloodPressure: { open: false, closedAt: null, source: null },
+    conditionComparison: { open: false, closedAt: null, source: null },
+  };
+}
+
+function normalizeHealthProgressClientUpload(value) {
+  const base = emptyHealthProgressClientUpload();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+  for (const key of HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS) {
+    const row = value[key];
+    if (!row || typeof row !== "object") continue;
+    const source = row.source === "saturday" || row.source === "coach" ? row.source : null;
+    base[key] = {
+      open: row.open === true,
+      closedAt: row.closedAt ? String(row.closedAt) : null,
+      source: row.open === true ? source : null,
+    };
+  }
+  return base;
+}
+
+function isHealthProgressSaturday(now = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    weekday: "short",
+  }).format(now) === "Sat";
+}
+
+function healthProgressSaturdayStartIso(now = new Date()) {
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  return new Date(`${date}T00:00:00.000+05:30`).toISOString();
+}
+
+function resolveHealthProgressClientUpload(value, now = new Date()) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  const saturday = isHealthProgressSaturday(now);
+  const saturdayStart = saturday ? new Date(healthProgressSaturdayStartIso(now)).getTime() : 0;
+  const next = emptyHealthProgressClientUpload();
+  let changed = false;
+
+  for (const key of HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS) {
+    const row = stored[key];
+    let open = row.open === true;
+    let source = open ? (row.source || "coach") : null;
+    if (!open && saturday) {
+      const closedAt = row.closedAt ? new Date(row.closedAt).getTime() : 0;
+      if (!row.closedAt || !Number.isFinite(closedAt) || closedAt < saturdayStart) {
+        open = true;
+        source = "saturday";
+      }
+    }
+    next[key] = {
+      open,
+      closedAt: row.closedAt,
+      source,
+    };
+    if (open !== row.open || source !== row.source) changed = true;
+  }
+
+  return { windows: next, changed, stored: next };
+}
+
+function closeHealthProgressClientUpload(value, featureKey, now = new Date()) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  if (!HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) return stored;
+  stored[featureKey] = {
+    open: false,
+    closedAt: now.toISOString(),
+    source: null,
+  };
+  return stored;
+}
+
+function openHealthProgressClientUpload(value, featureKey) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  if (!HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) return stored;
+  stored[featureKey] = {
+    open: true,
+    closedAt: stored[featureKey].closedAt,
+    source: "coach",
+  };
+  return stored;
+}
+
 function hasAnyHealthProgressFeature(settings) {
   if (!settings) return false;
   return HEALTH_PROGRESS_FEATURE_KEYS.some((key) => Boolean(settings[key]));
@@ -163,8 +265,6 @@ function toNumberOrNull(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
-
-const HEALTH_PROGRESS_TIME_ZONE = "Asia/Kolkata";
 
 function healthProgressToday() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -323,10 +423,16 @@ function formatSummaryDate(iso) {
 
 module.exports = {
   HEALTH_PROGRESS_FEATURE_KEYS,
+  HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS,
   HEALTH_PROGRESS_BODY_PARTS,
   GLUCOSE_TYPES,
   defaultHealthProgressFeatures,
   normalizeHealthProgressFeatures,
+  normalizeHealthProgressClientUpload,
+  resolveHealthProgressClientUpload,
+  closeHealthProgressClientUpload,
+  openHealthProgressClientUpload,
+  isHealthProgressSaturday,
   isFemaleUser,
   resolveHealthProgressSettings,
   trackerFeatureKeysForProgramLabel,

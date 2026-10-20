@@ -12,7 +12,6 @@ import {
   getNextOnboardingStepLabel,
   saveUserCoachInsight,
   deleteUserCoachInsight,
-  formatPrescriptionReviewLabel,
 } from "../../api/usersApi.js";
 import {
   acceptOnboardingMeetingRequest,
@@ -31,9 +30,10 @@ import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { fetchHealConsultancyTracks } from "../../api/counsellingApi.js";
 import {
   assignmentsFromPrescriptionPayload,
-  latestActivePrescriptionDate,
+  coachMeetingsFromAssignments,
   listUserWellnessPrescriptions,
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
@@ -179,7 +179,55 @@ function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
 }
 
-function GlanceHeader({ user, lastReviewed, onOpenReview }) {
+const COUNSELLING_SESSION_STATUSES = new Set(["scheduled", "completed", "follow_up_needed"]);
+
+function formatCounsellingDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatCounsellingReviewDay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function latestCounsellingLabel(tracks, meetings) {
+  const candidates = [];
+
+  for (const track of Array.isArray(tracks) ? tracks : []) {
+    const status = String(track?.status || "").toLowerCase();
+    if (!COUNSELLING_SESSION_STATUSES.has(status)) continue;
+    const raw = track?.scheduledAt;
+    const at = new Date(raw);
+    if (Number.isNaN(at.getTime())) continue;
+    const label = formatCounsellingDateTime(raw);
+    if (label) candidates.push({ at: at.getTime(), label });
+  }
+
+  for (const meeting of Array.isArray(meetings) ? meetings : []) {
+    if (meeting?.cancelled) continue;
+    const match = String(meeting?.date || "").match(/^(\d{4}-\d{2}-\d{2})/);
+    if (!match) continue;
+    const at = new Date(`${match[1]}T12:00:00+05:30`);
+    if (Number.isNaN(at.getTime())) continue;
+    const label = formatCounsellingReviewDay(match[1]);
+    if (label) candidates.push({ at: at.getTime(), label });
+  }
+
+  candidates.sort((a, b) => b.at - a.at);
+  return candidates[0]?.label || "";
+}
+
+function GlanceHeader({ user, lastCounselling, onOpenReview }) {
   const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "");
   const name = String(user.name || "").trim() || "Client";
   return (
@@ -192,8 +240,8 @@ function GlanceHeader({ user, lastReviewed, onOpenReview }) {
         </p>
       </div>
       <div className="ua-cp-glance-head__badges">
-        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
-          ⏱️ Last reviewed {lastReviewed || "—"} ›
+        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View counselling history">
+          ⏱️ Last Counselling {lastCounselling || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
           ⚑ Updated {user.lastUpdated || "—"}
@@ -1226,6 +1274,7 @@ function OnboardingStatusCard({
           user={user}
           title={scheduleModal.title}
           defaultNote={scheduleModal.defaultNote}
+          showClientNote={false}
           existingMeeting={
             meetings.find((row) => (
               row.stepKey === scheduleModal.stepKey
@@ -1476,11 +1525,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   const [glance, setGlance] = useState(null);
   const [glanceLoading, setGlanceLoading] = useState(false);
-  const [lastReviewed, setLastReviewed] = useState("");
+  const [lastCounselling, setLastCounselling] = useState("");
 
   useEffect(() => {
     setOnboardingProgress(null);
-    setLastReviewed("");
+    setLastCounselling("");
   }, [user?.id]);
 
   useEffect(() => {
@@ -1488,20 +1537,19 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     if (!userId || isMockNumericId(userId)) return undefined;
 
     let cancelled = false;
-    listUserWellnessPrescriptions(userId)
-      .then((data) => {
-        if (cancelled) return;
-        const day = latestActivePrescriptionDate(assignmentsFromPrescriptionPayload(data));
-        setLastReviewed(formatPrescriptionReviewLabel(day));
-      })
-      .catch(() => {
-        if (!cancelled) setLastReviewed(user?.lastReviewed || "");
-      });
+    Promise.all([
+      fetchHealConsultancyTracks(userId, { page: 1, limit: 50 }).catch(() => null),
+      listUserWellnessPrescriptions(userId).catch(() => null),
+    ]).then(([tracksData, prescriptionData]) => {
+      if (cancelled) return;
+      const meetings = coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(prescriptionData));
+      setLastCounselling(latestCounsellingLabel(tracksData?.tracks, meetings));
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.lastReviewed]);
+  }, [user?.id]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -1564,7 +1612,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       {rainActive && rainTip ? (
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
-      <GlanceHeader user={user} lastReviewed={lastReviewed} onOpenReview={() => setReviewOpen(true)} />
+      <GlanceHeader user={user} lastCounselling={lastCounselling} onOpenReview={() => setReviewOpen(true)} />
       <PreviewToggle mode={viewMode} onChange={setViewMode} />
 
       {viewMode === "onboarded" ? (

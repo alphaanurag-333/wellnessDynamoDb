@@ -225,3 +225,81 @@ export async function adminDeleteLaunchQuestion(token, domainId, id) {
     normalizeApiError(error);
   }
 }
+
+function mapFocusArea(row) {
+  if (!row) return null;
+  return {
+    id: row.id || row._id,
+    title: row.title || "",
+    sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
+    status: row.status === "inactive" ? "inactive" : "active",
+  };
+}
+
+export async function adminListLaunchFocusAreas(token) {
+  const headers = authHeader(tokenOrStored(token));
+  const rows = [];
+  let page = 1;
+  let pages = 1;
+  try {
+    do {
+      const { data } = await api.get("/admin/launch-focus-areas", {
+        params: { page, limit: 200 },
+        headers,
+      });
+      rows.push(...(Array.isArray(data.focusAreas) ? data.focusAreas : []));
+      pages = Number(data.pagination?.pages) || 1;
+      page += 1;
+    } while (page <= pages && page <= 20);
+    return rows
+      .map(mapFocusArea)
+      .filter(Boolean)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminCreateLaunchFocusArea(token, fields) {
+  try {
+    const { data } = await api.post(
+      "/admin/launch-focus-areas",
+      {
+        title: String(fields.title ?? "").trim(),
+        sortOrder: Number(fields.sortOrder) || 0,
+        status: fields.status === "inactive" ? "inactive" : "active",
+      },
+      { headers: authHeader(tokenOrStored(token)) },
+    );
+    return mapFocusArea(data.focusArea);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminUpdateLaunchFocusArea(token, id, fields) {
+  const payload = {};
+  if (fields.title !== undefined) payload.title = String(fields.title).trim();
+  if (fields.sortOrder !== undefined) payload.sortOrder = Number(fields.sortOrder);
+  if (fields.status !== undefined) payload.status = fields.status === "inactive" ? "inactive" : "active";
+  try {
+    const { data } = await api.patch(
+      `/admin/launch-focus-areas/${encodeURIComponent(id)}`,
+      payload,
+      { headers: authHeader(tokenOrStored(token)) },
+    );
+    return mapFocusArea(data.focusArea);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminDeleteLaunchFocusArea(token, id) {
+  try {
+    await api.delete(`/admin/launch-focus-areas/${encodeURIComponent(id)}`, {
+      headers: authHeader(tokenOrStored(token)),
+    });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
