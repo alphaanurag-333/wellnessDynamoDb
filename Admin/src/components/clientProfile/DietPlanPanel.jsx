@@ -5,7 +5,7 @@ import {
   listDietPlanCatalog,
   listUserDietPlanAssignments,
 } from "../../api/dietPlanCatalogApi.js";
-import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const SLOT_LABELS = {
   breakfast: "Breakfast",
@@ -94,9 +94,7 @@ function AssignedPlanCard({ plan }) {
 export function DietPlanPanel({ user, onToast, appVisible = true }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
-  const { can } = useViewAs();
-  const canAssign = can("console.diet.create");
-  const canRemove = can("console.diet.delete");
+  const { canCreate: canAssign, canDelete: canRemove } = useClientSectionPermissions("food");
 
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);

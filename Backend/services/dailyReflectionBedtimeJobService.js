@@ -9,6 +9,11 @@ const { todayInTimezone } = require("../utils/birthdayTimezone");
 const DEFAULT_BEDTIME = "22:30";
 const REMINDER_OFFSET_MINUTES = 30;
 
+function pushFailureReason(push) {
+  if (push?.skipped && push?.reason) return push.reason;
+  return push?.primaryError?.code || push?.reason || "send_error";
+}
+
 function subtractMinutesFromBedtime(bedtime, offsetMinutes = REMINDER_OFFSET_MINUTES) {
   const raw = String(bedtime || DEFAULT_BEDTIME).trim();
   const [h, m] = raw.split(":").map(Number);
@@ -102,11 +107,19 @@ async function runDailyReflectionBedtimeJob(options = {}) {
         });
       } else {
         results.failed += 1;
+        const pushReason = pushFailureReason(push);
+        const pushErrorMessage = push?.primaryError?.message || null;
+        console.error(
+          `[daily-reflection-bedtime] FCM failed for ${userId}:`,
+          pushReason,
+          pushErrorMessage || ""
+        );
         results.details.push({
           userId,
           status: "push_failed",
           notificationId,
-          pushReason: push?.reason || "send_error",
+          pushReason,
+          pushErrorMessage,
           pushFailureCount: Number(push?.failureCount) || 0,
         });
       }

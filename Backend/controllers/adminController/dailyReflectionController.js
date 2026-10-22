@@ -24,7 +24,7 @@ const {
   buildDailyReflectionSnapshot,
   computeDailyReflectionScore,
 } = require("../../services/dailyReflectionScoreService");
-const { todayDateOnly } = require("../../utils/dateOnly");
+const { isValidDateOnly, todayDateOnly } = require("../../utils/dateOnly");
 const { resolveStaffActor } = require("../staffAccess");
 const {
   dispatchDailyReflectionBedtimeNotification,
@@ -76,6 +76,14 @@ function resolveTargetMonth(query) {
   return candidate;
 }
 
+function resolveTargetDate(query, body) {
+  const candidate = body?.date ?? query?.date ?? todayDateOnly();
+  if (!isValidDateOnly(candidate)) {
+    throw new AppError("date must be YYYY-MM-DD", 400);
+  }
+  return candidate;
+}
+
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
   if (!actingCoachId) throw new AppError("Unauthorized", 401);
@@ -121,8 +129,7 @@ async function loadDrfBundle() {
   }
 }
 
-async function buildUserDrfForm(userId, settings) {
-  const date = todayDateOnly();
+async function buildUserDrfForm(userId, settings, date = todayDateOnly()) {
   const [bundle, snapshot, todayLog] = await Promise.all([
     loadDrfBundle(),
     buildDailyReflectionSnapshot(userId, date),
@@ -154,8 +161,9 @@ async function buildUserDrfForm(userId, settings) {
 
 exports.getCoachUserDailyReflectionSettingsController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
+  const date = resolveTargetDate(req.query, req.body);
   const settings = await getSettings(userId);
-  const form = await buildUserDrfForm(userId, settings);
+  const form = await buildUserDrfForm(userId, settings, date);
 
   return res.status(200).json({
     status: true,
@@ -245,7 +253,8 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
     mapSettingsError(err);
   }
 
-  const form = await buildUserDrfForm(userId, updated);
+  const date = resolveTargetDate(req.query, req.body);
+  const form = await buildUserDrfForm(userId, updated, date);
 
   return res.status(200).json({
     status: true,
@@ -283,7 +292,7 @@ exports.submitCoachUserDailyReflectionController = asyncHandler(async (req, res)
   });
 
   const settings = await getSettings(userId);
-  const form = await buildUserDrfForm(userId, settings);
+  const form = await buildUserDrfForm(userId, settings, date);
 
   return res.status(200).json({
     status: true,

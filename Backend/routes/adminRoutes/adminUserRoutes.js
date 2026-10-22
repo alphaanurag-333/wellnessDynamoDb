@@ -200,6 +200,6 @@ router.patch(
   optionalUserFile,
   updateUserController
 );
-router.delete("/:id", protectAccount, authorizeStaff("console.cl.delete", { admin: "users.delete" }), deleteUserController);
+router.delete("/:id", protectAccount, requireAdmin, deleteUserController);
 
 module.exports = router;

@@ -2,10 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
   fetchUserDailyReflectionSettings,
+  fetchUserDailyReflectionHistory,
   saveUserDailyReflectionSettings,
   submitUserDailyReflectionScore,
   pushUserDailyReflectionBedtime,
 } from "../../api/dailyReflectionApi.js";
+import {
+  formatFoodDateInput,
+  formatFoodDateLabel,
+  localToday,
+  parseFoodDateInput,
+} from "../../data/foodData.js";
+import { FoodDateRow } from "./FoodDatePicker.jsx";
 import {
   DEFAULT_BEDTIME,
   TRACKING_ROWS,
@@ -204,7 +212,12 @@ export function ReflectionSection({ user, onToast }) {
   const [bedtime, setBedtime] = useState(DEFAULT_BEDTIME);
   const [savedBedtime, setSavedBedtime] = useState(DEFAULT_BEDTIME);
   const [todayScore, setTodayScore] = useState(null);
-  const [date, setDate] = useState("");
+  const today = useMemo(() => localToday(), []);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyMonth, setHistoryMonth] = useState(() => formatFoodDateInput(today).slice(0, 7));
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set(["tracking"]));
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
@@ -214,10 +227,15 @@ export function ReflectionSection({ user, onToast }) {
   const [pushOpen, setPushOpen] = useState(false);
 
   const clientName = user?.name?.split(" ")[0] || "Client";
+  const viewDateKey = formatFoodDateInput(selectedDate);
+  const isViewingToday = selectedDate.toDateString() === today.toDateString();
   const groups = useMemo(() => groupActivities(activities), [activities]);
   const enabledCount = useMemo(() => activities.filter((activity) => activity.enabled).length, [activities]);
   const settingsDirty = snapshotKey(activities) !== savedSettingsKey || bedtime !== savedBedtime;
   const busy = saving || scoring || pushing;
+  const scoreLabel = isViewingToday
+    ? (todayScore ? "Today's reflection score" : "Selected for the client app")
+    : (todayScore ? "Reflection score" : "No score logged");
 
   function applyForm(data) {
     const nextActivities = data?.activities || [];
@@ -227,7 +245,6 @@ export function ReflectionSection({ user, onToast }) {
     setBedtime(data?.bedtime || DEFAULT_BEDTIME);
     setSavedBedtime(data?.bedtime || DEFAULT_BEDTIME);
     setTodayScore(data?.todayScore || null);
-    setDate(data?.date || "");
   }
 
   useEffect(() => {
@@ -242,7 +259,7 @@ export function ReflectionSection({ user, onToast }) {
     setLoading(true);
     setLoadError("");
 
-    fetchUserDailyReflectionSettings(userId)
+    fetchUserDailyReflectionSettings(userId, { date: viewDateKey })
       .then((data) => {
         if (cancelled) return;
         applyForm(data);
@@ -260,7 +277,39 @@ export function ReflectionSection({ user, onToast }) {
     return () => {
       cancelled = true;
     };
-  }, [isHealClient, onToast, userId]);
+  }, [isHealClient, onToast, userId, viewDateKey]);
+
+  useEffect(() => {
+    if (!userId || !isHealClient || !historyOpen) return undefined;
+
+    let cancelled = false;
+    setHistoryLoading(true);
+    fetchUserDailyReflectionHistory(userId, historyMonth)
+      .then((data) => {
+        if (cancelled) return;
+        setHistoryRows(data?.history || []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        onToast?.(err?.message || "Could not load reflection history");
+        setHistoryRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyMonth, historyOpen, isHealClient, onToast, userId]);
+
+  function pickHistoryDate(dateKey) {
+    const next = parseFoodDateInput(dateKey);
+    if (!next) return;
+    if (next.getTime() > today.getTime()) return;
+    setSelectedDate(next);
+    setHistoryOpen(false);
+  }
 
   function toggleSection(id) {
     setExpanded((prev) => {
@@ -306,6 +355,7 @@ export function ReflectionSection({ user, onToast }) {
       const data = await saveUserDailyReflectionSettings(userId, {
         activities: activitiesPayload(activities),
         bedtime,
+        date: viewDateKey,
       });
       applyForm({
         ...data,
@@ -350,10 +400,15 @@ export function ReflectionSection({ user, onToast }) {
       const data = await submitUserDailyReflectionScore(userId, {
         activityValues,
         gratitudeYes,
-        date,
+        date: viewDateKey,
       });
       applyForm(data);
-      onToast?.(`Today's score saved: ${Number(data?.todayScore?.score ?? data?.score ?? 0)} / 100`);
+      const savedScore = Number(data?.todayScore?.score ?? data?.score ?? 0);
+      onToast?.(
+        isViewingToday
+          ? `Today's score saved: ${savedScore} / 100`
+          : `Score saved for ${formatFoodDateLabel(selectedDate, today)}: ${savedScore} / 100`,
+      );
     } catch (err) {
       onToast?.(err?.message || "Could not save today's score");
     } finally {
@@ -369,6 +424,7 @@ export function ReflectionSection({ user, onToast }) {
         const data = await saveUserDailyReflectionSettings(userId, {
           activities: activitiesPayload(activities),
           bedtime,
+          date: viewDateKey,
         });
         applyForm({
           ...data,
@@ -410,9 +466,72 @@ export function ReflectionSection({ user, onToast }) {
         <p className="ua-cp-reflect__sub">Scored daily check-in · monthly totals decide the champion</p>
       </div>
 
+      <div className="ua-cp-reflect-date-toolbar">
+        <FoodDateRow
+          selectedDate={selectedDate}
+          today={today}
+          onDateChange={setSelectedDate}
+          onToday={() => setSelectedDate(today)}
+        />
+        <button
+          type="button"
+          className={`ua-cp-reflect-history-toggle${historyOpen ? " is-open" : ""}`}
+          aria-expanded={historyOpen}
+          onClick={() => {
+            setHistoryOpen((open) => {
+              const next = !open;
+              if (next) setHistoryMonth(viewDateKey.slice(0, 7));
+              return next;
+            });
+          }}
+        >
+          {historyOpen ? "Hide history" : "Show history"}
+        </button>
+      </div>
+
+      {historyOpen ? (
+        <div className="ua-cp-reflect-history">
+          <div className="ua-cp-reflect-history__toolbar">
+            <label className="ua-cp-reflect-history__month">
+              Month
+              <input
+                type="month"
+                value={historyMonth}
+                max={formatFoodDateInput(today).slice(0, 7)}
+                onChange={(e) => setHistoryMonth(e.target.value || historyMonth)}
+              />
+            </label>
+            <span className="ua-cp-reflect-history__hint">Tap a day to open that date&apos;s reflection</span>
+          </div>
+          {historyLoading ? (
+            <p className="ua-cp-bms-library-hint">Loading history…</p>
+          ) : historyRows.length === 0 ? (
+            <p className="ua-cp-bms-library-hint">No submitted reflections for this month.</p>
+          ) : (
+            <ul className="ua-cp-reflect-history__list">
+              {historyRows.map((row) => {
+                const active = row.date === viewDateKey;
+                return (
+                  <li key={row.date}>
+                    <button
+                      type="button"
+                      className={`ua-cp-reflect-history__row${active ? " is-active" : ""}`}
+                      onClick={() => pickHistoryDate(row.date)}
+                    >
+                      <span>{formatFoodDateLabel(parseFoodDateInput(row.date) || new Date(row.date), today)}</span>
+                      <strong>{Number(row.score || 0).toFixed(0)} / 100</strong>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
       <div className="ua-cp-reflect-score">
         <div className="ua-cp-reflect-score__left">
-          <span>{todayScore ? "Today's reflection score" : "Selected for the client app"}</span>
+          <span>{scoreLabel}</span>
           <strong>
             {todayScore
               ? `${todayScore.score} / ${todayScore.maxScore} points`
@@ -457,7 +576,8 @@ export function ReflectionSection({ user, onToast }) {
             <button
               type="button"
               className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
-              disabled={!canEdit || busy}
+              disabled={!canEdit || busy || !isViewingToday}
+              title={!isViewingToday ? "Switch to today to push a reminder" : undefined}
               onClick={() => setPushOpen(true)}
             >
               Push to app
@@ -475,7 +595,9 @@ export function ReflectionSection({ user, onToast }) {
       </div>
 
       <p className="ua-cp-bms-library-hint">
-        Enable the same yoga and lifestyle activities the client logs in the app. Set a goal, then fill today&apos;s values here if you are scoring on their behalf.
+        {isViewingToday
+          ? "Enable the same yoga and lifestyle activities the client logs in the app. Set a goal, then fill today's values here if you are scoring on their behalf."
+          : `Viewing ${formatFoodDateLabel(selectedDate, today)}. Activity toggles and goals still apply to the client app; values shown are for this date.`}
       </p>
 
       <div className="ua-cp-reflect-weightage">
@@ -541,7 +663,7 @@ export function ReflectionSection({ user, onToast }) {
           disabled={!canEdit || scoring || loading}
           onClick={saveTodayScore}
         >
-          {scoring ? "Saving score…" : "Save today's score"}
+          {scoring ? "Saving score…" : (isViewingToday ? "Save today's score" : "Save score for this date")}
         </button>
         <button
           type="button"

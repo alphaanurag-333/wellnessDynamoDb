@@ -42,6 +42,7 @@ import {
 } from "../../utils/counsellingReviewHistory.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const EMPTY_SNAPSHOT = [
   { label: "Age", value: "—", tone: "default" },
@@ -454,7 +455,7 @@ function resolveCoachMessageDuration(hours) {
   return match?.hours || DEFAULT_COACH_MESSAGE_DURATION;
 }
 
-function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true }) {
+function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true, canDelete = false }) {
   const userId = String(user?.id || "").trim();
   const isMock = isMockNumericId(userId);
   const [message, setMessage] = useState("");
@@ -615,7 +616,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
             </option>
           ))}
         </select>
-        {liveInsight?.message ? (
+        {liveInsight?.message && canDelete ? (
           <button
             type="button"
             className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action ua-cp-comms__action--delete"
@@ -1414,7 +1415,7 @@ function OnboardingStatusCard({
   );
 }
 
-function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
+function RemindersModal({ user, reminders, deletingId, onClose, onDelete, canDelete = false }) {
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cp-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="reminders-title">
@@ -1438,15 +1439,17 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
                 </div>
               </div>
               <span className="ua-cp-reminder-item__time">{formatReminderTime(r.time)}</span>
-              <button
-                type="button"
-                className="ua-cp-reminder-item__del"
-                disabled={deletingId === r.id}
-                onClick={() => onDelete(r.id)}
-                aria-label="Delete"
-              >
-                ×
-              </button>
+              {canDelete ? (
+                <button
+                  type="button"
+                  className="ua-cp-reminder-item__del"
+                  disabled={deletingId === r.id}
+                  onClick={() => onDelete(r.id)}
+                  aria-label="Delete"
+                >
+                  ×
+                </button>
+              ) : null}
             </div>
           )) : (
             <p className="ua-cp-reminder-empty">No reminders yet. Set one above and it will appear in their app.</p>
@@ -1461,6 +1464,7 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
 export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const { can, isAdminView } = useViewAs();
   const archived = useClientProfileArchived();
+  const { canDelete: canDeleteClientData } = useClientSectionPermissions("glance");
   const canEditClient = !archived && (isAdminView || can("console.cl.edit"));
   const canCalEdit = !archived && (isAdminView || can("console.cal.edit") || can("console.cal.create"));
   const canRemindClient = !archived && (canEditClient || canCalEdit || can("console.diet.edit"));
@@ -1602,6 +1606,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             setReminders={setReminders}
             onOpenList={() => setRemindersOpen(true)}
             canEdit={canEditClient}
+            canDelete={canDeleteClientData}
           />
         </>
       ) : (
@@ -1637,6 +1642,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
           user={user}
           reminders={reminders}
           deletingId={deletingReminderId}
+          canDelete={canDeleteClientData}
           onClose={() => setRemindersOpen(false)}
           onDelete={async (id) => {
             if (isMockNumericId(user?.id)) {

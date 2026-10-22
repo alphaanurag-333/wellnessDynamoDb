@@ -304,7 +304,8 @@ export function UsersPage() {
 
   const canCreate = can("console.cl.create");
   const canEdit = can("console.cl.edit");
-  const canDelete = can("console.cl.delete");
+  // Archive (soft-delete) client accounts is admin-only — WC must not remove users from the roster.
+  const canDelete = Boolean(isAdminView);
   const canExport = can("console.cl.export");
   const canChangeTier = Boolean(isAdminView);
   // Disable / re-enable client accounts is admin-only (WC and other staff must not see this).

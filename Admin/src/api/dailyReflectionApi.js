@@ -95,11 +95,16 @@ export function mapDailyReflectionSettings(data) {
   };
 }
 
-export async function fetchUserDailyReflectionSettings(userId) {
+export async function fetchUserDailyReflectionSettings(userId, { date } = {}) {
+  const q = new URLSearchParams();
+  if (date) q.set("date", String(date));
   try {
-    const { data } = await api.get(settingsBase(userId), {
-      headers: authHeader(tokenOrStored()),
-    });
+    const { data } = await api.get(
+      `${settingsBase(userId)}${q.toString() ? `?${q}` : ""}`,
+      {
+        headers: authHeader(tokenOrStored()),
+      },
+    );
     return mapDailyReflectionSettings(data);
   } catch (error) {
     normalizeApiError(error);
@@ -108,17 +113,24 @@ export async function fetchUserDailyReflectionSettings(userId) {
 
 export async function saveUserDailyReflectionSettings(
   userId,
-  { selectedQuestionIds, activities, bedtime, dailyReflectionAudioId } = {}
+  { selectedQuestionIds, activities, bedtime, dailyReflectionAudioId, date } = {}
 ) {
   const payload = {};
   if (selectedQuestionIds !== undefined) payload.selectedQuestionIds = selectedQuestionIds;
   if (activities !== undefined) payload.activities = activities;
   if (bedtime !== undefined) payload.bedtime = bedtime;
   if (dailyReflectionAudioId !== undefined) payload.dailyReflectionAudioId = dailyReflectionAudioId;
+  if (date) payload.date = String(date);
+  const q = new URLSearchParams();
+  if (date) q.set("date", String(date));
   try {
-    const { data } = await api.patch(settingsBase(userId), payload, {
-      headers: authHeader(tokenOrStored()),
-    });
+    const { data } = await api.patch(
+      `${settingsBase(userId)}${q.toString() ? `?${q}` : ""}`,
+      payload,
+      {
+        headers: authHeader(tokenOrStored()),
+      },
+    );
     return mapDailyReflectionSettings(data);
   } catch (error) {
     normalizeApiError(error);

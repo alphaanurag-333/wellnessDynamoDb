@@ -602,7 +602,7 @@ function reportInRange(reportDate, range, fromDate, toDate) {
   return true;
 }
 
-function LiveReportHistory({ reports, busy, onToast, onReview, onDelete, canEdit = false }) {
+function LiveReportHistory({ reports, busy, onToast, onReview, onDelete, canDelete = false }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -716,7 +716,7 @@ function LiveReportHistory({ reports, busy, onToast, onReview, onDelete, canEdit
                     Mark reviewed
                   </button>
                 ) : null}
-                {canEdit ? (
+                {canDelete ? (
                   <button
                     type="button"
                     className="ua-cp-ip-history__delete"
@@ -1258,7 +1258,7 @@ function selectedFromRecommendation(items, recommended) {
   return map;
 }
 
-function AssignedTestHistory({ userId, current, history, onToast, onDelete, canEdit = false, busy = false }) {
+function AssignedTestHistory({ userId, current, history, onToast, onDelete, canDelete = false, busy = false }) {
   const [expandedId, setExpandedId] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const rows = useMemo(() => {
@@ -1328,7 +1328,7 @@ function AssignedTestHistory({ userId, current, history, onToast, onDelete, canE
                 >
                   ↓
                 </button>
-                {canEdit ? (
+                {canDelete ? (
                   <button
                     type="button"
                     className="ua-cp-ip-history__delete"
@@ -1392,7 +1392,7 @@ function groupTestsByCategory(tests) {
   return [...map.entries()].map(([name, rows]) => ({ name, tests: rows }));
 }
 
-function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, onDelete, onReloadCatalog, canEdit = true, canExport = true }) {
+function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, onDelete, onReloadCatalog, canEdit = true, canExport = true, canDelete = false }) {
   const items = useMemo(() => catalogItems(catalog), [catalog]);
   const allGroups = useMemo(() => testTitleGroups(items), [items]);
   const goalGroups = useMemo(() => allGroups.filter((group) => group.kind === "goal"), [allGroups]);
@@ -2069,7 +2069,7 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
         history={history}
         onToast={onToast}
         onDelete={onDelete}
-        canEdit={canEdit}
+        canDelete={canDelete}
         busy={busy}
       />
     </div>
@@ -2807,7 +2807,7 @@ function LiveReportAnalysisTab({
 
 export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const { can } = useViewAs();
-  const { canEdit, canCreate, canExport } = useClientSectionPermissions("internal");
+  const { canEdit, canCreate, canExport, canDelete } = useClientSectionPermissions("internal");
   const canEditOnboarding = can("console.cl.edit");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -3119,7 +3119,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
             onToast={onToast}
             onReview={handleReview}
             onDelete={handleDeleteReport}
-            canEdit={canEdit}
+            canDelete={canDelete}
           />
         ) : (
           <MockReportHistory onToast={onToast} />
@@ -3150,6 +3150,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
             onReloadCatalog={handleReloadCatalog}
             canEdit={canEdit}
             canExport={canExport}
+            canDelete={canDelete}
           />
         ) : (
           <MockRecommendedTestsTab user={user} onToast={onToast} canEdit={canEdit} canExport={canExport} />

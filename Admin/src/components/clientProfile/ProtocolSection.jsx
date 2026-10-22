@@ -37,7 +37,7 @@ function sectionsFromEntry(entry) {
   return cloneSections(source);
 }
 
-function HistoryVersionCard({ entry, onSave, onDeleteSavedSection, canEdit, saving }) {
+function HistoryVersionCard({ entry, onSave, onDeleteSavedSection, canEdit, canDeleteSaved, saving }) {
   const sections = sectionsFromEntry(entry);
 
   return (
@@ -48,6 +48,7 @@ function HistoryVersionCard({ entry, onSave, onDeleteSavedSection, canEdit, savi
             saving={saving}
             onSave={onSave}
             onDeleteSavedSection={onDeleteSavedSection}
+            canDeleteSaved={canDeleteSaved}
           />
         ) : (
           <div className="ua-cp-proto-ver__body">
@@ -84,7 +85,7 @@ function moveListItem(list, fromIndex, toIndex) {
   return next;
 }
 
-function SavedProtocolEditor({ entry, saving, onSave, onDeleteSavedSection }) {
+function SavedProtocolEditor({ entry, saving, onSave, onDeleteSavedSection, canDeleteSaved = false }) {
   const initialKey = JSON.stringify(sectionsFromEntry(entry));
   const [sections, setSections] = useState(() => sectionsFromEntry(entry));
   const [headingErrors, setHeadingErrors] = useState({});
@@ -216,6 +217,7 @@ function SavedProtocolEditor({ entry, saving, onSave, onDeleteSavedSection }) {
       <SectionsBoard
         sections={sections}
         canWrite
+        canDeleteSection={canDeleteSaved}
         saving={saving}
         headingErrors={headingErrors}
         pointErrors={pointErrors}
@@ -312,6 +314,7 @@ function ProtocolSectionCard({
   section,
   index,
   canWrite,
+  canDeleteSection = canWrite,
   saving,
   headingError,
   pointErrors,
@@ -367,7 +370,7 @@ function ProtocolSectionCard({
             <PencilIcon /> Edit
           </button>
         ) : null}
-        {canWrite ? (
+        {canDeleteSection ? (
           <button type="button" className="ua-cp-proto-icon-btn ua-cp-proto-icon-btn--danger" onClick={onDelete} disabled={saving}>
             <TrashIcon /> Delete
           </button>
@@ -482,6 +485,7 @@ function ProtocolSectionCard({
 function SectionsBoard({
   sections,
   canWrite,
+  canDeleteSection = canWrite,
   saving,
   headingErrors,
   pointErrors,
@@ -516,6 +520,7 @@ function SectionsBoard({
               section={section}
               index={index}
               canWrite={canWrite}
+              canDeleteSection={canDeleteSection}
               saving={saving}
               headingError={headingErrors[section.id] || ""}
               pointErrors={pointErrors[section.id] || []}
@@ -546,7 +551,7 @@ function SectionsBoard({
 }
 
 export function ProtocolSection({ user, onToast }) {
-  const { canEdit, canCreate } = useClientSectionPermissions("protocol");
+  const { canEdit, canCreate, canDelete } = useClientSectionPermissions("protocol");
   const canWrite = canEdit || canCreate;
   const userId = String(user?.id || "").trim();
   const [workingSections, setWorkingSections] = useState([]);
@@ -765,7 +770,7 @@ export function ProtocolSection({ user, onToast }) {
 
   async function confirmDeleteVersion() {
     const entry = pendingDelete;
-    if (!entry || !userId || deletingId) return;
+    if (!canDelete || !entry || !userId || deletingId) return;
     const syncWorking = sectionsEqual(workingSections, savedSections);
     setPendingDelete(null);
     setDeletingId(entry.id);
@@ -785,7 +790,7 @@ export function ProtocolSection({ user, onToast }) {
   }
 
   async function deleteHistorySection(entry, remaining) {
-    if (!userId || saving || savingVersionId) throw new Error("Could not delete section");
+    if (!canDelete || !userId || saving || savingVersionId) throw new Error("Could not delete section");
     const editedCurrent = sectionsEqual(savedSections, sectionsFromEntry(entry));
     const keepWorking = dirty;
     setSavingVersionId(entry.id);
@@ -906,6 +911,7 @@ export function ProtocolSection({ user, onToast }) {
                 key={entry.id}
                 entry={entry}
                 canEdit={canWrite}
+                canDeleteSaved={canDelete}
                 saving={saving || savingVersionId === entry.id}
                 onSave={(sections) => saveHistoryVersion(entry, sections)}
                 onDeleteSavedSection={(remaining) => deleteHistorySection(entry, remaining)}

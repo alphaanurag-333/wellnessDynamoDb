@@ -31,9 +31,9 @@ export function ClientProfileSectionGate({ section, label, children }) {
 
 /** Hook for section-level read/write permission flags inside profile panels. */
 export function useClientSectionPermissions(sectionId) {
-  const { can } = useViewAs();
+  const { can, isAdminView } = useViewAs();
   const archived = useClientProfileArchived();
-  const perms = resolveClientSectionPermissions(can, sectionId);
+  const perms = resolveClientSectionPermissions(can, sectionId, { isAdminView });
   if (!archived) return perms;
   return {
     ...perms,

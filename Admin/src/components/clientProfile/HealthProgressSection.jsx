@@ -17,6 +17,7 @@ import {
   updateHealthProgressSettings,
 } from "../../api/healthProgressApi.js";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
   CLIENT_HEALTH_TRACKERS,
   CLIENT_TRACKING_FILTER_OPTIONS,
@@ -686,7 +687,7 @@ function uploadPhotoReviewLabel(status) {
   return "Pending";
 }
 
-function WeightPhotoCard({ photo, canDelete, deleting, reviewing, onDelete, onReview }) {
+function WeightPhotoCard({ photo, canDelete, canReview = true, deleting, reviewing, onDelete, onReview }) {
   const openPhoto = () => {
     if (photo.url && photo.url !== "mock") window.open(photo.url, "_blank", "noopener,noreferrer");
   };
@@ -736,7 +737,7 @@ function WeightPhotoCard({ photo, canDelete, deleting, reviewing, onDelete, onRe
           </button>
         ) : null}
       </div>
-      {hasPhoto ? (
+      {hasPhoto && canReview ? (
         <div className="ua-cp-hptrack-weight-photo-card__actions">
           <button
             type="button"
@@ -763,7 +764,19 @@ function WeightPhotoCard({ photo, canDelete, deleting, reviewing, onDelete, onRe
   );
 }
 
-function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, reviewingId, onDelete, onReview, onClose }) {
+function WeightPhotoHistoryModal({
+  open,
+  photos,
+  canDelete,
+  canReview = true,
+  deletingId,
+  reviewingId,
+  onDelete,
+  onReview,
+  onClose,
+  title = "Weight photo history",
+  subtitle = "Every weigh-in photo the client uploaded, newest first. Accept or reject each image.",
+}) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -779,8 +792,8 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, reviewin
       <div className="ua-cp-modal ua-cp-hptrack-weight-history-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="weight-history-title">
         <div className="ua-cp-hptrack-weight-history-modal__head">
           <div>
-            <h3 id="weight-history-title">Weight photo history</h3>
-            <p>Every weigh-in photo the client uploaded, newest first. Accept or reject each image.</p>
+            <h3 id="weight-history-title">{title}</h3>
+            <p>{subtitle}</p>
           </div>
           <button type="button" className="ua-cp-hptrack-weight-history-modal__close" onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -791,6 +804,7 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, reviewin
               key={photo.id}
               photo={photo}
               canDelete={canDelete}
+              canReview={canReview}
               deleting={deletingId === photo.id}
               reviewing={reviewingId === photo.id}
               onDelete={onDelete}
@@ -809,6 +823,7 @@ function UploadPhotoReviewSection({
   photos,
   userId,
   isMock,
+  canReview,
   onToast,
   reviewPhoto,
   onReviewed,
@@ -818,10 +833,10 @@ function UploadPhotoReviewSection({
   const [pendingReview, setPendingReview] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  if (!photos.length) return null;
+  const pendingCount = photos.filter((p) => (p.reviewStatus || "pending") === "pending").length;
 
   function requestReview(photo, action) {
-    if (!photo?.id || reviewingPhotoId) return;
+    if (!canReview || !photo?.id || reviewingPhotoId) return;
     setRejectReason("");
     setPendingReview({ photo, action });
   }
@@ -829,7 +844,7 @@ function UploadPhotoReviewSection({
   async function confirmReview() {
     const photo = pendingReview?.photo;
     const action = pendingReview?.action;
-    if (!photo?.id || !action || isMock) return;
+    if (!canReview || !photo?.id || !action || isMock) return;
     setReviewingPhotoId(photo.id);
     try {
       const result = await reviewPhoto(userId, photo.id, {
@@ -853,16 +868,26 @@ function UploadPhotoReviewSection({
         <div>
           <strong>{title}</strong>
           {subtitle ? <p>{subtitle}</p> : null}
+          {!canReview ? (
+            <p className="ua-cp-hptrack-upload-review-bar__readonly">View only — wellness coach edit access is required to approve or reject.</p>
+          ) : null}
         </div>
-        <button type="button" className="ua-cp-hptrack-view-history" onClick={() => setHistoryOpen(true)}>
-          Review uploads ({photos.length})
-        </button>
+        {photos.length ? (
+          <button type="button" className="ua-cp-hptrack-view-history" onClick={() => setHistoryOpen(true)}>
+            {canReview
+              ? `Approve / reject (${pendingCount} pending${pendingCount === 1 ? "" : ""})`
+              : `View uploads (${photos.length})`}
+          </button>
+        ) : (
+          <span className="ua-cp-hptrack-upload-review-bar__empty">No client uploads yet</span>
+        )}
       </div>
 
       <WeightPhotoHistoryModal
         open={historyOpen}
         photos={photos}
         canDelete={false}
+        canReview={canReview}
         deletingId=""
         reviewingId={reviewingPhotoId}
         onDelete={() => {}}
@@ -871,6 +896,8 @@ function UploadPhotoReviewSection({
           if (reviewingPhotoId) return;
           setHistoryOpen(false);
         }}
+        title="Client uploads — approve or reject"
+        subtitle="Every photo the client uploaded, newest first. Accept locks re-upload; reject opens client update again."
       />
 
       <ConfirmModal
@@ -999,7 +1026,7 @@ function ConditionHistoryModal({ open, condition, photos, onClose, title, subtit
   );
 }
 
-function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUploadChange }) {
+function FatLossPanel({ logs, userId, isMock, canReview, canDeletePhoto, onToast, onWeightAdded, onClientUploadChange }) {
   const [range, setRange] = useState("all");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingPhotoDelete, setPendingPhotoDelete] = useState(null);
@@ -1135,7 +1162,7 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUp
   }
 
   function requestReview(photo, action) {
-    if (!photo?.id || reviewingPhotoId || deletingPhotoId) return;
+    if (!canReview || !photo?.id || reviewingPhotoId || deletingPhotoId) return;
     setRejectReason("");
     setPendingReview({ photo, action });
   }
@@ -1143,7 +1170,7 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUp
   async function confirmReview() {
     const photo = pendingReview?.photo;
     const action = pendingReview?.action;
-    if (!photo?.id || !action || isMock) return;
+    if (!canReview || !photo?.id || !action || isMock) return;
     setReviewingPhotoId(photo.id);
     try {
       const result = await reviewCoachWeightPhoto(userId, photo.id, {
@@ -1199,6 +1226,20 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUp
 
   return (
     <>
+      <UploadPhotoReviewSection
+        title="Client fat loss uploads"
+        subtitle="Approve or reject each weigh-in photo from the client."
+        photos={photos}
+        userId={userId}
+        isMock={isMock}
+        canReview={canReview}
+        onToast={onToast}
+        reviewPhoto={reviewCoachWeightPhoto}
+        onReviewed={async (result) => {
+          if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+          await onWeightAdded?.();
+        }}
+      />
       <form className="ua-cp-hptrack-weight-form" onSubmit={submitWeight}>
         <button
           type="button"
@@ -1355,7 +1396,8 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUp
       <WeightPhotoHistoryModal
         open={historyOpen}
         photos={photos}
-        canDelete={!isMock}
+        canDelete={!isMock && canDeletePhoto}
+        canReview={canReview}
         deletingId={deletingPhotoId}
         reviewingId={reviewingPhotoId}
         onDelete={setPendingPhotoDelete}
@@ -1463,6 +1505,7 @@ function GlucosePanel({
   hba1cReadings = [],
   userId,
   isMock,
+  canReview,
   onToast,
   onLogsRefresh,
   onClientUploadChange,
@@ -1548,20 +1591,32 @@ function GlucosePanel({
     };
   }, [logs, range, hba1cReadings]);
 
-  if (!logs.length && !hba1cReadings.length) return <EmptyLogs label="glucose readings" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client glucose uploads"
+      subtitle="Approve or reject each glucose panel photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachGlucosePhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length && !hba1cReadings.length) {
+    return (
+      <div className="ua-cp-hptrack-glucose">
+        {reviewBlock}
+        <EmptyLogs label="glucose readings" />
+      </div>
+    );
+  }
 
   return (
     <div className="ua-cp-hptrack-glucose">
-      <UploadPhotoReviewSection
-        title="Client glucose uploads"
-        subtitle="Accept or reject each glucose panel photo. Rejecting opens client update again."
-        photos={uploadPhotos}
-        userId={userId}
-        isMock={isMock}
-        onToast={onToast}
-        reviewPhoto={reviewCoachGlucosePhoto}
-        onReviewed={handleReviewed}
-      />
+      {reviewBlock}
       <StatCards stats={view.stats} tone="red" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--red ua-cp-hptrack-glucose__charts">
         <div className="ua-cp-hptrack-glucose__section">
@@ -1668,7 +1723,7 @@ function MenstrualPanel({ logs }) {
   );
 }
 
-function BpPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadChange }) {
+function BpPanel({ logs, userId, isMock, canReview, onToast, onLogsRefresh, onClientUploadChange }) {
   const [range, setRange] = useState("all");
 
   const uploadPhotos = useMemo(() => (
@@ -1730,20 +1785,32 @@ function BpPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadC
     };
   }, [logs, range]);
 
-  if (!logs.length) return <EmptyLogs label="blood pressure readings" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client blood pressure uploads"
+      subtitle="Approve or reject each BP photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachBloodPressurePhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length) {
+    return (
+      <>
+        {reviewBlock}
+        <EmptyLogs label="blood pressure readings" />
+      </>
+    );
+  }
 
   return (
     <>
-      <UploadPhotoReviewSection
-        title="Client blood pressure uploads"
-        subtitle="Accept or reject each BP photo. Rejecting opens client update again."
-        photos={uploadPhotos}
-        userId={userId}
-        isMock={isMock}
-        onToast={onToast}
-        reviewPhoto={reviewCoachBloodPressurePhoto}
-        onReviewed={handleReviewed}
-      />
+      {reviewBlock}
       <StatCards stats={view.stats} tone="amber" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--amber">
         <div className="ua-cp-hptrack-chart-card__head">
@@ -1774,7 +1841,7 @@ function BpPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadC
   );
 }
 
-function ConditionPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadChange }) {
+function ConditionPanel({ logs, userId, isMock, canReview, onToast, onLogsRefresh, onClientUploadChange }) {
   const dailyLogs = useMemo(
     () => collapseLogsByDate(sortByDateDesc(logs), "", "picUrl"),
     [logs],
@@ -1832,20 +1899,32 @@ function ConditionPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClient
   const photos = selected?.photos || [];
   const latest = photos.slice(0, 2);
 
-  if (!logs.length) return <EmptyLogs label="condition photos" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client condition uploads"
+      subtitle="Approve or reject each condition comparison photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachConditionPhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length) {
+    return (
+      <div className="ua-cp-hptrack-condition">
+        {reviewBlock}
+        <EmptyLogs label="condition photos" />
+      </div>
+    );
+  }
 
   return (
     <div className="ua-cp-hptrack-condition">
-      <UploadPhotoReviewSection
-        title="Client condition uploads"
-        subtitle="Accept or reject each comparison photo. Rejecting opens client update again."
-        photos={uploadPhotos}
-        userId={userId}
-        isMock={isMock}
-        onToast={onToast}
-        reviewPhoto={reviewCoachConditionPhoto}
-        onReviewed={handleReviewed}
-      />
+      {reviewBlock}
       <div className="ua-cp-hptrack-condition-bar">
         <div className="ua-cp-hptrack-condition-bar__left">
           <select className="ua-cp-hptrack-condition-bar__select" value={selected?.id || ""} onChange={(e) => setCondition(e.target.value)}>
@@ -1897,6 +1976,8 @@ function TrackerDetail({
   hba1cReadings,
   userId,
   isMock,
+  canReview,
+  canDeletePhoto,
   onToast,
   onWeightAdded,
   onLogsRefresh,
@@ -1908,6 +1989,8 @@ function TrackerDetail({
         logs={logs.weight}
         userId={userId}
         isMock={isMock}
+        canReview={canReview}
+        canDeletePhoto={canDeletePhoto}
         onToast={onToast}
         onWeightAdded={onWeightAdded}
         onClientUploadChange={onClientUploadChange}
@@ -1919,6 +2002,7 @@ function TrackerDetail({
         hba1cReadings={hba1cReadings}
         userId={userId}
         isMock={isMock}
+        canReview={canReview}
         onToast={onToast}
         onLogsRefresh={() => onLogsRefresh?.("glucose")}
         onClientUploadChange={onClientUploadChange}
@@ -1930,6 +2014,7 @@ function TrackerDetail({
         logs={logs.bp}
         userId={userId}
         isMock={isMock}
+        canReview={canReview}
         onToast={onToast}
         onLogsRefresh={() => onLogsRefresh?.("bloodPressure")}
         onClientUploadChange={onClientUploadChange}
@@ -1940,6 +2025,7 @@ function TrackerDetail({
         logs={logs.condition}
         userId={userId}
         isMock={isMock}
+        canReview={canReview}
         onToast={onToast}
         onLogsRefresh={() => onLogsRefresh?.("conditionComparison")}
         onClientUploadChange={onClientUploadChange}
@@ -1972,8 +2058,8 @@ export function HealthProgressSection({ user, onToast }) {
   const [clientUploadBusyKey, setClientUploadBusyKey] = useState("");
   const [bulkClientUploadBusy, setBulkClientUploadBusy] = useState("");
   const loadedLogKeysRef = useRef(new Set());
-  const { sessionUi } = useViewAs();
-  const canOpenClientUpload = sessionUi === "admin" || sessionUi === "wc" || sessionUi === "awc";
+  const { canEdit: canReviewUploads, canDelete: canDeleteClientPhoto } = useClientSectionPermissions("health-progress");
+  const canOpenClientUpload = canReviewUploads;
 
   const liveCount = trackers.filter((t) => t.enabled).length;
   const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).filter(Boolean).sort().join(",");
@@ -2438,6 +2524,8 @@ export function HealthProgressSection({ user, onToast }) {
               hba1cReadings={hba1cReadings}
               userId={userId}
               isMock={isMock}
+              canReview={canReviewUploads}
+              canDeletePhoto={canDeleteClientPhoto}
               onToast={onToast}
               onWeightAdded={refreshWeightLogs}
               onLogsRefresh={refreshTrackerLogs}

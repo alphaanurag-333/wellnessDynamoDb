@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
-import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { formatLongDate } from "../../api/usersApi.js";
 import {
   createUserSupplementDosage,
@@ -481,6 +481,7 @@ function CoachOrderCard({
   pool,
   selected,
   disabled,
+  canRemoveOrder = false,
   onUpdate,
   onRemove,
   onSave,
@@ -534,7 +535,7 @@ function CoachOrderCard({
         </div>
         <div className="ua-cp-nut-order-card__actions">
           <span className="ua-cp-nut-order-card__badge">{order.saved ? "Saved" : "Draft"}</span>
-          {!disabled ? (
+          {!disabled && (canRemoveOrder || !order.saved) ? (
             <button type="button" className="ua-cp-nut-order-card__close" onClick={onRemove} aria-label="Remove order">×</button>
           ) : null}
         </div>
@@ -676,6 +677,7 @@ function CoachFulfilmentLog({
   pool,
   selected,
   disabled,
+  canRemoveOrder = false,
   onAddOrder,
   onUpdateOrder,
   onRemoveOrder,
@@ -710,6 +712,7 @@ function CoachFulfilmentLog({
             pool={pool}
             selected={selected}
             disabled={disabled}
+            canRemoveOrder={canRemoveOrder}
             onUpdate={onUpdateOrder}
             onRemove={() => onRemoveOrder(order.id)}
             onSave={() => onSaveOrder(order.id)}
@@ -796,9 +799,7 @@ function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
 export function NutritionsSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = isHealClientUser(user);
-  const { can } = useViewAs();
-  const canWrite = can("console.diet.create");
-  const canRemove = can("console.diet.delete");
+  const { canDelete: canRemove, canCreate: canWrite } = useClientSectionPermissions("nutritions");
 
   const [sub, setSub] = useState("recommendation");
   const [pool, setPool] = useState([]);
@@ -1424,15 +1425,18 @@ export function NutritionsSection({ user, onToast }) {
                 pool={pool}
                 selected={selected}
                 disabled={!canWrite || saving || !isHealClient}
+                canRemoveOrder={canRemove}
                 onAddOrder={addCoachOrder}
                 onUpdateOrder={updateCoachOrder}
                 onRemoveOrder={(id) => {
                   const order = coachOrders.find((o) => o.id === id);
                   if (!order) return;
+                  const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
+                  if (saved && !canRemove) return;
                   setPendingOrderDelete({
                     id: order.id,
                     number: order.number,
-                    saved: Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-")),
+                    saved,
                   });
                 }}
                 onSaveOrder={saveCoachOrder}
