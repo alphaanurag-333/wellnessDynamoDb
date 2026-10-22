@@ -12,6 +12,8 @@ const {
   listProgressPhotosByUser,
   getProgressPhotoById,
   reviewProgressPhotoAngle,
+  reviewProgressPhotoAngles,
+  anglesPresentOnPhoto,
   toPublicProgressPhoto,
   normalizeReviewStatus,
 } = require("../../models/userProgressPhotoModel");
@@ -21,7 +23,9 @@ const {
   applyBodyAnalyticsPhotoReview,
   buildOnboardingStatusUpdates,
   countCompletedSteps,
+  normalizePaidOnboardingStepStatus,
 } = require("../../utils/paidOnboardingHelpers");
+const { progressPhotoCalendarDay, recordStamp, recordsOnSameDay } = require("../../utils/progressPhotoDay");
 const {
   listAllMetabolicMetricLogsByUser,
   toPublicMetabolicMetricLog,
@@ -65,6 +69,25 @@ const PHOTO_ANGLE_LABELS = {
   left: "Left",
   weight: "Weight",
 };
+
+function withRecord(list, extra) {
+  if (!extra?.id) return list;
+  if ((list || []).some((row) => String(row.id) === String(extra.id))) return list;
+  return [...(list || []), extra];
+}
+
+async function listAllByUser(listFn, userId) {
+  const items = [];
+  let page = 1;
+  let pages = 1;
+  do {
+    const result = await listFn(userId, { page, limit: 200 });
+    items.push(...(result.items || []));
+    pages = Number(result.pagination?.pages) || 1;
+    page += 1;
+  } while (page <= pages);
+  return items;
+}
 
 function readReviewAction(body) {
   const action = String(body?.action || body?.status || "").trim().toLowerCase();
@@ -137,6 +160,8 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   await assertStaffCanAccessUser(req, user);
 
   let updated;
+  let rejectedPhotos = [];
+  let rejectedMeasurements = [];
   if (angle === "weight") {
     const measurement = await getBodyMeasurementById(photoId);
     if (!measurement || String(measurement.userId || "") !== userId || !measurement.weightPicKey) {
@@ -161,19 +186,34 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
     if (normalizeReviewStatus(photo[`${angle}ReviewStatus`]) !== "pending") {
       throw new AppError("This photo is not pending review", 400);
     }
-    updated = toPublicProgressPhoto(await reviewProgressPhotoAngle(photoId, angle, {
-      status: action,
-      reviewedById: actor.id,
-      rejectionReason,
-    }));
+    if (action === "rejected") {
+      const dayResult = await rejectPhotosForDay({
+        userId,
+        day: progressPhotoCalendarDay(recordStamp(photo)),
+        reviewedById: actor.id,
+        rejectionReason,
+        fallbackPhoto: photo,
+      });
+      rejectedPhotos = dayResult.rejectedPhotos;
+      rejectedMeasurements = dayResult.rejectedMeasurements;
+      updated = rejectedPhotos.find((row) => String(row.id) === photoId) || rejectedPhotos[0];
+    } else {
+      updated = toPublicProgressPhoto(await reviewProgressPhotoAngle(photoId, angle, {
+        status: action,
+        reviewedById: actor.id,
+        rejectionReason,
+      }));
+    }
   }
 
+  const rejectedAngleDay = action === "rejected" && angle !== "weight";
   dispatchProgressPhotoReviewedNotification({
     userId,
     photoId,
     angle,
     status: action,
     rejectionReason,
+    rejectDay: rejectedAngleDay,
     coachName: actor.displayName || "Your coach",
     actorUserId: actor.id,
   }).catch((err) => {
@@ -181,39 +221,80 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   let onboarding = null;
-  if (angle !== "weight") {
-    try {
-      const nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+  try {
+    const nextStatus = rejectedAngleDay
+      ? applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+        angle,
+        action: "rejected",
+        photo: rejectedPhotos[0] || updated,
+      }) || normalizePaidOnboardingStepStatus({
+        ...user.paidOnboardingStepStatus,
+        bodyAnalytics: "pending",
+        progressPhotos180: "pending",
+      })
+      : (angle === "weight" ? null : applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
         action,
         photo: updated,
+      }));
+    if (nextStatus) {
+      const updates = {
+        ...buildOnboardingStatusUpdates(nextStatus),
+        ...(rejectedAngleDay ? { paidOnboardingStep: "photos180" } : {}),
+      };
+      const saved = await updateUser(userId, updates);
+      const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
+      onboarding = {
+        paidOnboardingStep: saved?.paidOnboardingStep || updates.paidOnboardingStep || null,
+        paidOnboardingStepStatus,
+        paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
+        completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
+      };
+      notifyOnboardingWhatsAppTransitions({
+        user: saved || user,
+        previousStatus: user.paidOnboardingStepStatus,
+        nextStatus: paidOnboardingStepStatus,
       });
-      if (nextStatus) {
-        const updates = buildOnboardingStatusUpdates(nextStatus);
-        const saved = await updateUser(userId, updates);
-        const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
-        onboarding = {
-          paidOnboardingStepStatus,
-          paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
-          completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
-        };
-        notifyOnboardingWhatsAppTransitions({
-          user: saved || user,
-          previousStatus: user.paidOnboardingStepStatus,
-          nextStatus: paidOnboardingStepStatus,
-        });
-      }
-    } catch (err) {
-      console.error("Body analytics onboarding sync failed:", err?.message || err);
     }
+  } catch (err) {
+    console.error("Body analytics onboarding sync failed:", err?.message || err);
   }
 
   const label = PHOTO_ANGLE_LABELS[angle];
   return res.status(200).json({
     status: true,
-    message: action === "approved" ? `${label} photo accepted` : `${label} photo rejected`,
+    message: rejectedAngleDay
+      ? "This day's 180° photos were rejected. The client can submit Front, Right, and Left again."
+      : action === "rejected"
+        ? `${label} photo rejected`
+        : `${label} photo accepted`,
     angle,
     photo: updated,
+    ...(rejectedAngleDay ? { rejectedPhotos, rejectedMeasurements } : {}),
     ...(onboarding || {}),
   });
 });
+
+async function rejectPhotosForDay({
+  userId,
+  day,
+  reviewedById,
+  rejectionReason,
+  fallbackPhoto = null,
+}) {
+  const photos = await listAllByUser(listProgressPhotosByUser, userId);
+  const photosToReject = withRecord(recordsOnSameDay(photos, day), fallbackPhoto);
+
+  const rejectedPhotos = [];
+  for (const photo of photosToReject) {
+    const angles = anglesPresentOnPhoto(photo);
+    if (!angles.length) continue;
+    rejectedPhotos.push(toPublicProgressPhoto(await reviewProgressPhotoAngles(photo.id, angles, {
+      status: "rejected",
+      reviewedById,
+      rejectionReason,
+    })));
+  }
+
+  return { rejectedPhotos, rejectedMeasurements: [] };
+}

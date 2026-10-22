@@ -10,6 +10,7 @@ const {
   markStepSkipped,
   markStepDone,
   applyBodyAnalyticsPhotoReview,
+  wizardStepAfterPhotosSaved,
 } = require("../utils/paidOnboardingHelpers");
 
 describe("buildPaidOnboardingResetUpdates", () => {
@@ -221,6 +222,26 @@ describe("body analytics photo review", () => {
     assert.equal(done.progressPhotos180, "done");
     assert.equal(done.bodyMeasurement, "done");
     assert.equal(done.internalParameter, "done");
+  });
+
+  it("returns a finished client to the app after they resubmit 180 photos", () => {
+    const reopened = applyBodyAnalyticsPhotoReview(completed, {
+      angle: "right",
+      action: "rejected",
+      photo: reviewedPhoto({ front: "rejected", right: "rejected", left: "rejected" }),
+    });
+    assert.equal(reopened.progressPhotos180, "pending");
+    const saved = markStepDone(reopened, "progressPhotos180");
+    assert.equal(wizardStepAfterPhotosSaved("photos180", saved), "done");
+    assert.equal(saved.bodyAnalytics, "done");
+  });
+
+  it("continues to medical when 180 photos are the client's first upload", () => {
+    const first = markStepDone(
+      normalizePaidOnboardingStepStatus({ personalDetails: "done", bodyMeasurement: "done" }),
+      "progressPhotos180",
+    );
+    assert.equal(wizardStepAfterPhotosSaved("photos180", first), "medical");
   });
 
   it("ignores weight photo reviews", () => {

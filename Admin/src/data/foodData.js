@@ -516,11 +516,9 @@ export function mapMealLogToUi(log) {
       return Number.isFinite(qty) && qty > 0 ? `${item.name} · ${qty} g` : item.name;
     });
   const detailedTags = itemTags;
-  const analysed = photoAiStatus === "analysed" || String(log?.aiStatus || "") === "analysed";
-  const sourceLabel = log?.aiSource === "items"
-    || (!analysed && normalizedItems.length > 0 && !normalizedItems.some(itemHasMacros))
-    ? "Details Meal"
-    : "Micro Meal";
+  const sourceLabel = log?.trackingMode === "detailed_macro"
+    ? "Detailed Meal"
+    : "Macro Meal";
 
   return {
     id: String(log?.id || log?._id || ""),

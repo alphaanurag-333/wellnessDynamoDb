@@ -378,9 +378,9 @@ export function ReflectionSection({ user, onToast }) {
           }),
         });
       }
-      await pushUserDailyReflectionBedtime(userId);
+      const result = await pushUserDailyReflectionBedtime(userId);
       setPushOpen(false);
-      onToast?.("Bedtime reminder pushed to app");
+      onToast?.(result?.message || "Bedtime reminder pushed to app");
     } catch (err) {
       onToast?.(err?.message || "Could not send bedtime reminder");
     } finally {

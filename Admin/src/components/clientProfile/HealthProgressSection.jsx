@@ -10,7 +10,7 @@ import {
   fetchHealthProgressSettings,
   fetchMenstrualCycleLogs,
   fetchWeightLogs,
-  openHealthProgressClientUpload,
+  patchHealthProgressClientUpload,
   updateHealthProgressSettings,
 } from "../../api/healthProgressApi.js";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
@@ -582,16 +582,36 @@ function clientUploadHint(window) {
   return "Opens again on Saturday, or a wellness coach can open it now.";
 }
 
-function ClientUploadControl({ featureKey, window, canEnable, trackerEnabled, busy, onOpen, compact = false }) {
+function ClientUploadControl({
+  featureKey,
+  window,
+  canEnable,
+  trackerEnabled,
+  busy,
+  onOpen,
+  onClose,
+  compact = false,
+}) {
   if (!CLIENT_UPLOAD_FEATURE_KEYS.includes(featureKey)) return null;
   const open = Boolean(window?.open);
+  const canChange = canEnable && trackerEnabled;
   return (
     <div className={`ua-cp-hptrack-upload${compact ? " ua-cp-hptrack-upload--inline" : ""}`}>
       <span className={open ? "is-open" : ""}>{open ? "Client can update" : "Client update closed"}</span>
       {compact ? null : <span className="ua-cp-hptrack-upload__hint">{clientUploadHint(window)}</span>}
-      {!open && canEnable && trackerEnabled ? (
+      {canChange && !open ? (
         <button type="button" disabled={busy} onClick={() => onOpen(featureKey)}>
           {busy ? "Opening…" : compact ? "Open" : "Open client update"}
+        </button>
+      ) : null}
+      {canChange && open ? (
+        <button
+          type="button"
+          className="ua-cp-hptrack-upload__close"
+          disabled={busy}
+          onClick={() => onClose(featureKey)}
+        >
+          {busy ? "Closing…" : compact ? "Close" : "Close client update"}
         </button>
       ) : null}
     </div>
@@ -1694,7 +1714,8 @@ export function HealthProgressSection({ user, onToast }) {
   const [logs, setLogs] = useState(EMPTY_LOGS);
   const [hba1cReadings, setHba1cReadings] = useState([]);
   const [clientUpload, setClientUpload] = useState({});
-  const [openingKey, setOpeningKey] = useState("");
+  const [clientUploadBusyKey, setClientUploadBusyKey] = useState("");
+  const [bulkClientUploadBusy, setBulkClientUploadBusy] = useState("");
   const loadedLogKeysRef = useRef(new Set());
   const { sessionUi } = useViewAs();
   const canOpenClientUpload = sessionUi === "admin" || sessionUi === "wc" || sessionUi === "awc";
@@ -1715,6 +1736,14 @@ export function HealthProgressSection({ user, onToast }) {
   const enabledTrackers = useMemo(
     () => trackers.filter((t) => t.enabled),
     [trackers],
+  );
+  const clientUploadEligibleTrackers = useMemo(
+    () => enabledTrackers.filter((t) => CLIENT_UPLOAD_FEATURE_KEYS.includes(t.featureKey)),
+    [enabledTrackers],
+  );
+  const openClientUploadCount = useMemo(
+    () => clientUploadEligibleTrackers.filter((t) => clientUpload[t.featureKey]?.open).length,
+    [clientUploadEligibleTrackers, clientUpload],
   );
   const visibleDetailTrackers = useMemo(() => {
     if (trackingFilter === "all") return enabledTrackers;
@@ -1904,24 +1933,90 @@ export function HealthProgressSection({ user, onToast }) {
     }
   }
 
-  async function openClientUpdate(featureKey) {
+  async function applyClientUploadPatch(updates, { successMessage, failureMessage }) {
     if (!canOpenClientUpload || isMock) {
-      onToast?.("Only an admin, wellness coach, or assistant wellness coach can open client updates.");
+      onToast?.("Only an admin, wellness coach, or assistant wellness coach can change client updates.");
       return;
     }
-    setOpeningKey(featureKey);
+    const result = await patchHealthProgressClientUpload(userId, updates);
+    if (result?.clientUpload) {
+      setClientUpload(result.clientUpload);
+      onToast?.(successMessage);
+    } else {
+      onToast?.(failureMessage);
+    }
+    return result;
+  }
+
+  async function openClientUpdate(featureKey) {
+    setClientUploadBusyKey(featureKey);
     try {
-      const result = await openHealthProgressClientUpload(userId, featureKey);
-      if (result?.clientUpload?.[featureKey]?.open) {
-        setClientUpload(result.clientUpload);
-        onToast?.("Client update opened. It closes after the client saves.");
-      } else {
-        onToast?.("Client update could not be opened.");
-      }
+      await applyClientUploadPatch(
+        { [featureKey]: true },
+        {
+          successMessage: "Client update opened. It closes after the client saves or you close it.",
+          failureMessage: "Client update could not be opened.",
+        },
+      );
     } catch (err) {
       onToast?.(err.message || "Could not open client update");
     } finally {
-      setOpeningKey("");
+      setClientUploadBusyKey("");
+    }
+  }
+
+  async function closeClientUpdate(featureKey) {
+    setClientUploadBusyKey(featureKey);
+    try {
+      await applyClientUploadPatch(
+        { [featureKey]: false },
+        {
+          successMessage: "Client update closed.",
+          failureMessage: "Client update could not be closed.",
+        },
+      );
+    } catch (err) {
+      onToast?.(err.message || "Could not close client update");
+    } finally {
+      setClientUploadBusyKey("");
+    }
+  }
+
+  async function openAllClientUpdates() {
+    const updates = Object.fromEntries(
+      clientUploadEligibleTrackers.map((tracker) => [tracker.featureKey, true]),
+    );
+    if (!Object.keys(updates).length) return;
+    setBulkClientUploadBusy("open");
+    try {
+      await applyClientUploadPatch(updates, {
+        successMessage: "Client update opened for all enabled trackers.",
+        failureMessage: "Could not open client updates.",
+      });
+    } catch (err) {
+      onToast?.(err.message || "Could not open client updates");
+    } finally {
+      setBulkClientUploadBusy("");
+    }
+  }
+
+  async function closeAllClientUpdates() {
+    const updates = Object.fromEntries(
+      clientUploadEligibleTrackers
+        .filter((tracker) => clientUpload[tracker.featureKey]?.open)
+        .map((tracker) => [tracker.featureKey, false]),
+    );
+    if (!Object.keys(updates).length) return;
+    setBulkClientUploadBusy("close");
+    try {
+      await applyClientUploadPatch(updates, {
+        successMessage: "Client update closed for all open trackers.",
+        failureMessage: "Could not close client updates.",
+      });
+    } catch (err) {
+      onToast?.(err.message || "Could not close client updates");
+    } finally {
+      setBulkClientUploadBusy("");
     }
   }
 
@@ -1963,6 +2058,41 @@ export function HealthProgressSection({ user, onToast }) {
       </div>
 
       <div className="ua-cp-hptrack-manager">
+        {canOpenClientUpload && clientUploadEligibleTrackers.length ? (
+          <div className="ua-cp-hptrack-upload-bulk">
+            <span className="ua-cp-hptrack-upload-bulk__label">
+              Client updates · {openClientUploadCount} of {clientUploadEligibleTrackers.length} open
+            </span>
+            <div className="ua-cp-hptrack-upload-bulk__actions">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                disabled={
+                  loading
+                  || Boolean(bulkClientUploadBusy)
+                  || Boolean(clientUploadBusyKey)
+                  || openClientUploadCount === clientUploadEligibleTrackers.length
+                }
+                onClick={openAllClientUpdates}
+              >
+                {bulkClientUploadBusy === "open" ? "Opening…" : "Open all enabled"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                disabled={
+                  loading
+                  || Boolean(bulkClientUploadBusy)
+                  || Boolean(clientUploadBusyKey)
+                  || openClientUploadCount === 0
+                }
+                onClick={closeAllClientUpdates}
+              >
+                {bulkClientUploadBusy === "close" ? "Closing…" : "Close all open"}
+              </button>
+            </div>
+          </div>
+        ) : null}
         <input
           type="search"
           className="ua-cp-hptrack-search"
@@ -1985,8 +2115,9 @@ export function HealthProgressSection({ user, onToast }) {
                     window={clientUpload[tracker.featureKey]}
                     canEnable={canOpenClientUpload}
                     trackerEnabled={tracker.enabled}
-                    busy={openingKey === tracker.featureKey}
+                    busy={clientUploadBusyKey === tracker.featureKey || Boolean(bulkClientUploadBusy)}
                     onOpen={openClientUpdate}
+                    onClose={closeClientUpdate}
                   />
                 </div>
                 <span className={`ua-cp-hptrack-list__status${tracker.enabled ? "" : " is-off"}`}>
@@ -2019,8 +2150,9 @@ export function HealthProgressSection({ user, onToast }) {
               window={clientUpload[tracker.featureKey]}
               canEnable={canOpenClientUpload}
               trackerEnabled={tracker.enabled}
-              busy={openingKey === tracker.featureKey}
+              busy={clientUploadBusyKey === tracker.featureKey || Boolean(bulkClientUploadBusy)}
               onOpen={openClientUpdate}
+              onClose={closeClientUpdate}
             />
             <TrackerDetail
               tracker={tracker}

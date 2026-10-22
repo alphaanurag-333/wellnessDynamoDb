@@ -107,8 +107,8 @@ export function ClientProfileTopbar({
   backTo,
 }) {
   const navigate = useNavigate();
-  const { can } = useViewAs();
-  const canEditPii = !readOnly && can("console.pii.edit");
+  const { isAdminView } = useViewAs();
+  const canEditPii = !readOnly && Boolean(isAdminView);
   const usersPath = backTo || UPDATED_ADMIN_PATHS.users;
 
   return (
@@ -169,8 +169,8 @@ export function ClientProfileSidebar({
   onToast,
   readOnly = false,
 }) {
-  const { can } = useViewAs();
-  const canEditPii = !readOnly && can("console.pii.edit");
+  const { isAdminView } = useViewAs();
+  const canEditPii = !readOnly && Boolean(isAdminView);
   const primaryConcern = String(user?.goal || "").trim();
   const journeyExtras = wellnessJourneyExtras(user, primaryConcern);
   const programs = user?.programs ?? 0;

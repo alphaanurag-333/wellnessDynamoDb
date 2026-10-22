@@ -69,14 +69,52 @@ function parseCreateBody(body = {}) {
 }
 
 function parseCoachCreateBody(body = {}) {
+  const {
+    DEFAULT_CONCERN,
+    DEFAULT_DURATION_MINUTES,
+    normalizeSlotOffers,
+  } = require("../../utils/counsellingPeriodHelpers");
+
+  const durationRaw = body.durationMinutes ?? body.duration_minutes;
+  const durationMinutes =
+    durationRaw == null || durationRaw === ""
+      ? DEFAULT_DURATION_MINUTES
+      : Math.max(15, Math.min(120, Number(durationRaw) || DEFAULT_DURATION_MINUTES));
+
+  const rawSlots = body.slots || body.slotOffers || body.timeSlots;
+  if (Array.isArray(rawSlots) && rawSlots.length) {
+    let periodOffers;
+    try {
+      periodOffers = normalizeSlotOffers(rawSlots);
+    } catch (err) {
+      handleValidationError(err);
+    }
+    return {
+      concern: parseConcernField(body, { required: false, fallback: DEFAULT_CONCERN }),
+      status: "periods_offered",
+      scheduledAt: null,
+      durationMinutes,
+      periodOffers,
+      meetingLink: parseOptionalMeetingLink(body),
+      coachNotes: parseOptionalCoachNotes(body),
+    };
+  }
+
   const status = body.status ?? body.consultancyStatus ?? body.consultancy_status ?? "scheduled";
   const normalized = normalizeTrackStatus(status);
   if (!normalized) throw new AppError("Invalid consultancy status", 400);
 
+  const scheduledAt = parseOptionalScheduledAt(body);
+  if (normalized === "scheduled" && !scheduledAt) {
+    throw new AppError("scheduledAt is required when scheduling a meeting", 400);
+  }
+
   return {
-    concern: parseConcernField(body),
+    concern: parseConcernField(body, { required: false, fallback: DEFAULT_CONCERN }),
     status: normalized,
-    scheduledAt: parseOptionalScheduledAt(body),
+    scheduledAt,
+    durationMinutes,
+    periodOffers: [],
     meetingLink: parseOptionalMeetingLink(body),
     coachNotes: parseOptionalCoachNotes(body),
   };

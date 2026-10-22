@@ -122,10 +122,17 @@ export function mapDosage(row) {
     unit: String(row.unit || "").trim(),
     packSize: Number(row.packSize) || 0,
     periods: (Array.isArray(row.periods) ? row.periods : []).map((period) => mapDosagePeriod(period, todayCompletion)).filter(Boolean),
+    totalQuantity: Number(row.totalQuantity) || 0,
+    dailyQuantity: Number(row.dailyQuantity) || 0,
     totalPerDay: Number(row.totalPerDay) || 0,
     durationDays: Number(row.durationDays) || 0,
     startDate: String(row.startDate || "").trim(),
     endDate: String(row.endDate || "").trim(),
+    frequency: String(row.frequency || "").trim(),
+    intervalDays: Number(row.intervalDays) || 0,
+    beforeFirstMeal: row.beforeFirstMeal === true,
+    publishedToApp: row.publishedToApp !== false,
+    frequencyLabel: String(row.frequencyLabel || "").trim(),
     status: String(row.status || "active").toLowerCase() === "stopped" ? "stopped" : "active",
     progressPercent: Math.max(0, Math.min(100, Math.round(Number(row.progressPercent) || 0))),
     todayCompletion,
@@ -275,14 +282,53 @@ export async function listUserSupplementDosages(userId) {
   }
 }
 
-export async function createUserSupplementDosage(userId, { supplementId, startDate, periods } = {}) {
+export async function createUserSupplementDosage(userId, { supplementId, startDate, periods, unit } = {}) {
   try {
     const { data } = await api.post(
       dosageBase(userId),
-      { supplementId, startDate, periods },
+      { supplementId, startDate, periods, unit },
       { headers: authHeader(tokenOrStored()) },
     );
     return mapDosage(data.dosage);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function createUserSupplementDosageBatch(userId, dosages) {
+  try {
+    const { data } = await api.post(
+      `${dosageBase(userId)}/batch`,
+      { dosages },
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return (Array.isArray(data.dosages) ? data.dosages : []).map(mapDosage).filter(Boolean);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserSupplementDosage(userId, dosageId, payload) {
+  try {
+    const { data } = await api.put(
+      `${dosageBase(userId)}/${encodeURIComponent(dosageId)}`,
+      payload,
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return mapDosage(data.dosage);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function pushUserSupplementDosages(userId, dosageIds) {
+  try {
+    const { data } = await api.post(
+      `${dosageBase(userId)}/push`,
+      { dosageIds },
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return (Array.isArray(data.dosages) ? data.dosages : []).map(mapDosage).filter(Boolean);
   } catch (error) {
     normalizeApiError(error);
   }

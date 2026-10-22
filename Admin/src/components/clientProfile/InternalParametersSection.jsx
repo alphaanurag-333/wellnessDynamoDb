@@ -3041,7 +3041,9 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       <div className="ua-cp-ip-head">
         <div>
           <h2 className="ua-cp-ip-head__title">Internal parameters</h2>
-          <p className="ua-cp-ip-head__sub">Coach-recommended blood tests, report uploads, and reviewed results.</p>
+          <p className="ua-cp-ip-head__sub">
+            Coach-recommended blood tests, report uploads, and reviewed results. Blood report PDFs are stored at 1 MB or less for AI analysis.
+          </p>
         </div>
         {live ? (
           <div

@@ -28,6 +28,8 @@ const {
   listGlucoseLogsByUser,
   toPublicGlucoseLog,
 } = require("../../models/healthProgressGlucoseModel");
+const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
+const { listHba1cReadingsFromLabReports } = require("../../utils/programProgressCalculations");
 const {
   listBloodPressureLogsByUser,
   toPublicBloodPressureLog,
@@ -49,6 +51,7 @@ const {
   syncClientUploadWindow,
   assertCoachCanOpenClientUpload,
   openClientUploadForCoach,
+  closeClientUploadForCoach,
 } = require("../../services/healthProgressClientUploadService");
 
 async function coachContext(req) {
@@ -83,21 +86,35 @@ exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, r
   const body = req.body || {};
   let updated = user;
 
-  const uploadKey = Object.keys(body.clientUpload || {}).find((key) => body.clientUpload[key] === true);
-  if (uploadKey) {
+  const uploadEntries = Object.entries(body.clientUpload || {}).filter(
+    ([, value]) => value === true || value === false,
+  );
+  if (uploadEntries.length) {
     assertCoachCanOpenClientUpload(req);
-    updated = await openClientUploadForCoach(updated, uploadKey);
+    for (const [featureKey, shouldOpen] of uploadEntries) {
+      updated = shouldOpen === true
+        ? await openClientUploadForCoach(updated, featureKey)
+        : await closeClientUploadForCoach(updated, featureKey);
+    }
   }
 
-  if (body.healthProgressFeatures || !uploadKey) {
+  if (body.healthProgressFeatures || !uploadEntries.length) {
     const requested = parseCoachSettingsUpdate(body, updated);
     const nextFeatures = await withPurchasedProgramTrackers(updated, requested);
     updated = await updateUser(userId, { healthProgressFeatures: nextFeatures });
   }
 
+  const uploadMessage = uploadEntries.length
+    ? uploadEntries.every(([, value]) => value === false)
+      ? "Client update closed"
+      : uploadEntries.every(([, value]) => value === true)
+        ? "Client update opened"
+        : "Client update settings updated"
+    : "Health progress settings updated";
+
   return res.status(200).json({
     status: true,
-    message: uploadKey ? "Client update opened" : "Health progress settings updated",
+    message: uploadEntries.length ? uploadMessage : "Health progress settings updated",
     settings: resolveHealthProgressSettings(updated),
     storedSettings: updated.healthProgressFeatures,
     clientUpload: clientUploadWindows(updated.healthProgressClientUpload).windows,
@@ -208,12 +225,17 @@ exports.reviewCoachWeightPhotoController = asyncHandler(async (req, res) => {
 exports.listCoachGlucoseLogsController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
   const { page, limit } = readPagination(req);
-  const result = await listGlucoseLogsByUser(userId, { page, limit });
+  const [result, labReports] = await Promise.all([
+    listGlucoseLogsByUser(userId, { page, limit }),
+    listUserLabReportsByUserId(userId),
+  ]);
+  const hba1cReadings = listHba1cReadingsFromLabReports(labReports);
   return res.status(200).json({
     status: true,
     message: "Glucose history fetched",
     logs: result.items.map(toPublicGlucoseLog),
     pagination: result.pagination,
+    hba1cReadings,
   });
 });
 

@@ -212,21 +212,17 @@ function DosageBadge({ label, tone }) {
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
-  const { can, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
+  const { can, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const archived = useClientProfileArchived();
-  const canEditPii = !archived && can("console.pii.edit");
-  const canEditWellnessJourney = !archived && (can("console.pii.edit") || can("console.cl.edit"));
-  const canStartEdit = canEditPii || canEditWellnessJourney;
-  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
+  const coachPersona = viewAsPersona === "wc" || viewAsPersona === "awc" || viewAs === "wc" || viewAs === "awc";
+  const coachEditEnabled = can("console.cl.edit") || can("console.pii.edit");
+  // Full personal details stay with Admin. WC / AWC with edit can change only the two coaching fields.
+  const canEditAllDetails = !archived && Boolean(isAdminView);
+  const canEditConcernAndJourney = canEditAllDetails || (!archived && coachPersona && coachEditEnabled);
+  const canEditPii = canEditAllDetails;
+  const canEditWellnessJourney = canEditConcernAndJourney;
+  const canStartEdit = canEditPii || canEditConcernAndJourney;
   const canChangeTier = !archived && Boolean(isAdminView);
-  const canUpgradePaidTier =
-    canChangeTier
-    || (
-      !archived
-      && sessionUi === "wc"
-      && (viewAs === "wc" || viewAsPersona === "wc")
-      && can("console.cl.edit")
-    );
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -310,7 +306,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     { key: "address", label: "Complete address", editable: canEditPii },
     { key: "state", label: "State", editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
-    { key: "goal", label: "Primary health concern", editable: canEditPii },
+    { key: "goal", label: "Primary health concern", editable: canEditConcernAndJourney },
     { key: "dietaryPreference", label: "Dietary preference", value: user.dietaryPreference, editable: false },
     { key: "wellnessJourneyFor", label: "Wellness journey for", editable: canEditWellnessJourney },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
@@ -332,11 +328,22 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     if (!canStartEdit || !userId || saveBusy) return;
     const payload = {};
 
-    if (canEditWellnessJourney) {
-      const journey = toApiGender(form.gender) === "female"
+    if (canEditConcernAndJourney) {
+      const apiGenderForConcern = toApiGender(form.gender);
+      if (apiGenderForConcern !== "female" && form.healthConcernId) {
+        const selectedConcern = goalOptions.find((opt) => opt.id === form.healthConcernId);
+        if (isGirlOnlyHealthConcern(selectedConcern?.title)) {
+          onToast("PCOD / PCOS is available for Girl only.");
+          return;
+        }
+      }
+      const journey = apiGenderForConcern === "female"
         ? form.wellnessJourneyFor
         : (form.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
       payload.wellnessJourneyFor = resolveJourneyPayload(journey, goalOptions);
+      if (form.healthConcernId) {
+        payload.primaryHealthConcern = form.healthConcernId;
+      }
     }
 
     if (!canEditPii) {
@@ -371,14 +378,6 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     if (!apiGender) {
       onToast("Select a gender");
       return;
-    }
-
-    if (apiGender !== "female" && form.healthConcernId) {
-      const selectedConcern = goalOptions.find((opt) => opt.id === form.healthConcernId);
-      if (isGirlOnlyHealthConcern(selectedConcern?.title)) {
-        onToast("PCOD / PCOS is available for Girl only.");
-        return;
-      }
     }
 
     const phoneParts = parsePhoneDisplay(form.phone);
@@ -432,10 +431,6 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       payload.whatsappSameAsMobile = true;
     }
 
-    if (form.healthConcernId) {
-      payload.primaryHealthConcern = form.healthConcernId;
-    }
-
     setSaveBusy(true);
     try {
       const updated = await updateUserPersonalDetails(userId, payload);
@@ -468,7 +463,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function convertToEagle() {
-    if (!canUpgradePaidTier || isEagleClient(user) || !userId || tierBusy) return;
+    if (!canChangeTier || isEagleClient(user) || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
@@ -486,13 +481,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function convertTier() {
-    const wcHealUpgrade = canUpgradePaidTier && !canChangeTier
-      && (currentTier === "Seek" || currentTier === "Consultancy");
-    if (canChangeTier) {
-      if (!tierActions.canConvert || !userId || tierBusy) return;
-    } else if (!wcHealUpgrade || !userId || tierBusy) {
-      return;
-    }
+    if (!canChangeTier || !tierActions.canConvert || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
@@ -717,8 +706,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             Convert to HEAL
           </button>
         ) : null}
-        {((canChangeTier && tierActions.canConvert && !(isEagleClient(user) && currentTier === "Seek to Heal"))
-          || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy"))) ? (
+        {canChangeTier && tierActions.canConvert && !(isEagleClient(user) && currentTier === "Seek to Heal") ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
@@ -729,7 +717,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             {tierActions.convertLabel}
           </button>
         ) : null}
-        {canUpgradePaidTier && !isEagleClient(user) ? (
+        {canChangeTier && !isEagleClient(user) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--eagle"

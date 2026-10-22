@@ -20,6 +20,7 @@ const {
 const {
   dispatchLabReportUploadCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { compressLabReportPdfBuffer } = require("../../utils/labReportPdfCompress");
 
 const S3_FOLDER = "user-lab-reports";
 
@@ -34,6 +35,9 @@ function assertPdfUpload(req) {
 
 async function uploadUserLabReportPdf(req) {
   assertPdfUpload(req);
+  const compressed = await compressLabReportPdfBuffer(req.file.buffer);
+  req.file.buffer = compressed;
+  req.file.size = compressed.length;
   const fileKey = await uploadFileFromRequest(req, S3_FOLDER);
   if (!fileKey) {
     throw new AppError("Failed to upload lab report PDF", 500);
@@ -99,7 +103,7 @@ exports.getUserLabReportSubmissionController = asyncHandler(async (req, res) => 
   return res.status(200).json({
     status: true,
     message: submissionLocked
-      ? "Submit panel locked for the client"
+      ? "Submit panel is locked"
       : "Submit panel open for the client",
     ...state,
   });

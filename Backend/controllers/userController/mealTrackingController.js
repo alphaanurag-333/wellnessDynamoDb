@@ -18,6 +18,7 @@ const {
 const {
   dispatchMealLoggedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { getDailyMealGoal } = require("../../models/userModel");
 
 function readLogIdParam(req) {
   return String(req.params.logId || req.params.id || "").trim();
@@ -49,6 +50,7 @@ exports.getUserMealTrackingController = asyncHandler(async (req, res) => {
     logs: summary.logs,
     macroSummary: summary.macroSummary,
     range: summary.range,
+    dailyMealGoal: getDailyMealGoal(req.currentUser),
   });
 });
 

@@ -36,6 +36,10 @@ import {
   coachMeetingsFromAssignments,
   listUserWellnessPrescriptions,
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
+import {
+  latestCounsellingLabel,
+  mergeMeetingsWithOrphanTracks,
+} from "../../utils/counsellingReviewHistory.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 
@@ -177,54 +181,6 @@ function MiniBars({ values, color }) {
 
 function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
-}
-
-const COUNSELLING_SESSION_STATUSES = new Set(["scheduled", "completed", "follow_up_needed"]);
-
-function formatCounsellingDateTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatCounsellingReviewDay(value) {
-  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return "";
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function latestCounsellingLabel(tracks, meetings) {
-  const candidates = [];
-
-  for (const track of Array.isArray(tracks) ? tracks : []) {
-    const status = String(track?.status || "").toLowerCase();
-    if (!COUNSELLING_SESSION_STATUSES.has(status)) continue;
-    const raw = track?.scheduledAt;
-    const at = new Date(raw);
-    if (Number.isNaN(at.getTime())) continue;
-    const label = formatCounsellingDateTime(raw);
-    if (label) candidates.push({ at: at.getTime(), label });
-  }
-
-  for (const meeting of Array.isArray(meetings) ? meetings : []) {
-    if (meeting?.cancelled) continue;
-    const match = String(meeting?.date || "").match(/^(\d{4}-\d{2}-\d{2})/);
-    if (!match) continue;
-    const at = new Date(`${match[1]}T12:00:00+05:30`);
-    if (Number.isNaN(at.getTime())) continue;
-    const label = formatCounsellingReviewDay(match[1]);
-    if (label) candidates.push({ at: at.getTime(), label });
-  }
-
-  candidates.sort((a, b) => b.at - a.at);
-  return candidates[0]?.label || "";
 }
 
 function GlanceHeader({ user, lastCounselling, onOpenReview }) {
@@ -1542,8 +1498,14 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       listUserWellnessPrescriptions(userId).catch(() => null),
     ]).then(([tracksData, prescriptionData]) => {
       if (cancelled) return;
-      const meetings = coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(prescriptionData));
-      setLastCounselling(latestCounsellingLabel(tracksData?.tracks, meetings));
+      const tracks = tracksData?.tracks || [];
+      const prescriptionMeetings = Array.isArray(prescriptionData?.meetings) && prescriptionData.meetings.length
+        ? prescriptionData.meetings
+        : coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(prescriptionData));
+      const meetings = Array.isArray(tracksData?.coachMeetings)
+        ? mergeMeetingsWithOrphanTracks(tracksData.coachMeetings, tracks)
+        : mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracks);
+      setLastCounselling(latestCounsellingLabel(tracks, meetings));
     });
 
     return () => {

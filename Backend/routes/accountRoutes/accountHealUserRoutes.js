@@ -72,6 +72,9 @@ const {
 const {
   listCoachUserSupplementDosagesController,
   createCoachUserSupplementDosageController,
+  createCoachUserSupplementDosageBatchController,
+  updateCoachUserSupplementDosageController,
+  pushCoachUserSupplementDosagesController,
   deleteCoachUserSupplementDosageController,
 } = require("../../controllers/adminController/supplementDosageController");
 const {
@@ -80,6 +83,7 @@ const {
   updateCoachUserMealLogController,
   deleteCoachUserMealLogController,
   updateCoachUserMealTrackingModeController,
+  updateCoachUserDailyMealGoalController,
   analyzeCoachUserMealLogController,
 } = require("../../controllers/adminController/mealTrackingController");
 const {
@@ -336,6 +340,9 @@ const dosage = staff("console.diet.view", { admin: "users.clientHub.wellness.sup
 const dosageWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" });
 router.get("/:userId/supplement-dosages", dosage, listCoachUserSupplementDosagesController);
 router.post("/:userId/supplement-dosages", dosageWrite, createCoachUserSupplementDosageController);
+router.post("/:userId/supplement-dosages/batch", dosageWrite, createCoachUserSupplementDosageBatchController);
+router.post("/:userId/supplement-dosages/push", dosageWrite, pushCoachUserSupplementDosagesController);
+router.put("/:userId/supplement-dosages/:dosageId", dosageWrite, updateCoachUserSupplementDosageController);
 router.delete("/:userId/supplement-dosages/:dosageId", staff("console.diet.delete", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" }), deleteCoachUserSupplementDosageController);
 
 const meal = staff("console.diet.view", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" });
@@ -346,6 +353,7 @@ router.put("/:userId/meal-tracking/:logId", mealWrite, optionalMealPhotoFile, up
 router.post("/:userId/meal-tracking/:logId/analyze", mealWrite, analyzeCoachUserMealLogController);
 router.delete("/:userId/meal-tracking/:logId", staff("console.diet.delete", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" }), deleteCoachUserMealLogController);
 router.patch("/:userId/meal-tracking-mode", mealWrite, updateCoachUserMealTrackingModeController);
+router.patch("/:userId/daily-meal-goal", mealWrite, updateCoachUserDailyMealGoalController);
 
 const launch = staff("console.body.view", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" });
 const launchWrite = staff("console.body.edit", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" });

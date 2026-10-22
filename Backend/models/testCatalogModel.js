@@ -142,15 +142,15 @@ function normalizeDuration(value, { required = false } = {}) {
   return duration;
 }
 
-function normalizeLines(lines) {
+function normalizeLines(lines, { limit = MAX_PARAMETERS } = {}) {
   if (lines === undefined || lines === null) return [];
   if (!Array.isArray(lines)) {
     const err = new Error("lines must be an array");
     err.name = "ValidationError";
     throw err;
   }
-  if (lines.length > MAX_PARAMETERS) {
-    const err = new Error(`A test cannot have more than ${MAX_PARAMETERS} lines`);
+  if (limit != null && lines.length > limit) {
+    const err = new Error(`A test cannot have more than ${limit} lines`);
     err.name = "ValidationError";
     throw err;
   }
@@ -262,11 +262,6 @@ function normalizeSections(sections) {
   const withCategory = sections.filter((section) => String(section?.category || "").trim());
   return withCategory.map((section, sectionIndex) => {
     const tests = Array.isArray(section?.tests) ? section.tests : [];
-    if (tests.length > MAX_PARAMETERS) {
-      const err = new Error(`A section cannot have more than ${MAX_PARAMETERS} tests`);
-      err.name = "ValidationError";
-      throw err;
-    }
     return {
       id: normalizeRecordId(section?.id, `section-${sectionIndex + 1}`),
       category: normalizeCategory(section?.category),
@@ -345,14 +340,14 @@ function normalizeSequence(value, fallback = 0) {
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-function normalizeParameters(parameters, { type = "SINGLE" } = {}) {
+function normalizeParameters(parameters, { type = "SINGLE", limit = MAX_PARAMETERS } = {}) {
   if (!Array.isArray(parameters) || parameters.length === 0) {
     const err = new Error("At least one parameter is required");
     err.name = "ValidationError";
     throw err;
   }
-  if (parameters.length > MAX_PARAMETERS) {
-    const err = new Error(`A test cannot have more than ${MAX_PARAMETERS} parameters`);
+  if (limit != null && parameters.length > limit) {
+    const err = new Error(`A test cannot have more than ${limit} parameters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -493,6 +488,7 @@ async function createTestCatalog({
   }
 
   const now = new Date().toISOString();
+  const isGoal = kind === "goal";
   const item = {
     id: uuidv4(),
     testId: slug,
@@ -502,11 +498,11 @@ async function createTestCatalog({
     status: normalizeStatus(status),
     fastingType: normalizeFastingType(fastingType),
     duration: normalizeDuration(duration),
-    lines: normalizeLines(lines),
-    parameters: normalizeParameters(parameters, { type: normalizeType(type) }),
+    lines: normalizeLines(lines, { limit: isGoal ? null : MAX_PARAMETERS }),
+    parameters: normalizeParameters(parameters, { type: normalizeType(type), limit: isGoal ? null : MAX_PARAMETERS }),
     sequence: normalizeSequence(sequence),
-    kind: kind === "goal" ? "goal" : "test",
-    ...(kind === "goal"
+    kind: isGoal ? "goal" : "test",
+    ...(isGoal
       ? {
           sections: normalizeSections(sections),
           dismissedCategories: normalizeDismissedCategories(dismissedCategories),
@@ -696,6 +692,7 @@ async function updateTestCatalog(id, updates) {
   }
 
   const entries = [];
+  const isGoal = updates?.kind === "goal" || existing.kind === "goal";
 
   for (const [key, value] of Object.entries(updates || {})) {
     if (blockedFields.has(key) || value === undefined) continue;
@@ -705,7 +702,7 @@ async function updateTestCatalog(id, updates) {
     else if (key === "category") entries.push([key, normalizeCategory(value)]);
     else if (key === "fastingType") entries.push([key, normalizeFastingType(value)]);
     else if (key === "duration") entries.push([key, normalizeDuration(value)]);
-    else if (key === "lines") entries.push([key, normalizeLines(value)]);
+    else if (key === "lines") entries.push([key, normalizeLines(value, { limit: isGoal ? null : MAX_PARAMETERS })]);
     else if (key === "sections") entries.push([key, normalizeSections(value)]);
     else if (key === "dismissedCategories") entries.push([key, normalizeDismissedCategories(value)]);
     else if (key === "kind") entries.push([key, value === "goal" ? "goal" : "test"]);
@@ -713,7 +710,7 @@ async function updateTestCatalog(id, updates) {
     else if (key === "parameters") {
       const nextType =
         updates.type !== undefined ? normalizeType(updates.type) : normalizeType(existing.type);
-      entries.push([key, normalizeParameters(value, { type: nextType })]);
+      entries.push([key, normalizeParameters(value, { type: nextType, limit: isGoal ? null : MAX_PARAMETERS })]);
     }
     else if (key === "testId") entries.push([key, normalizeTestId(value)]);
     else entries.push([key, value]);

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   acceptHealConsultancyRequest,
   confirmHealConsultancyTime,
+  createHealConsultancyTrack,
   fetchHealConsultancyTracks,
   offerHealConsultancyPeriods,
   rejectHealConsultancyRequest,
@@ -14,6 +15,7 @@ import {
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
+import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   formatDateKey,
@@ -21,6 +23,7 @@ import {
   parseDateKey,
   startOfDay,
 } from "./meetingDateUtils.js";
+import { mergeMeetingsWithOrphanTracks } from "../../utils/counsellingReviewHistory.js";
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -28,11 +31,6 @@ const PERIODS = [
   { key: "early_evening", label: "Early evening", range: "16:00–18:00" },
   { key: "evening", label: "Evening", range: "18:00–20:00" },
 ];
-
-const REVIEW_STATUS_LABEL = {
-  active: "Active",
-  cancelled: "Cancelled",
-};
 
 const STATUS_LABEL = {
   requested: "Requested",
@@ -56,6 +54,24 @@ function formatReviewDay(value) {
   });
 }
 
+/** Prescription calendar days use midnight UTC; real sessions use full ISO timestamps. */
+function formatReviewDateTime(calendarDay, instant) {
+  const day = String(calendarDay || "").trim();
+  const iso = String(instant || "").trim();
+  if (iso) {
+    const date = new Date(iso);
+    if (!Number.isNaN(date.getTime())) {
+      const isDateOnlyPlaceholder =
+        Boolean(day)
+        && /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(iso)
+        && iso.startsWith(day);
+      if (!isDateOnlyPlaceholder) return formatWhen(iso);
+    }
+  }
+  if (day) return formatReviewDay(day);
+  return "—";
+}
+
 function formatWhen(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -70,6 +86,9 @@ function formatWhen(value) {
 }
 
 function formatOffer(offer) {
+  if (String(offer?.kind || "").toLowerCase() === "slot") {
+    return `${offer.date} · ${offer.label || `${offer.startLocal || ""}–${offer.endLocal || ""}`}`;
+  }
   const period = PERIODS.find((row) => row.key === offer.period);
   return `${offer.date} · ${offer.label || period?.label || offer.period} (${offer.startLocal || period?.range || ""}${offer.endLocal ? `–${offer.endLocal}` : ""})`;
 }
@@ -99,7 +118,6 @@ export function CounsellingSection({ user, onToast }) {
   const { canCreate, canEdit, canDelete } = useClientSectionPermissions("counselling");
   const canManage = canCreate || canEdit;
   const userId = String(user?.id || user?._id || "").trim();
-  const [tracks, setTracks] = useState([]);
   const [meetings, setMeetings] = useState([]);
   const [meetingsLoading, setMeetingsLoading] = useState(Boolean(userId));
   const [activeTrack, setActiveTrack] = useState(null);
@@ -109,59 +127,60 @@ export function CounsellingSection({ user, onToast }) {
   const [offerDate, setOfferDate] = useState("");
   const [offerPeriods, setOfferPeriods] = useState([]);
   const [pendingOffers, setPendingOffers] = useState([]);
-  const [coachNotes, setCoachNotes] = useState("");
   const [fixedTime, setFixedTime] = useState("18:00");
   const [durationMinutes, setDurationMinutes] = useState(45);
   const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
   const [pendingCancel, setPendingCancel] = useState(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+
+  async function loadReviewHistory(tracksList, coachMeetingsFromTracks) {
+    if (Array.isArray(coachMeetingsFromTracks)) {
+      return mergeMeetingsWithOrphanTracks(coachMeetingsFromTracks, tracksList);
+    }
+    try {
+      const data = await listUserWellnessPrescriptions(userId);
+      const fromApi = Array.isArray(data?.meetings) ? data.meetings : [];
+      const prescriptionMeetings = fromApi.length
+        ? fromApi
+        : coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(data));
+      return mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracksList);
+    } catch {
+      return mergeMeetingsWithOrphanTracks([], tracksList);
+    }
+  }
 
   async function load() {
     if (!userId) return;
     setLoading(true);
+    setMeetingsLoading(true);
     try {
       const data = await fetchHealConsultancyTracks(userId, { page: 1, limit: 30 });
-      setTracks(data.tracks || []);
+      const tracksList = data.tracks || [];
       setActiveTrack(data.activeTrack || null);
       setScheduledTrack(data.scheduledTrack || null);
-      setCoachNotes(data.activeTrack?.coachNotes || "");
       const slots = data.activeTrack?.requestedSlots || [];
       setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
+      setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
     } catch (error) {
       onToast?.(error.message || "Could not load counselling sessions");
+      setMeetings([]);
     } finally {
       setLoading(false);
+      setMeetingsLoading(false);
     }
   }
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  useEffect(() => {
     if (!userId) {
       setMeetings([]);
+      setActiveTrack(null);
+      setScheduledTrack(null);
+      setLoading(false);
       setMeetingsLoading(false);
-      return undefined;
+      return;
     }
-
-    let cancelled = false;
-    setMeetingsLoading(true);
-    listUserWellnessPrescriptions(userId)
-      .then((data) => {
-        if (cancelled) return;
-        setMeetings(coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(data)));
-      })
-      .catch(() => {
-        if (!cancelled) setMeetings([]);
-      })
-      .finally(() => {
-        if (!cancelled) setMeetingsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const selectedOffer = useMemo(() => {
@@ -211,7 +230,6 @@ export function CounsellingSection({ user, onToast }) {
     try {
       const track = await offerHealConsultancyPeriods(userId, activeTrack.id, {
         offers,
-        coachNotes,
       });
       setActiveTrack(track);
       setPendingOffers([]);
@@ -315,6 +333,33 @@ export function CounsellingSection({ user, onToast }) {
     await patchTrackStatus(activeTrack.id, status);
   }
 
+  async function sendCounsellingSlots(payload) {
+    if (!canCreate) return;
+    const slots = (payload?.slots || []).map((slot) => ({
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+    }));
+    if (!slots.length) {
+      onToast?.("Add at least one slot");
+      return;
+    }
+    setBusy(true);
+    try {
+      await createHealConsultancyTrack(userId, {
+        slots,
+        coachNotes: payload?.note || undefined,
+        durationMinutes: payload?.duration,
+      });
+      setScheduleOpen(false);
+      onToast?.("Counselling slots sent");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not send slots");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function askCancel(track, extras = {}) {
     if (!track?.id) return;
     setPendingCancel({
@@ -358,14 +403,33 @@ export function CounsellingSection({ user, onToast }) {
       <header className="ua-cp-counselling__head">
         <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
         <p className="ua-cp-placeholder__sub">
-          Client requests a session, you share date and period windows, they pick one or request another time, then you confirm.
+          Client requests a session, or you offer slots for them to pick. Share date and period windows when they request, they pick one or ask for another time, then you confirm.
         </p>
       </header>
 
       {loading ? <p className="ua-cp-counselling__muted">Loading sessions…</p> : null}
 
       {!loading && !activeTrack && !scheduledSession ? (
-        <div className="ua-cp-counselling__empty">No open counselling request. History is listed below.</div>
+        <div className="ua-cp-counselling__empty">
+          <p className="ua-cp-counselling__empty-text">No open counselling request. History is listed below.</p>
+          {canCreate ? (
+            <div className="ua-cp-counselling__empty-cta">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule"
+                onClick={() => setScheduleOpen(true)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 5h18v16H3z" />
+                  <path d="M3 10h18" />
+                  <path d="M8 3v4" />
+                  <path d="M16 3v4" />
+                </svg>
+                Schedule counselling meeting
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {scheduledSession ? (
@@ -487,10 +551,6 @@ export function CounsellingSection({ user, onToast }) {
                   ))}
                 </ul>
               ) : null}
-              <label className="ua-cp-counselling__notes">
-                <span className="ua-cp-counselling__field-label">Note to client (optional)</span>
-                <textarea rows={3} value={coachNotes} onChange={(e) => setCoachNotes(e.target.value)} />
-              </label>
               <div className="ua-cp-counselling__cta">
                 <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={shareAvailability} disabled={busy}>
                   {busy ? "Sharing…" : "Share with client"}
@@ -500,7 +560,21 @@ export function CounsellingSection({ user, onToast }) {
           ) : null}
 
           {activeTrack.status === "periods_offered" ? (
-            <p className="ua-cp-counselling__wait">Waiting for the client to pick a period or request another time.</p>
+            <>
+              {(activeTrack.periodOffers || []).some((row) => String(row.kind || "").toLowerCase() === "slot") ? (
+                <div className="ua-cp-counselling__block">
+                  <h3>Slots offered</h3>
+                  <ul className="ua-cp-counselling__list">
+                    {(activeTrack.periodOffers || []).map((offer) => (
+                      <li key={offer.id || `${offer.date}-${offer.startLocal}`}>
+                        <span>{formatOffer(offer)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <p className="ua-cp-counselling__wait">Waiting for the client to pick a slot or request another time.</p>
+            </>
           ) : null}
 
           {canManage && activeTrack.status === "time_requested" ? (
@@ -637,14 +711,25 @@ export function CounsellingSection({ user, onToast }) {
           <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No reviews yet.</p>
         ) : (
           <div className="ua-cp-counselling__history-list">
+            <div className="ua-cp-counselling__history-row ua-cp-counselling__history-row--head" aria-hidden="true">
+              <span className="ua-cp-counselling__history-label">Review</span>
+              <span className="ua-cp-counselling__history-col">Scheduled</span>
+              <span className="ua-cp-counselling__history-col">Completed</span>
+              <span className="ua-cp-counselling__history-col">Cancelled</span>
+            </div>
             {meetings.map((meeting, index) => {
               const reviewNumber = Math.max(meetings.length - index, 1);
               return (
                 <div key={meeting.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
                   <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
-                  <span className="ua-cp-counselling__history-date">{formatReviewDay(meeting.date)}</span>
-                  <span className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${meeting.reviewStatus}`}>
-                    {REVIEW_STATUS_LABEL[meeting.reviewStatus] || meeting.reviewStatus}
+                  <span className="ua-cp-counselling__history-date">
+                    {formatReviewDateTime(meeting.scheduledDate, meeting.scheduledAt)}
+                  </span>
+                  <span className="ua-cp-counselling__history-date">
+                    {formatReviewDateTime(meeting.completedDate, meeting.completedAt)}
+                  </span>
+                  <span className="ua-cp-counselling__history-date ua-cp-counselling__history-date--muted">
+                    {formatReviewDateTime(meeting.cancelledDate, meeting.cancelledAt)}
                   </span>
                 </div>
               );
@@ -652,6 +737,18 @@ export function CounsellingSection({ user, onToast }) {
           </div>
         )}
       </div>
+
+      {scheduleOpen ? (
+        <ScheduleMeetingModal
+          user={user}
+          title="Schedule counselling meeting"
+          defaultNote="Looking forward to our counselling session."
+          showClientNote={false}
+          defaultDuration={45}
+          onClose={() => setScheduleOpen(false)}
+          onSend={sendCounsellingSlots}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(pendingCancel)}

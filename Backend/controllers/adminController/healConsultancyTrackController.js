@@ -88,31 +88,86 @@ exports.createCoachHealConsultancyTrackController = asyncHandler(async (req, res
   const user = await loadHealUser(userId);
   await assertStaffCanAccessUser(req, user);
 
+  const active = await findActiveHealConsultancyTrackByUserId(userId);
+  if (active) {
+    throw new AppError("Client already has an open counselling request", 409);
+  }
+  const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  if (scheduled) {
+    throw new AppError("Client already has a scheduled counselling session", 409);
+  }
+
   const body = parseCoachCreateBody(req.body || {});
   const hierarchy = resolveCoachHierarchy(user);
 
+  const createPayload = {
+    userId,
+    parentCoachId: hierarchy.parentCoachId,
+    assignedCoachId: hierarchy.assignedCoachId,
+    assignedCoachType: hierarchy.assignedCoachType,
+    concern: body.concern,
+    status: body.status,
+    scheduledAt: body.scheduledAt,
+    meetingLink: body.meetingLink,
+    coachNotes: body.coachNotes,
+    durationMinutes: body.durationMinutes,
+    periodOffers: Array.isArray(body.periodOffers) ? body.periodOffers : [],
+    statusUpdatedByRole: req.auth?.role || "wellness_coach",
+    statusUpdatedById: coachId,
+  };
+
+  const offeringSlots = body.status === "periods_offered" && createPayload.periodOffers.length > 0;
+
+  if (body.status === "scheduled") {
+    if (new Date(body.scheduledAt).getTime() <= Date.now()) {
+      throw new AppError("scheduledAt must be in the future", 400);
+    }
+
+    let zoom;
+    try {
+      zoom = await createZoomForMeeting({
+        stepKey: "counselling",
+        userName: user?.name,
+        startAt: body.scheduledAt,
+        durationMinutes: body.durationMinutes,
+      });
+    } catch (err) {
+      throw new AppError(err.message || "Failed to create Zoom meeting", 502);
+    }
+
+    createPayload.meetingLink = zoom.zoomJoinUrl;
+    createPayload.zoomMeetingId = zoom.zoomMeetingId;
+    createPayload.zoomJoinUrl = zoom.zoomJoinUrl;
+    createPayload.zoomStartUrl = zoom.zoomStartUrl;
+    createPayload.confirmedAt = new Date().toISOString();
+  }
+
   let track;
   try {
-    track = await createHealConsultancyTrack({
-      userId,
-      parentCoachId: hierarchy.parentCoachId,
-      assignedCoachId: hierarchy.assignedCoachId,
-      assignedCoachType: hierarchy.assignedCoachType,
-      concern: body.concern,
-      status: body.status,
-      scheduledAt: body.scheduledAt,
-      meetingLink: body.meetingLink,
-      coachNotes: body.coachNotes,
-      statusUpdatedByRole: "wellness_coach",
-      statusUpdatedById: coachId,
-    });
+    track = await createHealConsultancyTrack(createPayload);
   } catch (err) {
     handleValidationError(err);
   }
 
+  if (body.status === "scheduled") {
+    dispatchCounsellingScheduledNotificationAsync({
+      userId,
+      trackId: track.id,
+    });
+  } else if (offeringSlots) {
+    dispatchCounsellingPeriodsOfferedNotificationAsync({
+      userId,
+      trackId: track.id,
+    });
+  }
+
   return res.status(201).json({
     status: true,
-    message: "Consultancy track created",
+    message: offeringSlots
+      ? "Availability shared with client"
+      : body.status === "scheduled"
+        ? "Counselling session scheduled"
+        : "Consultancy track created",
     data: { track: toPublicHealConsultancyTrack(track) },
   });
 });
@@ -259,7 +314,9 @@ exports.confirmCoachHealConsultancyTimeController = asyncHandler(async (req, res
   if (new Date(scheduledAt).getTime() <= Date.now()) {
     throw new AppError("scheduledAt must be in the future", 400);
   }
-  if (!isScheduledAtInWindow(scheduledAt, track.selectedDate, track.selectedPeriod, durationMinutes)) {
+  const selectedOffer =
+    (track.periodOffers || []).find((row) => String(row.id) === String(track.selectedOfferId)) || null;
+  if (!isScheduledAtInWindow(scheduledAt, track.selectedDate, track.selectedPeriod, durationMinutes, selectedOffer)) {
     throw new AppError("scheduledAt must fall within the selected time period", 400);
   }
 

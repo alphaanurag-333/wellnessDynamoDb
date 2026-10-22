@@ -15,6 +15,7 @@ export const AWC_DEFAULT = {
 export const TIER_OPTIONS = [
   { value: "", label: "All tiers" },
   { value: "Seek to Heal", label: "HEAL" },
+  { value: "Eagle", label: "EAGLE" },
   { value: "Consultancy", label: "PWC" },
   { value: "Seek", label: "SEEK" },
   { value: "Maintenance", label: "MAINTENANCE" },
@@ -106,7 +107,8 @@ export function filterUsers(list, filters) {
   if (q) {
     result = result.filter((u) => `${u.name}${u.email}${u.phone}`.toLowerCase().includes(q));
   }
-  if (filters.tierFilter) result = result.filter((u) => u.tier === filters.tierFilter);
+  if (filters.tierFilter === "Eagle") result = result.filter((u) => isEagleClient(u));
+  else if (filters.tierFilter) result = result.filter((u) => u.tier === filters.tierFilter);
   if (filters.statusFilter) result = result.filter((u) => u.status === filters.statusFilter);
   if (filters.typeTab && filters.typeTab !== "all") {
     result = result.filter((u) => u.utype === filters.typeTab);

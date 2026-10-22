@@ -170,13 +170,13 @@ router.post(
 router.post(
   "/:id/convert-to-heal",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  requireAdmin,
   convertUserToHealController
 );
 router.post(
   "/:id/convert-to-eagle",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  requireAdmin,
   convertUserToEagleController
 );
 router.post("/:id/undo-eagle", protectAccount, requireAdmin, undoEagleConversionController);
@@ -186,7 +186,13 @@ router.post("/:id/maintenance-to-heal", protectAccount, requireAdmin, convertMai
 router.post("/:id/assign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), assignHealUserController);
 router.post("/:id/reassign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), reassignHealUserController);
 router.post("/:id/unassign-coach", protectAccount, requireAdmin, unassignUserCoachController);
-router.patch("/:id", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, updateUserController);
+router.patch(
+  "/:id",
+  protectAccount,
+  authorizeStaff(["console.cl.edit", "console.pii.edit"], { admin: "users.edit" }),
+  optionalUserFile,
+  updateUserController
+);
 router.delete("/:id", protectAccount, authorizeStaff("console.cl.delete", { admin: "users.delete" }), deleteUserController);
 
 module.exports = router;

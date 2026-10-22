@@ -28,6 +28,7 @@ import {
   updateUserMealLog,
   deleteUserMealLog,
   updateUserMealTrackingMode,
+  updateUserDailyMealGoal,
   updateUserWaterGoal,
   unlockUserWaterGoal,
   analyzeUserMealLog,
@@ -41,6 +42,43 @@ import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function isLiveUserId(userId) {
   return Boolean(userId) && !isMockNumericId(userId);
+}
+
+function normalizeDailyMealGoal(value) {
+  const n = Math.floor(Number(value));
+  return n === 1 || n === 2 || n === 3 ? n : 3;
+}
+
+function dailyMealGoalLabel(goal) {
+  const n = normalizeDailyMealGoal(goal);
+  return n === 1 ? "1 meal" : `${n} meals`;
+}
+
+function FoodMealToolbar({ selectedDate, today, onDateChange, onToday, dailyMealGoal, mealGoalBusy, canEdit, onDailyMealGoalChange }) {
+  return (
+    <div className="ua-cp-food-meal-toolbar">
+      <FoodDateRow
+        selectedDate={selectedDate}
+        today={today}
+        onDateChange={onDateChange}
+        onToday={onToday}
+      />
+      <div className="ua-cp-food__control ua-cp-food__control--meals">
+        <span className="ua-cp-food__control-label">Meals / day</span>
+        <SegToggle
+          emphasis
+          options={[
+            { id: 1, label: "1 meal" },
+            { id: 2, label: "2 meals" },
+            { id: 3, label: "3 meals" },
+          ]}
+          value={dailyMealGoal}
+          disabled={mealGoalBusy || !canEdit}
+          onChange={onDailyMealGoalChange}
+        />
+      </div>
+    </div>
+  );
 }
 
 function defaultWaterRange(today = localToday()) {
@@ -394,7 +432,7 @@ function MealCard({
   const declined = meal.aiStatus === "declined";
   const canManualInsert = needsAi || declined;
   const showAnalysis = editing || ((Boolean(meal.macros) || shownItems.length > 0) && !declined);
-  const isDetailsMeal = meal.sourceLabel === "Details Meal";
+  const isDetailsMeal = meal.trackingMode === "detailed";
   const canRunAi =
     (isDetailsMeal || Boolean(meal.photoUrl))
     && (meal.photoAiStatus === "none" || meal.photoAiStatus === "failed")
@@ -477,7 +515,7 @@ function MealCard({
         <div className="ua-cp-food-meal__info">
           <div className="ua-cp-food-meal__title-row">
             <strong>{meal.name}</strong>
-            <span className={`ua-cp-food-meal__kind${meal.sourceLabel === "Details Meal" ? " ua-cp-food-meal__kind--details" : ""}`}>
+            <span className={`ua-cp-food-meal__kind${meal.sourceLabel === "Detailed Meal" ? " ua-cp-food-meal__kind--details" : ""}`}>
               {meal.sourceLabel}
             </span>
           </div>
@@ -492,6 +530,9 @@ function MealCard({
             />
           ) : shownDescription && !declined ? (
             <p className="ua-cp-food-meal__desc">{shownDescription}</p>
+          ) : null}
+          {isDetailsMeal && canRunAi ? (
+            <p className="ua-cp-food-meal__ai-note">AI uses the foods and quantities the client entered, not the photo.</p>
           ) : null}
           {declined && meal.declineMessage ? (
             <p className="ua-cp-food-meal__decline">{meal.declineMessage}</p>
@@ -741,7 +782,10 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [mealsLoading, setMealsLoading] = useState(live);
   const [waterLoading, setWaterLoading] = useState(false);
   const [modeBusy, setModeBusy] = useState(false);
+  const [dailyMealGoal, setDailyMealGoal] = useState(() => normalizeDailyMealGoal(user?.dailyMealGoal));
+  const [mealGoalBusy, setMealGoalBusy] = useState(false);
   const [pendingMode, setPendingMode] = useState(null);
+  const [pendingMealGoal, setPendingMealGoal] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [editAfterAiId, setEditAfterAiId] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
@@ -791,11 +835,16 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setEditAfterAiId("");
     setPendingDelete(null);
     setPendingMode(null);
+    setPendingMealGoal(null);
   }, [live, today, userId]);
 
   useEffect(() => {
     setDietPlanOn(user?.dietPlanEnabled !== false);
   }, [user?.dietPlanEnabled]);
+
+  useEffect(() => {
+    setDailyMealGoal(normalizeDailyMealGoal(user?.dailyMealGoal));
+  }, [user?.dailyMealGoal, userId]);
 
   useEffect(() => {
     if (!live) return;
@@ -865,6 +914,12 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
           && !currentUser.mealTrackingMode
         ) {
           onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
+        }
+        const serverMealGoal = normalizeDailyMealGoal(data?.dailyMealGoal);
+        setDailyMealGoal(serverMealGoal);
+        const currentUserAfterMode = userRef.current;
+        if (currentUserAfterMode && normalizeDailyMealGoal(currentUserAfterMode.dailyMealGoal) !== serverMealGoal) {
+          onUserUpdatedRef.current?.({ ...currentUserAfterMode, dailyMealGoal: serverMealGoal });
         }
         if (
           !jumpedToLatestRef.current
@@ -954,6 +1009,37 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  function requestDailyMealGoalChange(next) {
+    const goal = normalizeDailyMealGoal(next);
+    if (goal === dailyMealGoal || mealGoalBusy || !canEdit) return;
+    setPendingMealGoal(goal);
+  }
+
+  async function changeDailyMealGoal(next) {
+    const goal = normalizeDailyMealGoal(next);
+    if (goal === dailyMealGoal || mealGoalBusy || !canEdit) return;
+    const previous = dailyMealGoal;
+    setDailyMealGoal(goal);
+    onUserUpdated?.({ ...user, dailyMealGoal: goal });
+    if (!live) {
+      onToast?.(`Daily meal target set to ${goal} for this client`);
+      return;
+    }
+    setMealGoalBusy(true);
+    try {
+      const saved = await updateUserDailyMealGoal(userId, goal);
+      setDailyMealGoal(saved);
+      onUserUpdated?.({ ...user, dailyMealGoal: saved });
+      onToast?.(`Client app daily meal target set to ${saved}`);
+    } catch (err) {
+      setDailyMealGoal(previous);
+      onUserUpdated?.({ ...user, dailyMealGoal: previous });
+      onToast?.(err?.message || "Failed to update daily meal target");
+    } finally {
+      setMealGoalBusy(false);
+    }
+  }
+
   function setMode(next) {
     const apiMode = next === "detailed" ? "detailed_macro" : "macro";
     const previousMode = user?.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro";
@@ -1000,7 +1086,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   async function submitAi(id) {
     const meal = meals.find((m) => m.id === id);
     if (!meal) return;
-    if (live && meal.sourceLabel !== "Details Meal" && !meal.photoUrl) {
+    if (live && meal.trackingMode !== "detailed" && !meal.photoUrl) {
       onToast("This meal has no photo to analyse");
       return;
     }
@@ -1220,11 +1306,15 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
       {tab === "macro" ? (
         <>
-          <FoodDateRow
+          <FoodMealToolbar
             selectedDate={selectedDate}
             today={today}
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
+            dailyMealGoal={dailyMealGoal}
+            mealGoalBusy={mealGoalBusy}
+            canEdit={canEdit}
+            onDailyMealGoalChange={requestDailyMealGoalChange}
           />
           {macroMeals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
             <TargetedMacrosCard consumed={macroConsumed} targets={macroTargets} />
@@ -1253,11 +1343,15 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
 
       {tab === "detailed-macro" ? (
         <>
-          <FoodDateRow
+          <FoodMealToolbar
             selectedDate={selectedDate}
             today={today}
             onDateChange={setSelectedDate}
             onToday={() => setSelectedDate(today)}
+            dailyMealGoal={dailyMealGoal}
+            mealGoalBusy={mealGoalBusy}
+            canEdit={canEdit}
+            onDailyMealGoalChange={requestDailyMealGoalChange}
           />
           {detailedMeals.some((meal) => meal.aiStatus === "review" || meal.aiStatus === "approved") ? (
             <TargetedMacrosCard consumed={detailedConsumed} targets={macroTargets} />
@@ -1322,6 +1416,25 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       {tab === "diet" ? <DietPlanPanel user={user} onToast={onToast} appVisible={dietPlanOn} /> : null}
 
       {photoMeal ? <MealPhotoModal meal={photoMeal} dateLabel={dateLabel} onClose={() => setPhotoMeal(null)} /> : null}
+
+      <ConfirmDialog
+        open={pendingMealGoal != null}
+        tag="Meals per day"
+        title="Change daily meal target?"
+        body={
+          pendingMealGoal != null
+            ? `This client’s app will expect ${dailyMealGoalLabel(pendingMealGoal)} per day (currently ${dailyMealGoalLabel(dailyMealGoal)}). Existing meal logs are not changed.`
+            : ""
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pendingMealGoal != null ? `Use ${dailyMealGoalLabel(pendingMealGoal)}` : "Confirm"}
+        onCancel={() => setPendingMealGoal(null)}
+        onConfirm={() => {
+          const next = pendingMealGoal;
+          setPendingMealGoal(null);
+          if (next != null) changeDailyMealGoal(next);
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(pendingMode)}

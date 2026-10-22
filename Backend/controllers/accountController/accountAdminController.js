@@ -1011,6 +1011,29 @@ exports.patchMyCoachContentHandler = asyncHandler(async (req, res) => {
   });
 });
 
+function membershipParentId(account) {
+  const direct = String(account?.parentAccountId || "").trim();
+  if (direct) return direct;
+  const roleKey = primaryAccountRoleKey(account);
+  return String(getMembership(account, roleKey)?.parentAccountId || "").trim();
+}
+
+/** Admin can set any team password. A coach can set it only for someone on their team. */
+async function assertCanChangeTeamPassword(req, account) {
+  if (req.auth?.isSuperAdmin || req.auth?.role === "admin") return;
+  const viewerId = String(req.auth?.sub || "");
+  const parentId = membershipParentId(account);
+  if (viewerId && parentId === viewerId) return;
+  if (req.auth?.role === "wellness_coach" && parentId) {
+    const parent = await getAccountById(parentId);
+    const parentKeys = Array.isArray(parent?.roleKeys) ? parent.roleKeys : [];
+    if (parentKeys.includes("assistant_wellness_coach") && membershipParentId(parent) === viewerId) {
+      return;
+    }
+  }
+  throw new AppError("You do not have permission to change this member's password", 403);
+}
+
 /**
  * Admin sets a team member password (no current password required).
  * Body: { password } or { newPassword }
@@ -1028,6 +1051,7 @@ exports.setAccountPasswordHandler = asyncHandler(async (req, res) => {
   if (req.auth?.sub && String(req.auth.sub) === String(account.id)) {
     throw new AppError("Use your profile to change your own password", 400);
   }
+  await assertCanChangeTeamPassword(req, account);
 
   const password = req.body?.password ?? req.body?.newPassword;
   if (!password) {

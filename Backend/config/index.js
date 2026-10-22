@@ -114,6 +114,16 @@ module.exports = {
   challengeLifecycleCronSchedule: str("CHALLENGE_LIFECYCLE_CRON_SCHEDULE", "15 * * * *"),
   challengeLifecycleCronEnabled: cronEnabled("CHALLENGE_LIFECYCLE_CRON_ENABLED"),
 
+  dailyReflectionBedtimeCronTimezone: str(
+    "DAILY_REFLECTION_BEDTIME_CRON_TIMEZONE",
+    "Asia/Kolkata"
+  ),
+  dailyReflectionBedtimeCronSchedule: str(
+    "DAILY_REFLECTION_BEDTIME_CRON_SCHEDULE",
+    "* * * * *"
+  ),
+  dailyReflectionBedtimeCronEnabled: cronEnabled("DAILY_REFLECTION_BEDTIME_CRON_ENABLED"),
+
   accountDualRead: process.env.ACCOUNT_DUAL_READ !== "false",
   accountDualWrite: bool("ACCOUNT_DUAL_WRITE"),
   accountAuthEnabled: bool("ACCOUNT_AUTH_ENABLED"),

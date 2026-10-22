@@ -1,6 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { normalizeMealPhotoAi, normalizeMealItemsAi, UNRELATED_MESSAGE } = require("../utils/mealPhotoAi");
+const {
+  normalizeMealPhotoAi,
+  normalizeMealItemsAi,
+  mealAiRoute,
+  buildMealItemsAiPrompt,
+  UNRELATED_MESSAGE,
+} = require("../utils/mealPhotoAi");
 
 test("normalizeMealPhotoAi keeps food macros", () => {
   const result = normalizeMealPhotoAi({
@@ -118,4 +124,71 @@ test("normalizeMealItemsAi keeps the submitted name and quantity", () => {
 test("normalizeMealPhotoAi uses a default decline message", () => {
   const result = normalizeMealPhotoAi({ related: false });
   assert.equal(result.message, UNRELATED_MESSAGE);
+});
+
+test("detailed meals use the client food list even when a photo is attached", () => {
+  const route = mealAiRoute({
+    trackingMode: "detailed_macro",
+    photoKey: "meal-tracking/plate.jpg",
+    aiStatus: "none",
+    items: [
+      { name: "Rice", quantityGm: 100 },
+      { name: "Chapati", quantityGm: 150 },
+      { name: "Sabji", quantityGm: 150 },
+      { name: "Salad", quantityGm: 100 },
+    ],
+  });
+
+  assert.equal(route.source, "items");
+  assert.deepEqual(route.items.map((item) => [item.name, item.quantityGm]), [
+    ["Rice", 100],
+    ["Chapati", 150],
+    ["Sabji", 150],
+    ["Salad", 100],
+  ]);
+});
+
+test("detailed meals stay on the food list after macros were already calculated", () => {
+  const route = mealAiRoute({
+    trackingMode: "detailed_macro",
+    photoKey: "meal-tracking/plate.jpg",
+    aiSource: "items",
+    aiStatus: "analysed",
+    items: [
+      { name: "Rice", quantityGm: 100, proteinGm: 2.7, carbsGm: 28, fatsGm: 0.3, caloriesKcal: 130 },
+    ],
+  });
+
+  assert.equal(route.source, "items");
+  assert.equal(route.items[0].quantityGm, 100);
+});
+
+test("macro meals use the photo even when food items are stored", () => {
+  const route = mealAiRoute({
+    trackingMode: "macro",
+    photoKey: "meal-tracking/plate.jpg",
+    items: [
+      { name: "Rice", quantityGm: 100 },
+      { name: "Chapati", quantityGm: 150 },
+    ],
+  });
+
+  assert.equal(route.source, "photo");
+  assert.deepEqual(route.items, []);
+});
+
+test("item prompt uses the typed quantities and ignores a screenshot", () => {
+  const prompt = buildMealItemsAiPrompt([
+    { name: "Rice", quantityGm: 100 },
+    { name: "Chapati", quantityGm: 150 },
+    { name: "Sabji", quantityGm: 150 },
+    { name: "Salad", quantityGm: 100 },
+  ]);
+
+  assert.match(prompt, /There is no photo/);
+  assert.match(prompt, /1\. Rice — quantity: 100/);
+  assert.match(prompt, /2\. Chapati — quantity: 150/);
+  assert.match(prompt, /3\. Sabji — quantity: 150/);
+  assert.match(prompt, /4\. Salad — quantity: 100/);
+  assert.match(prompt, /not 150 chapatis/);
 });

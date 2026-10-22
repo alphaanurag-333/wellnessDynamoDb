@@ -70,15 +70,39 @@ export async function fetchHealthProgressSettings(userId) {
   }
 }
 
-export async function openHealthProgressClientUpload(userId, featureKey) {
+function buildClientUploadPatch(updates) {
+  const clientUpload = {};
+  if (typeof updates === "string") {
+    clientUpload[updates] = true;
+    return clientUpload;
+  }
+  for (const [key, value] of Object.entries(updates || {})) {
+    if (CLIENT_UPLOAD_KEYS.includes(key) && typeof value === "boolean") {
+      clientUpload[key] = value;
+    }
+  }
+  return clientUpload;
+}
+
+export async function patchHealthProgressClientUpload(userId, updates) {
+  const clientUpload = buildClientUploadPatch(updates);
+  if (!Object.keys(clientUpload).length) return null;
   try {
     const { data } = await api.patch(healUserPath(userId, "/health-progress-settings"), {
-      clientUpload: { [featureKey]: true },
+      clientUpload,
     });
     return mapHealthProgressSettings(data);
   } catch (error) {
     normalizeApiError(error);
   }
+}
+
+export async function openHealthProgressClientUpload(userId, featureKey) {
+  return patchHealthProgressClientUpload(userId, { [featureKey]: true });
+}
+
+export async function closeHealthProgressClientUpload(userId, featureKey) {
+  return patchHealthProgressClientUpload(userId, { [featureKey]: false });
 }
 
 export async function updateHealthProgressSettings(userId, features = {}) {

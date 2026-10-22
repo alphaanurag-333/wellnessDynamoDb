@@ -122,6 +122,56 @@ async function reviewProgressPhotoAngle(id, angle, { status, reviewedById, rejec
   return Attributes;
 }
 
+function anglesPresentOnPhoto(photo) {
+  return PROGRESS_PHOTO_ANGLES.filter((angle) => photo?.[`${angle}PicKey`]);
+}
+
+async function reviewProgressPhotoAngles(id, angles, { status, reviewedById, rejectionReason } = {}) {
+  const unique = [...new Set((angles || []).filter((angle) => PROGRESS_PHOTO_ANGLES.includes(angle)))];
+  if (!unique.length) throw new Error("angle must be front, right, or left");
+
+  const nextStatus = normalizeReviewStatus(status);
+  if (nextStatus === "pending") throw new Error("status must be approved or rejected");
+
+  const now = new Date().toISOString();
+  const reason = nextStatus === "rejected"
+    ? String(rejectionReason || "").trim() || null
+    : null;
+  const names = {};
+  const sets = ["updatedAt = :updatedAt"];
+  for (const angle of unique) {
+    names[`#${angle}Status`] = `${angle}ReviewStatus`;
+    names[`#${angle}At`] = `${angle}ReviewedAt`;
+    names[`#${angle}By`] = `${angle}ReviewedById`;
+    names[`#${angle}Reason`] = `${angle}RejectionReason`;
+    sets.push(
+      `#${angle}Status = :status`,
+      `#${angle}At = :reviewedAt`,
+      `#${angle}By = :reviewedById`,
+      `#${angle}Reason = :reason`,
+    );
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: `SET ${sets.join(", ")}`,
+      ConditionExpression: "attribute_exists(id)",
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: {
+        ":status": nextStatus,
+        ":reviewedAt": now,
+        ":reviewedById": reviewedById || null,
+        ":reason": reason,
+        ":updatedAt": now,
+      },
+      ReturnValues: "ALL_NEW",
+    })
+  );
+  return Attributes;
+}
+
 function toPublicProgressPhoto(item) {
   if (!item) return null;
   return {
@@ -145,5 +195,7 @@ module.exports = {
   getProgressPhotoById,
   listProgressPhotosByUser,
   reviewProgressPhotoAngle,
+  reviewProgressPhotoAngles,
+  anglesPresentOnPhoto,
   toPublicProgressPhoto,
 };

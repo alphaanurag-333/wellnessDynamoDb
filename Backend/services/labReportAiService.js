@@ -1,13 +1,17 @@
 const config = require("../config");
 const AppError = require("../utils/AppError");
-const { getStoredObjectBuffer } = require("../utils/s3");
+const { getStoredObjectBuffer, putStoredObjectBuffer } = require("../utils/s3");
+const {
+  compressLabReportPdfBuffer,
+  LAB_REPORT_PDF_MAX_BYTES,
+} = require("../utils/labReportPdfCompress");
 const {
   buildLabReportAiPrompt,
   parseAiJson,
   normalizeAiAnalysis,
 } = require("../utils/labReportAi");
 
-const MAX_FILE_BYTES = 15 * 1024 * 1024;
+const MAX_FILE_BYTES = LAB_REPORT_PDF_MAX_BYTES;
 const REQUEST_TIMEOUT_MS = 90_000;
 
 function assertAiConfigured() {
@@ -106,12 +110,21 @@ async function callOpenAi({ buffer, mimeType, prompt, fileName }, { jsonFormat =
 async function analyzeLabReportFile({ fileKey, reportDate }) {
   assertAiConfigured();
 
-  const { buffer, contentType } = await getStoredObjectBuffer(fileKey);
+  let { buffer, contentType } = await getStoredObjectBuffer(fileKey);
   if (!buffer?.length) {
     throw new AppError("The uploaded report file is empty", 422);
   }
+
+  const originalSize = buffer.length;
+  buffer = await compressLabReportPdfBuffer(buffer);
+  if (buffer.length < originalSize && fileKey) {
+    await putStoredObjectBuffer(fileKey, buffer, mimeFromKey(fileKey, contentType)).catch((err) => {
+      console.error("Failed to store compressed lab report PDF:", err?.message || err);
+    });
+  }
+
   if (buffer.length > MAX_FILE_BYTES) {
-    throw new AppError("Report file is too large for AI analysis (max 15 MB)", 413);
+    throw new AppError("Report file is too large for AI analysis (max 1 MB after compression)", 413);
   }
 
   const mimeType = mimeFromKey(fileKey, contentType);

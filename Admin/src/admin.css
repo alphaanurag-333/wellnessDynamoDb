@@ -3807,16 +3807,22 @@
 
 /* Community */
 .updated-admin .community-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 11px;
   align-items: stretch;
-  flex-wrap: wrap;
   margin-bottom: 18px;
 }
 
+.updated-admin .community-row--coach {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .updated-admin .community-card {
-  flex: 1 1 0;
+  flex: none;
+  width: auto;
   min-width: 0;
+  max-width: none;
   background: #fff;
   border: 1px solid rgb(238, 241, 246);
   border-radius: var(--radius);
@@ -3831,7 +3837,6 @@
   background: #fffdf5;
   border: 1.5px solid #f2d675;
   min-width: 0;
-  flex: 1 1 220px;
 }
 
 .updated-admin .community-card--birthday {
@@ -3914,9 +3919,8 @@
 
 .updated-admin .champion-split {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -3974,9 +3978,9 @@
 }
 
 .updated-admin .champion-scroll .champion-mini {
-  flex: 1 1 0%;
-  min-width: 96px;
-  max-width: 100%;
+  flex: 1 1 0;
+  min-width: 108px;
+  max-width: none;
 }
 
 .updated-admin .birthday-scroll {
@@ -4065,6 +4069,17 @@
   font-weight: 780;
   color: var(--accent-gold);
   font-variant-numeric: tabular-nums;
+}
+
+.updated-admin .champion-mini__wc {
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: #8a3b3b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .birthday-row {
@@ -4925,7 +4940,8 @@
 }
 
 .updated-admin .community-row--coach .community-card {
-  flex: 1 1 280px;
+  flex: none;
+  min-width: 0;
 }
 
 .updated-admin .ops-challenge {
@@ -5732,10 +5748,25 @@
   text-align: right;
 }
 
+.updated-admin .leaderboard__hero-coach {
+  min-width: 120px;
+  max-width: 220px;
+  text-align: right;
+}
+
+.updated-admin .leaderboard__hero-coach-name {
+  font-size: 16px;
+  font-weight: 750;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .updated-admin .leaderboard__table-head {
   display: grid;
-  grid-template-columns: 30px 1fr 70px 62px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.6fr) 72px minmax(120px, 1fr);
+  gap: 12px;
   padding: 6px 11px;
   font-size: 9.5px;
   font-weight: 700;
@@ -5744,8 +5775,8 @@
   color: var(--muted);
 }
 
-.leaderboard__table-head> :nth-child(3),
-.updated-admin .leaderboard__table-head> :nth-child(4) {
+.updated-admin .leaderboard__table-head > :nth-child(2),
+.updated-admin .leaderboard__table-head > :nth-child(3) {
   text-align: right;
 }
 
@@ -5761,8 +5792,8 @@
 
 .updated-admin .leaderboard__row {
   display: grid;
-  grid-template-columns: 30px 1fr 70px 62px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1.6fr) 72px minmax(120px, 1fr);
+  gap: 12px;
   padding: 8px 11px;
   border-radius: 9px;
   align-items: center;
@@ -5786,16 +5817,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+.updated-admin .leaderboard__client {
+  min-width: 0;
+}
+
 .updated-admin .leaderboard__name {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   font-size: 12px;
   font-weight: 680;
   color: var(--text);
-  white-space: nowrap;
+  min-width: 0;
+}
+
+.updated-admin .leaderboard__name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .updated-admin .leaderboard__bar-wrap {
@@ -5820,11 +5860,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-.updated-admin .leaderboard__days {
+.updated-admin .leaderboard__coach {
   text-align: right;
-  font-size: 10.5px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 680;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .leaderboard__foot {
@@ -9755,10 +9798,12 @@
   box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
 }
 
-.updated-admin .ua-teams-create__input.is-readonly {
+.updated-admin .ua-teams-create__input.is-readonly,
+.updated-admin .ua-teams-create__bio.is-readonly {
   background: #f4f6fa;
   color: #334155;
   cursor: default;
+  pointer-events: none;
 }
 
 .updated-admin .ua-teams-create__input.is-invalid,
@@ -15764,7 +15809,10 @@
 .updated-admin .ua-cp-dosage-add {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
   margin-bottom: 0px;
 }
 
@@ -15782,14 +15830,30 @@
   box-sizing: border-box;
 }
 
-.updated-admin .ua-cp-dosage-nutrition {
-  min-width: 160px;
-  flex: 1 1 160px;
+.updated-admin .ua-cp-dosage-nutrition,
+.updated-admin .ua-cp-dosage-daypart,
+.updated-admin .ua-cp-dosage-meals {
+  min-width: 140px;
+  flex: 1 1 0;
 }
 
-.updated-admin .ua-cp-dosage-daypart {
-  min-width: 200px;
-  flex: 0 1 220px;
+.updated-admin .ua-cp-dosage-qty-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cp-dosage-qty-field span {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-timing-menu--daypart {
@@ -15798,8 +15862,17 @@
 }
 
 .updated-admin .ua-cp-dosage-qty {
-  width: 56px;
+  width: 48px;
+  height: 34px;
+  border: 0;
+  padding: 0;
+  background: transparent;
   text-align: center;
+}
+
+.updated-admin .ua-cp-dosage-unit {
+  width: 76px;
+  flex: 0 0 76px;
 }
 
 .updated-admin .ua-cp-dosage-date {
@@ -15967,6 +16040,130 @@
   color: #9aa6b8;
   font-size: 18px;
   cursor: pointer;
+}
+
+.updated-admin .ua-cp-dosage-card__edit {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #3d4d66;
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-dosage-check {
+  display: inline-flex;
+  align-items: center;
+}
+
+.updated-admin .ua-cp-dosage-card__head .ua-cp-dosage-badge {
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f4f0e6;
+  color: #8a6a1a;
+}
+
+.updated-admin .ua-cp-dosage-card__head .ua-cp-dosage-badge--live {
+  background: #e7f6ee;
+  color: #1f7a45;
+}
+
+.updated-admin .ua-cp-dosage-batch {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.updated-admin .ua-cp-dosage-row,
+.updated-admin .ua-cp-dosage-edit {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-dosage-row__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-dosage-row__grid label,
+.updated-admin .ua-cp-dosage-row__timings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cp-dosage-row__grid select,
+.updated-admin .ua-cp-dosage-row__grid input {
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2a3a;
+}
+
+.updated-admin .ua-cp-dosage-row__timing-selects {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.updated-admin .ua-cp-dosage-row__timing-selects .ua-cp-timing-wrap {
+  flex: 1 1 180px;
+  min-width: 160px;
+}
+
+.updated-admin .ua-cp-dosage-row__remove {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #b42318;
+  font-weight: 700;
+  cursor: pointer;
+  height: 38px;
+}
+
+.updated-admin .ua-cp-dosage-row__total {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.updated-admin .ua-cp-dosage-batch__actions,
+.updated-admin .ua-cp-dosage-push {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.updated-admin .ua-cp-dosage-push {
+  margin-bottom: 12px;
+}
+
+.updated-admin .ua-cp-dosage-push label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-dosage-meals {
@@ -16738,7 +16935,7 @@
 
 .updated-admin .ua-cp-ba-photos {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(104px, 0.58fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(108px, 0.52fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -16755,13 +16952,17 @@
 }
 
 .updated-admin .ua-cp-ba-photo {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 196px;
-  padding: 20px 12px;
+  gap: 0;
+  width: 100%;
+  height: 210px;
+  min-height: 210px;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid #e6ebf2;
   border-radius: 14px;
   background: #fff;
@@ -16773,11 +16974,14 @@
 }
 
 .updated-admin .ua-cp-ba-photo--weight {
-  min-height: 196px;
-  padding: 12px 8px;
-  gap: 5px;
-  border-radius: 12px;
-  align-self: center;
+  height: 210px;
+  min-height: 210px;
+  max-width: none;
+  padding: 0;
+  gap: 0;
+  border-radius: 14px;
+  align-self: stretch;
+  justify-self: stretch;
 }
 
 .updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__icon {
@@ -16785,11 +16989,11 @@
 }
 
 .updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__label {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__hint {
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .updated-admin .ua-cp-ba-photo:hover {
@@ -16803,56 +17007,77 @@
 }
 
 .updated-admin .ua-cp-ba-photo--has-image {
-  justify-content: flex-start;
-  padding: 8px 8px 12px;
-  gap: 6px;
+  justify-content: center;
+  padding: 0;
+  border-color: #f5d3bc;
 }
 
 .updated-admin .ua-cp-ba-photo--weight.ua-cp-ba-photo--has-image {
-  padding: 6px 6px 8px;
-  gap: 4px;
+  padding: 0;
 }
 
-.updated-admin .ua-cp-ba-photo__thumb {
-  display: block;
-  width: 100%;
-  flex: 1 1 auto;
-  min-height: 112px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #eef2f7;
-}
-
-.updated-admin .ua-cp-ba-photo__thumb img {
+.updated-admin .ua-cp-ba-photo__img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 112px;
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
   display: block;
 }
 
-.updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__thumb,
-.updated-admin .ua-cp-ba-photo--weight .ua-cp-ba-photo__thumb img {
-  min-height: 96px;
-  border-radius: 8px;
+.updated-admin .ua-cp-ba-photo__overlay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 12px 10px;
+}
+
+.updated-admin .ua-cp-ba-photo--has-image .ua-cp-ba-photo__overlay {
+  background: linear-gradient(180deg, rgba(255, 248, 242, 0.08) 0%, rgba(255, 248, 242, 0.72) 46%, rgba(255, 248, 242, 0.94) 100%);
 }
 
 .updated-admin .ua-cp-ba-photo__icon {
-  font-size: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
   opacity: 0.55;
+  color: #5a6b85;
+}
+
+.updated-admin .ua-cp-ba-photo--has-image .ua-cp-ba-photo__icon {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  background: rgba(236, 122, 69, 0.16);
+  color: #c2661d;
+  opacity: 1;
 }
 
 .updated-admin .ua-cp-ba-photo__label {
   font-size: 14px;
   font-weight: 750;
   color: #16233f;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cp-ba-photo--has-image .ua-cp-ba-photo__label {
+  color: #c2661d;
 }
 
 .updated-admin .ua-cp-ba-photo__hint {
   font-size: 11.5px;
   color: #9aa6b8;
   font-weight: 600;
+  line-height: 1.3;
 }
 
 .updated-admin .ua-cp-ba-photo__status {
@@ -17299,17 +17524,17 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn--active {
-  background: #16233f;
-  border-color: #16233f;
+  background: #2b8f5b;
+  border-color: #2b8f5b;
   color: #fff;
   font-weight: 750;
-  box-shadow: 0 2px 6px rgba(22, 35, 63, 0.28);
+  box-shadow: 0 2px 6px rgba(43, 143, 91, 0.32);
 }
 
 .updated-admin .ua-cp-internal > .ua-pill-tabs--md .ua-pill-tabs__btn--active:hover {
   color: #fff;
-  background: #1c2c4d;
-  border-color: #1c2c4d;
+  background: #247a4e;
+  border-color: #247a4e;
 }
 
 .updated-admin .ua-cp-ip-head__title {
@@ -19061,29 +19286,31 @@ scrollbar-width: thin;
   border-radius: 14px;
   gap: 6px;
   padding: 5px;
-  background: #e6ebf3;
-  border: 1px solid #c5d0e0;
+  background: #e8eef6;
+  border: 1px solid #d3ddea;
 }
 
 .updated-admin .ua-cp-launch .ua-cp-launch-tabs .ua-pill-tabs__btn {
+  position: relative;
   width: auto;
   min-width: 132px;
   justify-content: center;
   box-sizing: border-box;
-  height: 38px;
+  height: 38px !important;
   padding: 0 20px;
-  border: 1px solid #c9d4e4;
+  border: 1px solid #d5deea;
   border-radius: 10px;
   background: #fff;
   color: #2a3b55;
   font-size: 13.5px;
   font-weight: 650;
-  box-shadow: 0 1px 2px rgba(16, 35, 63, 0.06);
+  box-shadow: 0 1px 2px rgba(16, 35, 63, 0.05);
+  overflow: hidden;
 }
 
 .updated-admin .ua-cp-launch .ua-cp-launch-tabs .ua-pill-tabs__btn:hover {
   color: #16233f;
-  border-color: #9aabc4;
+  border-color: #b7c6da;
   background: #f7f9fc;
 }
 
@@ -19093,6 +19320,17 @@ scrollbar-width: thin;
   color: #fff;
   font-weight: 750;
   box-shadow: 0 2px 6px rgba(22, 35, 63, 0.28);
+}
+
+.updated-admin .ua-cp-launch .ua-cp-launch-tabs .ua-pill-tabs__btn--active::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 5px;
+  height: 3px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #3f74b5 0 33.33%, #c95a2c 33.33% 66.66%, #2f8b53 66.66% 100%);
 }
 
 .updated-admin .ua-cp-launch .ua-cp-launch-tabs .ua-pill-tabs__btn--active:hover {
@@ -26861,6 +27099,18 @@ scrollbar-width: thin;
   flex-wrap: wrap;
 }
 
+.updated-admin .ua-cp-food-meal-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+
+.updated-admin .ua-cp-food-meal-toolbar .ua-cp-food__control--meals {
+  margin-left: auto;
+}
+
 .updated-admin .ua-cp-food-date-pill-wrap {
   position: relative;
 }
@@ -27187,6 +27437,14 @@ scrollbar-width: thin;
   font-weight: 600;
   color: #3a4a63;
   white-space: pre-wrap;
+}
+
+.updated-admin .ua-cp-food-meal__ai-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 650;
+  color: #5b6b84;
 }
 
 .updated-admin .ua-cp-food-meal__tags {
@@ -31296,6 +31554,37 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-hptrack-upload button:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.updated-admin .ua-cp-hptrack-upload button.ua-cp-hptrack-upload__close {
+  border-color: #8a4b2a;
+  background: #fff;
+  color: #8a4b2a;
+}
+
+.updated-admin .ua-cp-hptrack-upload-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-hptrack-upload-bulk__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a5870;
+}
+
+.updated-admin .ua-cp-hptrack-upload-bulk__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .updated-admin .ua-cp-hptrack-upload--inline {
@@ -64816,7 +65105,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cp-ba-photos {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .updated-admin .ua-cp-ba-photo--weight {
@@ -66449,8 +66738,9 @@ scrollbar-width: thin;
     grid-template-columns: 1fr;
   }
 
-  .updated-admin .community-row {
-    flex-direction: column;
+  .updated-admin .community-row,
+  .updated-admin .community-row--coach {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .updated-admin .header__search:not(.header__search--compact) {
@@ -71965,10 +72255,13 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-dosage-add select,
   .updated-admin .ua-cp-timing-btn,
   .updated-admin .ua-cp-dosage-date,
-  .updated-admin .ua-cp-dosage-add .ua-cp-btn {
+  .updated-admin .ua-cp-dosage-add .ua-cp-btn,
+  .updated-admin .ua-cp-dosage-unit,
+  .updated-admin .ua-cp-dosage-qty-field {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    flex: 1 1 100%;
   }
 
   .updated-admin .ua-cp-timing-wrap {
@@ -72060,10 +72353,13 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-nutritions .ua-cp-dosage-add select,
   .updated-admin .ua-cp-nutritions .ua-cp-timing-btn,
   .updated-admin .ua-cp-nutritions .ua-cp-dosage-date,
-  .updated-admin .ua-cp-nutritions .ua-cp-dosage-add .ua-cp-btn {
+  .updated-admin .ua-cp-nutritions .ua-cp-dosage-add .ua-cp-btn,
+  .updated-admin .ua-cp-nutritions .ua-cp-dosage-unit,
+  .updated-admin .ua-cp-nutritions .ua-cp-dosage-qty-field {
     width: 100%;
     min-width: 0;
     max-width: 100%;
+    flex: 1 1 100%;
   }
 
   .updated-admin .ua-cp-nutritions .ua-cp-timing-wrap {
@@ -72824,8 +73120,9 @@ html:has(.updated-admin) #root {
   .updated-admin .community-card,
   .updated-admin .community-card--champion,
   .updated-admin .community-card--birthday {
-    flex: 1 1 200px;
+    flex: none;
     min-width: 0;
+    max-width: none;
   }
 }
 
@@ -72927,10 +73224,17 @@ html:has(.updated-admin) #root {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .updated-admin .community-row,
+  .updated-admin .community-row--coach {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .updated-admin .community-card,
   .updated-admin .community-card--champion,
   .updated-admin .community-card--birthday {
-    flex: 1 1 100%;
+    flex: none;
+    width: auto;
+    max-width: none;
   }
 }
 
@@ -73249,6 +73553,46 @@ html:has(.updated-admin) #root {
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+.updated-admin .ua-cfg-goals-section:not(.is-open) .ua-cfg-goals-section__head {
+  margin-bottom: 0;
+}
+
+.updated-admin .ua-cfg-goals-section__toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgb(203, 213, 230);
+  border-radius: 7px;
+  background: #fff;
+  color: #6b7280;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cfg-goals-section__toggle svg {
+  width: 10px;
+  height: 10px;
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+
+.updated-admin .ua-cfg-goals-section.is-open .ua-cfg-goals-section__toggle svg {
+  transform: rotate(0deg);
+}
+
+.updated-admin .ua-cfg-goals-section__toggle:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #c7d2fe;
+}
+
+.updated-admin .ua-cfg-goals-section__toggle:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .updated-admin .ua-cfg-goals-section__name {

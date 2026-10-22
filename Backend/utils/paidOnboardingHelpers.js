@@ -317,6 +317,19 @@ function wizardStepAfterPhotosComplete(currentStep) {
   return advanceWizardStep(currentStep, "medical");
 }
 
+/**
+ * Where the client wizard goes after a 180° upload.
+ * A rejection reopens photos180 even after medical is already finished.
+ * Saving that resubmit should leave the wizard, not show medical again.
+ */
+function wizardStepAfterPhotosSaved(currentStep, stepStatus) {
+  const step = normalizePaidOnboardingStep(currentStep);
+  const status = normalizePaidOnboardingStepStatus(stepStatus);
+  const medicalSettled = status.medicalConditions === "done" || status.medicalConditions === "skipped";
+  if (step === "done" || (step === "photos180" && medicalSettled)) return "done";
+  return wizardStepAfterPhotosComplete(currentStep);
+}
+
 function wizardStepAfterMedicalComplete(currentStep) {
   return advanceWizardStep(currentStep, "done");
 }
@@ -392,6 +405,7 @@ module.exports = {
   wizardStepAfterSkip,
   wizardStepAfterBodyComplete,
   wizardStepAfterPhotosComplete,
+  wizardStepAfterPhotosSaved,
   wizardStepAfterMedicalComplete,
   mergeStepStatusUpdate,
   advanceWizardStep,

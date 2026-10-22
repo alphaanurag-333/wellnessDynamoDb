@@ -71,6 +71,14 @@ function asNumber(value) {
 }
 
 const BIRTHDAY_WINDOW_DAYS = 15;
+const CHAMPION_CLIENT_LIMIT = 3;
+const CHAMPION_LEADERBOARD_LIMIT = 15;
+
+function championWcName(name) {
+  const value = String(name || "").trim();
+  if (!value || value === "Wellness coach" || value === "Not assigned" || value === "— Unassigned —") return "";
+  return value;
+}
 const BIRTHDAY_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function todayKeyInKolkata(now = new Date()) {
@@ -1019,13 +1027,28 @@ export function AdminDashboard({
   const teamCards = catalogTeamCards;
   const liveCommunity = statistics?.community || null;
   const birthdayRows = birthdaysWithinWindow(liveCommunity ? (liveCommunity.birthdays || []) : []);
-  const champClients = liveCommunity ? (liveCommunity.champions?.clients || []) : [];
-  const champCoaches = liveCommunity ? (liveCommunity.champions?.coaches || []) : [];
+  const rosterCoachById = useMemo(() => {
+    const map = new Map();
+    for (const user of Array.isArray(clients) ? clients : []) {
+      const id = String(user?.id || "").trim();
+      const coach = championWcName(user?.coach);
+      if (id && coach) map.set(id, coach);
+    }
+    return map;
+  }, [clients]);
+  const champClients = (liveCommunity ? (liveCommunity.champions?.clients || []) : [])
+    .slice(0, CHAMPION_CLIENT_LIMIT)
+    .map((client) => ({
+      ...client,
+      coachName: championWcName(client.coachName)
+        || rosterCoachById.get(String(client.id || "").trim())
+        || "",
+    }));
   const liveLeaderboard = liveCommunity?.leaderboard;
   const [leaderboardRows, setLeaderboardRows] = useState([]);
   const [leaderboardMonthLabel, setLeaderboardMonthLabel] = useState("");
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
-  const activeLeaderboard = leaderboardRows;
+  const activeLeaderboard = leaderboardRows.slice(0, CHAMPION_LEADERBOARD_LIMIT);
   const basePendingGroups = viewAs === "wc" ? WC_PENDING_GROUPS : viewAs === "awc" ? AWC_PENDING_GROUPS : [];
   const pendingGroups = dynamicPendingGroups(
     basePendingGroups.map((group) => ({
@@ -1083,6 +1106,7 @@ export function AdminDashboard({
       label: leaderboardMonthLabel || selected?.label || champMonthOptions[0]?.label || "",
       champion: activeLeaderboard[0]?.name || "—",
       score: activeLeaderboard[0]?.score ?? 0,
+      coachName: activeLeaderboard[0]?.coachName || "—",
     };
   }, [activeLeaderboard, champMonth, champMonthOptions, leaderboardMonthLabel]);
   const maxScore = activeLeaderboard[0]?.score ?? 1;
@@ -2210,33 +2234,17 @@ export function AdminDashboard({
           {!isContentCommunity ? (
             <div className="community-card community-card--champion">
               <div className="community-card__head"><span>🏆</span> Champion</div>
-              <div className="champion-split">
-                <div className="champion-split__col">
-                  <div className="champion-split__label">Client</div>
-                  <div className="champion-scroll">
-                    {champClients.length === 0 ? (
-                      <div className="community-card__empty">No client champions yet</div>
-                    ) : champClients.map((c) => (
-                      <div key={c.id || c.name} className="champion-mini">
-                        <span className="champion-mini__name">{c.name}</span>
-                        <span className="champion-mini__score">{c.score}</span>
-                      </div>
-                    ))}
+              <div className="champion-split__label">Client</div>
+              <div className="champion-scroll">
+                {champClients.length === 0 ? (
+                  <div className="community-card__empty">No client champions yet</div>
+                ) : champClients.map((c) => (
+                  <div key={c.id || c.name} className="champion-mini">
+                    <span className="champion-mini__name">{c.name}</span>
+                    <span className="champion-mini__score">{c.score}</span>
+                    <span className="champion-mini__wc">WC: {championWcName(c.coachName) || "—"}</span>
                   </div>
-                </div>
-                <div className="champion-split__col">
-                  <div className="champion-split__label champion-split__label--muted">Wellness coach</div>
-                  <div className="champion-scroll champion-scroll--plain">
-                    {champCoaches.length === 0 ? (
-                      <div className="community-card__empty">No coach champion yet</div>
-                    ) : (
-                      <div key={champCoaches[0].id || champCoaches[0].name} className="champion-mini champion-mini--plain">
-                        <span className="champion-mini__name">{champCoaches[0].name}</span>
-                        <span className="champion-mini__score">{champCoaches[0].score}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           ) : null}
@@ -2351,7 +2359,7 @@ export function AdminDashboard({
                 <span className={`podium-card__rank ${row.rank === 1 ? "rank--1" : row.rank === 2 ? "rank--2" : "rank--3"}`}>{row.rank === 1 ? "1" : row.rank === 2 ? "2" : "3"}</span>
                 <div className="podium-card__info">
                   <div className="podium-card__name">{row.name}</div>
-                  <div className="podium-card__sub">{row.days} days active</div>
+                  <div className="podium-card__sub">{row.coachName || "—"}</div>
                 </div>
                 <span className="podium-card__score">{row.score}</span>
               </div>
@@ -2373,12 +2381,15 @@ export function AdminDashboard({
                 <div className="leaderboard__hero-points">{champ.score}</div>
                 <div className="leaderboard__hero-label">DRF score</div>
               </div>
+              <div className="leaderboard__hero-coach">
+                <div className="leaderboard__hero-coach-name">{champ.coachName}</div>
+                <div className="leaderboard__hero-label">WC name</div>
+              </div>
             </div>
 
-           
             <div className="leaderboard__rows leaderboard__rows--compact">
             <div className="leaderboard__table-head">
-              <div>#</div><div>Clients</div><div>Score</div><div>Days</div>
+              <div>Client name</div><div>Score</div><div>WC name</div>
             </div>
               {activeLeaderboard.map((row, rowIdx) => (
                 <div style={{border:"1px solid rgb(242, 214, 117)"}}
@@ -2389,18 +2400,20 @@ export function AdminDashboard({
                   role="button"
                   tabIndex={0}
                 >
-                  <span className="leaderboard__rank podium-card__rank rank--1">{row.rank}</span>
-                  <div>
+                  <div className="leaderboard__client">
                     <div className="leaderboard__name">
-                      {row.name}
-                      {row.medal ? <span> {row.medal}</span> : null}
+                      <span className="leaderboard__rank podium-card__rank rank--1">{row.rank}</span>
+                      <span className="leaderboard__name-text">
+                        {row.name}
+                        {row.medal ? <span> {row.medal}</span> : null}
+                      </span>
                     </div>
                     <div className="leaderboard__bar-wrap">
                       <div className="leaderboard__bar" style={{ width: `${Math.round((row.score / maxScore) * 100)}%` }} />
                     </div>
                   </div>
                   <div className="leaderboard__score">{row.score}</div>
-                  <div className="leaderboard__days">{row.days}d</div>
+                  <div className="leaderboard__coach">{row.coachName || "—"}</div>
                 </div>
               ))}
             </div>

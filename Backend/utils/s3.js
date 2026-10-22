@@ -201,6 +201,23 @@ async function getStoredObjectBuffer(key) {
   };
 }
 
+async function putStoredObjectBuffer(key, buffer, contentType = "application/octet-stream") {
+  const objectKey = normalizeStoredMedia(key);
+  if (!objectKey) throw new AppError("File not found", 404);
+  if (!buffer?.length) throw new AppError("File is empty", 400);
+
+  assertS3Configured();
+  await s3Client.send(
+    new PutObjectCommand({
+      Bucket: config.awsS3BucketName,
+      Key: objectKey,
+      Body: buffer,
+      ContentType: contentType || "application/octet-stream",
+    })
+  );
+  return objectKey;
+}
+
 async function sendStoredObjectAsAttachment(res, key, { filename, contentType = "application/octet-stream" } = {}) {
   const objectKey = normalizeStoredMedia(key);
   if (!objectKey) throw new AppError("File not found", 404);
@@ -284,5 +301,6 @@ module.exports = {
   deleteStoredMedia,
   getObjectLastModified,
   getStoredObjectBuffer,
+  putStoredObjectBuffer,
   sendStoredObjectAsAttachment,
 };

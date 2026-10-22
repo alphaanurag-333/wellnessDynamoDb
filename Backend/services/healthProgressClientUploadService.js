@@ -58,6 +58,14 @@ async function openClientUploadForCoach(user, featureKey) {
   return updateUser(user.id, { healthProgressClientUpload: next });
 }
 
+async function closeClientUploadForCoach(user, featureKey, now = new Date()) {
+  if (!HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) {
+    throw new AppError("This section cannot be closed for client updates", 400);
+  }
+  const next = closeHealthProgressClientUpload(user?.healthProgressClientUpload, featureKey, now);
+  return updateUser(user.id, { healthProgressClientUpload: next });
+}
+
 module.exports = {
   CLIENT_UPLOAD_LABELS,
   clientUploadWindows,
@@ -66,4 +74,5 @@ module.exports = {
   closeClientUploadAfterSave,
   assertCoachCanOpenClientUpload,
   openClientUploadForCoach,
+  closeClientUploadForCoach,
 };

@@ -1,5 +1,5 @@
 const LAB_REPORT_SUBMISSION_LOCKED_MESSAGE =
-  "Report submission is locked. Your wellness coach can enable it.";
+  "Your wellness coach can enable it.";
 
 /**
  * Missing flag on older accounts stays locked once a report exists.

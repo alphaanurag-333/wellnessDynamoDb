@@ -150,6 +150,23 @@ function normalizeMealTrackingMode(value, fallback = "macro") {
   return MEAL_TRACKING_MODES.has(next) ? next : fallback;
 }
 
+const DAILY_MEAL_GOAL_DEFAULT = 3;
+const DAILY_MEAL_GOALS = new Set([1, 2, 3]);
+
+function normalizeDailyMealGoal(value, fallback = DAILY_MEAL_GOAL_DEFAULT) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  const n = Math.floor(Number(value));
+  if (DAILY_MEAL_GOALS.has(n)) return n;
+  return fallback;
+}
+
+/** Missing field on existing users defaults to three meals per day. */
+function getDailyMealGoal(user) {
+  return normalizeDailyMealGoal(user?.dailyMealGoal, DAILY_MEAL_GOAL_DEFAULT);
+}
+
 function extractWellnessJourneyToken(entry) {
   if (entry == null) return "";
   if (typeof entry === "string" || typeof entry === "number") {
@@ -423,6 +440,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
+  if (key === "dailyMealGoal") return normalizeDailyMealGoal(value);
   if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
   if (key === "healthProgressClientUpload") return normalizeHealthProgressClientUpload(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
@@ -593,6 +611,7 @@ function buildUserItem(input, { id, now } = {}) {
     pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
     dietaryPreference: normalizeDietaryPreference(input.dietaryPreference),
     mealTrackingMode: normalizeMealTrackingMode(input.mealTrackingMode),
+    dailyMealGoal: normalizeDailyMealGoal(input.dailyMealGoal),
     healthProgressFeatures: normalizeHealthProgressFeatures(
       input.healthProgressFeatures,
       defaultHealthProgressFeatures()
@@ -1732,6 +1751,9 @@ module.exports = {
   normalizeAssignedCoachType,
   normalizeDietaryPreference,
   normalizeMealTrackingMode,
+  normalizeDailyMealGoal,
+  getDailyMealGoal,
+  DAILY_MEAL_GOAL_DEFAULT,
   normalizeHealthProgressFeatures,
   defaultHealthProgressFeatures,
   normalizePaidOnboardingStep,

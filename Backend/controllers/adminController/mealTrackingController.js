@@ -20,9 +20,15 @@ const {
 } = require("../helpers/mealTrackingControllerHelpers");
 const { assertStaffCanAccessUser } = require("../staffAccess");
 const { isValidDateOnly } = require("../../utils/dateOnly");
-const { updateUser, toPublicUser, normalizeMealTrackingMode } = require("../../models/userModel");
+const {
+  updateUser,
+  toPublicUser,
+  normalizeMealTrackingMode,
+  normalizeDailyMealGoal,
+  getDailyMealGoal,
+} = require("../../models/userModel");
 const { analyzeMealPhoto, analyzeMealItems } = require("../../services/mealPhotoAiService");
-const { ZERO_MACROS } = require("../../utils/mealPhotoAi");
+const { ZERO_MACROS, mealAiRoute } = require("../../utils/mealPhotoAi");
 
 exports.adminGetUserMealTrackingController = asyncHandler(async (req, res) => {
   const userId = readUserIdParam(req);
@@ -104,6 +110,7 @@ exports.listCoachUserMealTrackingController = asyncHandler(async (req, res) => {
     macroSummary: summary.macroSummary,
     range: summary.range,
     mealTrackingMode: user.mealTrackingMode || "macro",
+    dailyMealGoal: getDailyMealGoal(user),
   });
 });
 
@@ -230,15 +237,42 @@ exports.updateCoachUserMealTrackingModeController = asyncHandler(async (req, res
   });
 });
 
-function isDetailsQuantityMeal(record) {
-  if (record?.aiSource === "photo") return false;
-  const items = Array.isArray(record?.items) ? record.items : [];
-  const named = items.filter((item) => String(item?.name || "").trim());
-  if (!named.length) return false;
-  const hasMacros = named.some((item) =>
-    Number(item?.proteinGm) || Number(item?.fatsGm) || Number(item?.carbsGm) || Number(item?.caloriesKcal)
-  );
-  return !hasMacros;
+exports.updateCoachUserDailyMealGoalController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const raw = req.body?.dailyMealGoal;
+  if (raw == null || raw === "") {
+    throw new AppError("dailyMealGoal is required", 400);
+  }
+  const goal = normalizeDailyMealGoal(raw, null);
+  if (![1, 2, 3].includes(goal)) {
+    throw new AppError("dailyMealGoal must be 1, 2, or 3", 400);
+  }
+
+  const updated = await updateUser(userId, { dailyMealGoal: goal });
+
+  return res.status(200).json({
+    status: true,
+    message: "Daily meal goal updated successfully",
+    user: toPublicUser(updated),
+    dailyMealGoal: goal,
+  });
+});
+
+function detailedFoodListMessage(items) {
+  const names = items.map((item) => item.name).filter(Boolean);
+  const list = names.length > 4
+    ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`
+    : names.join(", ");
+  return list
+    ? `Macros calculated from the client's foods (${list}) and the quantities they entered. The photo was not used. Review and save.`
+    : "Macros calculated from the food name and quantity. Review and save.";
 }
 
 exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
@@ -255,7 +289,14 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
   if (!record || String(record.userId || "") !== String(userId)) {
     throw new AppError("Meal log not found", 404);
   }
-  const fromFoodList = isDetailsQuantityMeal(record);
+  const route = mealAiRoute(record);
+  const fromFoodList = route.source === "items";
+  if (fromFoodList && !route.items.length) {
+    throw new AppError(
+      "This Detailed meal has no foods and quantities to calculate. The meal photo is not used for Detailed meals.",
+      422
+    );
+  }
   if (!fromFoodList && !record.photoKey) {
     throw new AppError("This meal has no photo to analyse", 422);
   }
@@ -263,7 +304,7 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
   let analysis;
   try {
     analysis = fromFoodList
-      ? await analyzeMealItems({ items: record.items })
+      ? await analyzeMealItems({ items: route.items })
       : await analyzeMealPhoto({
         fileKey: record.photoKey,
         category: record.category,
@@ -304,7 +345,7 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
     message: declined
       ? analysis.message
       : fromFoodList
-        ? "Macros calculated from the food name and quantity. Review and save."
+        ? detailedFoodListMessage(route.items)
         : "Meal photo analysed. Review the macros and save.",
     mealLog,
   });

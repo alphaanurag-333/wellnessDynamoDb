@@ -138,7 +138,7 @@ async function analyzeMealItems({ items }) {
     }))
     .filter((item) => item.name);
   if (!sourceItems.length) {
-    throw new AppError("This details meal has no foods to calculate", 422);
+    throw new AppError("This Detailed meal has no foods to calculate", 422);
   }
 
   const prompt = buildMealItemsAiPrompt(sourceItems);

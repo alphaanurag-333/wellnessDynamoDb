@@ -267,7 +267,7 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
   const bedtime = settings.bedtime || DEFAULT_BEDTIME;
   const actor = resolveStaffActor(req);
 
-  const notification = await dispatchDailyReflectionBedtimeNotification({
+  const { notification, push } = await dispatchDailyReflectionBedtimeNotification({
     userId,
     bedtime,
     clientName: user?.name,
@@ -275,10 +275,24 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
     actorUserId: actor.id,
   });
 
+  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+
   return res.status(200).json({
     status: true,
-    message: "Bedtime reminder pushed to the app",
+    message: delivered
+      ? "Bedtime reminder pushed to the app"
+      : noDevice
+        ? "Reminder saved in the app inbox, but this user has no push device registered"
+        : "Reminder saved in the app inbox, but push delivery failed",
     bedtime,
     notificationId: notification?.id || null,
+    push: {
+      delivered,
+      skipped: Boolean(push?.skipped),
+      reason: push?.reason || null,
+      successCount: Number(push?.successCount) || 0,
+      failureCount: Number(push?.failureCount) || 0,
+    },
   });
 });

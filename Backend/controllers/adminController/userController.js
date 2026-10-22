@@ -24,6 +24,7 @@ const {
   assertUniqueWhatsapp,
   buildUserUpdatesFromBody,
 } = require("../userController/userProfileHelpers");
+const { normalizeRoleKey } = require("../../config/accountRoles");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
 const { readUserIdParam } = require("../helpers/reminderControllerHelpers");
@@ -89,6 +90,10 @@ exports.listUsersController = asyncHandler(async (req, res) => {
       limit,
       search,
       userTier: userTier || "all",
+      clientCategory,
+      excludeUserTier,
+      excludeClientCategory,
+      hasProgram,
       subscriptionExpiryUserIds,
     });
   } else if (ownerCoachId) {
@@ -209,9 +214,56 @@ exports.createUserController = asyncHandler(async (req, res) => {
   });
 });
 
+const COACH_PERSONAL_UPDATE_KEYS = new Set([
+  "wellnessJourneyFor",
+  "wellness_journey_for",
+  "wellnessJourney",
+  "wellness_journey",
+  "primaryHealthConcern",
+  "primary_health_concern",
+  "healthConcerns",
+  "health_concerns",
+  "primaryHealthConcernOther",
+  "primary_health_concern_other",
+  "healthConcernOther",
+  "health_concern_other",
+  "customHealthConcern",
+  "custom_health_concern",
+]);
+
+function requestHasUpload(req) {
+  if (req.file) return true;
+  const files = req.files;
+  if (!files || typeof files !== "object") return false;
+  return Object.values(files).some((entry) => (Array.isArray(entry) ? entry.length > 0 : Boolean(entry)));
+}
+
+/** Admin may update any client field. WC and AWC may update only the two coaching fields. */
+function assertPersonalUpdateScope(req) {
+  const role = normalizeRoleKey(req.auth?.role);
+  if (req.auth?.isSuperAdmin || role === "admin") return;
+
+  const isCoach = role === "wellness_coach" || role === "assistant_wellness_coach";
+  if (!isCoach) {
+    throw new AppError("Only an admin can edit client details", 403);
+  }
+  if (requestHasUpload(req)) {
+    throw new AppError("You can only edit Primary health concern and Wellness journey for", 403);
+  }
+  const body = req.body && typeof req.body === "object" ? req.body : {};
+  const blocked = Object.keys(body).filter(
+    (key) => body[key] !== undefined && !COACH_PERSONAL_UPDATE_KEYS.has(key),
+  );
+  if (blocked.length) {
+    throw new AppError("You can only edit Primary health concern and Wellness journey for", 403);
+  }
+}
+
 exports.updateUserController = asyncHandler(async (req, res) => {
+  assertPersonalUpdateScope(req);
   const current = await getUserById(req.params.id);
   if (!current) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, current);
 
   const updates = await buildUserUpdatesFromBody(req.body || {}, current, {
     allowStatus: true,

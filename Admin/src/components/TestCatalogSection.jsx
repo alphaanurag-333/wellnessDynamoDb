@@ -176,6 +176,7 @@ export function TestCatalogSection({ setTests, onToast }) {
   const [draft, setDraft] = useState(null);
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [pendingDeleteGoal, setPendingDeleteGoal] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState(() => new Set());
 
   const loadGoals = useCallback(async () => {
     setLoading(true);
@@ -248,6 +249,7 @@ export function TestCatalogSection({ setTests, onToast }) {
     const next = { id: null, name: "", status: "active", sections, dismissedCategories: [] };
     setDraft(next);
     setSavedSnapshot(snapshotOf(next));
+    setCollapsedSections(new Set());
     setMode("edit");
   }
 
@@ -261,6 +263,7 @@ export function TestCatalogSection({ setTests, onToast }) {
     };
     setDraft(next);
     setSavedSnapshot(snapshotOf(next));
+    setCollapsedSections(new Set());
     setMode("edit");
   }
 
@@ -277,7 +280,22 @@ export function TestCatalogSection({ setTests, onToast }) {
     }));
   }
 
+  function toggleSection(sectionId) {
+    setCollapsedSections((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }
+
   function addTest(sectionId) {
+    setCollapsedSections((current) => {
+      if (!current.has(sectionId)) return current;
+      const next = new Set(current);
+      next.delete(sectionId);
+      return next;
+    });
     setDraft((current) => ({
       ...current,
       sections: current.sections.map((section) => (
@@ -500,9 +518,23 @@ export function TestCatalogSection({ setTests, onToast }) {
             </p>
           ) : null}
 
-          {draft.sections.map((section, sectionIndex) => (
-            <section key={section.id} className="ua-cfg-goals-section">
+          {draft.sections.map((section, sectionIndex) => {
+            const isOpen = !collapsedSections.has(section.id);
+            return (
+            <section key={section.id} className={`ua-cfg-goals-section${isOpen ? " is-open" : ""}`}>
               <div className="ua-cfg-goals-section__head">
+                <button
+                  type="button"
+                  className="ua-cfg-goals-section__toggle"
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? `Collapse ${section.category}` : `Expand ${section.category}`}
+                  disabled={busy}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
                 <SortButtons
                   label={section.category}
                   disabled={busy}
@@ -523,6 +555,8 @@ export function TestCatalogSection({ setTests, onToast }) {
                 </button>
               </div>
 
+              {isOpen ? (
+              <>
               <div className="ua-cfg-goals-lines">
                 <div className="ua-cfg-goals-lines__head" aria-hidden="true">
                   <span />
@@ -610,8 +644,11 @@ export function TestCatalogSection({ setTests, onToast }) {
               <button type="button" className="ua-cfg-goals-add" disabled={busy} onClick={() => addTest(section.id)}>
                 + Add test
               </button>
+              </>
+              ) : null}
             </section>
-          ))}
+            );
+          })}
 
           {unusedCategories.length ? (
             <label className="ua-cfg-goals-add-cat">

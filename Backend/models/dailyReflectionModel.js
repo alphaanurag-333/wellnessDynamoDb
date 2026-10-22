@@ -1,4 +1,4 @@
-const { GetCommand, PutCommand, UpdateCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { GetCommand, PutCommand, UpdateCommand, QueryCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { isValidDateOnly } = require("../utils/dateOnly");
 
@@ -320,6 +320,34 @@ async function listDayLogsForMonth(userId, monthYear) {
   return listDayLogsBetween(userId, range.startDate, range.endDate);
 }
 
+async function listAllDailyReflectionSettings() {
+  const items = [];
+  let lastKey;
+
+  do {
+    const params = {
+      TableName: TABLE,
+      FilterExpression: "recordKey = :settingsKey",
+      ExpressionAttributeValues: {
+        ":settingsKey": SETTINGS_KEY,
+      },
+    };
+    if (lastKey) params.ExclusiveStartKey = lastKey;
+
+    const { Items = [], LastEvaluatedKey } = await docClient.send(new ScanCommand(params));
+    for (const item of Items) {
+      if (!item?.userId) continue;
+      items.push({
+        userId: String(item.userId),
+        ...formatSettings(item),
+      });
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
 async function listDayLogsBetween(userId, startDate, endDate) {
   if (!isValidDateOnly(startDate) || !isValidDateOnly(endDate) || startDate > endDate) {
     return [];
@@ -354,6 +382,7 @@ module.exports = {
   listEnabledActivities,
   listCatalogWithSettings,
   getSettings,
+  listAllDailyReflectionSettings,
   upsertSettings,
   upsertSettingsFields,
   getDayLog,

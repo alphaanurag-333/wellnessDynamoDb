@@ -167,21 +167,21 @@ function PhotoAngleCard({ angle, photos, onOpen }) {
       disabled={!photos.length}
     >
       {showImage ? (
-        <span className="ua-cp-ba-photo__thumb">
-          <img
-            src={latest.url}
-            alt=""
-            onError={() => setImageFailed(true)}
-          />
-        </span>
-      ) : (
-        <PhotoCameraIcon compact={angle.single} />
-      )}
-      <span className="ua-cp-ba-photo__label">{angle.label}</span>
-      <span className="ua-cp-ba-photo__hint">{photoCardHint(angle, photos)}</span>
-      {summary ? (
-        <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${summary.tone}`}>{summary.label}</span>
+        <img
+          className="ua-cp-ba-photo__img"
+          src={latest.url}
+          alt=""
+          onError={() => setImageFailed(true)}
+        />
       ) : null}
+      <span className="ua-cp-ba-photo__overlay">
+        <PhotoCameraIcon compact />
+        <span className="ua-cp-ba-photo__label">{angle.label}</span>
+        <span className="ua-cp-ba-photo__hint">{photoCardHint(angle, photos)}</span>
+        {summary ? (
+          <span className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${summary.tone}`}>{summary.label}</span>
+        ) : null}
+      </span>
     </button>
   );
 }
@@ -195,7 +195,7 @@ function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
   return (
     <section className="ua-cp-ba-block ua-cp-ba-block--photos">
       <div className="ua-cp-ba-block__head">
-        <h3 className="ua-cp-ba-block__title">Progress photos · 4 angles</h3>
+        <h3 className="ua-cp-ba-block__title">Progress photos · 3 angles</h3>
         <div className="ua-cp-ba-block__meta">
           <span>Latest: {latestPhotoDate}</span>
           {pendingCount ? (
@@ -285,7 +285,7 @@ function PhotoReviewActions({ photo, canReview, busy, onSave, onAccept, onReject
   );
 }
 
-function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy, onClose, onConfirm }) {
+function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy, onClose, onConfirm, rejectDayAngles }) {
   if (!photo || !action) return null;
   const rejecting = action === "rejected";
 
@@ -301,11 +301,15 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
           Review this photo
         </p>
         <h3 id="photo-review-title" className="ua-cp-present-modal__title">
-          {rejecting ? `Reject this ${angle} photo?` : `Accept this ${angle} photo?`}
+          {rejecting
+            ? (rejectDayAngles ? "Reject this day's 180° photos?" : `Reject this ${angle} photo?`)
+            : `Accept this ${angle} photo?`}
         </h3>
         <p className="ua-cp-present-modal__body">
           {rejecting
-            ? "The client is notified and can upload a clearer photo. Add a reason if you want them to see why."
+            ? (rejectDayAngles
+              ? "Front, Right, and Left from this day are rejected together. The weight photo stays as-is. The client is sent back to the 180° page to submit the three angles again."
+              : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
             : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
         </p>
         {rejecting ? (
@@ -330,7 +334,11 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
             onClick={onConfirm}
             disabled={busy}
           >
-            {busy ? (rejecting ? "Rejecting…" : "Accepting…") : rejecting ? "Yes, reject it" : "Yes, accept it"}
+            {busy
+              ? (rejecting ? "Rejecting…" : "Accepting…")
+              : rejecting
+                ? (rejectDayAngles ? "Yes, reject 180° photos" : "Yes, reject it")
+                : "Yes, accept it"}
           </button>
         </div>
       </div>
@@ -414,7 +422,9 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
       onToast?.(
         action === "approved"
           ? `Accepted ${angle} photo (${photo.date}).${glanceNote}`
-          : `Rejected ${angle} photo (${photo.date}).${glanceNote}`,
+          : isSingle
+            ? `Rejected ${angle} photo (${photo.date}).`
+            : `Rejected Front, Right, and Left from ${photo.date}. Weight was not changed. The client can submit 180° photos again.${glanceNote}`,
       );
       setReviewTarget(null);
       setRejectReason("");
@@ -565,6 +575,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
           setRejectReason("");
         }}
         onConfirm={confirmReview}
+        rejectDayAngles={!isSingle}
       />
     </>,
     root,
@@ -588,6 +599,18 @@ function applyReviewedPhoto(current, record, angle) {
       String(row.id || row._id) === id ? { ...row, ...record } : row
     )),
   };
+}
+
+function applyReviewResult(current, result, angle) {
+  if (!current || !result) return current;
+  let next = applyReviewedPhoto(current, result.photo, angle);
+  for (const record of result.rejectedPhotos || []) {
+    next = applyReviewedPhoto(next, record, "front");
+  }
+  for (const record of result.rejectedMeasurements || []) {
+    next = applyReviewedPhoto(next, record, "weight");
+  }
+  return next;
 }
 
 export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
@@ -754,7 +777,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           photos={photosByAngle[photoAngle] || []}
           canReview={canEdit}
           onReviewed={(record, angle, result) => {
-            setBodyAnalytics((current) => applyReviewedPhoto(current, record, angle));
+            setBodyAnalytics((current) => applyReviewResult(current, { ...result, photo: record }, angle));
             const status = result?.paidOnboardingStepStatus;
             if (!status || !onUserUpdated) return;
             const done = Number(result.completedStepsCount);
@@ -762,6 +785,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
               ...user,
               paidOnboardingStepStatus: status,
               paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
+              ...(result.paidOnboardingStep ? { paidOnboardingStep: result.paidOnboardingStep } : {}),
               ...(Number.isFinite(done) ? {
                 onboardingDone: done,
                 onboardingPct: Math.round((done / 10) * 100),

@@ -2,15 +2,19 @@ const { todayDateOnly } = require("../utils/dateOnly");
 const { getSettings, listEnabledActivities } = require("../models/dailyReflectionModel");
 const { getSettings: getStepsSettings, getDayLog: getStepsDayLog, formatDayLog: formatStepsDayLog } = require("../models/stepsTrackingModel");
 const { getSettings: getWaterSettings, getDayLog: getWaterDayLog, formatDayLog: formatWaterDayLog } = require("../models/waterTrackingModel");
-const { listUserSupplementDosagesByUserId } = require("../models/userSupplementDosageModel");
+const {
+  listUserSupplementDosagesByUserId,
+  isDosageScheduledOnDate,
+} = require("../models/userSupplementDosageModel");
 const {
   queryLogsByUserIdAndDate,
   buildTodayCompletionMap,
   normalizeLogDate,
 } = require("../models/userSupplementDosageLogModel");
 const { queryMealLogsByUserAndDateRange } = require("../models/mealTrackingModel");
+const { getUserById, getDailyMealGoal, DAILY_MEAL_GOAL_DEFAULT } = require("../models/userModel");
 
-const MEAL_DAILY_GOAL = 3;
+const MEAL_DAILY_GOAL = DAILY_MEAL_GOAL_DEFAULT;
 
 function clampPercent(value) {
   if (value == null || !Number.isFinite(value)) return null;
@@ -25,17 +29,21 @@ function ratioPercent(current, goal) {
   return clampPercent((c / g) * 100);
 }
 
+/** Meal reflection: over the daily goal counts as 0% (not capped at 100%). */
+function mealTrackingPercent(current, goal) {
+  const g = Number(goal);
+  const c = Number(current);
+  if (!Number.isFinite(g) || g <= 0) return null;
+  if (!Number.isFinite(c) || c < 0) return 0;
+  if (c > g) return 0;
+  return clampPercent((c / g) * 100);
+}
+
 function averagePercents(values) {
   const applicable = values.filter((value) => value != null && Number.isFinite(value));
   if (applicable.length === 0) return 0;
   const sum = applicable.reduce((acc, value) => acc + value, 0);
   return clampPercent(sum / applicable.length) || 0;
-}
-
-function isDosageActiveOnDate(dosage, logDate) {
-  if (String(dosage.status || "").toLowerCase() === "stopped") return false;
-  const date = normalizeLogDate(logDate);
-  return date >= dosage.startDate && date <= dosage.endDate;
 }
 
 async function computeStepsTracking(userId, date) {
@@ -74,7 +82,7 @@ async function computeNutritionTracking(userId, date) {
   const logDate = normalizeLogDate(date);
   const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
   const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false });
-  const activeDosages = dosages.filter((row) => isDosageActiveOnDate(row, logDate));
+  const activeDosages = dosages.filter((row) => isDosageScheduledOnDate(row, logDate));
 
   let scheduled = 0;
   let completed = 0;
@@ -100,8 +108,9 @@ async function computeNutritionTracking(userId, date) {
   };
 }
 
-async function computeMealTracking(userId, date) {
+async function computeMealTracking(userId, date, dailyMealGoal = MEAL_DAILY_GOAL) {
   const logs = await queryMealLogsByUserAndDateRange(userId, date, date);
+  const goal = normalizeMealGoalCount(dailyMealGoal);
   // Count logged meals toward daily reflection progress even while pending coach
   // review; only rejected meals are excluded.
   const counted = logs.filter((log) => {
@@ -111,9 +120,15 @@ async function computeMealTracking(userId, date) {
 
   return {
     current: counted,
-    goal: MEAL_DAILY_GOAL,
-    percent: clampPercent((counted / MEAL_DAILY_GOAL) * 100),
+    goal,
+    percent: mealTrackingPercent(counted, goal),
   };
+}
+
+function normalizeMealGoalCount(value) {
+  const n = Math.floor(Number(value));
+  if (n === 1 || n === 2 || n === 3) return n;
+  return MEAL_DAILY_GOAL;
 }
 
 function computeActivityPercents(enabledActivities, activityValues, gratitudeYes) {
@@ -140,14 +155,18 @@ function computeActivityPercents(enabledActivities, activityValues, gratitudeYes
 }
 
 async function buildDailyReflectionSnapshot(userId, date = todayDateOnly()) {
-  const settings = await getSettings(userId);
+  const [settings, user] = await Promise.all([
+    getSettings(userId),
+    getUserById(userId),
+  ]);
   const enabledActivities = listEnabledActivities(settings);
+  const dailyMealGoal = getDailyMealGoal(user);
 
   const [steps, water, nutrition, meal] = await Promise.all([
     computeStepsTracking(userId, date),
     computeWaterTracking(userId, date),
     computeNutritionTracking(userId, date),
-    computeMealTracking(userId, date),
+    computeMealTracking(userId, date, dailyMealGoal),
   ]);
 
   return {
@@ -202,4 +221,5 @@ module.exports = {
   computeWaterTracking,
   computeNutritionTracking,
   computeMealTracking,
+  mealTrackingPercent,
 };

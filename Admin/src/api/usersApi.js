@@ -43,6 +43,12 @@ export function mapUiTierToApi(tierFilter) {
   return undefined;
 }
 
+/** Eagle is a client category on the Heal plan, not a userTier value. */
+export function mapUiTierToClientCategory(tierFilter) {
+  if (tierFilter === "Eagle") return "eagle";
+  return undefined;
+}
+
 function mapUtype(user) {
   if (String(user?.clientCategory || "").toLowerCase().trim() === "eagle") {
     return "team";
@@ -633,6 +639,10 @@ export function mapApiUserToRow(user, index = 0) {
     presentablePicsEnabled: user?.presentablePicsEnabled !== false,
     dietPlanEnabled: user?.dietPlanEnabled !== false,
     mealTrackingMode: user?.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro",
+    dailyMealGoal: (() => {
+      const n = Math.floor(Number(user?.dailyMealGoal));
+      return n === 1 || n === 2 || n === 3 ? n : 3;
+    })(),
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     referralCode: String(user?.referralCode || "").trim(),

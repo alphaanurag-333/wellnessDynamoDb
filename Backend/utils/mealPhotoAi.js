@@ -130,6 +130,32 @@ function itemsHaveMacros(items) {
   );
 }
 
+function clientFoodItems(record) {
+  return (Array.isArray(record?.items) ? record.items : [])
+    .map((item) => ({
+      name: String(item?.name || "").trim(),
+      quantityGm: Number(item?.quantityGm) || 0,
+    }))
+    .filter((item) => item.name);
+}
+
+/** Detailed meals are calculated from the client's food list. Macro meals stay on the photo. */
+function mealAiRoute(record) {
+  const mode = String(record?.trackingMode || "").trim().toLowerCase();
+  if (mode === "macro") return { source: "photo", items: [] };
+
+  const items = clientFoodItems(record);
+  const detailed = mode === "detailed_macro" || mode === "detailed";
+  if (detailed) return { source: "items", items };
+
+  const legacyDetailed = items.length > 0
+    && record?.aiSource !== "photo"
+    && String(record?.aiStatus || "none") !== "analysed";
+  if (legacyDetailed) return { source: "items", items };
+
+  return { source: "photo", items: [] };
+}
+
 function buildMealItemsAiPrompt(items = []) {
   const lines = items.map((item, index) => {
     const name = String(item?.name || "").trim();
@@ -139,11 +165,11 @@ function buildMealItemsAiPrompt(items = []) {
   });
 
   return [
-    "You are a nutrition coach. Calculate macros from each food name and the quantity the client entered.",
-    "Do not use a photo. Do not add foods. Do not remove foods. Do not change names or quantities.",
-    "How to read the quantity:",
-    "- If the food is normally counted (egg, roti, chapati, banana, apple, bread slice, idli, dosa, paratha) and the quantity is a small whole number, it is a piece count. Egg with quantity 2 means 2 eggs, not 2 grams.",
-    "- Otherwise the quantity is grams. Gajar 100 means 100 g carrot. Papita 150 means 150 g papaya.",
+    "You are a nutrition coach. Calculate macros from each food name and the quantity the client typed.",
+    "There is no photo. Do not estimate portions from an image or screenshot. Do not add foods. Do not remove foods. Do not change names or quantities.",
+    "How to read the quantity the client entered:",
+    "- Countable foods (egg, roti, chapati, banana, apple, bread slice, idli, dosa, paratha) with a quantity from 1 to 12 are a piece count. Egg with quantity 2 means 2 eggs, not 2 grams.",
+    "- Any larger number is grams. Rice 100 means 100 g cooked rice. Chapati 150 means 150 g chapati, not 150 chapatis. Sabji 150 means 150 g of a typical home-style vegetable sabzi. Salad 100 means 100 g raw salad.",
     "Calculate calories, protein, carbs, and fat for that exact amount of each food. Use realistic commonly eaten values.",
     "Foods:",
     lines.join("\n"),
@@ -255,6 +281,8 @@ module.exports = {
   UNRELATED_MESSAGE,
   buildMealPhotoAiPrompt,
   buildMealItemsAiPrompt,
+  clientFoodItems,
+  mealAiRoute,
   normalizeMealPhotoAi,
   normalizeMealItemsAi,
 };

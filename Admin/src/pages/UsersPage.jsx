@@ -16,7 +16,6 @@ import {
   isEagleClient,
   isEagleMoveTarget,
   lastActiveMinutes,
-  listPaidUpgradeOptions,
   listTierMoveOptions,
   nextTier,
   normalizeTier,
@@ -34,11 +33,13 @@ import {
   assignUserCoach,
   deleteUser,
   unassignUserCoach,
+  fetchArchivedUsers,
   fetchScopedUsers,
   fetchUser,
   fetchUsers,
   mapUiStatusToApi,
   mapUiTierToApi,
+  mapUiTierToClientCategory,
   moveMaintenanceUserToHeal,
   moveUserToEagle,
   undoUserEagleConversion,
@@ -61,7 +62,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: "Disabled", label: "Disabled" },
 ];
 
-const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0 };
+const EMPTY_TAB_COUNTS = { all: 0, individual: 0, team: 0, app: 0, archived: 0 };
 const USER_NAME_MAX_CHARS = 40;
 
 function truncateUserName(name, max = USER_NAME_MAX_CHARS) {
@@ -206,6 +207,11 @@ function userSubline(user) {
   return user.email || "—";
 }
 
+function deletedAtMs(iso) {
+  const d = new Date(iso || "");
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 const PAGE_SIZE = 20;
 const EXPORT_PAGE_SIZE = 200;
 
@@ -285,7 +291,7 @@ export function UsersPage() {
   const { pathname } = useLocation();
   const openUserId = matchOpenUserId(pathname);
   const { showToast: onToast } = useOutletContext();
-  const { activeRole, can, dataScope, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
+  const { activeRole, can, dataScope, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
   const listSearchRef = useRef(searchParams);
   const profileWasOpenRef = useRef(Boolean(openUserId));
@@ -300,15 +306,7 @@ export function UsersPage() {
   const canEdit = can("console.cl.edit");
   const canDelete = can("console.cl.delete");
   const canExport = can("console.cl.export");
-  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
   const canChangeTier = Boolean(isAdminView);
-  const canUpgradePaidTier =
-    canChangeTier
-    || (
-      sessionUi === "wc"
-      && (viewAs === "wc" || viewAsPersona === "wc")
-      && can("console.cl.edit")
-    );
   // Disable / re-enable client accounts is admin-only (WC and other staff must not see this).
   const canDisable = Boolean(isAdminView);
   // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
@@ -353,6 +351,7 @@ export function UsersPage() {
   const [tabCounts, setTabCounts] = useState(EMPTY_TAB_COUNTS);
 
   const typeTab = listSearchParams.get("tab") || "all";
+  const isArchivedTab = isAdminView && typeTab === "archived";
   const tierFilter = listSearchParams.get("tier") || "";
   const coachFilter = listSearchParams.get("coach") || "";
   const awcFilter = listSearchParams.get("awc") || "";
@@ -366,13 +365,13 @@ export function UsersPage() {
 
   useEffect(() => {
     if (openUserId) return;
-    if (typeTab === "archived") {
+    if (typeTab === "archived" && !isAdminView) {
       const next = new URLSearchParams(listSearchParams);
       next.delete("tab");
       next.delete("page");
       setSearchParams(next, { replace: true });
     }
-  }, [listSearchParams, openUserId, setSearchParams, typeTab]);
+  }, [isAdminView, listSearchParams, openUserId, setSearchParams, typeTab]);
 
   useEffect(() => {
     if (openUserId) return undefined;
@@ -424,6 +423,7 @@ export function UsersPage() {
     search: debouncedSearch || undefined,
     status: mapUiStatusToApi(statusFilter),
     userTier: mapUiTierToApi(tierFilter),
+    clientCategory: mapUiTierToClientCategory(tierFilter),
     parentCoachId: coachFilter || undefined,
     assignedCoachId: awcFilter || undefined,
     subscriptionExpiryDays: subscriptionExpiryDays || undefined,
@@ -440,6 +440,13 @@ export function UsersPage() {
   }, [baseListQuery, typeTab]);
 
   const loadUsersPage = useCallback(async (page, limit) => {
+    if (isArchivedTab) {
+      return fetchArchivedUsers({
+        page,
+        limit,
+        search: debouncedSearch || undefined,
+      });
+    }
     if (listQuery.empty) {
       return { users: [], pagination: { page: 1, limit, total: 0, pages: 1 } };
     }
@@ -447,7 +454,7 @@ export function UsersPage() {
     return useScopedUsers
       ? fetchScopedUsers(scopedUsersRequest(params))
       : fetchUsers(params);
-  }, [listQuery, useScopedUsers]);
+  }, [debouncedSearch, isArchivedTab, listQuery, useScopedUsers]);
 
   const usersLenRef = useRef(0);
   usersLenRef.current = users.length;
@@ -514,11 +521,16 @@ export function UsersPage() {
           return 0;
         }
       };
-      const [all, individual, team, app] = await Promise.all([
+      const [all, individual, team, app, archived] = await Promise.all([
         fetchCount("all"),
         fetchCount("individual"),
         fetchCount("team"),
         fetchCount("app"),
+        isAdminView
+          ? fetchArchivedUsers({ page: 1, limit: 1, search: baseListQuery.search })
+              .then((result) => Number(result?.pagination?.total) || 0)
+              .catch(() => 0)
+          : Promise.resolve(0),
       ]);
       if (!cancelled) {
         setTabCounts({
@@ -526,6 +538,7 @@ export function UsersPage() {
           individual,
           team,
           app,
+          archived,
         });
       }
     }
@@ -533,12 +546,19 @@ export function UsersPage() {
     return () => {
       cancelled = true;
     };
-  }, [baseListQuery, openUserId, reloadNonce, useScopedUsers]);
+  }, [baseListQuery, isAdminView, openUserId, reloadNonce, useScopedUsers]);
 
   useEffect(() => {
-    if (typeTab === "all") return;
+    if (typeTab === "all" || typeTab === "archived") return;
     setTabCounts((prev) => (
       prev[typeTab] === pagination.total ? prev : { ...prev, [typeTab]: pagination.total }
+    ));
+  }, [pagination.total, typeTab]);
+
+  useEffect(() => {
+    if (typeTab !== "archived") return;
+    setTabCounts((prev) => (
+      prev.archived === pagination.total ? prev : { ...prev, archived: pagination.total }
     ));
   }, [pagination.total, typeTab]);
 
@@ -606,12 +626,14 @@ export function UsersPage() {
   );
 
   const basePool = useMemo(() => {
+    if (isArchivedTab) return users;
     return users.filter((u) => !deletedUsers.includes(userOverrideKey(u)));
-  }, [deletedUsers, users]);
+  }, [deletedUsers, isArchivedTab, users]);
 
   const enrichedPool = useMemo(() => {
+    if (isArchivedTab) return basePool;
     return basePool.map((u) => enrichUser(u, overrideState));
-  }, [basePool, overrideState]);
+  }, [basePool, isArchivedTab, overrideState]);
 
   const wcSelectOptions = useMemo(() => {
     const byId = new Map();
@@ -675,8 +697,15 @@ export function UsersPage() {
         count,
       };
     });
+    if (isAdminView) {
+      tabs.push({
+        id: "archived",
+        label: "Archived users",
+        count: tabCounts.archived ?? (typeTab === "archived" ? pagination.total : 0),
+      });
+    }
     return tabs;
-  }, [pagination.total, tabCounts, typeTab]);
+  }, [isAdminView, pagination.total, tabCounts, typeTab]);
 
   const pageRows = useMemo(() => {
     let list = enrichedPool;
@@ -686,6 +715,9 @@ export function UsersPage() {
         if (sort.key === "name") {
           return dir * String(a.name || "").localeCompare(String(b.name || ""));
         }
+        if (sort.key === "archived") {
+          return dir * (deletedAtMs(a.deletedAt) - deletedAtMs(b.deletedAt));
+        }
         return dir * (lastActiveMinutes(a.lastActive) - lastActiveMinutes(b.lastActive));
       });
     }
@@ -693,7 +725,9 @@ export function UsersPage() {
   }, [enrichedPool, sort]);
 
   const listTotal = pagination.total;
-  const headerCount = Number(tabCounts[typeTab]) || listTotal;
+  const headerCount = isArchivedTab
+    ? listTotal
+    : (Number(tabCounts[typeTab]) || listTotal);
   const totalPages = Math.max(1, pagination.pages || 1);
   const safePage = currentPage;
 
@@ -771,23 +805,15 @@ export function UsersPage() {
     });
   };
 
-  const withWcAllocationNote = (prompt) => {
-    if (canChangeTier || !canUpgradePaidTier) return prompt;
-    return {
-      ...prompt,
-      body: `${prompt.body} They stay allocated to you as their wellness coach.`,
-    };
-  };
-
   const adminTierChangeBlocked = (user) => canChangeTier && tierChangeBlockedWithoutCoach(user);
 
   const convertTier = (user) => {
-    if (!canUpgradePaidTier) return;
+    if (!canChangeTier) return;
     if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, direction: "up", ...withWcAllocationNote(conversionPrompt(user, "up")) });
+    setConversionAsk({ user, direction: "up", ...conversionPrompt(user, "up") });
   };
 
   const convertFromEagle = (user) => {
@@ -799,17 +825,17 @@ export function UsersPage() {
     setConversionAsk({
       user,
       kind: "leave-eagle",
-      ...withWcAllocationNote(eagleToHealConversionPrompt(user)),
+      ...eagleToHealConversionPrompt(user),
     });
   };
 
   const convertToEagle = (user) => {
-    if (!canUpgradePaidTier || isEagleClient(user)) return;
+    if (!canChangeTier || isEagleClient(user)) return;
     if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, kind: "eagle", ...withWcAllocationNote(eagleConversionPrompt(user)) });
+    setConversionAsk({ user, kind: "eagle", ...eagleConversionPrompt(user) });
   };
 
   const downgradeTier = (user) => {
@@ -828,8 +854,7 @@ export function UsersPage() {
 
   const confirmConversion = async () => {
     const ask = conversionAsk;
-    if (!canUpgradePaidTier || !ask?.user) return;
-    if (!canChangeTier && ask.direction === "down") return;
+    if (!canChangeTier || !ask?.user) return;
     const user = ask.user;
     const key = userOverrideKey(user);
     if (adminTierChangeBlocked(user)) {
@@ -1039,10 +1064,13 @@ export function UsersPage() {
     }
   };
 
-  const openUser = (user) => {
+  const openUser = (user, { archived = false } = {}) => {
     const id = userOverrideKey(user);
     if (!id) return;
-    navigate(UPDATED_ADMIN_PATHS.userDetail(id), { preventScrollReset: true });
+    const path = archived
+      ? `${UPDATED_ADMIN_PATHS.userDetail(id)}?archived=1`
+      : UPDATED_ADMIN_PATHS.userDetail(id);
+    navigate(path, { preventScrollReset: true });
   };
 
   const confirmDelete = async () => {
@@ -1199,7 +1227,7 @@ export function UsersPage() {
           meta={(
             <>
               <span className="page-head__count">{loading ? "…" : headerCount}</span>&nbsp;
-              clients · 
+              {isArchivedTab ? "archived · " : "clients · "} 
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
@@ -1223,6 +1251,7 @@ export function UsersPage() {
                 value={tierFilter}
                 options={TIER_OPTIONS}
                 onChange={setTierFilter}
+                disabled={isArchivedTab}
               />
               <CfgSelect
                 className="ua-users-filter"
@@ -1233,13 +1262,14 @@ export function UsersPage() {
                   setStatusFilter(value);
                   goToFirstPage();
                 }}
+                disabled={isArchivedTab}
               />
               {canExport ? (
                 <button
                   type="button"
                   className="btn btn--outline ua-users-export"
                   onClick={exportCsv}
-                  disabled={exporting || loading}
+                  disabled={exporting || loading || isArchivedTab}
                 >
                   <ExportIcon /> {exporting ? "Exporting…" : "Export CSV"}
                 </button>
@@ -1311,8 +1341,8 @@ export function UsersPage() {
       ) : null}
 
       <TableScroll>
-        <div className="ua-table-card ua-table-card--users">
-          <div className={`ua-table ua-table--users${showRowActions ? "" : " ua-table--users-readonly"} ua-table__head`}>
+        <div className={`ua-table-card ua-table-card--users${isArchivedTab ? " ua-table-card--users-archived" : ""}`}>
+          <div className={`ua-table ua-table--users${isArchivedTab ? " ua-table--users-archived" : ""}${showRowActions && !isArchivedTab ? "" : " ua-table--users-readonly"} ua-table__head`}>
             <div>#</div>
             <div>
               <SortButton
@@ -1322,32 +1352,118 @@ export function UsersPage() {
                 onClick={() => toggleSort("name")}
               />
             </div>
-            <div className="ua-users-tier-head">Tier</div>
-            <div>Wellness coach</div>
-            <div>Assistant WC</div>
-            <div>
-              <SortButton
-                label="Last active"
-                active={sort?.key === "active"}
-                direction={sort?.dir}
-                onClick={() => toggleSort("active")}
-              />
-            </div>
-            <div>Status</div>
-            {showRowActions ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
+            {isArchivedTab ? (
+              <>
+                <div>Phone</div>
+                <div className="ua-users-tier-head">Tier</div>
+                <div>
+                  <SortButton
+                    label="Last active"
+                    active={sort?.key === "active"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("active")}
+                  />
+                </div>
+                <div>
+                  <SortButton
+                    label="Archived"
+                    active={sort?.key === "archived"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("archived")}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ua-users-tier-head">Tier</div>
+                <div>Wellness coach</div>
+                <div>Assistant WC</div>
+                <div>
+                  <SortButton
+                    label="Last active"
+                    active={sort?.key === "active"}
+                    direction={sort?.dir}
+                    onClick={() => toggleSort("active")}
+                  />
+                </div>
+                <div>Status</div>
+                {showRowActions ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
+              </>
+            )}
           </div>
 
           {loading && !openUserId ? (
-            <BrandLoader variant="page" label="Loading clients…" />
+            <BrandLoader variant="page" label={isArchivedTab ? "Loading archived users…" : "Loading clients…"} />
           ) : rows.length === 0 ? (
             <div className="ua-users-empty">
               <div className="ua-users-empty__icon"><UsersEmptyIcon /></div>
-              <div className="ua-users-empty__title">No clients found</div>
+              <div className="ua-users-empty__title">{isArchivedTab ? "No archived clients" : "No clients found"}</div>
               <p className="ua-users-empty__sub">
-                No records match your filters. Try clearing the search or filters.
+                {isArchivedTab
+                  ? "Deleted clients appear here with their archive date."
+                  : "No records match your filters. Try clearing the search or filters."}
               </p>
-              <button type="button" className="btn btn--outline" onClick={clearFilters}>Clear filters</button>
+              {!isArchivedTab ? (
+                <button type="button" className="btn btn--outline" onClick={clearFilters}>Clear filters</button>
+              ) : null}
             </div>
+          ) : isArchivedTab ? (
+            rows.map((u, i) => {
+              const tierBadge = userTierBadge(u);
+              const tier = tierBadge.style;
+              const rowKey = userOverrideKey(u) || u.name;
+              return (
+                <div
+                  key={rowKey}
+                  className="ua-table ua-table--users ua-table--users-archived ua-table--users-readonly ua-table__row ua-table__row--readonly ua-table__row--clickable"
+                  onClick={() => openUser(u, { archived: true })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openUser(u, { archived: true });
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  title="View archived profile (read-only)"
+                >
+                  <div className="ua-table__muted ua-users-index">{u.n}</div>
+                  <div className="ua-user-cell">
+                    <UserListAvatar
+                      name={u.name}
+                      profileImage={u.profileImage}
+                      colorIndex={i}
+                    />
+                    <div className="ua-user-cell__meta">
+                      <div className="ua-user-cell__name" title={u.name || undefined}>
+                        {truncateUserName(u.name)}
+                      </div>
+                      <div className="ua-user-cell__sub">
+                        <span className="ua-user-cell__email" title={userSubline(u)}>{userSubline(u)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="ua-table__muted" data-label="Phone">{u.phone || "—"}</div>
+                  <div className="ua-users-tier" data-label="Tier">
+                    <span
+                      className="ua-tier"
+                      style={{ background: tier.bg, color: tier.color, borderColor: tier.border }}
+                    >
+                      {tierBadge.label}
+                    </span>
+                  </div>
+                  <div className="ua-table__muted ua-users-last-active" data-label="Last active">
+                    {u.lastActive || "—"}
+                  </div>
+                  <div className="ua-archived-users__deleted" data-label="Archived">
+                    <span title={u.deletedLabel || undefined}>{u.deletedLabel || "—"}</span>
+                    {u.deletedAgo ? (
+                      <span className="ua-archived-users__deleted-ago">{u.deletedAgo}</span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
           ) : (
             rows.map((u, i) => {
               const tierBadge = userTierBadge(u);
@@ -1355,7 +1471,7 @@ export function UsersPage() {
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
               const tierMoves = canChangeTier
                 ? listTierMoveOptions(u.tier, u.ageDays, u)
-                : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
+                : [];
               const rowKey = userOverrideKey(u) || u.name;
               const tierChangeBlocked = adminTierChangeBlocked(u);
               const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
@@ -1418,7 +1534,7 @@ export function UsersPage() {
                         })}
                       </div>
                     ) : null}
-                    {canUpgradePaidTier && !isEagleClient(u) ? (
+                    {canChangeTier && !isEagleClient(u) ? (
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--eagle"

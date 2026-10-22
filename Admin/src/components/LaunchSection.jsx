@@ -25,6 +25,7 @@ import {
   launchScoringHint,
   launchTotalQuestionCount,
 } from "../data/launchConfigData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -120,6 +121,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const [questionDrafts, setQuestionDrafts] = useState({});
   const [ratingDraft, setRatingDraft] = useState({ name: "", points: "", description: "" });
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [focusAreas, setFocusAreas] = useState([]);
   const [focusDraft, setFocusDraft] = useState("");
   const ratingsRef = useRef(ratings);
@@ -642,6 +644,21 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     });
   }
 
+  function askRemove(payload) {
+    if (busy) return;
+    setPendingDelete(payload);
+  }
+
+  async function confirmPendingDelete() {
+    const pending = pendingDelete;
+    if (!pending || busy) return;
+    setPendingDelete(null);
+    if (pending.kind === "rating") await removeRating(pending.rating);
+    else if (pending.kind === "domain") await removeDomain(pending.domain);
+    else if (pending.kind === "question") await removeQuestion(pending.domainId, pending.question);
+    else if (pending.kind === "focus") await removeFocusArea(pending.area);
+  }
+
   async function toggleFocusStatus(area) {
     const nextStatus = area.status === "inactive" ? "active" : "inactive";
     patchFocus(area.id, { status: nextStatus });
@@ -714,7 +731,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                 className="ua-cfg-icon-btn ua-cfg-launch-rating__delete"
                 aria-label={`Remove ${rating.name}`}
                 disabled={busy}
-                onClick={() => removeRating(rating)}
+                onClick={() => askRemove({
+                  kind: "rating",
+                  label: rating.name || "this rating",
+                  rating,
+                })}
               >
                 ×
               </button>
@@ -885,7 +906,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       className="ua-cfg-icon-btn ua-cfg-drf-section__delete"
                       aria-label={`Remove ${domain.name}`}
                       disabled={busy}
-                      onClick={() => removeDomain(domain)}
+                      onClick={() => askRemove({
+                        kind: "domain",
+                        label: domain.name || "this domain",
+                        domain,
+                      })}
                     >
                       ×
                     </button>
@@ -976,7 +1001,12 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                               className="ua-cfg-icon-btn ua-cfg-drf-question__delete"
                               aria-label={`Remove ${question.name}`}
                               disabled={busy}
-                              onClick={() => removeQuestion(domain.id, question)}
+                              onClick={() => askRemove({
+                                kind: "question",
+                                label: question.name || "this question",
+                                domainId: domain.id,
+                                question,
+                              })}
                             >
                               ×
                             </button>
@@ -1141,7 +1171,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                   className="ua-cfg-icon-btn ua-cfg-launch-focus__delete"
                   aria-label={`Remove ${area.title || "focus point"}`}
                   disabled={busy}
-                  onClick={() => removeFocusArea(area)}
+                  onClick={() => askRemove({
+                    kind: "focus",
+                    label: area.title || "this focus point",
+                    area,
+                  })}
                 >
                   ×
                 </button>
@@ -1167,6 +1201,42 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
           </button>
         </div>
       </Panel>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag={
+          pendingDelete?.kind === "rating"
+            ? "Delete rating"
+            : pendingDelete?.kind === "domain"
+              ? "Delete domain"
+              : pendingDelete?.kind === "question"
+                ? "Delete question"
+                : "Delete focus point"
+        }
+        title={pendingDelete ? `Are you sure you want to remove “${pendingDelete.label}”?` : ""}
+        body={
+          pendingDelete?.kind === "domain"
+            ? "This domain and its questions will be permanently removed. You can’t undo this."
+            : pendingDelete?.kind === "question"
+              ? "This question will be permanently removed from the domain. You can’t undo this."
+              : pendingDelete?.kind === "focus"
+                ? "This focus point will be removed from the suggestions list. You can’t undo this."
+                : "This rating will be removed from the LAUNCH scale. You can’t undo this."
+        }
+        cancelLabel={
+          pendingDelete?.kind === "rating"
+            ? "Keep rating"
+            : pendingDelete?.kind === "domain"
+              ? "Keep domain"
+              : pendingDelete?.kind === "question"
+                ? "Keep question"
+                : "Keep point"
+        }
+        confirmLabel="Remove"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmPendingDelete}
+      />
 
       <ScoringInfoModal open={infoOpen} ratings={ratings} onClose={() => setInfoOpen(false)} />
     </>

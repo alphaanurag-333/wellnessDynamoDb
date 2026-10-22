@@ -26,6 +26,8 @@ const {
   listGlucoseLogsByUser,
   toUserGlucoseLog,
 } = require("../../models/healthProgressGlucoseModel");
+const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
+const { listHba1cReadingsFromLabReports } = require("../../utils/programProgressCalculations");
 const {
   createBloodPressureLog,
   listBloodPressureLogsByUser,
@@ -171,7 +173,11 @@ exports.createGlucoseLogController = asyncHandler(async (req, res) => {
 exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const { page, limit } = readPagination(req);
-  const result = await listGlucoseLogsByUser(userId, { page, limit });
+  const [result, labReports] = await Promise.all([
+    listGlucoseLogsByUser(userId, { page, limit }),
+    listUserLabReportsByUserId(userId),
+  ]);
+  const hba1cReadings = listHba1cReadingsFromLabReports(labReports);
 
   return res.status(200).json({
     status: true,
@@ -179,6 +185,7 @@ exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
     data: {
       logs: result.items.map(toUserGlucoseLog),
       pagination: result.pagination,
+      hba1cReadings,
     },
   });
 });

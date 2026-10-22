@@ -12,6 +12,7 @@ const {
   formatChangePts,
   resolveGoalWeightKg,
   extractHba1cFromLabReport,
+  listHba1cReadingsFromLabReports,
   labReportsToHba1cReadings,
   mergeHba1cReadings,
 } = require("../utils/programProgressCalculations");
@@ -96,6 +97,35 @@ describe("lab report HbA1c extraction", () => {
   it("skips reports without analysed AI output", () => {
     assert.equal(extractHba1cFromLabReport({ aiStatus: "pending" }), null);
     assert.equal(labReportsToHba1cReadings([{ aiStatus: "failed" }]).length, 0);
+  });
+
+  it("returns the latest seven deduped HbA1c readings from blood reports", () => {
+    const mk = (id, reportDate, value) => ({
+      id,
+      aiStatus: "analysed",
+      reportDate,
+      updatedAt: `${reportDate}T12:00:00.000Z`,
+      aiAnalysis: {
+        panels: [{
+          title: "GLUCOSE",
+          rows: [{ name: "HbA1c", value: String(value), tone: "bad", note: "Note", rr: "< 5.7%" }],
+        }],
+      },
+    });
+
+    const reports = [];
+    for (let i = 0; i < 10; i += 1) {
+      const month = String(i + 1).padStart(2, "0");
+      reports.push(mk(`r${i}`, `2026-${month}-15`, 5 + i * 0.1));
+    }
+    reports.push(mk("dup", "2026-10-15", 9.9));
+
+    const readings = listHba1cReadingsFromLabReports(reports);
+    assert.equal(readings.length, 7);
+    assert.equal(readings[0].value, 5.3);
+    assert.equal(readings[6].value, 9.9);
+    assert.equal(readings[6].reportId, "dup");
+    assert.equal(readings[6].rr, "< 5.7%");
   });
 });
 

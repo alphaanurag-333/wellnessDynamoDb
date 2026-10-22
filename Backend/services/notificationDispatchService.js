@@ -16,6 +16,7 @@ const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync 
 const {
   emitMealLogged,
   emitLabReportUploaded,
+  emitDosageNearComplete,
   emitCounsellingRequested,
   emitCounsellingPeriodSelected,
   emitCounsellingTimeRequested,
@@ -41,6 +42,7 @@ const FCM_TYPE_BY_KIND = {
   yoga_assigned: "yoga_assigned_notification",
   supplement_recommended: "supplement_recommendation_notification",
   supplement_dosage_assigned: "supplement_dosage_notification",
+  supplement_dosage_near_complete: "supplement_dosage_near_complete_notification",
   supplement_delivery_requested: "supplement_delivery_requested_notification",
   supplement_bill_uploaded: "supplement_bill_uploaded_notification",
   supplement_order_logged: "supplement_order_logged_notification",
@@ -355,8 +357,59 @@ async function dispatchDailyReflectionBedtimeNotification({
     title: "Bedtime reminder",
   });
 
-  runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
+  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
+  try {
+    push = await deliverTargetedPush(userId, notification);
+  } catch (err) {
+    console.error("FCM push failed:", err?.message || err);
+  }
+  return { notification, push };
+}
+
+/**
+ * Nightly automatic reminder (30 min before bedtime). Dedupes once per user per calendar day.
+ */
+async function ensureDailyReflectionBedtimeReminderNotification({
+  userId,
+  bedtime,
+  occurrenceDate = null,
+}) {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  const dateKey = String(
+    occurrenceDate || new Date().toISOString().slice(0, 10)
+  ).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+
+  const referenceId = `auto:${dateKey}`;
+  const existing = await findTargetedNotificationForUser(uid, {
+    kind: "daily_reflection_reminder",
+    referenceId,
+  });
+
+  const timeLabel = formatBedtimeLabel(bedtime);
+  const message = `Your daily reflection form is ready — log tonight’s check-in around ${timeLabel}.`;
+
+  let notification = existing;
+  if (!notification) {
+    notification = await createTargetedNotification({
+      userId: uid,
+      kind: "daily_reflection_reminder",
+      message,
+      referenceId,
+      referenceType: "daily_reflection_bedtime",
+      title: "Bedtime reminder",
+    });
+  }
+
+  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
+  try {
+    push = await deliverTargetedPush(uid, notification);
+  } catch (err) {
+    console.error("FCM push failed:", err?.message || err);
+  }
+  return { notification, push };
 }
 
 async function dispatchCoachReminderNotification({
@@ -639,7 +692,7 @@ async function dispatchSupplementDosageAssignedNotification({
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
   const supplement = String(supplementName || "a nutrition").trim() || "a nutrition";
-  const message = `${name} set a dosage schedule for ${supplement}.`;
+  const message = `${name} pushed a dosage schedule for ${supplement} to your app.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -652,6 +705,40 @@ async function dispatchSupplementDosageAssignedNotification({
 
   runPushSafely(deliverTargetedPush(userId, notification));
   return notification;
+}
+
+async function dispatchDosageNearCompleteCoachNotification({
+  user,
+  dosage,
+  progressPercent,
+}) {
+  emitDosageNearComplete({ user, dosage, progressPercent });
+
+  const tokens = await collectCoachFcmTokensForUser(user);
+  if (tokens.length === 0) {
+    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
+  }
+
+  const userName = String(user?.name || "A client").trim() || "A client";
+  const supplement = String(dosage?.name || "nutrition").trim() || "nutrition";
+  const pct = Math.max(0, Math.min(100, Math.round(Number(progressPercent) || 0)));
+  const message = `${userName}'s ${supplement} dosage is ${pct}% complete.`;
+
+  return sendPushToTokens(tokens, {
+    title: "Dosage nearly complete",
+    body: message,
+    data: {
+      type: FCM_TYPE_BY_KIND.supplement_dosage_near_complete,
+      kind: "supplement_dosage_near_complete",
+      referenceId: String(dosage?.id || dosage?._id || ""),
+      referenceType: "user_supplement_dosage",
+      userId: String(user?.id || user?._id || ""),
+    },
+  });
+}
+
+function dispatchDosageNearCompleteCoachNotificationAsync(payload) {
+  runPushSafely(dispatchDosageNearCompleteCoachNotification(payload));
 }
 
 async function dispatchSupplementOrderLoggedNotification({
@@ -879,6 +966,7 @@ async function dispatchProgressPhotoReviewedNotification({
   angle,
   status,
   rejectionReason = "",
+  rejectDay = false,
   coachName,
   actorUserId = null,
 }) {
@@ -886,14 +974,19 @@ async function dispatchProgressPhotoReviewedNotification({
   const label = PROGRESS_PHOTO_ANGLE_LABELS[String(angle || "").trim().toLowerCase()] || "progress";
   const approved = String(status || "").trim().toLowerCase() === "approved";
   const reason = String(rejectionReason || "").trim();
+  const rejectedMessage = rejectDay
+    ? (reason
+      ? `${name} rejected your progress photos from this day. ${reason} Open the 180° page and submit them again.`
+      : `${name} rejected your progress photos from this day. Open the 180° page and submit them again.`)
+    : (reason
+      ? `${name} rejected your ${label} progress photo. ${reason}`
+      : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`);
   const notification = await createTargetedNotification({
     userId,
     kind: "progress_photo_reviewed",
     message: approved
       ? `${name} accepted your ${label} progress photo.`
-      : reason
-        ? `${name} rejected your ${label} progress photo. ${reason}`
-        : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`,
+      : rejectedMessage,
     referenceId: photoId ? String(photoId) : null,
     referenceType: "progress_photo",
     actorUserId,
@@ -1123,12 +1216,15 @@ module.exports = {
   dispatchCoachReminderNotification,
   ensureReminderDueInbox,
   dispatchDailyReflectionBedtimeNotification,
+  ensureDailyReflectionBedtimeReminderNotification,
   dispatchPhysicalExerciseAssignedNotification,
   dispatchCoachAssignmentChangeNotification,
   dispatchMentalWellbeingAssignedNotification,
   dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
+  dispatchDosageNearCompleteCoachNotification,
+  dispatchDosageNearCompleteCoachNotificationAsync,
   dispatchSupplementOrderLoggedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,
   dispatchSupplementDeliveryRequestedCoachNotificationAsync,
