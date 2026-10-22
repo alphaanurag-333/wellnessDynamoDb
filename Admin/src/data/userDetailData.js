@@ -534,6 +534,8 @@ function emptyProfileExtras(goal = "") {
     dietPlanEnabled: true,
     heartRateEnabled: true,
     sleepTrackingEnabled: true,
+    bodyMeasurementEnabled: false,
+    bodyMeasurementEnabledRaw: false,
     referralCode: "",
     referredByCode: "",
     paidOnboardingCompleted: false,
@@ -610,6 +612,11 @@ export function profileFromListUser(row, userId) {
     dietPlanEnabled: base.dietPlanEnabled !== false,
     heartRateEnabled: base.heartRateEnabled !== false,
     sleepTrackingEnabled: base.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: base.bodyMeasurementEnabled === true
+      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "done"
+      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "skipped",
+    bodyMeasurementEnabledRaw: base.bodyMeasurementEnabledRaw === true
+      || base.bodyMeasurementEnabled === true,
     referralCode: base.referralCode || extra.referralCode,
     referredByCode: base.referredByCode || extra.referredByCode || "",
     tags: Array.isArray(base.tags) && base.tags.length ? base.tags : extra.tags,

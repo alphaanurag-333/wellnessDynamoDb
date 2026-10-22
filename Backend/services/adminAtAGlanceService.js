@@ -30,7 +30,6 @@ const {
 const { listUserLaunchAssessmentsByUserId } = require("../models/userLaunchAssessmentModel");
 const {
   listUserSupplementDosagesByUserId,
-  frequencyLabel,
 } = require("../models/userSupplementDosageModel");
 const {
   listWeightLogsByUser,
@@ -417,22 +416,15 @@ function buildSupplements(dosages, today) {
   );
   const items = active.slice(0, 5).map((row) => {
     const endDate = row.endDate || null;
-    const daysLeft = endDate ? daysBetween(today, endDate) : null;
+    const daysLeft = endDate != null ? daysBetween(today, endDate) : null;
     const periods = Array.isArray(row.periods) ? row.periods : [];
     const first = periods[0];
-    const scheduleLabel = frequencyLabel(row.frequency, row.intervalDays);
     const noteParts = [];
     if (first?.period && PERIOD_LABEL[first.period]) {
-      noteParts.push(
-        row.beforeFirstMeal && ["morning", "evening", "night"].includes(first.period)
-          ? `${PERIOD_LABEL[first.period]} · Before 1st Meal`
-          : PERIOD_LABEL[first.period]
-      );
+      noteParts.push(PERIOD_LABEL[first.period]);
     } else if (first?.mealRelation) {
       noteParts.push(first.mealRelation === "before" ? "Before meal" : "After meal");
     }
-    if (scheduleLabel) noteParts.push(scheduleLabel);
-    if (row.publishedToApp === false) noteParts.push("Not in app");
     return {
       name: row.name || "Nutrition",
       note: noteParts.join(" · ") || row.unit || "",
@@ -440,7 +432,7 @@ function buildSupplements(dosages, today) {
         label: `${PERIOD_LABEL[p.period] || p.period} · ${p.quantity}`,
         tone: PERIOD_TONE[p.period] || "morning",
       })),
-      date: endDate ? shortDateLabel(endDate) : (scheduleLabel ? "Ongoing" : EMPTY),
+      date: endDate ? shortDateLabel(endDate) : EMPTY,
       daysLeft: daysLeft != null ? daysLeft : null,
       urgent: daysLeft != null && daysLeft <= 3,
     };
@@ -542,7 +534,7 @@ async function buildAtAGlanceForUser(userId) {
       )
     ),
     safe(listUserLaunchAssessmentsByUserId(userId)),
-    safe(listUserSupplementDosagesByUserId(userId, { includeStopped: false })),
+    safe(listUserSupplementDosagesByUserId(userId, { includeStopped: false, includeDraft: false })),
     safe(listWeightLogsByUser(userId, { page: 1, limit: 20 })),
   ]);
 

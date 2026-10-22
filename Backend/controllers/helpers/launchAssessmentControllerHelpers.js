@@ -11,6 +11,7 @@ const {
   getUserLaunchAssessmentByUserAndDate,
   listUserLaunchAssessmentsByUserId,
   updateUserLaunchAssessment,
+  pushUserLaunchAssessmentFocusPoints,
   deleteUserLaunchAssessment,
   SCORE_MIN,
   SCORE_MAX,
@@ -393,6 +394,35 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       return res.status(200).json({
         status: true,
         message: "LAUNCH score updated successfully",
+        assessment,
+      });
+    }),
+
+    pushFocusPointsController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentId = String(req.params.assessmentId || "").trim();
+      if (!assessmentId) throw new AppError("assessmentId is required", 400);
+
+      const current = await getUserLaunchAssessmentById(assessmentId);
+      if (!current || String(current.userId) !== String(userId)) {
+        throw new AppError("LAUNCH assessment not found", 404);
+      }
+
+      let assessment;
+      try {
+        assessment = await pushUserLaunchAssessmentFocusPoints(assessmentId);
+      } catch (err) {
+        handleLaunchValidationError(err);
+      }
+
+      const count = Array.isArray(assessment?.pushedFocusPoints) ? assessment.pushedFocusPoints.length : 0;
+
+      return res.status(200).json({
+        status: true,
+        message: count
+          ? `Pushed ${count} focus area${count === 1 ? "" : "s"} to client app`
+          : "Cleared focus areas in client app",
+        publishedCount: count,
         assessment,
       });
     }),

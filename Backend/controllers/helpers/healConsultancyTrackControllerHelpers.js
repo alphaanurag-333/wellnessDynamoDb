@@ -189,7 +189,31 @@ function resolveCoachHierarchy(user) {
 }
 
 function parseOfferPeriodsBody(body = {}) {
-  const { normalizePeriodOffers } = require("../../utils/counsellingPeriodHelpers");
+  const {
+    DEFAULT_DURATION_MINUTES,
+    normalizePeriodOffers,
+    normalizeSlotOffers,
+  } = require("../../utils/counsellingPeriodHelpers");
+
+  const durationRaw = body.durationMinutes ?? body.duration_minutes;
+  const durationMinutes =
+    durationRaw == null || durationRaw === ""
+      ? undefined
+      : Math.max(15, Math.min(120, Number(durationRaw) || DEFAULT_DURATION_MINUTES));
+
+  const rawSlots = body.slots || body.slotOffers || body.timeSlots;
+  if (Array.isArray(rawSlots) && rawSlots.length) {
+    let offers;
+    try {
+      offers = normalizeSlotOffers(rawSlots);
+    } catch (err) {
+      handleValidationError(err);
+    }
+    const notesRaw = body.coachNotes ?? body.coach_notes;
+    const coachNotes = notesRaw === undefined ? undefined : parseOptionalCoachNotes(body);
+    return { offers, coachNotes, durationMinutes };
+  }
+
   const raw = body.offers || body.periodOffers || body.availability;
   let offers;
   try {
@@ -199,7 +223,7 @@ function parseOfferPeriodsBody(body = {}) {
   }
   const notesRaw = body.coachNotes ?? body.coach_notes;
   const coachNotes = notesRaw === undefined ? undefined : parseOptionalCoachNotes(body);
-  return { offers, coachNotes };
+  return { offers, coachNotes, durationMinutes };
 }
 
 function parseSelectPeriodBody(body = {}) {

@@ -91,6 +91,19 @@ export async function rejectHealConsultancyRequest(userId, trackId, payload = {}
   }
 }
 
+export async function rejectHealConsultancyIntake(userId, trackId) {
+  try {
+    const { data } = await api.post(
+      tracksPath(userId, `/${encodeURIComponent(trackId)}/reject-intake`),
+      {},
+      headers(),
+    );
+    return data.data?.track;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function updateHealConsultancyTrack(userId, trackId, payload) {
   try {
     const { data } = await api.patch(

@@ -2,9 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { suggestRating } from "../../data/launchData.js";
-import { computeLaunchAssessment } from "../../data/launchConfigData.js";
+import {
+  buildLaunchAutoFocusFromCatalog,
+  computeLaunchAssessment,
+  launchDomainBelowMinRequirement,
+} from "../../data/launchConfigData.js";
 import { ScheduleMeetingModal, slotsFromMeeting } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
@@ -22,6 +27,7 @@ import {
   saveUserLaunchAssessment,
   saveUserPrakrutiAssessment,
   updateUserLaunchAssessment,
+  publishUserLaunchFocusPoints,
 } from "../../api/onboardingApi.js";
 
 const DOSHA_KEYS = ["vata", "pitta", "kapha"];
@@ -308,13 +314,27 @@ function DomainAccordion({
   canWrite = true,
 }) {
   const pct = domain.max ? Math.round((domain.score / domain.max) * 100) : 0;
+  const minReq = Number.isFinite(Number(domain.minRequirement)) ? Number(domain.minRequirement) : 50;
+  const belowMin = launchDomainBelowMinRequirement(domain);
   return (
-    <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}`}>
+    <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}${belowMin ? " ua-cp-launch-domain--below-min" : ""}`}>
       <button type="button" className="ua-cp-launch-domain__head" onClick={onToggle}>
         <div className="ua-cp-launch-domain__subhead">
           <span className="ua-cp-launch-domain__chev" aria-hidden="true" />
           <span className="ua-cp-launch-domain__num">{domain.num}</span>
           <strong className="ua-cp-launch-domain__title">{domain.title}</strong>
+          {!domain.general ? (
+            <div className="ua-cp-launch-domain__cfg-stats" aria-label="Domain weight and minimum requirement">
+              <span className="ua-cp-launch-domain__cfg-stat">
+                <span className="ua-cp-launch-domain__cfg-stat-label">Weight</span>
+                <span className="ua-cp-launch-domain__cfg-stat-val">{domain.weight}%</span>
+              </span>
+              <span className="ua-cp-launch-domain__cfg-stat ua-cp-launch-domain__cfg-stat--min">
+                <span className="ua-cp-launch-domain__cfg-stat-label">Min req</span>
+                <span className="ua-cp-launch-domain__cfg-stat-val">{minReq}%</span>
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="ua-cp-launch-domain__subhead">
           <span className="ua-cp-launch-domain__meta">
@@ -435,27 +455,84 @@ function DomainAccordion({
 }
 
 function autoPointTitle(text) {
-  const match = String(text || "").match(/^(.*) is below 50% \(\d+(?:\.\d+)? \/ \d+\)$/);
+  const match = String(text || "").match(/^(.*) is below \d+% \(\d+(?:\.\d+)? \/ \d+\)$/);
   return match ? match[1].trim() : "";
 }
 
-function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onEditPoint, onEditAuto, onHideAuto, onSave, saving = false, onToast, canWrite = true }) {
+function isAutoFocusPoint(text) {
+  return / is below \d+% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
+}
+
+function focusPointKey(text) {
+  const legacy = autoPointTitle(text);
+  return String(legacy || text || "").trim().toLowerCase();
+}
+
+function normalizeFocusList(list) {
+  return [...(list || [])]
+    .map((row) => String(row || "").trim().toLowerCase())
+    .filter(Boolean)
+    .sort();
+}
+
+function sameFocusList(a, b) {
+  const left = normalizeFocusList(a);
+  const right = normalizeFocusList(b);
+  return left.length === right.length && left.every((row, index) => row === right[index]);
+}
+
+function buildVisibleFocusPoints({ autoPoints, hiddenFocusTitles, autoEdits, extraPoints }) {
+  const hidden = new Set(
+    hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean),
+  );
+  const visibleAuto = [];
+  autoPoints.forEach((text) => {
+    const key = focusPointKey(text);
+    const edited = key ? String(autoEdits[key] || "").trim() : "";
+    if (edited) {
+      visibleAuto.push(edited);
+      return;
+    }
+    if (key && hidden.has(key)) return;
+    visibleAuto.push(text);
+  });
+  return [...visibleAuto, ...extraPoints];
+}
+
+function FocusAreas({
+  autoPoints,
+  hiddenTitles = [],
+  autoEdits = {},
+  extraPoints,
+  onAddPoint,
+  onRemovePoint,
+  onEditPoint,
+  onEditAuto,
+  onHideAuto,
+  onSave,
+  onPush,
+  saving = false,
+  pushing = false,
+  pushPending = false,
+  pushHint = "",
+  onToast,
+  canWrite = true,
+}) {
   const [point, setPoint] = useState("");
   const [editingIndex, setEditingIndex] = useState(null);
   const [draft, setDraft] = useState("");
   const hidden = new Set(hiddenTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean));
   const visibleAuto = autoPoints.filter((text) => {
-    const title = autoPointTitle(text);
-    const key = title.toLowerCase();
+    const key = focusPointKey(text);
     if (key && autoEdits[key]) return true;
-    return !title || !hidden.has(key);
+    return !key || !hidden.has(key);
   });
   const merged = [...visibleAuto, ...extraPoints];
 
   function shownText(item, index) {
     if (index >= visibleAuto.length) return item;
-    const title = autoPointTitle(item);
-    return (title && autoEdits[title.toLowerCase()]) || item;
+    const key = focusPointKey(item);
+    return (key && autoEdits[key]) || item;
   }
 
   function addPoint() {
@@ -463,7 +540,7 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
     if (!trimmed) return;
     onAddPoint(trimmed);
     setPoint("");
-    onToast("Focus point added — save areas to focus to sync to the app");
+    onToast("Focus point added — save, then push to app when ready");
   }
 
   function startEdit(index) {
@@ -493,13 +570,13 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
       return;
     }
     if (index < visibleAuto.length) {
-      const title = autoPointTitle(visibleAuto[index]) || visibleAuto[index];
+      const title = visibleAuto[index];
       onEditAuto(title, trimmed, visibleAuto[index]);
     } else {
       onEditPoint(index - visibleAuto.length, trimmed);
     }
     cancelEdit();
-    onToast("Focus point updated — save areas to focus to sync to the app");
+    onToast("Focus point updated — save, then push to app when ready");
   }
 
   return (
@@ -509,7 +586,7 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
           <span className="ua-cp-launch-focus__icon" aria-hidden="true">◎</span>
           <span className="ua-cp-launch-focus__title">Areas to focus</span>
         </div>
-        <span className="ua-cp-launch-focus__sub">Domains scoring under 50% are flagged automatically. Add, edit, or remove points as needed.</span>
+        <span className="ua-cp-launch-focus__sub">When a domain scores under its minimum requirement, config focus points linked to that domain appear here. Add, edit, or remove points for this client, save your changes, then use Push to app when ready for the client.</span>
       </div>
       {merged.length ? (
         <div className="ua-cp-launch-focus__list">
@@ -568,7 +645,7 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
                         cancelEdit();
                         return;
                       }
-                      if (index < visibleAuto.length) onHideAuto(autoPointTitle(visibleAuto[index]) || visibleAuto[index]);
+                      if (index < visibleAuto.length) onHideAuto(visibleAuto[index]);
                       else onRemovePoint(index - visibleAuto.length);
                     }}
                     aria-label={editing ? "Cancel edit" : "Remove focus point"}
@@ -586,27 +663,9 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
         <div className="ua-cp-launch-focus__empty">
           {autoPoints.length && hidden.size
             ? "Flagged points were removed for this client."
-            : "No focus areas — all domains are above 50%."}
+            : "No focus areas — all domains meet their minimum requirement."}
         </div>
       )}
-      {canWrite && catalog.length ? (
-        <div className="ua-cp-launch-focus__catalog">
-          {catalog.map((area) => {
-            const id = area.id || area._id;
-            const active = selectedFocus.includes(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`ua-cp-launch-focus__chip${active ? " ua-cp-launch-focus__chip--on" : ""}`}
-                onClick={() => onToggleFocus(id)}
-              >
-                {area.title || area.name || id}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
       {canWrite ? (
       <div className="ua-cp-launch-focus__add">
         <input
@@ -620,16 +679,29 @@ function FocusAreas({ autoPoints, hiddenTitles = [], autoEdits = {}, catalog, se
       </div>
       ) : null}
       {canWrite ? (
-        <div className="ua-cp-launch-focus__actions">
-          <button
-            type="button"
-            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-            disabled={saving}
-            onClick={onSave}
-          >
-            {saving ? "Saving…" : "Save focus areas"}
-          </button>
-        </div>
+        <>
+          {pushPending && pushHint ? (
+            <p className="ua-cp-launch-focus__push-hint">{pushHint}</p>
+          ) : null}
+          <div className="ua-cp-launch-focus__actions">
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+              disabled={saving || pushing}
+              onClick={onSave}
+            >
+              {saving ? "Saving…" : "Save focus areas"}
+            </button>
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+              disabled={saving || pushing || !onPush}
+              onClick={onPush}
+            >
+              {pushing ? "Pushing…" : "Push to app"}
+            </button>
+          </div>
+        </>
       ) : null}
     </div>
   );
@@ -734,6 +806,8 @@ function LifestyleTab({
   const [pointsToNote, setPointsToNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingFocus, setSavingFocus] = useState(false);
+  const [pushingFocus, setPushingFocus] = useState(false);
+  const [focusPushOpen, setFocusPushOpen] = useState(false);
   const hydratedFocusRef = useRef(null);
   const hydratedNotesRef = useRef(null);
 
@@ -769,30 +843,60 @@ function LifestyleTab({
     setReplies(nextReplies);
   }, [latest]);
 
-  const autoPoints = totals.domainRows
-    .filter((d) => !d.general && d.max && (d.score / d.max) < 0.5)
-    .map((d) => `${d.title} is below 50% (${d.score} / ${d.max})`);
+  const autoFocus = useMemo(
+    () => buildLaunchAutoFocusFromCatalog(totals.domainRows, focusAreas),
+    [totals.domainRows, focusAreas],
+  );
+  const autoPoints = autoFocus.titles;
+
+  useEffect(() => {
+    const autoIds = autoFocus.ids || [];
+    const autoSet = new Set(autoIds);
+    const catalogIds = new Set(
+      (focusAreas || []).map((area) => area.id || area._id).filter(Boolean),
+    );
+    setSelectedFocus((prev) => {
+      const kept = prev.filter((id) => !catalogIds.has(id) || autoSet.has(id));
+      const next = new Set(kept);
+      let changed = kept.length !== prev.length;
+      autoIds.forEach((id) => {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      });
+      return changed ? [...next] : prev;
+    });
+  }, [autoFocus, focusAreas]);
 
   useEffect(() => {
     if (!latest?.id) return;
     if (hydratedFocusRef.current === latest.id) return;
     const saved = Array.isArray(latest.focusPoints) ? latest.focusPoints : [];
-    const isAutoPoint = (text) => / is below 50% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
+    const isAutoPoint = isAutoFocusPoint;
     const hiddenSet = new Set(
       (Array.isArray(latest.hiddenFocusTitles) ? latest.hiddenFocusTitles : [])
         .map((title) => String(title || "").trim().toLowerCase())
         .filter(Boolean),
     );
+    const catalogTitleKeys = new Set(
+      (focusAreas || [])
+        .map((area) => String(area.title || area.name || "").trim().toLowerCase())
+        .filter(Boolean),
+    );
     setExtraPoints(saved.filter((point) => {
-      if (!isAutoPoint(point)) return true;
-      const title = autoPointTitle(point).toLowerCase();
-      return Boolean(title) && hiddenSet.has(title);
+      const key = String(point || "").trim().toLowerCase();
+      if (isAutoPoint(point)) {
+        return hiddenSet.has(autoPointTitle(point).toLowerCase());
+      }
+      if (catalogTitleKeys.has(key)) return false;
+      return true;
     }));
     setAutoEdits({});
     setHiddenFocusTitles(Array.isArray(latest.hiddenFocusTitles) ? latest.hiddenFocusTitles : []);
     if (Array.isArray(latest.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
     hydratedFocusRef.current = latest.id;
-  }, [latest]);
+  }, [latest, focusAreas]);
 
   useEffect(() => {
     if (!latest?.id) return;
@@ -832,10 +936,19 @@ function LifestyleTab({
     const userId = user?.id;
     if (!userId) return;
     const today = new Date().toISOString().slice(0, 10);
+    const focusPoints = buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    });
     const payload = {
       assessmentDate: today,
       totalScore: Math.round(totals.overall),
       pointsToNote,
+      focusAreaIds: selectedFocus,
+      focusPoints,
+      hiddenFocusTitles,
       answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
         questionId,
         ratingId: ratings[questionId] || "",
@@ -893,6 +1006,27 @@ function LifestyleTab({
     }
   }
 
+  function buildFocusAreasPayload() {
+    const hidden = new Set(hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()));
+    const editedTitles = [];
+    autoPoints.forEach((text) => {
+      const key = focusPointKey(text);
+      const edited = key ? String(autoEdits[key] || "").trim() : "";
+      if (edited) editedTitles.push(String(text || "").trim());
+    });
+    const nextHidden = [...hiddenFocusTitles];
+    editedTitles.forEach((title) => {
+      if (!nextHidden.some((row) => row.toLowerCase() === title.toLowerCase())) nextHidden.push(title);
+    });
+    const focusPoints = buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    });
+    return { focusPoints, nextHidden };
+  }
+
   async function saveFocusAreas() {
     const userId = user?.id;
     if (!userId) return;
@@ -903,28 +1037,10 @@ function LifestyleTab({
     }
     try {
       setSavingFocus(true);
-      const hidden = new Set(hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()));
-      const editedTitles = [];
-      const visibleAuto = [];
-      autoPoints.forEach((text) => {
-        const title = autoPointTitle(text);
-        const key = title.toLowerCase();
-        const edited = key ? String(autoEdits[key] || "").trim() : "";
-        if (edited) {
-          visibleAuto.push(edited);
-          if (title) editedTitles.push(title);
-          return;
-        }
-        if (key && hidden.has(key)) return;
-        visibleAuto.push(text);
-      });
-      const nextHidden = [...hiddenFocusTitles];
-      editedTitles.forEach((title) => {
-        if (!nextHidden.some((row) => row.toLowerCase() === title.toLowerCase())) nextHidden.push(title);
-      });
+      const { focusPoints, nextHidden } = buildFocusAreasPayload();
       const saved = await updateUserLaunchAssessment(userId, target.id, {
         focusAreaIds: selectedFocus,
-        focusPoints: [...visibleAuto, ...extraPoints],
+        focusPoints,
         hiddenFocusTitles: nextHidden,
       });
       setHiddenFocusTitles(nextHidden);
@@ -934,13 +1050,95 @@ function LifestyleTab({
       ];
       hydratedFocusRef.current = saved.id;
       onAssessmentsChange(next);
-      onToast("Areas to focus saved");
+      onToast("Areas to focus saved — push to app when ready");
     } catch (err) {
       onToast(err?.message || "Failed to save areas to focus");
     } finally {
       setSavingFocus(false);
     }
   }
+
+  function requestPushFocusAreas() {
+    const target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then push areas to focus");
+      return;
+    }
+    setFocusPushOpen(true);
+  }
+
+  async function pushFocusAreasToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    let target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then push areas to focus");
+      setFocusPushOpen(false);
+      return;
+    }
+    try {
+      setPushingFocus(true);
+      const { focusPoints, nextHidden } = buildFocusAreasPayload();
+      const savedDraft = Array.isArray(target.focusPoints) ? target.focusPoints : [];
+      if (!sameFocusList(focusPoints, savedDraft)) {
+        target = await updateUserLaunchAssessment(userId, target.id, {
+          focusAreaIds: selectedFocus,
+          focusPoints,
+          hiddenFocusTitles: nextHidden,
+        });
+        setHiddenFocusTitles(nextHidden);
+        const nextAfterSave = [
+          target,
+          ...(assessments || []).filter((row) => row.id !== target.id),
+        ];
+        hydratedFocusRef.current = target.id;
+        onAssessmentsChange(nextAfterSave);
+      }
+      const pushed = Array.isArray(target.pushedFocusPoints) ? target.pushedFocusPoints : [];
+      if (target.focusPointsPushedAt && sameFocusList(focusPoints, pushed)) {
+        onToast("Focus areas already match what's in the client app");
+        return;
+      }
+      const result = await publishUserLaunchFocusPoints(userId, target.id);
+      const saved = result?.assessment || target;
+      const next = [
+        saved,
+        ...(assessments || []).filter((row) => row.id !== saved.id),
+      ];
+      hydratedFocusRef.current = saved.id;
+      onAssessmentsChange(next);
+      onToast(result?.message || "Pushed focus areas to client app");
+    } catch (err) {
+      onToast(err?.message || "Failed to push focus areas to app");
+    } finally {
+      setPushingFocus(false);
+      setFocusPushOpen(false);
+    }
+  }
+
+  const clientFirstName = String(user?.name || "client").split(" ")[0];
+
+  const currentFocusDraft = useMemo(
+    () => buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    }),
+    [autoPoints, hiddenFocusTitles, autoEdits, extraPoints],
+  );
+  const savedFocusDraft = Array.isArray(latest?.focusPoints) ? latest.focusPoints : [];
+  const pushedFocusDraft = Array.isArray(latest?.pushedFocusPoints) ? latest.pushedFocusPoints : [];
+  const hasUnsavedFocus = !sameFocusList(currentFocusDraft, savedFocusDraft);
+  const hasUnpushedFocus = latest?.focusPointsPushedAt
+    ? !sameFocusList(savedFocusDraft, pushedFocusDraft)
+    : savedFocusDraft.length > 0 || currentFocusDraft.length > 0;
+  const focusPushPending = hasUnsavedFocus || hasUnpushedFocus;
+  const focusPushHint = hasUnsavedFocus
+    ? "You have unsaved focus area changes — save first, then push to the client app."
+    : hasUnpushedFocus
+      ? "Saved focus areas are not in the client app yet — push when ready."
+      : "";
 
   if (loading) {
     return (
@@ -1052,11 +1250,6 @@ function LifestyleTab({
       <FocusAreas
         autoPoints={autoPoints}
         hiddenTitles={hiddenFocusTitles}
-        catalog={focusAreas}
-        selectedFocus={selectedFocus}
-        onToggleFocus={(id) => setSelectedFocus((prev) => (
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        ))}
         extraPoints={extraPoints}
         autoEdits={autoEdits}
         onAddPoint={(item) => setExtraPoints((list) => [...list, item])}
@@ -1085,12 +1278,32 @@ function LifestyleTab({
             delete next[key];
             return next;
           });
-          onToast("Focus point removed — save areas to focus to sync to the app");
+          onToast("Focus point removed — save, then push to app when ready");
         }}
         onSave={saveFocusAreas}
+        onPush={requestPushFocusAreas}
         saving={savingFocus}
+        pushing={pushingFocus}
+        pushPending={focusPushPending}
+        pushHint={focusPushHint}
         onToast={onToast}
         canWrite={canWrite}
+      />
+      <ConfirmDialog
+        open={focusPushOpen}
+        tag="Areas to focus"
+        title={`Push focus areas to ${clientFirstName}'s app?`}
+        body={
+          currentFocusDraft.length
+            ? `This updates what ${clientFirstName} sees in the LAUNCH section (${currentFocusDraft.length} focus area${currentFocusDraft.length === 1 ? "" : "s"}). Unsaved edits are saved first.`
+            : `This clears focus areas in ${clientFirstName}'s LAUNCH section in the app. Unsaved edits are saved first.`
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pushingFocus ? "Pushing…" : "Push to app"}
+        onCancel={() => {
+          if (!pushingFocus) setFocusPushOpen(false);
+        }}
+        onConfirm={pushFocusAreasToApp}
       />
       {scoringRef ? (
         <ScoringReferenceModal

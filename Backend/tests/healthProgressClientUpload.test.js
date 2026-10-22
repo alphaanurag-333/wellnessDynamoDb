@@ -45,6 +45,16 @@ describe("health progress client upload window", () => {
     assert.equal(opened.windows.bloodPressure.source, "coach");
   });
 
+  it("keeps client update closed after approval until Saturday or coach opens", () => {
+    const closedAfterSubmit = closeHealthProgressClientUpload(null, "glucose", SATURDAY);
+    const stillClosed = resolveHealthProgressClientUpload(closedAfterSubmit, SATURDAY);
+    assert.equal(stillClosed.windows.glucose.open, false);
+
+    const coachReopen = openHealthProgressClientUpload(closedAfterSubmit, "glucose");
+    assert.equal(coachReopen.glucose.open, true);
+    assert.equal(coachReopen.glucose.source, "coach");
+  });
+
   it("closes after a client save and can be opened again", () => {
     const closed = closeHealthProgressClientUpload(null, "conditionComparison", SATURDAY);
     assert.equal(closed.conditionComparison.open, false);

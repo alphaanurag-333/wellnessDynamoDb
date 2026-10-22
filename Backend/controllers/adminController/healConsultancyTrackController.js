@@ -36,6 +36,7 @@ const {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotificationAsync,
   dispatchCounsellingCancelledNotificationAsync,
+  dispatchCounsellingRequestDeclinedNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
 function shouldNotifyCounsellingCancellation(previousStatus) {
@@ -261,7 +262,7 @@ exports.offerCoachHealConsultancyPeriodsController = asyncHandler(async (req, re
     throw new AppError("Availability can only be offered on an open request", 400);
   }
 
-  const { offers, coachNotes } = parseOfferPeriodsBody(req.body || {});
+  const { offers, coachNotes, durationMinutes } = parseOfferPeriodsBody(req.body || {});
   const updates = {
     status: "periods_offered",
     periodOffers: offers,
@@ -273,6 +274,7 @@ exports.offerCoachHealConsultancyPeriodsController = asyncHandler(async (req, re
     statusUpdatedById: coachId,
   };
   if (coachNotes !== undefined) updates.coachNotes = coachNotes;
+  if (durationMinutes != null) updates.durationMinutes = durationMinutes;
 
   let updated;
   try {
@@ -477,6 +479,43 @@ exports.rejectCoachHealConsultancyRequestController = asyncHandler(async (req, r
   return res.status(200).json({
     status: true,
     message: "Time request rejected. Existing periods remain available.",
+    data: { track: toPublicHealConsultancyTrack(updated) },
+  });
+});
+
+exports.rejectCoachHealConsultancyIntakeController = asyncHandler(async (req, res) => {
+  const coachId = req.auth?.sub || req.user?.id;
+  if (!coachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const trackId = String(req.params.trackId || "").trim();
+  const user = await loadHealUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  const track = await loadTrackForUser(trackId, userId);
+
+  if (track.status !== "requested") {
+    throw new AppError("This request is not a pending client counselling request", 400);
+  }
+
+  let updated;
+  try {
+    updated = await updateHealConsultancyTrack(trackId, {
+      status: "cancelled",
+      statusUpdatedByRole: req.auth?.role || "wellness_coach",
+      statusUpdatedById: coachId,
+    });
+  } catch (err) {
+    handleValidationError(err);
+  }
+
+  dispatchCounsellingRequestDeclinedNotificationAsync({
+    userId,
+    trackId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Counselling request declined",
     data: { track: toPublicHealConsultancyTrack(updated) },
   });
 });

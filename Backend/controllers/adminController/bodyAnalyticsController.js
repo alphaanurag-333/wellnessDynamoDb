@@ -1,7 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
-const { getUserById, updateUser } = require("../../models/userModel");
+const {
+  getUserById,
+  updateUser,
+  isBodyMeasurementEnabled,
+} = require("../../models/userModel");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
+const { enrichUser } = require("../userController/userProfileHelpers");
 const {
   listBodyMeasurementsByUser,
   getBodyMeasurementById,
@@ -49,11 +54,51 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Body analytics fetched",
+    bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     bodyAnalytics: {
       measurements: measurementResult.items.map(toPublicBodyMeasurement),
       metabolicMetrics: metabolicLogs.map(toPublicMetabolicMetricLog),
       photos: photoResult.items.map(toPublicProgressPhoto),
     },
+  });
+});
+
+exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = String(req.params.id || "").trim();
+  if (!userId) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  if (req.body.enabled === undefined && req.body.bodyMeasurementEnabled === undefined) {
+    throw new AppError("enabled is required", 400);
+  }
+
+  const raw = req.body.enabled !== undefined ? req.body.enabled : req.body.bodyMeasurementEnabled;
+  const enabled =
+    raw === true || raw === false
+      ? raw
+      : String(raw).trim().toLowerCase() === "true"
+        ? true
+        : String(raw).trim().toLowerCase() === "false"
+          ? false
+          : null;
+  if (enabled == null) {
+    throw new AppError("enabled must be true or false", 400);
+  }
+
+  const updated = await updateUser(userId, { bodyMeasurementEnabled: enabled });
+
+  return res.status(200).json({
+    status: true,
+    message: enabled
+      ? "Client can fill body measurements (this section only)"
+      : "Client cannot fill body measurements until you turn this on",
+    enabled: isBodyMeasurementEnabled(updated),
+    bodyMeasurementEnabled: isBodyMeasurementEnabled(updated),
+    user: await enrichUser(updated),
   });
 });
 

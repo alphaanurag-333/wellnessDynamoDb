@@ -4,6 +4,9 @@ import {
   createCoachWeightLog,
   deleteCoachWeightPhoto,
   reviewCoachWeightPhoto,
+  reviewCoachGlucosePhoto,
+  reviewCoachBloodPressurePhoto,
+  reviewCoachConditionPhoto,
   fetchBloodPressureLogs,
   fetchConditionLogs,
   fetchGlucoseLogs,
@@ -113,8 +116,16 @@ function photoKeyFor(photoField) {
   if (photoField === "glucosePicUrl") return "glucosePicKey";
   if (photoField === "weightPicUrl") return "weightPicKey";
   if (photoField === "bpPicUrl") return "bpPicKey";
+  if (photoField === "picUrl") return "picKey";
   return "";
 }
+
+const REVIEW_FIELDS_BY_PHOTO = {
+  weightPicUrl: { status: "weightPicReviewStatus", reason: "weightPicRejectionReason" },
+  glucosePicUrl: { status: "glucosePicReviewStatus", reason: "glucosePicRejectionReason" },
+  bpPicUrl: { status: "bpPicReviewStatus", reason: "bpPicRejectionReason" },
+  picUrl: { status: "picReviewStatus", reason: "picRejectionReason" },
+};
 
 function collapseLogsByDate(logs, typeField, photoField = "weightPicUrl") {
   const groups = new Map();
@@ -138,10 +149,11 @@ function collapseLogsByDate(logs, typeField, photoField = "weightPicUrl") {
     const stamped = photoSource
       ? { ...latest, photoTakenAt: photoSource.updatedAt || photoSource.createdAt || photoSource.recordedAt }
       : latest;
-    const review = photoField === "weightPicUrl" && withPhoto
+    const reviewMeta = REVIEW_FIELDS_BY_PHOTO[photoField];
+    const review = reviewMeta && withPhoto
       ? {
-          weightPicReviewStatus: withPhoto.weightPicReviewStatus || "pending",
-          weightPicRejectionReason: withPhoto.weightPicRejectionReason || "",
+          [reviewMeta.status]: withPhoto[reviewMeta.status] || "pending",
+          [reviewMeta.reason]: withPhoto[reviewMeta.reason] || "",
         }
       : {};
     if (!withPhoto || latest?.[photoField] || withPhoto === latest) {
@@ -663,12 +675,12 @@ function ConfirmModal({ open, title, body, confirmLabel, busy, tone = "danger", 
   );
 }
 
-function weightPhotoReviewTone(status) {
+function uploadPhotoReviewTone(status) {
   if (status === "approved" || status === "rejected") return status;
   return "pending";
 }
 
-function weightPhotoReviewLabel(status) {
+function uploadPhotoReviewLabel(status) {
   if (status === "approved") return "Accepted";
   if (status === "rejected") return "Rejected";
   return "Pending";
@@ -678,7 +690,7 @@ function WeightPhotoCard({ photo, canDelete, deleting, reviewing, onDelete, onRe
   const openPhoto = () => {
     if (photo.url && photo.url !== "mock") window.open(photo.url, "_blank", "noopener,noreferrer");
   };
-  const tone = weightPhotoReviewTone(photo.reviewStatus);
+  const tone = uploadPhotoReviewTone(photo.reviewStatus);
   const hasPhoto = Boolean(photo.url && photo.url !== "mock");
 
   return (
@@ -711,7 +723,7 @@ function WeightPhotoCard({ photo, canDelete, deleting, reviewing, onDelete, onRe
         )}
         {hasPhoto ? (
           <span className={`ua-cp-hptrack-weight-photo-card__badge ua-cp-hptrack-weight-photo-card__badge--${tone}`}>
-            {weightPhotoReviewLabel(photo.reviewStatus)}
+            {uploadPhotoReviewLabel(photo.reviewStatus)}
           </span>
         ) : null}
         <strong>{photo.weight} {photo.unit}</strong>
@@ -788,6 +800,113 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, reviewin
         </div>
       </div>
     </div>
+  );
+}
+
+function UploadPhotoReviewSection({
+  title,
+  subtitle,
+  photos,
+  userId,
+  isMock,
+  onToast,
+  reviewPhoto,
+  onReviewed,
+}) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reviewingPhotoId, setReviewingPhotoId] = useState("");
+  const [pendingReview, setPendingReview] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  if (!photos.length) return null;
+
+  function requestReview(photo, action) {
+    if (!photo?.id || reviewingPhotoId) return;
+    setRejectReason("");
+    setPendingReview({ photo, action });
+  }
+
+  async function confirmReview() {
+    const photo = pendingReview?.photo;
+    const action = pendingReview?.action;
+    if (!photo?.id || !action || isMock) return;
+    setReviewingPhotoId(photo.id);
+    try {
+      const result = await reviewPhoto(userId, photo.id, {
+        action,
+        rejectionReason: action === "rejected" ? rejectReason.trim() : "",
+      });
+      onToast?.(action === "approved" ? "Upload accepted" : "Upload rejected");
+      setPendingReview(null);
+      setRejectReason("");
+      await onReviewed?.(result);
+    } catch (err) {
+      onToast?.(err.message || "Could not update the photo review");
+    } finally {
+      setReviewingPhotoId("");
+    }
+  }
+
+  return (
+    <>
+      <div className="ua-cp-hptrack-upload-review-bar">
+        <div>
+          <strong>{title}</strong>
+          {subtitle ? <p>{subtitle}</p> : null}
+        </div>
+        <button type="button" className="ua-cp-hptrack-view-history" onClick={() => setHistoryOpen(true)}>
+          Review uploads ({photos.length})
+        </button>
+      </div>
+
+      <WeightPhotoHistoryModal
+        open={historyOpen}
+        photos={photos}
+        canDelete={false}
+        deletingId=""
+        reviewingId={reviewingPhotoId}
+        onDelete={() => {}}
+        onReview={requestReview}
+        onClose={() => {
+          if (reviewingPhotoId) return;
+          setHistoryOpen(false);
+        }}
+      />
+
+      <ConfirmModal
+        open={Boolean(pendingReview)}
+        tone={pendingReview?.action === "rejected" ? "danger" : "primary"}
+        title={pendingReview?.action === "rejected"
+          ? `Reject the upload from ${pendingReview?.photo?.date}?`
+          : `Accept the upload from ${pendingReview?.photo?.date || "this date"}?`}
+        body={pendingReview?.action === "rejected"
+          ? "The photo stays on the entry and is marked rejected. The client can upload again after you reject it."
+          : "The photo stays on the entry and is marked accepted. Client re-upload stays locked until the next window opens."}
+        confirmLabel={reviewingPhotoId
+          ? "Saving…"
+          : pendingReview?.action === "rejected" ? "Yes, reject it" : "Yes, accept it"}
+        busy={Boolean(reviewingPhotoId)}
+        onClose={() => {
+          if (reviewingPhotoId) return;
+          setPendingReview(null);
+          setRejectReason("");
+        }}
+        onConfirm={confirmReview}
+      >
+        {pendingReview?.action === "rejected" ? (
+          <label className="ua-cp-hptrack-weight-review-reason">
+            Rejection reason
+            <textarea
+              rows={3}
+              value={rejectReason}
+              maxLength={500}
+              placeholder="Optional"
+              onChange={(event) => setRejectReason(event.target.value)}
+            />
+          </label>
+        ) : null}
+      </ConfirmModal>
+    </>
   );
 }
 
@@ -880,7 +999,7 @@ function ConditionHistoryModal({ open, condition, photos, onClose, title, subtit
   );
 }
 
-function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
+function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded, onClientUploadChange }) {
   const [range, setRange] = useState("all");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingPhotoDelete, setPendingPhotoDelete] = useState(null);
@@ -1027,11 +1146,12 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
     if (!photo?.id || !action || isMock) return;
     setReviewingPhotoId(photo.id);
     try {
-      await reviewCoachWeightPhoto(userId, photo.id, {
+      const result = await reviewCoachWeightPhoto(userId, photo.id, {
         action,
         rejectionReason: action === "rejected" ? rejectReason.trim() : "",
       });
       onToast?.(action === "approved" ? "Weight photo accepted" : "Weight photo rejected");
+      if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
       setPendingReview(null);
       setRejectReason("");
       await onWeightAdded?.();
@@ -1338,8 +1458,33 @@ function glucoseStatPhoto(latest, rows) {
   return { url: glucosePhotoUrl(older), caption: formatDisplayDateTime(imageStamp(older)) };
 }
 
-function GlucosePanel({ logs, hba1cReadings = [] }) {
+function GlucosePanel({
+  logs,
+  hba1cReadings = [],
+  userId,
+  isMock,
+  onToast,
+  onLogsRefresh,
+  onClientUploadChange,
+}) {
   const [range, setRange] = useState("all");
+
+  const uploadPhotos = useMemo(() => (
+    collapseLogsByDate(sortByDateDesc(logs), "type", "glucosePicUrl")
+      .filter((row) => row.glucosePicUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: `${formatDisplayDateTime(imageStamp(row))}${row.type ? ` · ${String(row.type).toUpperCase()}` : ""}`,
+        url: row.glucosePicUrl,
+        reviewStatus: row.glucosePicReviewStatus || "pending",
+        rejectionReason: row.glucosePicRejectionReason || "",
+      }))
+  ), [logs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
 
   const view = useMemo(() => {
     const daily = collapseLogsByDate(sortByDateAsc(logs), "type", "glucosePicUrl");
@@ -1407,6 +1552,16 @@ function GlucosePanel({ logs, hba1cReadings = [] }) {
 
   return (
     <div className="ua-cp-hptrack-glucose">
+      <UploadPhotoReviewSection
+        title="Client glucose uploads"
+        subtitle="Accept or reject each glucose panel photo. Rejecting opens client update again."
+        photos={uploadPhotos}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        reviewPhoto={reviewCoachGlucosePhoto}
+        onReviewed={handleReviewed}
+      />
       <StatCards stats={view.stats} tone="red" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--red ua-cp-hptrack-glucose__charts">
         <div className="ua-cp-hptrack-glucose__section">
@@ -1513,8 +1668,25 @@ function MenstrualPanel({ logs }) {
   );
 }
 
-function BpPanel({ logs }) {
+function BpPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadChange }) {
   const [range, setRange] = useState("all");
+
+  const uploadPhotos = useMemo(() => (
+    collapseLogsByDate(sortByDateDesc(logs), "", "bpPicUrl")
+      .filter((row) => row.bpPicUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: formatDisplayDateTime(imageStamp(row)),
+        url: row.bpPicUrl,
+        reviewStatus: row.bpPicReviewStatus || "pending",
+        rejectionReason: row.bpPicRejectionReason || "",
+      }))
+  ), [logs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
   const view = useMemo(() => {
     const filtered = collapseLogsByDate(applyRange(sortByDateAsc(logs), range), "", "bpPicUrl").filter((row) => (
       Number.isFinite(Number(row.sys)) && Number.isFinite(Number(row.dia))
@@ -1562,6 +1734,16 @@ function BpPanel({ logs }) {
 
   return (
     <>
+      <UploadPhotoReviewSection
+        title="Client blood pressure uploads"
+        subtitle="Accept or reject each BP photo. Rejecting opens client update again."
+        photos={uploadPhotos}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        reviewPhoto={reviewCoachBloodPressurePhoto}
+        onReviewed={handleReviewed}
+      />
       <StatCards stats={view.stats} tone="amber" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--amber">
         <div className="ua-cp-hptrack-chart-card__head">
@@ -1592,10 +1774,32 @@ function BpPanel({ logs }) {
   );
 }
 
-function ConditionPanel({ logs }) {
+function ConditionPanel({ logs, userId, isMock, onToast, onLogsRefresh, onClientUploadChange }) {
+  const dailyLogs = useMemo(
+    () => collapseLogsByDate(sortByDateDesc(logs), "", "picUrl"),
+    [logs],
+  );
+
+  const uploadPhotos = useMemo(() => (
+    dailyLogs
+      .filter((row) => row.picUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: `${formatDisplayDateTime(imageStamp(row))}${row.bodyPart ? ` · ${bodyPartLabel(row)}` : ""}`,
+        url: row.picUrl,
+        reviewStatus: row.picReviewStatus || "pending",
+        rejectionReason: row.picRejectionReason || "",
+      }))
+  ), [dailyLogs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
+
   const groups = useMemo(() => {
     const map = new Map();
-    for (const row of sortByDateDesc(logs)) {
+    for (const row of dailyLogs) {
       const key = String(row.bodyPart || "other").toLowerCase();
       const label = bodyPartLabel(row);
       const group = map.get(key) || { id: key, name: label, photos: [] };
@@ -1603,11 +1807,13 @@ function ConditionPanel({ logs }) {
         id: row.id || row._id,
         date: formatDisplayDateTime(imageStamp(row)),
         url: row.picUrl || null,
+        reviewStatus: row.picReviewStatus || "pending",
+        rejectionReason: row.picRejectionReason || "",
       });
       map.set(key, group);
     }
     return [...map.values()];
-  }, [logs]);
+  }, [dailyLogs]);
 
   const [condition, setCondition] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -1630,6 +1836,16 @@ function ConditionPanel({ logs }) {
 
   return (
     <div className="ua-cp-hptrack-condition">
+      <UploadPhotoReviewSection
+        title="Client condition uploads"
+        subtitle="Accept or reject each comparison photo. Rejecting opens client update again."
+        photos={uploadPhotos}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        reviewPhoto={reviewCoachConditionPhoto}
+        onReviewed={handleReviewed}
+      />
       <div className="ua-cp-hptrack-condition-bar">
         <div className="ua-cp-hptrack-condition-bar__left">
           <select className="ua-cp-hptrack-condition-bar__select" value={selected?.id || ""} onChange={(e) => setCondition(e.target.value)}>
@@ -1675,7 +1891,17 @@ function ConditionPanel({ logs }) {
   );
 }
 
-function TrackerDetail({ tracker, logs, hba1cReadings, userId, isMock, onToast, onWeightAdded }) {
+function TrackerDetail({
+  tracker,
+  logs,
+  hba1cReadings,
+  userId,
+  isMock,
+  onToast,
+  onWeightAdded,
+  onLogsRefresh,
+  onClientUploadChange,
+}) {
   switch (tracker.id) {
     case "fatloss": return (
       <FatLossPanel
@@ -1684,12 +1910,41 @@ function TrackerDetail({ tracker, logs, hba1cReadings, userId, isMock, onToast, 
         isMock={isMock}
         onToast={onToast}
         onWeightAdded={onWeightAdded}
+        onClientUploadChange={onClientUploadChange}
       />
     );
-    case "glucose": return <GlucosePanel logs={logs.glucose} hba1cReadings={hba1cReadings} />;
+    case "glucose": return (
+      <GlucosePanel
+        logs={logs.glucose}
+        hba1cReadings={hba1cReadings}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("glucose")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
     case "menstrual": return <MenstrualPanel logs={logs.menstrual} />;
-    case "bp": return <BpPanel logs={logs.bp} />;
-    case "condition": return <ConditionPanel logs={logs.condition} />;
+    case "bp": return (
+      <BpPanel
+        logs={logs.bp}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("bloodPressure")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
+    case "condition": return (
+      <ConditionPanel
+        logs={logs.condition}
+        userId={userId}
+        isMock={isMock}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("conditionComparison")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
     default: return null;
   }
 }
@@ -2030,6 +2285,29 @@ export function HealthProgressSection({ user, onToast }) {
     }
   }
 
+  async function refreshTrackerLogs(featureKey) {
+    if (!userId || isMock) return;
+    const loaders = {
+      glucose: () => fetchGlucoseLogs(userId).then((rows) => ({ logKey: "glucose", rows: rows || [] })),
+      bloodPressure: () => fetchBloodPressureLogs(userId).then((rows) => ({ logKey: "bp", rows: rows || [] })),
+      conditionComparison: () => fetchConditionLogs(userId).then((rows) => ({ logKey: "condition", rows: rows || [] })),
+    };
+    const load = loaders[featureKey];
+    if (!load) return;
+    try {
+      const { logKey, rows } = await load();
+      setLogs((prev) => ({ ...prev, [logKey]: rows }));
+    } catch (err) {
+      onToast?.(err.message || "Could not refresh health progress logs");
+    }
+  }
+
+  function applyClientUploadFromReview(nextUpload) {
+    if (nextUpload && typeof nextUpload === "object") {
+      setClientUpload(nextUpload);
+    }
+  }
+
   return (
     <div className="ua-cp-section ua-cp-hptrack">
       <div className="ua-cp-hptrack__head">
@@ -2162,6 +2440,8 @@ export function HealthProgressSection({ user, onToast }) {
               isMock={isMock}
               onToast={onToast}
               onWeightAdded={refreshWeightLogs}
+              onLogsRefresh={refreshTrackerLogs}
+              onClientUploadChange={applyClientUploadFromReview}
             />
           </section>
         ))}

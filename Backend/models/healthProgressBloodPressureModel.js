@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, DeleteCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl, deleteStoredMedia } = require("../utils/s3");
@@ -11,6 +11,7 @@ const {
   healthProgressDayBounds,
   alignWeightLogDates,
 } = require("../utils/healthProgressHelpers");
+const { resolvePicReviewOnSave, applyPhotoReviewUpdate } = require("../utils/healthProgressPicReview");
 
 const TABLE = "HealthProgressBloodPressure";
 
@@ -21,6 +22,10 @@ function buildBloodPressureItem(input, { id, now, createdAt }) {
     sys: toNumberOrNull(input.sys),
     dia: toNumberOrNull(input.dia),
     bpPicKey: input.bpPicKey ? String(input.bpPicKey) : null,
+    bpPicReviewStatus: input.bpPicReviewStatus || null,
+    bpPicRejectionReason: input.bpPicRejectionReason || null,
+    bpPicReviewedAt: input.bpPicReviewedAt || null,
+    bpPicReviewedById: input.bpPicReviewedById || null,
     recordedAt: input.recordedAt || now,
     createdAt: createdAt || now,
     updatedAt: now,
@@ -91,9 +96,24 @@ async function createBloodPressureLog(input) {
   const keptPhotoKey = matches.find((row) => row?.bpPicKey)?.bpPicKey || null;
   const bpPicKey = input.bpPicKey ? String(input.bpPicKey) : keptPhotoKey;
   const previousPicKey = existing?.bpPicKey || null;
+  const review = resolvePicReviewOnSave({
+    picKey: bpPicKey,
+    previousPicKey,
+    existingReviewStatus: existing?.bpPicReviewStatus,
+    existingRejectionReason: existing?.bpPicRejectionReason,
+    existingReviewedAt: existing?.bpPicReviewedAt,
+    existingReviewedById: existing?.bpPicReviewedById,
+  });
 
   const item = buildBloodPressureItem(
-    { ...input, bpPicKey },
+    {
+      ...input,
+      bpPicKey,
+      bpPicReviewStatus: review.reviewStatus,
+      bpPicRejectionReason: review.rejectionReason,
+      bpPicReviewedAt: review.reviewedAt,
+      bpPicReviewedById: review.reviewedById,
+    },
     { id: existing?.id, now, createdAt: existing?.createdAt }
   );
   assertBloodPressureItem(item);
@@ -221,12 +241,34 @@ function toUserBloodPressureLog(item) {
   };
 }
 
+async function reviewBloodPressureLogPhoto(userId, logId, { status, reviewedById, rejectionReason } = {}) {
+  return applyPhotoReviewUpdate({
+    getItem: getBloodPressureLogById,
+    picKeyField: "bpPicKey",
+    reviewFields: {
+      status: "bpPicReviewStatus",
+      reason: "bpPicRejectionReason",
+      reviewedAt: "bpPicReviewedAt",
+      reviewedById: "bpPicReviewedById",
+    },
+    userId,
+    logId,
+    status,
+    reviewedById,
+    rejectionReason,
+    UpdateCommand,
+    docClient,
+    tableName: TABLE,
+  });
+}
+
 module.exports = {
   TABLE,
   buildBloodPressureItem,
   createBloodPressureLog,
   getBloodPressureLogById,
   listBloodPressureLogsByUser,
+  reviewBloodPressureLogPhoto,
   toPublicBloodPressureLog,
   toUserBloodPressureLog,
 };

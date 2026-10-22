@@ -7,6 +7,7 @@ const {
   normalizeDietaryPreference,
   normalizeWellnessJourneyFor,
   normalizePaidOnboardingStepStatus,
+  isBodyMeasurementEnabled,
   USER_ALLOWED_DIETARY_PREFERENCES,
 } = require("../../models/userModel");
 const {
@@ -196,6 +197,7 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
     totalStepsCount: PAID_ONBOARDING_STATUS_KEYS.length,
     nextIncompleteStep: getNextIncompleteStep(stepStatus),
     energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
+    bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     healPaidAt: user.healPaidAt || null,
     meetingsByStep,
     prefill: {
@@ -295,6 +297,13 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
+
+  if (!isBodyMeasurementEnabled(user)) {
+    throw new AppError(
+      "Body measurements are not enabled for your account yet. Please contact your wellness coach.",
+      403
+    );
+  }
 
   const body = req.body || {};
   const weightPicKey = await uploadFileFromRequest(req, "users/body-measurements");

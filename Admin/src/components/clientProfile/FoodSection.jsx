@@ -259,12 +259,57 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
     updateItems(items.map((item, i) => (i === index ? scaled : item)));
   }
 
+  function syncItemMacroBaseline(item) {
+    const qty = Number(item.quantityGm) || 0;
+    return {
+      ...item,
+      baseQuantityGm: qty,
+      baseProteinGm: Number(item.proteinGm) || 0,
+      baseFatsGm: Number(item.fatsGm) || 0,
+      baseCarbsGm: Number(item.carbsGm) || 0,
+      baseCaloriesKcal: Number(item.caloriesKcal) || 0,
+    };
+  }
+
+  function macroInputValue(item, valueKey, textKey) {
+    if (item[textKey] != null) return item[textKey];
+    const v = Number(item[valueKey]);
+    return Number.isFinite(v) && v > 0 ? String(v) : "";
+  }
+
+  function updateItemMacro(index, valueKey, textKey, rawValue) {
+    const text = sanitizeDecimalText(rawValue);
+    const parsed = Number(text);
+    const num = text === "" || text === "." || !Number.isFinite(parsed) ? 0 : parsed;
+    updateItems(
+      items.map((item, i) => {
+        if (i !== index) return item;
+        return syncItemMacroBaseline({ ...item, [textKey]: text, [valueKey]: num });
+      }),
+    );
+  }
+
   function removeItem(index) {
     updateItems(items.filter((_, i) => i !== index));
   }
 
+  function isManualAddedItem(item) {
+    return Boolean(item?.manualEntry);
+  }
+
   function addItem() {
-    updateItems([...items, { name: "", quantityGm: 0, proteinGm: 0, fatsGm: 0, carbsGm: 0, caloriesKcal: 0 }]);
+    updateItems([
+      ...items,
+      {
+        name: "",
+        quantityGm: 0,
+        proteinGm: 0,
+        fatsGm: 0,
+        carbsGm: 0,
+        caloriesKcal: 0,
+        manualEntry: true,
+      },
+    ]);
   }
 
   async function copyBreakdown() {
@@ -327,10 +372,53 @@ function MealItemsEditor({ items, editing, onChange, onToast }) {
                   />
                   {showMacroTable ? (
                     <>
-                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.caloriesKcal || 0, "kcal")}</span>
-                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.proteinGm || 0, "g")}</span>
-                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.carbsGm || 0, "g")}</span>
-                      <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
+                      {isManualAddedItem(item) ? (
+                        <>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                            value={macroInputValue(item, "caloriesKcal", "caloriesText")}
+                            placeholder="kcal"
+                            title="Calories"
+                            onChange={(e) => updateItemMacro(index, "caloriesKcal", "caloriesText", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                            value={macroInputValue(item, "proteinGm", "proteinText")}
+                            placeholder="g"
+                            title="Protein (g)"
+                            onChange={(e) => updateItemMacro(index, "proteinGm", "proteinText", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                            value={macroInputValue(item, "carbsGm", "carbsText")}
+                            placeholder="g"
+                            title="Carbs (g)"
+                            onChange={(e) => updateItemMacro(index, "carbsGm", "carbsText", e.target.value)}
+                          />
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="ua-cp-food-meal-items__input ua-cp-food-meal-items__input--qty"
+                            value={macroInputValue(item, "fatsGm", "fatsText")}
+                            placeholder="g"
+                            title="Fat (g)"
+                            onChange={(e) => updateItemMacro(index, "fatsGm", "fatsText", e.target.value)}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.caloriesKcal || 0, "kcal")}</span>
+                          <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.proteinGm || 0, "g")}</span>
+                          <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.carbsGm || 0, "g")}</span>
+                          <span className="ua-cp-food-meal-items__macro-val">{formatApproxMacro(item.fatsGm || 0, "g")}</span>
+                        </>
+                      )}
                       <input
                         type="text"
                         inputMode="decimal"

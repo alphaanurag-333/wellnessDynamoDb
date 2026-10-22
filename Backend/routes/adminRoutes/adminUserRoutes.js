@@ -49,6 +49,7 @@ const {
 } = require("../../controllers/adminController/onboardingMeetingController");
 const {
   getUserBodyAnalyticsController,
+  patchBodyMeasurementSettingsController,
   downloadUserProgressPhotoController,
   reviewUserProgressPhotoController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
@@ -78,6 +79,12 @@ router.get(
   protectAccount,
   clientView,
   getUserBodyAnalyticsController
+);
+router.patch(
+  "/:id/body-measurements/settings",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  patchBodyMeasurementSettingsController
 );
 router.get(
   "/:id/body-analytics/photos/:photoId/:angle/download",

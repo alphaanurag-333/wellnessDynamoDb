@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { downloadUserProgressPhoto, fetchUserBodyAnalytics, reviewUserProgressPhoto } from "../../api/usersApi.js";
+import {
+  downloadUserProgressPhoto,
+  fetchUser,
+  fetchUserBodyAnalytics,
+  mapApiUserToRow,
+  patchUserBodyMeasurementSettings,
+  resolveBodyMeasurementClientEnabled,
+  reviewUserProgressPhoto,
+} from "../../api/usersApi.js";
 import {
   BODY_ANALYTICS,
   PHOTO_ANGLES,
@@ -17,10 +25,16 @@ import {
   photoReviewMeta,
   photoReviewSummary,
 } from "../../data/bodyAnalyticsData.js";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer") || document.querySelector(".updated-admin");
+}
+
+function isLiveUserId(userId) {
+  const id = String(userId || "").trim();
+  return id.length > 8 && !id.startsWith("demo-");
 }
 
 function SegToggle({ options, value, onChange, size = "sm" }) {
@@ -84,12 +98,13 @@ function ClientAgeGender({ user }) {
   );
 }
 
-function HistoryTable({ title, labelCol, columns, rows, unitToggle, clientFacts }) {
+function HistoryTable({ title, labelCol, columns, rows, unitToggle, clientFacts, sectionTools }) {
   return (
     <section className="ua-cp-ba-block">
       <div className="ua-cp-ba-block__head">
         <h3 className="ua-cp-ba-block__title">{title}</h3>
         <div className="ua-cp-ba-block__tools">
+          {sectionTools}
           {clientFacts}
           {unitToggle}
         </div>
@@ -615,6 +630,7 @@ function applyReviewResult(current, result, angle) {
 
 export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const { canEdit } = useClientSectionPermissions("body");
+  const live = isLiveUserId(user?.id);
   const [historyMode, setHistoryMode] = useState("monthly");
   const [period, setPeriod] = useState("");
   const [unit, setUnit] = useState("cm");
@@ -622,6 +638,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const [bodyAnalytics, setBodyAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [featureEnabled, setFeatureEnabled] = useState(() => resolveBodyMeasurementClientEnabled(user));
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [clientFillConfirm, setClientFillConfirm] = useState(null);
+
+  const clientFirstName = user?.name?.split(/\s+/)[0] || "Client";
 
   const isWeekly = historyMode === "weekly";
   const periodOptions = useMemo(
@@ -630,12 +651,22 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   );
 
   useEffect(() => {
+    setFeatureEnabled(resolveBodyMeasurementClientEnabled(user));
+  }, [user?.bodyMeasurementEnabled, user?.paidOnboardingStepStatus]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadError("");
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
-        if (!cancelled) setBodyAnalytics(data);
+        if (!cancelled) {
+          const { bodyMeasurementEnabled, ...analytics } = data || {};
+          setBodyAnalytics(analytics);
+          if (bodyMeasurementEnabled !== undefined) {
+            setFeatureEnabled(Boolean(bodyMeasurementEnabled));
+          }
+        }
       })
       .catch((error) => {
         if (cancelled) return;
@@ -692,6 +723,53 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     setHistoryMode(mode);
   }
 
+  function requestToggleBodyMeasurementClientFill() {
+    if (settingsBusy) return;
+    setClientFillConfirm({ next: !featureEnabled });
+  }
+
+  async function applyBodyMeasurementClientFill(next) {
+    if (!live) {
+      setFeatureEnabled(next);
+      onToast?.(
+        next
+          ? "Body measurements enabled in the client app"
+          : "Body measurements hidden from the client app",
+      );
+      return;
+    }
+    setSettingsBusy(true);
+    try {
+      const result = await patchUserBodyMeasurementSettings(user.id, { enabled: next });
+      setFeatureEnabled(result?.enabled ?? next);
+      if (result?.user) {
+        onUserUpdated?.(mapApiUserToRow(result.user));
+      } else {
+        onUserUpdated?.({
+          ...user,
+          bodyMeasurementEnabled: next,
+          bodyMeasurementEnabledRaw: next,
+        });
+      }
+      try {
+        const row = await fetchUser(user.id);
+        if (row) onUserUpdated?.(row);
+      } catch {
+        // Toggle already saved; profile refresh is best-effort.
+      }
+      onToast?.(
+        result?.message
+          || (next
+            ? "Body measurements enabled in the client app"
+            : "Body measurements hidden from the client app"),
+      );
+    } catch (error) {
+      onToast?.(error?.message || "Failed to update body measurement setting");
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
+
   const photosByAngle = useMemo(
     () => buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
     [bodyAnalytics?.measurements, bodyAnalytics?.photos],
@@ -708,6 +786,29 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
       options={[{ id: "cm", label: "cm" }, { id: "inch", label: "inch" }]}
     />
   );
+
+  const bodyMeasurementClientToggle = canEdit ? (
+    <div
+      className="ua-cp-ba-client-entry"
+      title={
+        featureEnabled
+          ? "Client can fill body measurements (height, weight, neck, etc.)"
+          : "Client cannot fill body measurements until you enable this"
+      }
+    >
+      <span className="ua-cp-ba-client-entry__label">Client fill</span>
+      <button
+        type="button"
+        className={`ua-toggle ua-toggle--sm${featureEnabled ? " ua-toggle--on" : ""}`}
+        onClick={requestToggleBodyMeasurementClientFill}
+        disabled={settingsBusy}
+        aria-pressed={featureEnabled}
+        aria-label="Allow client to fill body measurements"
+      >
+        <span className="ua-toggle__knob" />
+      </button>
+    </div>
+  ) : null;
 
   if (loading) {
     return <div className="ua-cp-section ua-cp-body-analytics"><p className="ua-page-head__sub">Loading body analytics…</p></div>;
@@ -759,6 +860,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         labelCol="Measure"
         columns={historyColumns}
         rows={measureRows}
+        sectionTools={bodyMeasurementClientToggle}
         unitToggle={unitToggle}
         clientFacts={<ClientAgeGender user={user} />}
       />
@@ -768,6 +870,32 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         labelCol="Metric"
         columns={historyColumns}
         rows={metabolicRows}
+      />
+
+      <ConfirmDialog
+        open={Boolean(clientFillConfirm)}
+        tag={clientFillConfirm?.next ? "Body measurements" : "Body measurements"}
+        title={
+          clientFillConfirm?.next
+            ? `Allow ${clientFirstName} to fill body measurements?`
+            : `Stop ${clientFirstName} from filling body measurements?`
+        }
+        body={
+          clientFillConfirm?.next
+            ? "This applies only to the Body measurements · history section. The client can enter height, weight, neck, and other measures in the app. Progress photos and metabolic metrics are not affected."
+            : "The client will not be able to submit new body measurement data until you turn Client fill back on. Existing history in this section stays visible to you."
+        }
+        confirmLabel={clientFillConfirm?.next ? "Enable client fill" : "Disable client fill"}
+        confirmTone={clientFillConfirm?.next ? "primary" : "danger"}
+        onCancel={() => {
+          if (!settingsBusy) setClientFillConfirm(null);
+        }}
+        onConfirm={() => {
+          const next = clientFillConfirm?.next;
+          setClientFillConfirm(null);
+          if (next === undefined) return;
+          applyBodyMeasurementClientFill(next);
+        }}
       />
 
       {photoAngle ? (

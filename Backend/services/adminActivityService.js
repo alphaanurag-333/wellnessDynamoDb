@@ -194,25 +194,6 @@ function emitLabReportUploaded({ user, reportId }) {
   });
 }
 
-function emitDosageNearComplete({ user, dosage, progressPercent }) {
-  const name = userDisplayName(user);
-  const userId = user?.id || user?._id || null;
-  const supplement = String(dosage?.name || "nutrition").trim() || "nutrition";
-  const pct = Math.max(0, Math.min(100, Math.round(Number(progressPercent) || 0)));
-  emitAdminActivityAsync({
-    kind: "nutrition",
-    title: `${name}'s ${supplement} dosage is ${pct}% complete`,
-    from: "System",
-    actorType: "system",
-    subjectUserId: userId,
-    subjectUserName: name,
-    referenceType: "user_supplement_dosage",
-    referenceId: dosage?.id || dosage?._id || null,
-    href: userId ? `/users/${userId}?section=nutritions` : "/users",
-    meta: { progressPercent: pct, supplementName: supplement },
-  });
-}
-
 function emitContactInquiry({ inquiry }) {
   const name = String(inquiry?.name || "Someone").trim() || "Someone";
   const type = String(inquiry?.inquiryType || inquiry?.type || "general").trim();
@@ -257,7 +238,6 @@ module.exports = {
   emitCounsellingPeriodSelected,
   emitCounsellingTimeRequested,
   emitLabReportUploaded,
-  emitDosageNearComplete,
   emitContactInquiry,
   emitCoachClientAction,
   formatRupee,

@@ -29,8 +29,44 @@ const { resolveStaffActor } = require("../staffAccess");
 const {
   dispatchDailyReflectionBedtimeNotification,
 } = require("../../services/notificationDispatchService");
+const { runDailyReflectionBedtimeJob } = require("../../services/dailyReflectionBedtimeJobService");
+const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 
 const DEFAULT_BEDTIME = "22:30";
+
+function formatBedtimePushResult(push) {
+  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+  const fcmError = push?.primaryError || push?.errors?.[0] || null;
+
+  let message;
+  if (delivered) {
+    message = "Bedtime reminder pushed to the app";
+  } else if (noDevice) {
+    message = "Reminder saved in the app inbox, but this user has no push device registered";
+  } else if (fcmError?.code === "messaging/mismatched-credential") {
+    message =
+      "Reminder saved in the app inbox, but FCM rejected the device token (Firebase project / SenderId mismatch)";
+  } else if (fcmError?.message) {
+    message = `Reminder saved in the app inbox, but push delivery failed (${fcmError.message})`;
+  } else {
+    message = "Reminder saved in the app inbox, but push delivery failed";
+  }
+
+  return {
+    delivered,
+    noDevice,
+    message,
+    push: {
+      delivered,
+      skipped: Boolean(push?.skipped),
+      reason: push?.reason || fcmError?.code || null,
+      errorMessage: fcmError?.message || null,
+      successCount: Number(push?.successCount) || 0,
+      failureCount: Number(push?.failureCount) || 0,
+    },
+  };
+}
 
 function resolveTargetMonth(query) {
   const candidate = String(query?.month || "").trim() || todayDateOnly().slice(0, 7);
@@ -266,6 +302,7 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
   const settings = await getSettings(userId);
   const bedtime = settings.bedtime || DEFAULT_BEDTIME;
   const actor = resolveStaffActor(req);
+  const fcmToken = parseFcmIdFromBody(req.body);
 
   const { notification, push } = await dispatchDailyReflectionBedtimeNotification({
     userId,
@@ -273,26 +310,42 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
     clientName: user?.name,
     coachName: actor.displayName,
     actorUserId: actor.id,
+    fcmToken: fcmToken || null,
   });
 
-  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
-  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+  const formatted = formatBedtimePushResult(push);
 
   return res.status(200).json({
     status: true,
-    message: delivered
-      ? "Bedtime reminder pushed to the app"
-      : noDevice
-        ? "Reminder saved in the app inbox, but this user has no push device registered"
-        : "Reminder saved in the app inbox, but push delivery failed",
+    message: formatted.message,
     bedtime,
     notificationId: notification?.id || null,
-    push: {
-      delivered,
-      skipped: Boolean(push?.skipped),
-      reason: push?.reason || null,
-      successCount: Number(push?.successCount) || 0,
-      failureCount: Number(push?.failureCount) || 0,
-    },
+    push: formatted.push,
+  });
+});
+
+exports.runDailyReflectionBedtimeJobController = asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const query = req.query || {};
+  const nowClock = body.nowClock ?? query.nowClock;
+  const dateOnly = body.dateOnly ?? query.dateOnly;
+  const timezone = body.timezone ?? query.timezone;
+
+  const options = {};
+  if (nowClock != null && String(nowClock).trim() !== "") {
+    options.nowClock = String(nowClock).trim();
+  }
+  if (dateOnly != null && String(dateOnly).trim() !== "") {
+    options.dateOnly = String(dateOnly).trim();
+  }
+  if (timezone != null && String(timezone).trim() !== "") {
+    options.timezone = String(timezone).trim();
+  }
+
+  const result = await runDailyReflectionBedtimeJob(options);
+  return res.status(200).json({
+    status: true,
+    message: `Daily reflection bedtime job completed at ${result.nowClock} (${result.timezone})`,
+    ...result,
   });
 });

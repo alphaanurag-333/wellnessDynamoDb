@@ -66,6 +66,19 @@ async function closeClientUploadForCoach(user, featureKey, now = new Date()) {
   return updateUser(user.id, { healthProgressClientUpload: next });
 }
 
+async function applyClientUploadAfterPhotoReview(userId, featureKey, action) {
+  if (!userId || !HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) return null;
+  const user = await getUserById(userId);
+  if (!user?.id) return null;
+  if (action === "rejected") {
+    return openClientUploadForCoach(user, featureKey);
+  }
+  if (action === "approved") {
+    return closeClientUploadForCoach(user, featureKey);
+  }
+  return user;
+}
+
 module.exports = {
   CLIENT_UPLOAD_LABELS,
   clientUploadWindows,
@@ -75,4 +88,5 @@ module.exports = {
   assertCoachCanOpenClientUpload,
   openClientUploadForCoach,
   closeClientUploadForCoach,
+  applyClientUploadAfterPhotoReview,
 };

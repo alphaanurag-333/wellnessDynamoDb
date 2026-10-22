@@ -150,11 +150,41 @@ function mergeAreasToFocus(focusPoints = [], focusAreas = []) {
   return out;
 }
 
+function normalizeFocusPointsPushedAt(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    const err = new Error("focusPointsPushedAt must be a valid ISO date");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return d.toISOString();
+}
+
+/** App-visible focus list — only populated after an explicit push from admin. */
+function resolvePublishedFocusTexts(_focusPoints, pushedFocusPoints, focusPointsPushedAt) {
+  const pushed = Array.isArray(pushedFocusPoints) ? pushedFocusPoints : undefined;
+  if (focusPointsPushedAt || pushed !== undefined) {
+    return pushed || [];
+  }
+  return [];
+}
+
 function toUserLaunchAssessmentPublic(item, focusAreas = null) {
   const row = withLegacyId(item);
   if (!row) return null;
   const focusAreaIds = normalizeFocusAreaIds(row.focusAreaIds);
   const focusPoints = Array.isArray(row.focusPoints) ? normalizeFocusPoints(row.focusPoints) || [] : [];
+  const pushedFocusPoints = Array.isArray(row.pushedFocusPoints)
+    ? normalizeFocusPoints(row.pushedFocusPoints) || []
+    : undefined;
+  const focusPointsPushedAt = row.focusPointsPushedAt
+    ? normalizeFocusPointsPushedAt(row.focusPointsPushedAt)
+    : null;
+  const publishedTexts = resolvePublishedFocusTexts(focusPoints, pushedFocusPoints, focusPointsPushedAt);
   const resolved =
     focusAreas !== null
       ? focusAreas
@@ -171,6 +201,8 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     answers: Array.isArray(row.answers) ? normalizeAnswers(row.answers) || [] : [],
     focusAreaIds,
     focusPoints,
+    pushedFocusPoints: pushedFocusPoints ?? [],
+    focusPointsPushedAt,
     hiddenFocusTitles: normalizeHiddenFocusTitles(row.hiddenFocusTitles) || [],
     pointsToNote: normalizePointsToNote(row.pointsToNote) || "",
     createdByRole: normalizeCreatedByRole(row.createdByRole),
@@ -180,9 +212,9 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
   };
   if (resolved !== undefined) {
     base.focusAreas = resolved;
-    base.areasToFocus = mergeAreasToFocus(focusPoints, resolved);
+    base.areasToFocus = mergeAreasToFocus(publishedTexts, resolved);
   } else {
-    base.areasToFocus = focusPoints;
+    base.areasToFocus = publishedTexts;
   }
   return base;
 }
@@ -375,6 +407,35 @@ async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focu
   return enrichAssessmentPublic(Attributes);
 }
 
+async function pushUserLaunchAssessmentFocusPoints(id) {
+  const current = await getUserLaunchAssessmentRecordById(id);
+  if (!current) {
+    const err = new Error("Assessment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const focusPoints = normalizeFocusPoints(current.focusPoints) || [];
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression:
+        "SET pushedFocusPoints = :pushedFocusPoints, focusPointsPushedAt = :focusPointsPushedAt, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":pushedFocusPoints": focusPoints,
+        ":focusPointsPushedAt": now,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return enrichAssessmentPublic(Attributes);
+}
+
 async function deleteUserLaunchAssessment(id) {
   const record = await getUserLaunchAssessmentRecordById(id);
   if (!record) {
@@ -410,7 +471,9 @@ module.exports = {
   getUserLaunchAssessmentByUserAndDate,
   listUserLaunchAssessmentsByUserId,
   updateUserLaunchAssessment,
+  pushUserLaunchAssessmentFocusPoints,
   deleteUserLaunchAssessment,
   enrichAssessmentPublic,
   toUserLaunchAssessmentPublic,
+  resolvePublishedFocusTexts,
 };

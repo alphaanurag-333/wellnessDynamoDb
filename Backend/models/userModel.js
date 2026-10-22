@@ -139,6 +139,17 @@ function isSleepTrackingEnabled(user) {
   return user?.sleepTrackingEnabled !== false;
 }
 
+/** Client body-measurement form: coach must enable; legacy users who already finished the step keep access. */
+function isBodyMeasurementEnabled(user) {
+  if (user?.bodyMeasurementEnabled === true) return true;
+  if (user?.bodyMeasurementEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyMeasurement === "done" || status.bodyMeasurement === "skipped") {
+    return true;
+  }
+  return false;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -431,6 +442,7 @@ function sanitizeUpdateField(key, value) {
     key === "dietPlanEnabled" ||
     key === "heartRateEnabled" ||
     key === "sleepTrackingEnabled" ||
+    key === "bodyMeasurementEnabled" ||
     key === "labReportSubmissionLocked"
   ) {
     return Boolean(value);
@@ -566,6 +578,7 @@ function buildUserItem(input, { id, now } = {}) {
     dietPlanEnabled: input.dietPlanEnabled !== false,
     heartRateEnabled: input.heartRateEnabled !== false,
     sleepTrackingEnabled: input.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: input.bodyMeasurementEnabled === true,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -1766,6 +1779,7 @@ module.exports = {
   isDietPlanEnabled,
   isHeartRateEnabled,
   isSleepTrackingEnabled,
+  isBodyMeasurementEnabled,
   buildUserItem,
   toPublicUser,
   createUser,

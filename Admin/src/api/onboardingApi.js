@@ -468,9 +468,17 @@ export async function fetchUserLaunchAssessments(userId) {
 
 export async function fetchLaunchAssessmentConfig(userId) {
   function mapConfig(data) {
+    const domains = (Array.isArray(data?.domains) ? data.domains : []).map((row) => {
+      if (!row || typeof row !== "object") return row;
+      const minRequirementRaw = Number(row.minRequirement);
+      return {
+        ...row,
+        minRequirement: Number.isFinite(minRequirementRaw) ? minRequirementRaw : 50,
+      };
+    });
     return {
       ratings: Array.isArray(data?.ratings) ? data.ratings : [],
-      domains: Array.isArray(data?.domains) ? data.domains : [],
+      domains,
       scoring: data?.scoring || null,
     };
   }
@@ -550,6 +558,19 @@ export async function updateUserLaunchAssessment(userId, assessmentId, payload) 
       { headers: authHeader() },
     );
     return data.assessment;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserLaunchFocusPoints(userId, assessmentId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/launch-assessment/${encodeURIComponent(assessmentId)}/focus-points/publish`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
   } catch (error) {
     normalizeApiError(error);
   }

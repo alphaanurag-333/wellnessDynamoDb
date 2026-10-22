@@ -26,12 +26,14 @@ const {
 } = require("../../models/healthProgressWeightModel");
 const {
   listGlucoseLogsByUser,
+  reviewGlucoseLogPhoto,
   toPublicGlucoseLog,
 } = require("../../models/healthProgressGlucoseModel");
 const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
 const { listHba1cReadingsFromLabReports } = require("../../utils/programProgressCalculations");
 const {
   listBloodPressureLogsByUser,
+  reviewBloodPressureLogPhoto,
   toPublicBloodPressureLog,
 } = require("../../models/healthProgressBloodPressureModel");
 const {
@@ -40,6 +42,7 @@ const {
 } = require("../../models/healthProgressMenstrualCycleModel");
 const {
   listConditionLogsByUser,
+  reviewConditionLogPhoto,
   toPublicConditionLog,
 } = require("../../models/healthProgressConditionModel");
 const {
@@ -52,7 +55,45 @@ const {
   assertCoachCanOpenClientUpload,
   openClientUploadForCoach,
   closeClientUploadForCoach,
+  applyClientUploadAfterPhotoReview,
 } = require("../../services/healthProgressClientUploadService");
+
+async function coachPhotoReview(req, res, {
+  featureKey,
+  reviewFn,
+  toPublicLog,
+  approvedMessage,
+  rejectedMessage,
+}) {
+  const { userId } = await coachContext(req);
+  const logId = String(req.params.logId || "").trim();
+  const action = String(req.body?.action || req.body?.status || "").trim();
+  if (!logId) throw new AppError("logId is required", 400);
+  if (action !== "approved" && action !== "rejected") {
+    throw new AppError("action must be approved or rejected", 400);
+  }
+
+  let log;
+  try {
+    log = await reviewFn(userId, logId, {
+      status: action,
+      reviewedById: req.auth?.sub,
+      rejectionReason: req.body?.rejectionReason,
+    });
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
+    handleValidationError(err);
+  }
+
+  const updatedUser = await applyClientUploadAfterPhotoReview(userId, featureKey, action);
+
+  return res.status(200).json({
+    status: true,
+    message: action === "approved" ? approvedMessage : rejectedMessage,
+    log: toPublicLog(log),
+    clientUpload: clientUploadWindows(updatedUser?.healthProgressClientUpload).windows,
+  });
+}
 
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
@@ -194,33 +235,45 @@ exports.deleteCoachWeightPhotoController = asyncHandler(async (req, res) => {
   });
 });
 
-exports.reviewCoachWeightPhotoController = asyncHandler(async (req, res) => {
-  const { userId } = await coachContext(req);
-  const logId = String(req.params.logId || "").trim();
-  const action = String(req.body?.action || req.body?.status || "").trim();
-  if (!logId) throw new AppError("logId is required", 400);
-  if (action !== "approved" && action !== "rejected") {
-    throw new AppError("action must be approved or rejected", 400);
-  }
+exports.reviewCoachWeightPhotoController = asyncHandler(async (req, res) => (
+  coachPhotoReview(req, res, {
+    featureKey: "weightPic",
+    reviewFn: reviewWeightLogPhoto,
+    toPublicLog: toPublicWeightLog,
+    approvedMessage: "Weight photo accepted",
+    rejectedMessage: "Weight photo rejected",
+  })
+));
 
-  let log;
-  try {
-    log = await reviewWeightLogPhoto(userId, logId, {
-      status: action,
-      reviewedById: req.auth?.sub,
-      rejectionReason: req.body?.rejectionReason,
-    });
-  } catch (err) {
-    if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
-    handleValidationError(err);
-  }
+exports.reviewCoachGlucosePhotoController = asyncHandler(async (req, res) => (
+  coachPhotoReview(req, res, {
+    featureKey: "glucose",
+    reviewFn: reviewGlucoseLogPhoto,
+    toPublicLog: toPublicGlucoseLog,
+    approvedMessage: "Glucose photo accepted",
+    rejectedMessage: "Glucose photo rejected",
+  })
+));
 
-  return res.status(200).json({
-    status: true,
-    message: action === "approved" ? "Weight photo accepted" : "Weight photo rejected",
-    log: toPublicWeightLog(log),
-  });
-});
+exports.reviewCoachBloodPressurePhotoController = asyncHandler(async (req, res) => (
+  coachPhotoReview(req, res, {
+    featureKey: "bloodPressure",
+    reviewFn: reviewBloodPressureLogPhoto,
+    toPublicLog: toPublicBloodPressureLog,
+    approvedMessage: "Blood pressure photo accepted",
+    rejectedMessage: "Blood pressure photo rejected",
+  })
+));
+
+exports.reviewCoachConditionPhotoController = asyncHandler(async (req, res) => (
+  coachPhotoReview(req, res, {
+    featureKey: "conditionComparison",
+    reviewFn: reviewConditionLogPhoto,
+    toPublicLog: toPublicConditionLog,
+    approvedMessage: "Condition photo accepted",
+    rejectedMessage: "Condition photo rejected",
+  })
+));
 
 exports.listCoachGlucoseLogsController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);

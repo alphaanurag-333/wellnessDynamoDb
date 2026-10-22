@@ -160,13 +160,57 @@ export async function createCoachWeightLog(userId, payload = {}) {
   }
 }
 
+function mapPhotoReviewResponse(data) {
+  if (!data || typeof data !== "object") return { log: null, clientUpload: null };
+  return {
+    log: data.log || null,
+    clientUpload: pickClientUpload(data.clientUpload),
+  };
+}
+
 export async function reviewCoachWeightPhoto(userId, logId, { action, rejectionReason } = {}) {
   try {
     const { data } = await api.patch(
       `${healUserPath(userId, "/health-progress/weight")}/${encodeURIComponent(logId)}/photo-review`,
       { action, rejectionReason: rejectionReason || "" },
     );
-    return data?.log || null;
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachGlucosePhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/glucose")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachBloodPressurePhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/blood-pressure")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachConditionPhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/condition-comparison")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
   } catch (error) {
     normalizeApiError(error);
   }

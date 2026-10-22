@@ -2,6 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /delete-account
-Disallow: /share
+Disallow: /app
 
 Sitemap: https://irwellness.in/sitemap.xml

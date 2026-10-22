@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   acceptHealConsultancyRequest,
   confirmHealConsultancyTime,
   createHealConsultancyTrack,
   fetchHealConsultancyTracks,
   offerHealConsultancyPeriods,
+  rejectHealConsultancyIntake,
   rejectHealConsultancyRequest,
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
@@ -24,6 +25,22 @@ import {
   startOfDay,
 } from "./meetingDateUtils.js";
 import { mergeMeetingsWithOrphanTracks } from "../../utils/counsellingReviewHistory.js";
+import { COUNSELLING_ACTIVITY_EVENT } from "../../utils/counsellingLiveRefresh.js";
+import { useInbox } from "../../context/InboxContext.jsx";
+
+const COUNSELLING_POLL_VISIBLE_MS = 3000;
+const COUNSELLING_POLL_HIDDEN_MS = 12000;
+const COUNSELLING_HISTORY_REFRESH_MS = 60_000;
+
+function activeTrackSignature(track) {
+  if (!track) return "";
+  return [
+    track.id,
+    track.status,
+    track.updatedAt || track.createdAt,
+    track.scheduledAt || "",
+  ].join("|");
+}
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -115,6 +132,7 @@ function windowBounds(offer) {
 }
 
 export function CounsellingSection({ user, onToast }) {
+  const { loadInbox } = useInbox();
   const { canCreate, canEdit, canDelete } = useClientSectionPermissions("counselling");
   const canManage = canCreate || canEdit;
   const userId = String(user?.id || user?._id || "").trim();
@@ -131,7 +149,13 @@ export function CounsellingSection({ user, onToast }) {
   const [durationMinutes, setDurationMinutes] = useState(45);
   const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
   const [pendingCancel, setPendingCancel] = useState(null);
+  const [pendingRejectIntake, setPendingRejectIntake] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const loadInFlightRef = useRef(false);
+  const activeTrackSigRef = useRef("");
+  const lastHistoryRefreshRef = useRef(0);
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
 
   async function loadReviewHistory(tracksList, coachMeetingsFromTracks) {
     if (Array.isArray(coachMeetingsFromTracks)) {
@@ -149,29 +173,57 @@ export function CounsellingSection({ user, onToast }) {
     }
   }
 
-  async function load() {
-    if (!userId) return;
-    setLoading(true);
-    setMeetingsLoading(true);
+  const load = useCallback(async (options = {}) => {
+    if (!userId || loadInFlightRef.current) return;
+    const silent = Boolean(options.silent);
+    loadInFlightRef.current = true;
+    if (!silent) {
+      setLoading(true);
+      setMeetingsLoading(true);
+    }
     try {
       const data = await fetchHealConsultancyTracks(userId, { page: 1, limit: 30 });
       const tracksList = data.tracks || [];
-      setActiveTrack(data.activeTrack || null);
+      const nextActive = data.activeTrack || null;
+      const nextSig = activeTrackSignature(nextActive);
+
+      if (silent && nextSig && nextSig !== activeTrackSigRef.current && nextActive?.status === "requested") {
+        onToastRef.current?.("Client requested a counselling session");
+      }
+      activeTrackSigRef.current = nextSig;
+
+      setActiveTrack(nextActive);
       setScheduledTrack(data.scheduledTrack || null);
-      const slots = data.activeTrack?.requestedSlots || [];
+      const slots = nextActive?.requestedSlots || [];
       setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
-      setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
+
+      const now = Date.now();
+      const shouldRefreshHistory =
+        !silent
+        || !lastHistoryRefreshRef.current
+        || now - lastHistoryRefreshRef.current >= COUNSELLING_HISTORY_REFRESH_MS;
+      if (shouldRefreshHistory) {
+        lastHistoryRefreshRef.current = now;
+        setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
+      }
     } catch (error) {
-      onToast?.(error.message || "Could not load counselling sessions");
-      setMeetings([]);
+      if (!silent) {
+        onToastRef.current?.(error.message || "Could not load counselling sessions");
+        setMeetings([]);
+      }
     } finally {
-      setLoading(false);
-      setMeetingsLoading(false);
+      loadInFlightRef.current = false;
+      if (!silent) {
+        setLoading(false);
+        setMeetingsLoading(false);
+      }
     }
-  }
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {
+      activeTrackSigRef.current = "";
+      lastHistoryRefreshRef.current = 0;
       setMeetings([]);
       setActiveTrack(null);
       setScheduledTrack(null);
@@ -180,8 +232,55 @@ export function CounsellingSection({ user, onToast }) {
       return;
     }
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+    loadInbox({ silent: true });
+  }, [userId, load, loadInbox]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let intervalId = null;
+
+    const tick = () => {
+      load({ silent: true });
+    };
+
+    const reschedule = () => {
+      if (intervalId) window.clearInterval(intervalId);
+      const ms =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? COUNSELLING_POLL_HIDDEN_MS
+          : COUNSELLING_POLL_VISIBLE_MS;
+      intervalId = window.setInterval(tick, ms);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+      reschedule();
+    };
+
+    const onFocus = () => tick();
+
+    const onCounsellingActivity = (event) => {
+      const subjectUserId = String(event.detail?.subjectUserId || "").trim();
+      if (subjectUserId && subjectUserId === userId) {
+        tick();
+      }
+    };
+
+    reschedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
+    };
+  }, [userId, load]);
 
   const selectedOffer = useMemo(() => {
     if (!activeTrack) return null;
@@ -345,16 +444,38 @@ export function CounsellingSection({ user, onToast }) {
     }
     setBusy(true);
     try {
-      await createHealConsultancyTrack(userId, {
+      const trackPayload = {
         slots,
         coachNotes: payload?.note || undefined,
         durationMinutes: payload?.duration,
-      });
+      };
+      if (activeTrack?.id && activeTrack.status === "requested") {
+        await offerHealConsultancyPeriods(userId, activeTrack.id, trackPayload);
+      } else if (!activeTrack) {
+        await createHealConsultancyTrack(userId, trackPayload);
+      } else {
+        await offerHealConsultancyPeriods(userId, activeTrack.id, trackPayload);
+      }
       setScheduleOpen(false);
       onToast?.("Counselling slots sent");
       await load();
     } catch (error) {
       onToast?.(error.message || "Could not send slots");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRejectIntake() {
+    if (!activeTrack?.id) return;
+    setPendingRejectIntake(false);
+    setBusy(true);
+    try {
+      await rejectHealConsultancyIntake(userId, activeTrack.id);
+      onToast?.("Counselling request rejected — client notified");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not reject request");
     } finally {
       setBusy(false);
     }
@@ -382,9 +503,9 @@ export function CounsellingSection({ user, onToast }) {
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
   const showShareBlock =
     canManage &&
-    (activeTrack?.status === "requested" ||
-      activeTrack?.status === "periods_offered" ||
-      activeTrack?.status === "time_requested");
+    (activeTrack?.status === "periods_offered" || activeTrack?.status === "time_requested");
+  const showClientIntake =
+    canManage && activeTrack?.status === "requested";
   const requestedSlots = activeTrack?.requestedSlots || [];
   const minOfferDate = useMemo(() => startOfDay(new Date()), []);
   const selectedOfferDate = useMemo(
@@ -492,8 +613,32 @@ export function CounsellingSection({ user, onToast }) {
             <span className="ua-cp-counselling__muted">Requested {formatWhen(activeTrack.createdAt)}</span>
           </div>
 
-          {activeTrack.concern ? (
+          {activeTrack.concern && activeTrack.status !== "requested" ? (
             <p className="ua-cp-counselling__concern">{activeTrack.concern}</p>
+          ) : null}
+
+          {showClientIntake ? (
+            <div className="ua-cp-counselling__block ua-cp-counselling__intake">
+              <p className="ua-cp-counselling__intake-message">Client requested for Counselling sessions</p>
+              <div className="ua-cp-counselling__actions">
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--green"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={busy}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--danger"
+                  onClick={() => setPendingRejectIntake(true)}
+                  disabled={busy}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
           ) : null}
 
           {showShareBlock ? (
@@ -692,7 +837,7 @@ export function CounsellingSection({ user, onToast }) {
             </div>
           ) : null}
 
-          {canDelete && activeTrack.status !== "scheduled" ? (
+          {canDelete && activeTrack.status !== "scheduled" && activeTrack.status !== "requested" ? (
             <div className="ua-cp-counselling__foot">
               <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => askCancel(activeTrack)} disabled={busy}>
                 Cancel request
@@ -749,6 +894,18 @@ export function CounsellingSection({ user, onToast }) {
           onSend={sendCounsellingSlots}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={pendingRejectIntake}
+        tag="Counselling"
+        title="Reject counselling request?"
+        body="The client will be notified that this request was declined."
+        cancelLabel="Keep request"
+        confirmLabel="Reject request"
+        confirmTone="danger"
+        onCancel={() => setPendingRejectIntake(false)}
+        onConfirm={confirmRejectIntake}
+      />
 
       <ConfirmDialog
         open={Boolean(pendingCancel)}

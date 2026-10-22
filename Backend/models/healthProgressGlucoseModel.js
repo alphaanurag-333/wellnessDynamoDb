@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
-const { PutCommand, GetCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
+const { PutCommand, GetCommand, DeleteCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { queryPartition } = require("../utils/dynamoList");
 const { resolvePublicUrl, deleteStoredMedia } = require("../utils/s3");
@@ -11,6 +11,7 @@ const {
   healthProgressDayBounds,
   alignWeightLogDates,
 } = require("../utils/healthProgressHelpers");
+const { resolvePicReviewOnSave, applyPhotoReviewUpdate } = require("../utils/healthProgressPicReview");
 
 const TABLE = "HealthProgressGlucose";
 
@@ -21,6 +22,10 @@ function buildGlucoseItem(input, { id, now, createdAt }) {
     type: normalizeGlucoseType(input.type),
     value: toNumberOrNull(input.value),
     glucosePicKey: input.glucosePicKey ? String(input.glucosePicKey) : null,
+    glucosePicReviewStatus: input.glucosePicReviewStatus || null,
+    glucosePicRejectionReason: input.glucosePicRejectionReason || null,
+    glucosePicReviewedAt: input.glucosePicReviewedAt || null,
+    glucosePicReviewedById: input.glucosePicReviewedById || null,
     recordedAt: input.recordedAt || now,
     createdAt: createdAt || now,
     updatedAt: now,
@@ -97,9 +102,25 @@ async function createGlucoseLog(input) {
   const keptPhotoKey = matches.find((row) => row?.glucosePicKey)?.glucosePicKey || null;
   const glucosePicKey = input.glucosePicKey ? String(input.glucosePicKey) : keptPhotoKey;
   const previousPicKey = existing?.glucosePicKey || null;
+  const review = resolvePicReviewOnSave({
+    picKey: glucosePicKey,
+    previousPicKey,
+    existingReviewStatus: existing?.glucosePicReviewStatus,
+    existingRejectionReason: existing?.glucosePicRejectionReason,
+    existingReviewedAt: existing?.glucosePicReviewedAt,
+    existingReviewedById: existing?.glucosePicReviewedById,
+  });
 
   const item = buildGlucoseItem(
-    { ...input, type, glucosePicKey },
+    {
+      ...input,
+      type,
+      glucosePicKey,
+      glucosePicReviewStatus: review.reviewStatus,
+      glucosePicRejectionReason: review.rejectionReason,
+      glucosePicReviewedAt: review.reviewedAt,
+      glucosePicReviewedById: review.reviewedById,
+    },
     { id: existing?.id, now, createdAt: existing?.createdAt }
   );
   assertGlucoseItem(item);
@@ -227,12 +248,34 @@ function toUserGlucoseLog(item) {
   };
 }
 
+async function reviewGlucoseLogPhoto(userId, logId, { status, reviewedById, rejectionReason } = {}) {
+  return applyPhotoReviewUpdate({
+    getItem: getGlucoseLogById,
+    picKeyField: "glucosePicKey",
+    reviewFields: {
+      status: "glucosePicReviewStatus",
+      reason: "glucosePicRejectionReason",
+      reviewedAt: "glucosePicReviewedAt",
+      reviewedById: "glucosePicReviewedById",
+    },
+    userId,
+    logId,
+    status,
+    reviewedById,
+    rejectionReason,
+    UpdateCommand,
+    docClient,
+    tableName: TABLE,
+  });
+}
+
 module.exports = {
   TABLE,
   buildGlucoseItem,
   createGlucoseLog,
   getGlucoseLogById,
   listGlucoseLogsByUser,
+  reviewGlucoseLogPhoto,
   toPublicGlucoseLog,
   toUserGlucoseLog,
 };

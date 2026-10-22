@@ -39,10 +39,12 @@ function mapQuestion(row) {
 
 function mapDomain(row) {
   if (!row) return null;
+  const minRequirementRaw = Number(row.minRequirement);
   const mapped = {
     id: row.id,
     name: row.name || "",
     weight: Number.isFinite(Number(row.weight)) ? Number(row.weight) : 0,
+    minRequirement: Number.isFinite(minRequirementRaw) ? minRequirementRaw : 50,
     live: row.live !== false,
     fixed: Boolean(row.fixed),
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
@@ -136,6 +138,9 @@ export async function adminCreateLaunchDomain(token, fields) {
       {
         name: String(fields.name ?? "").trim(),
         weight: Number(fields.weight) || 0,
+        minRequirement: fields.minRequirement !== undefined && fields.minRequirement !== ""
+          ? Number(fields.minRequirement)
+          : undefined,
         live: fields.live !== false,
         fixed: Boolean(fields.fixed),
       },
@@ -151,6 +156,7 @@ export async function adminUpdateLaunchDomain(token, id, fields) {
   const payload = {};
   if (fields.name !== undefined) payload.name = String(fields.name).trim();
   if (fields.weight !== undefined) payload.weight = Number(fields.weight);
+  if (fields.minRequirement !== undefined) payload.minRequirement = Number(fields.minRequirement);
   if (fields.live !== undefined) payload.live = Boolean(fields.live);
   if (fields.fixed !== undefined) payload.fixed = Boolean(fields.fixed);
   if (fields.sortOrder !== undefined) payload.sortOrder = Number(fields.sortOrder);
@@ -228,9 +234,11 @@ export async function adminDeleteLaunchQuestion(token, domainId, id) {
 
 function mapFocusArea(row) {
   if (!row) return null;
+  const domainId = String(row.domainId || "").trim();
   return {
     id: row.id || row._id,
     title: row.title || "",
+    domainId: domainId || "",
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
     status: row.status === "inactive" ? "inactive" : "active",
   };
@@ -266,6 +274,7 @@ export async function adminCreateLaunchFocusArea(token, fields) {
       "/admin/launch-focus-areas",
       {
         title: String(fields.title ?? "").trim(),
+        domainId: String(fields.domainId ?? "").trim(),
         sortOrder: Number(fields.sortOrder) || 0,
         status: fields.status === "inactive" ? "inactive" : "active",
       },
@@ -280,6 +289,7 @@ export async function adminCreateLaunchFocusArea(token, fields) {
 export async function adminUpdateLaunchFocusArea(token, id, fields) {
   const payload = {};
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
+  if (fields.domainId !== undefined) payload.domainId = String(fields.domainId).trim();
   if (fields.sortOrder !== undefined) payload.sortOrder = Number(fields.sortOrder);
   if (fields.status !== undefined) payload.status = fields.status === "inactive" ? "inactive" : "active";
   try {

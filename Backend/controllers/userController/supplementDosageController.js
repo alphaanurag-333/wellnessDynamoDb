@@ -3,10 +3,6 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const {
   listUserSupplementDosagesByUserId,
   getUserSupplementDosageRecordById,
-  formatDosageAmount,
-  resolveDosageDisplayUnit,
-  frequencyLabel,
-  isDosageScheduledOnDate,
 } = require("../../models/userSupplementDosageModel");
 const {
   queryLogsByDosageId,
@@ -19,16 +15,11 @@ const {
   normalizePeriod,
 } = require("../../models/userSupplementDosageLogModel");
 const { parseCompositePeriod } = require("../../models/userSupplementDosageModel");
-const { getUserById } = require("../../models/userModel");
-const {
-  maybeNotifyDosageNearCompleteAsync,
-} = require("../../services/dosageProgressAlertService");
 
 const PERIOD_COLORS = {
   morning: "#F5A623",
   afternoon: "#1877F2",
   evening: "#7B61FF",
-  night: "#5B4B8A",
   before_1st_meal: "#F5A623",
   before_2nd_meal: "#1877F2",
   before_3rd_meal: "#7B61FF",
@@ -50,7 +41,6 @@ const PERIOD_LABELS = {
   morning: "Morning",
   afternoon: "Afternoon",
   evening: "Evening",
-  night: "Night",
   before_1st_meal: "Before 1st Meal",
   before_2nd_meal: "Before 2nd Meal",
   before_3rd_meal: "Before 3rd Meal",
@@ -68,13 +58,8 @@ const PERIOD_LABELS = {
   before_evening_snacks: "Before Evening Snacks",
 };
 
-function resolvePeriodLabel(period, dosage) {
-  if (PERIOD_LABELS[period]) {
-    if (dosage?.beforeFirstMeal && ["morning", "evening", "night"].includes(period)) {
-      return `${PERIOD_LABELS[period]} · Before 1st Meal`;
-    }
-    return PERIOD_LABELS[period];
-  }
+function resolvePeriodLabel(period) {
+  if (PERIOD_LABELS[period]) return PERIOD_LABELS[period];
   const composite = parseCompositePeriod(period);
   if (composite) {
     const day = PERIOD_LABELS[composite.dayPart] || composite.dayPart;
@@ -106,39 +91,31 @@ function formatDateRange(startDate, endDate) {
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
-  if (!endDate) return `From ${fmt(startDate)}`;
   return `${fmt(startDate)} - ${fmt(endDate)}`;
 }
 
-async function hydrateDosageForUser(dosage, todayLogs, logDate, user) {
+function isDosageActiveOnDate(dosage, logDate) {
+  const status = String(dosage.status || "active").toLowerCase();
+  if (status === "stopped" || status === "draft") return false;
+  const date = normalizeLogDate(logDate);
+  return date >= dosage.startDate && date <= dosage.endDate;
+}
+
+async function hydrateDosageForUser(dosage, todayLogs, logDate) {
   const logs = await queryLogsByDosageId(dosage.id);
   const progressPercent = computeProgressPercent(dosage, logs);
-  maybeNotifyDosageNearCompleteAsync({
-    user,
-    userId: dosage.userId,
-    dosage,
-    progressPercent,
-  });
   const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
-  const unit = await resolveDosageDisplayUnit(dosage);
-  const dailyDosageLabel = formatDosageAmount(dosage.totalPerDay, unit);
-  const scheduleLabel = frequencyLabel(dosage.frequency, dosage.intervalDays);
-  const range = dosage.endDate
-    ? formatDateRange(dosage.startDate, dosage.endDate)
-    : `${formatDateRange(dosage.startDate, "")}${scheduleLabel ? ` · ${scheduleLabel}` : ""}`;
+  const dailyDosageLabel = `${dosage.totalPerDay} ${dosage.unit}`;
 
   return {
     ...dosage,
-    unit,
     progressPercent,
-    frequencyLabel: scheduleLabel,
-    dateRange: range,
+    dateRange: formatDateRange(dosage.startDate, dosage.endDate),
     dailyDosageLabel,
     todayCompletion,
     periods: (dosage.periods || []).map((row) => ({
       ...row,
-      label: resolvePeriodLabel(row.period, dosage),
-      amountLabel: formatDosageAmount(row.quantity, unit),
+      label: resolvePeriodLabel(row.period),
       completed: todayCompletion[row.period] === true,
       color: resolvePeriodColor(row.period),
     })),
@@ -150,15 +127,12 @@ exports.getUserSupplementDosagesController = asyncHandler(async (req, res) => {
   if (!userId) throw new AppError("Unauthorized", 401);
 
   const logDate = normalizeLogDate(req.query?.date);
-  const [todayLogs, dosages, user] = await Promise.all([
-    queryLogsByUserIdAndDate(userId, logDate),
-    listUserSupplementDosagesByUserId(userId, { includeStopped: false }),
-    getUserById(userId),
-  ]);
-  const activeDosages = dosages.filter((row) => isDosageScheduledOnDate(row, logDate));
+  const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
+  const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false, includeDraft: false });
+  const activeDosages = dosages.filter((row) => isDosageActiveOnDate(row, logDate));
 
   const hydrated = await Promise.all(
-    activeDosages.map((dosage) => hydrateDosageForUser(dosage, todayLogs, logDate, user))
+    activeDosages.map((dosage) => hydrateDosageForUser(dosage, todayLogs, logDate))
   );
 
   return res.status(200).json({
@@ -181,7 +155,7 @@ exports.toggleUserSupplementDosageLogController = asyncHandler(async (req, res) 
   if (!dosage || String(dosage.userId || "") !== String(userId)) {
     throw new AppError("Nutrition dosage not found", 404);
   }
-  if (!isDosageScheduledOnDate(dosage, logDate)) {
+  if (!isDosageActiveOnDate(dosage, logDate)) {
     throw new AppError("This dosage plan is not active for the selected date", 400);
   }
 
@@ -219,11 +193,6 @@ exports.toggleUserSupplementDosageLogController = asyncHandler(async (req, res) 
   const progressPercent = computeProgressPercent(dosage, logs);
   const todayLogs = applyToggleDelta(todayLogsBeforeToggle);
   const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
-  maybeNotifyDosageNearCompleteAsync({
-    userId,
-    dosage,
-    progressPercent,
-  });
 
   return res.status(200).json({
     status: true,

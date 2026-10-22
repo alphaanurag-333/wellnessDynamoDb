@@ -72,9 +72,7 @@ const {
 const {
   listCoachUserSupplementDosagesController,
   createCoachUserSupplementDosageController,
-  createCoachUserSupplementDosageBatchController,
-  updateCoachUserSupplementDosageController,
-  pushCoachUserSupplementDosagesController,
+  publishCoachUserSupplementDosagesController,
   deleteCoachUserSupplementDosageController,
 } = require("../../controllers/adminController/supplementDosageController");
 const {
@@ -94,6 +92,7 @@ const {
   getCoachUserLaunchAssessmentByDateController,
   createCoachUserLaunchAssessmentController,
   updateCoachUserLaunchAssessmentController,
+  pushCoachUserLaunchAssessmentFocusPointsController,
   deleteCoachUserLaunchAssessmentController,
   exportCoachUserLaunchQuestionsController,
 } = require("../../controllers/adminController/launchAssessmentController");
@@ -112,6 +111,9 @@ const {
   createCoachWeightLogController,
   deleteCoachWeightPhotoController,
   reviewCoachWeightPhotoController,
+  reviewCoachGlucosePhotoController,
+  reviewCoachBloodPressurePhotoController,
+  reviewCoachConditionPhotoController,
   listCoachGlucoseLogsController,
   listCoachBloodPressureLogsController,
   listCoachMenstrualCycleLogsController,
@@ -128,6 +130,7 @@ const {
   getCoachUserDailyReflectionHistoryController,
   submitCoachUserDailyReflectionController,
   pushCoachUserDailyReflectionBedtimeController,
+  runDailyReflectionBedtimeJobController,
 } = require("../../controllers/adminController/dailyReflectionController");
 const {
   getCoachUserCommitmentLetterController,
@@ -154,6 +157,7 @@ const {
   confirmCoachHealConsultancyTimeController,
   acceptCoachHealConsultancyRequestController,
   rejectCoachHealConsultancyRequestController,
+  rejectCoachHealConsultancyIntakeController,
 } = require("../../controllers/adminController/healConsultancyTrackController");
 const {
   getStaffUserProtocolSettingsController,
@@ -211,6 +215,17 @@ const router = express.Router({ mergeParams: true });
 router.use(protectAccount, requireActiveRole(...CLINICAL_ROLES));
 
 router.get("/", staff("console.cl.view", { admin: "users.view", coach: "nav.my-users" }), listHealUsersForStaffController);
+
+const reflectionJobRun = staff("console.diet.edit", {
+  admin: "users.clientHub.wellness.daily-reflection",
+  coach: "clientTab.wellness.daily-reflection",
+});
+router.post(
+  "/daily-reflection/bedtime-job/run",
+  reflectionJobRun,
+  runDailyReflectionBedtimeJobController
+);
+
 router.post(
   "/:id/reassign",
   requireActiveRole("admin", "wellness_coach"),
@@ -340,9 +355,7 @@ const dosage = staff("console.diet.view", { admin: "users.clientHub.wellness.sup
 const dosageWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" });
 router.get("/:userId/supplement-dosages", dosage, listCoachUserSupplementDosagesController);
 router.post("/:userId/supplement-dosages", dosageWrite, createCoachUserSupplementDosageController);
-router.post("/:userId/supplement-dosages/batch", dosageWrite, createCoachUserSupplementDosageBatchController);
-router.post("/:userId/supplement-dosages/push", dosageWrite, pushCoachUserSupplementDosagesController);
-router.put("/:userId/supplement-dosages/:dosageId", dosageWrite, updateCoachUserSupplementDosageController);
+router.post("/:userId/supplement-dosages/publish", dosageWrite, publishCoachUserSupplementDosagesController);
 router.delete("/:userId/supplement-dosages/:dosageId", staff("console.diet.delete", { admin: "users.clientHub.wellness.supplement-dosage", coach: "clientTab.wellness.supplement-dosage" }), deleteCoachUserSupplementDosageController);
 
 const meal = staff("console.diet.view", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" });
@@ -365,6 +378,11 @@ router.get("/:userId/launch-assessment", launch, listCoachUserLaunchAssessmentsC
 router.get("/:userId/launch-assessment/by-date", launch, getCoachUserLaunchAssessmentByDateController);
 router.post("/:userId/launch-assessment", launchWrite, createCoachUserLaunchAssessmentController);
 router.patch("/:userId/launch-assessment/:assessmentId", launchWrite, updateCoachUserLaunchAssessmentController);
+router.post(
+  "/:userId/launch-assessment/:assessmentId/focus-points/publish",
+  launchWrite,
+  pushCoachUserLaunchAssessmentFocusPointsController,
+);
 router.delete("/:userId/launch-assessment/:assessmentId", staff("console.body.edit", { admin: "users.clientHub.assessments.launch-assessment", coach: "clientTab.assessments.launch-assessment" }), deleteCoachUserLaunchAssessmentController);
 
 const prakruti = staff("console.body.view", { admin: "users.clientHub.assessments.prakruti-assessment", coach: "clientTab.assessments.prakruti-assessment" });
@@ -385,9 +403,12 @@ router.post("/:userId/health-progress/weight", hpWrite, optionalHealthProgressWe
 router.delete("/:userId/health-progress/weight/:logId/photo", hpWrite, deleteCoachWeightPhotoController);
 router.patch("/:userId/health-progress/weight/:logId/photo-review", hpWrite, reviewCoachWeightPhotoController);
 router.get("/:userId/health-progress/glucose", hp, listCoachGlucoseLogsController);
+router.patch("/:userId/health-progress/glucose/:logId/photo-review", hpWrite, reviewCoachGlucosePhotoController);
 router.get("/:userId/health-progress/blood-pressure", hp, listCoachBloodPressureLogsController);
+router.patch("/:userId/health-progress/blood-pressure/:logId/photo-review", hpWrite, reviewCoachBloodPressurePhotoController);
 router.get("/:userId/health-progress/menstrual-cycle", hp, listCoachMenstrualCycleLogsController);
 router.get("/:userId/health-progress/condition-comparison", hp, listCoachConditionLogsController);
+router.patch("/:userId/health-progress/condition-comparison/:logId/photo-review", hpWrite, reviewCoachConditionPhotoController);
 
 const meta = staff("console.body.view", { admin: "users.clientHub.metabolic-health.metabolic-metrics", coach: "clientTab.metabolic-health.metabolic-metrics" });
 const metaWrite = staff("console.body.edit", { admin: "users.clientHub.metabolic-health.metabolic-metrics", coach: "clientTab.metabolic-health.metabolic-metrics" });
@@ -466,6 +487,7 @@ router.patch("/:userId/heal-consultancy-tracks/:trackId/offer-periods", tracksWr
 router.patch("/:userId/heal-consultancy-tracks/:trackId/confirm-time", tracksWrite, confirmCoachHealConsultancyTimeController);
 router.post("/:userId/heal-consultancy-tracks/:trackId/accept-request", tracksWrite, acceptCoachHealConsultancyRequestController);
 router.post("/:userId/heal-consultancy-tracks/:trackId/reject-request", tracksWrite, rejectCoachHealConsultancyRequestController);
+router.post("/:userId/heal-consultancy-tracks/:trackId/reject-intake", tracksWrite, rejectCoachHealConsultancyIntakeController);
 router.patch("/:userId/heal-consultancy-tracks/:trackId", tracksWrite, updateCoachHealConsultancyTrackController);
 router.delete("/:userId/heal-consultancy-tracks/:trackId", staff("console.cal.delete", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" }), deleteCoachHealConsultancyTrackController);
 

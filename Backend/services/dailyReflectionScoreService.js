@@ -2,10 +2,7 @@ const { todayDateOnly } = require("../utils/dateOnly");
 const { getSettings, listEnabledActivities } = require("../models/dailyReflectionModel");
 const { getSettings: getStepsSettings, getDayLog: getStepsDayLog, formatDayLog: formatStepsDayLog } = require("../models/stepsTrackingModel");
 const { getSettings: getWaterSettings, getDayLog: getWaterDayLog, formatDayLog: formatWaterDayLog } = require("../models/waterTrackingModel");
-const {
-  listUserSupplementDosagesByUserId,
-  isDosageScheduledOnDate,
-} = require("../models/userSupplementDosageModel");
+const { listUserSupplementDosagesByUserId } = require("../models/userSupplementDosageModel");
 const {
   queryLogsByUserIdAndDate,
   buildTodayCompletionMap,
@@ -46,6 +43,13 @@ function averagePercents(values) {
   return clampPercent(sum / applicable.length) || 0;
 }
 
+function isDosageActiveOnDate(dosage, logDate) {
+  const status = String(dosage.status || "active").toLowerCase();
+  if (status === "stopped" || status === "draft") return false;
+  const date = normalizeLogDate(logDate);
+  return date >= dosage.startDate && date <= dosage.endDate;
+}
+
 async function computeStepsTracking(userId, date) {
   const settings = await getStepsSettings(userId);
   const item = await getStepsDayLog(userId, date);
@@ -81,8 +85,8 @@ async function computeWaterTracking(userId, date) {
 async function computeNutritionTracking(userId, date) {
   const logDate = normalizeLogDate(date);
   const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
-  const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false });
-  const activeDosages = dosages.filter((row) => isDosageScheduledOnDate(row, logDate));
+  const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false, includeDraft: false });
+  const activeDosages = dosages.filter((row) => isDosageActiveOnDate(row, logDate));
 
   let scheduled = 0;
   let completed = 0;
@@ -108,12 +112,19 @@ async function computeNutritionTracking(userId, date) {
   };
 }
 
+function isMealCategoryLog(log) {
+  const category = String(log?.category || "meal").trim().toLowerCase();
+  return category === "meal";
+}
+
 async function computeMealTracking(userId, date, dailyMealGoal = MEAL_DAILY_GOAL) {
   const logs = await queryMealLogsByUserAndDateRange(userId, date, date);
   const goal = normalizeMealGoalCount(dailyMealGoal);
   // Count logged meals toward daily reflection progress even while pending coach
-  // review; only rejected meals are excluded.
+  // review; only rejected meals are excluded. Salad, protein, and other categories
+  // do not count toward the daily meal goal.
   const counted = logs.filter((log) => {
+    if (!isMealCategoryLog(log)) return false;
     const status = String(log.status || "approved").toLowerCase();
     return status === "approved" || status === "pending_review";
   }).length;

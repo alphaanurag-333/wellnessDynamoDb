@@ -1,12 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchAdminInbox,
   markAdminInboxItemRead,
   markAllAdminInboxRead,
 } from "../api/adminInboxApi.js";
+import { dispatchCounsellingActivity } from "../utils/counsellingLiveRefresh.js";
 
-const INBOX_POLL_MS = 60_000;
+const INBOX_POLL_MS = 15_000;
 
 const InboxContext = createContext(null);
 
@@ -14,6 +15,8 @@ export function InboxProvider({ children, onToast }) {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [inboxLoading, setInboxLoading] = useState(true);
+  const inboxInitializedRef = useRef(false);
+  const inboxIdsRef = useRef(new Set());
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => item.unread).length,
@@ -24,7 +27,22 @@ export function InboxProvider({ children, onToast }) {
     if (!silent) setInboxLoading(true);
     try {
       const data = await fetchAdminInbox({ page: 1, limit: 40 });
-      setNotifications(data?.notifications || []);
+      const list = data?.notifications || [];
+      if (inboxInitializedRef.current) {
+        for (const item of list) {
+          if (inboxIdsRef.current.has(item.id)) continue;
+          if (String(item.kindKey || "").toLowerCase() !== "counselling") continue;
+          dispatchCounsellingActivity({
+            subjectUserId: item.subjectUserId || null,
+            referenceId: item.referenceId || null,
+            activityId: item.id,
+          });
+        }
+      } else {
+        inboxInitializedRef.current = true;
+      }
+      inboxIdsRef.current = new Set(list.map((item) => item.id));
+      setNotifications(list);
     } catch (err) {
       if (!silent) {
         console.error("[AdminInbox] load failed:", err?.message || err);

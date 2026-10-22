@@ -15543,9 +15543,60 @@
   box-shadow: 0 1px 3px rgba(16, 35, 63, 0.08);
 }
 
-/* Nutritions: keep Recommendation / Dosage identical in both states */
-.updated-admin .ua-cp-nutritions > .ua-pill-tabs--md {
-  margin-top: 2px;
+.updated-admin .ua-cp-nutritions__tabs {
+  margin: 12px 0 14px;
+  max-width: 100%;
+}
+
+.updated-admin .ua-cp-nutritions__tabs .ua-pill-tabs--md {
+  display: flex;
+  align-items: stretch;
+  width: min(100%, 440px);
+  max-width: 100%;
+  padding: 5px;
+  gap: 6px;
+  margin-bottom: 0;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #eef2f7 0%, #e6ebf3 100%);
+  border: 1px solid #cfd8e6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.updated-admin .ua-cp-nutritions__tabs .ua-pill-tabs--md .ua-pill-tabs__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  height: auto;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  box-shadow: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.updated-admin .ua-cp-nutritions__tabs .ua-pill-tabs--md .ua-pill-tabs__btn:hover {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.updated-admin .ua-cp-nutritions__tabs .ua-pill-tabs--md .ua-pill-tabs__btn--active {
+  background: #fff;
+  border-color: #c5d0e0;
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.updated-admin .ua-cp-nutritions__tabs .ua-pill-tabs--md .ua-pill-tabs__btn--active:hover {
+  color: #0f172a;
+  background: #fff;
 }
 
 .updated-admin .ua-cp-rec-block,
@@ -16012,6 +16063,28 @@
   opacity: 0.62;
 }
 
+.updated-admin .ua-cp-dosage-card--draft {
+  border: 1px dashed rgba(123, 97, 255, 0.45);
+  background: rgba(123, 97, 255, 0.04);
+}
+
+.updated-admin .ua-cp-dosage-list__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(90, 107, 133);
+  margin: 16px 0 8px;
+}
+
+.updated-admin .ua-cp-dosage-list__draft {
+  font-weight: 500;
+  font-size: 12px;
+  color: #7b61ff;
+}
+
 .updated-admin .ua-cp-dosage-card__head {
   display: flex;
   align-items: center;
@@ -16034,136 +16107,66 @@
   font-weight: 700;
 }
 
+.updated-admin .ua-cp-dosage-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-dosage-card__edit {
+  border: 1px solid rgba(123, 97, 255, 0.35);
+  background: #fff;
+  color: #7b61ff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-dosage-card__edit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.updated-admin .ua-cp-dosage-card--editing {
+  outline: 2px solid rgba(123, 97, 255, 0.45);
+  outline-offset: 1px;
+}
+
+.updated-admin .ua-cp-dosage-add--editing {
+  outline: 2px solid rgba(123, 97, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(123, 97, 255, 0.04);
+}
+
+.updated-admin .ua-cp-dosage-edit-banner {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(123, 97, 255, 0.08);
+  font-size: 13px;
+  color: rgb(60, 72, 92);
+}
+
+.updated-admin .ua-cp-dosage-edit-banner__cancel {
+  border: none;
+  background: none;
+  color: #7b61ff;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
 .updated-admin .ua-cp-dosage-card__close {
   border: none;
   background: none;
   color: #9aa6b8;
   font-size: 18px;
   cursor: pointer;
-}
-
-.updated-admin .ua-cp-dosage-card__edit {
-  border: 1px solid var(--border);
-  background: #fff;
-  color: #3d4d66;
-  border-radius: 8px;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.updated-admin .ua-cp-dosage-check {
-  display: inline-flex;
-  align-items: center;
-}
-
-.updated-admin .ua-cp-dosage-card__head .ua-cp-dosage-badge {
-  border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 800;
-  background: #f4f0e6;
-  color: #8a6a1a;
-}
-
-.updated-admin .ua-cp-dosage-card__head .ua-cp-dosage-badge--live {
-  background: #e7f6ee;
-  color: #1f7a45;
-}
-
-.updated-admin .ua-cp-dosage-batch {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 12px 0 16px;
-}
-
-.updated-admin .ua-cp-dosage-row,
-.updated-admin .ua-cp-dosage-edit {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
-}
-
-.updated-admin .ua-cp-dosage-row__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 10px;
-}
-
-.updated-admin .ua-cp-dosage-row__grid label,
-.updated-admin .ua-cp-dosage-row__timings {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #5a6b85;
-}
-
-.updated-admin .ua-cp-dosage-row__grid select,
-.updated-admin .ua-cp-dosage-row__grid input {
-  height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0 10px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1d2a3a;
-}
-
-.updated-admin .ua-cp-dosage-row__timing-selects {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.updated-admin .ua-cp-dosage-row__timing-selects .ua-cp-timing-wrap {
-  flex: 1 1 180px;
-  min-width: 160px;
-}
-
-.updated-admin .ua-cp-dosage-row__remove {
-  margin-left: auto;
-  border: none;
-  background: none;
-  color: #b42318;
-  font-weight: 700;
-  cursor: pointer;
-  height: 38px;
-}
-
-.updated-admin .ua-cp-dosage-row__total {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.updated-admin .ua-cp-dosage-batch__actions,
-.updated-admin .ua-cp-dosage-push {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.updated-admin .ua-cp-dosage-push {
-  margin-bottom: 12px;
-}
-
-.updated-admin .ua-cp-dosage-push label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #5a6b85;
 }
 
 .updated-admin .ua-cp-dosage-meals {
@@ -16206,6 +16209,24 @@
   font-size: 11px;
   font-weight: 700;
   margin-top: 2px;
+}
+
+.updated-admin .ua-cp-dosage-card__foot-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-dosage-card__draft-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7b61ff;
+}
+
+.updated-admin .ua-cp-dosage-card__pack {
+  font-size: 11px;
+  color: rgb(90, 107, 133);
 }
 
 .updated-admin .ua-cp-dosage-card__foot {
@@ -16733,6 +16754,24 @@
 /* Body Analytics */
 .updated-admin .ua-cp-body-analytics {
   padding: 4px 0 24px;
+}
+
+.updated-admin .ua-cp-ba-client-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f4f7fb;
+  border: 1px solid #e3eaf3;
+}
+
+.updated-admin .ua-cp-ba-client-entry__label {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: #5a6b85;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-ba-head {
@@ -19820,6 +19859,20 @@ scrollbar-width: thin;
   border-bottom: 1px solid #eef1f6;
 }
 
+.updated-admin .ua-cp-launch-domain--below-min .ua-cp-launch-domain__head {
+  background: #fff8f6;
+}
+
+.updated-admin .ua-cp-launch-domain--below-min .ua-cp-launch-domain__bar span {
+  background: #ef6b4a;
+}
+
+.updated-admin .ua-cp-launch-domain--below-min .ua-cp-launch-domain__cfg-stat-val {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 .updated-admin .ua-cp-launch-domain__chev {
   width: 18px;
   height: 18px;
@@ -19865,6 +19918,43 @@ scrollbar-width: thin;
   font-weight: 600;
   white-space: nowrap;
   justify-self: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.updated-admin .ua-cp-launch-domain__cfg-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-launch-domain__cfg-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-launch-domain__cfg-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.updated-admin .ua-cp-launch-domain__cfg-stat-val {
+  min-width: 52px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #dbeafe;
+  border-radius: 7px;
+  background: rgb(238, 240, 252);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+  color: rgb(94, 106, 210);
   font-variant-numeric: tabular-nums;
 }
 
@@ -20380,9 +20470,18 @@ scrollbar-width: thin;
   filter: brightness(0.97);
 }
 
+.updated-admin .ua-cp-launch-focus__push-hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #b45309;
+}
+
 .updated-admin .ua-cp-launch-focus__actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 12px;
 }
 
@@ -31599,6 +31698,31 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-hptrack-upload--inline button {
   margin-left: 0;
   padding: 2px 8px;
+}
+
+.updated-admin .ua-cp-hptrack-upload-review-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.updated-admin .ua-cp-hptrack-upload-review-bar strong {
+  display: block;
+  font-size: 13px;
+  color: #24324a;
+}
+
+.updated-admin .ua-cp-hptrack-upload-review-bar p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6b7a90;
 }
 
 .updated-admin .ua-cp-hptrack-section-head {
@@ -45704,13 +45828,14 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-drf-add-section {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) 120px auto;
+  grid-template-columns: minmax(0, 1.4fr) 120px 160px auto;
   gap: 10px;
   align-items: center;
 }
 
 .updated-admin .ua-cfg-drf-add-section__name,
-.updated-admin .ua-cfg-drf-add-section__weight {
+.updated-admin .ua-cfg-drf-add-section__weight,
+.updated-admin .ua-cfg-drf-add-section__min-req {
   height: 36px;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -45724,7 +45849,8 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cfg-drf-add-section__name:focus,
-.updated-admin .ua-cfg-drf-add-section__weight:focus {
+.updated-admin .ua-cfg-drf-add-section__weight:focus,
+.updated-admin .ua-cfg-drf-add-section__min-req:focus {
   outline: none;
   border-color: #5e6ad2;
   box-shadow: 0 0 0 3px rgba(94, 106, 210, 0.12);
@@ -47949,13 +48075,13 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-launch-rating__delete {
   color: #9ca3af;
-  opacity: 0;
-  transition: opacity 0.15s ease;
+  opacity: 1;
+  justify-self: end;
 }
 
-.updated-admin .ua-cfg-launch-rating:hover .ua-cfg-launch-rating__delete,
-.updated-admin .ua-cfg-launch-rating:focus-within .ua-cfg-launch-rating__delete {
-  opacity: 1;
+.updated-admin .ua-cfg-launch-rating__delete:hover:not(:disabled) {
+  color: #c05656;
+  border-color: #fecaca;
 }
 
 .updated-admin .ua-cfg-launch-rating-add {
@@ -48034,9 +48160,24 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cfg-launch-focus__add {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 220px) auto;
   gap: 10px;
   align-items: center;
+}
+
+.updated-admin .ua-cfg-launch-focus__domain {
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+
+.updated-admin .ua-cfg-launch-focus__domain .ua-cfg-select__trigger {
+  height: 38px;
+  min-height: 38px;
+}
+
+.updated-admin .ua-cfg-launch-focus__row .ua-cfg-launch-focus__domain .ua-cfg-select__trigger {
+  height: 34px;
+  min-height: 34px;
 }
 
 .updated-admin .ua-cfg-launch-focus__add input {
@@ -48222,7 +48363,7 @@ scrollbar-width: thin;
   }
 
   .updated-admin .ua-cfg-launch-domain__trail {
-    grid-template-columns: auto minmax(0, max-content) 42px 40px 34px 28px;
+    grid-template-columns: auto auto minmax(0, max-content) 42px 40px 34px 28px;
   }
 
   .updated-admin .ua-cfg-launch-question__trail {

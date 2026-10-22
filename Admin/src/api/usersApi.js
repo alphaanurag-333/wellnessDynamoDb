@@ -29,6 +29,14 @@ function mapApiStatusToUi(status) {
   return "Disabled";
 }
 
+/** Matches Backend/models/userModel isBodyMeasurementEnabled (coach gate + legacy completed step). */
+export function resolveBodyMeasurementClientEnabled(user) {
+  if (user?.bodyMeasurementEnabled === true) return true;
+  if (user?.bodyMeasurementEnabled === false) return false;
+  const status = String(user?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase();
+  return status === "done" || status === "skipped";
+}
+
 export function mapUiStatusToApi(statusFilter) {
   if (statusFilter === "Active") return "active";
   if (statusFilter === "Disabled") return "inactive";
@@ -645,6 +653,8 @@ export function mapApiUserToRow(user, index = 0) {
     })(),
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
+    bodyMeasurementEnabledRaw: user?.bodyMeasurementEnabled === true,
     referralCode: String(user?.referralCode || "").trim(),
     referredByCode: String(user?.referredByCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
@@ -876,11 +886,28 @@ export async function fetchUserBodyAnalytics(id) {
       `/account/users/${encodeURIComponent(id)}/body-analytics`,
       { headers: authHeader() },
     );
-    return data.bodyAnalytics || {
+    const analytics = data.bodyAnalytics || {
       measurements: [],
       metabolicMetrics: [],
       photos: [],
     };
+    return {
+      ...analytics,
+      bodyMeasurementEnabled: data.bodyMeasurementEnabled,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserBodyMeasurementSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/body-measurements/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return data;
   } catch (error) {
     normalizeApiError(error);
   }

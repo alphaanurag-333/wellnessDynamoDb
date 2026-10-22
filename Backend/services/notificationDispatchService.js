@@ -1,4 +1,4 @@
-const { getUserById } = require("../models/userModel");
+const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
 const {
@@ -16,7 +16,6 @@ const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync 
 const {
   emitMealLogged,
   emitLabReportUploaded,
-  emitDosageNearComplete,
   emitCounsellingRequested,
   emitCounsellingPeriodSelected,
   emitCounsellingTimeRequested,
@@ -42,7 +41,6 @@ const FCM_TYPE_BY_KIND = {
   yoga_assigned: "yoga_assigned_notification",
   supplement_recommended: "supplement_recommendation_notification",
   supplement_dosage_assigned: "supplement_dosage_notification",
-  supplement_dosage_near_complete: "supplement_dosage_near_complete_notification",
   supplement_delivery_requested: "supplement_delivery_requested_notification",
   supplement_bill_uploaded: "supplement_bill_uploaded_notification",
   supplement_order_logged: "supplement_order_logged_notification",
@@ -60,6 +58,7 @@ const FCM_TYPE_BY_KIND = {
   counselling_time_requested: "counselling_time_requested_notification",
   counselling_scheduled: "counselling_scheduled_notification",
   counselling_cancelled: "counselling_cancelled_notification",
+  counselling_request_declined: "counselling_request_declined_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
@@ -102,20 +101,42 @@ async function deliverBroadcastPush(notification) {
   });
 }
 
-async function deliverTargetedPush(userId, notification) {
+const FCM_TOKEN_INVALID_CODES = new Set([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
+
+async function deliverTargetedPush(userId, notification, options = {}) {
+  const overrideToken = String(options.fcmToken || "").trim();
   const user = await getUserById(userId);
-  const token = user ? readFcmToken(user) : null;
+  const token = overrideToken || (user ? readFcmToken(user) : null);
   if (!token) {
     return { successCount: 0, failureCount: 0, skipped: true, reason: "no_token" };
   }
 
   const imageUrl = notification.image ? resolvePublicUrl(notification.image) : null;
-  return sendPushToTokens([token], {
+  const result = await sendPushToTokens([token], {
     title: notification.title || PUSH_TITLE_DEFAULT,
     body: notification.message,
     imageUrl,
     data: buildPushData(notification),
   });
+
+  const invalidCode = result?.primaryError?.code;
+  if (
+    !overrideToken &&
+    user &&
+    invalidCode &&
+    FCM_TOKEN_INVALID_CODES.has(invalidCode)
+  ) {
+    try {
+      await updateUser(userId, { fcm_id: null });
+    } catch (err) {
+      console.error("Failed to clear invalid FCM token:", err?.message || err);
+    }
+  }
+
+  return result;
 }
 
 function runPushSafely(promise) {
@@ -343,6 +364,7 @@ async function dispatchDailyReflectionBedtimeNotification({
   bedtime,
   coachName,
   actorUserId = null,
+  fcmToken = null,
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
   const timeLabel = formatBedtimeLabel(bedtime);
@@ -359,7 +381,7 @@ async function dispatchDailyReflectionBedtimeNotification({
 
   let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
   try {
-    push = await deliverTargetedPush(userId, notification);
+    push = await deliverTargetedPush(userId, notification, { fcmToken });
   } catch (err) {
     console.error("FCM push failed:", err?.message || err);
   }
@@ -692,7 +714,7 @@ async function dispatchSupplementDosageAssignedNotification({
 }) {
   const name = String(coachName || "Your coach").trim() || "Your coach";
   const supplement = String(supplementName || "a nutrition").trim() || "a nutrition";
-  const message = `${name} pushed a dosage schedule for ${supplement} to your app.`;
+  const message = `${name} set a dosage schedule for ${supplement}.`;
 
   const notification = await createTargetedNotification({
     userId,
@@ -705,40 +727,6 @@ async function dispatchSupplementDosageAssignedNotification({
 
   runPushSafely(deliverTargetedPush(userId, notification));
   return notification;
-}
-
-async function dispatchDosageNearCompleteCoachNotification({
-  user,
-  dosage,
-  progressPercent,
-}) {
-  emitDosageNearComplete({ user, dosage, progressPercent });
-
-  const tokens = await collectCoachFcmTokensForUser(user);
-  if (tokens.length === 0) {
-    return { successCount: 0, failureCount: 0, skipped: true, reason: "no_tokens" };
-  }
-
-  const userName = String(user?.name || "A client").trim() || "A client";
-  const supplement = String(dosage?.name || "nutrition").trim() || "nutrition";
-  const pct = Math.max(0, Math.min(100, Math.round(Number(progressPercent) || 0)));
-  const message = `${userName}'s ${supplement} dosage is ${pct}% complete.`;
-
-  return sendPushToTokens(tokens, {
-    title: "Dosage nearly complete",
-    body: message,
-    data: {
-      type: FCM_TYPE_BY_KIND.supplement_dosage_near_complete,
-      kind: "supplement_dosage_near_complete",
-      referenceId: String(dosage?.id || dosage?._id || ""),
-      referenceType: "user_supplement_dosage",
-      userId: String(user?.id || user?._id || ""),
-    },
-  });
-}
-
-function dispatchDosageNearCompleteCoachNotificationAsync(payload) {
-  runPushSafely(dispatchDosageNearCompleteCoachNotification(payload));
 }
 
 async function dispatchSupplementOrderLoggedNotification({
@@ -1174,6 +1162,19 @@ async function dispatchCounsellingCancelledNotification({ userId, trackId }) {
   return notification;
 }
 
+async function dispatchCounsellingRequestDeclinedNotification({ userId, trackId }) {
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "counselling_request_declined",
+    message: "Your wellness coach is unable to take your counselling request at this time.",
+    referenceId: trackId ? String(trackId) : null,
+    referenceType: "heal_consultancy_track",
+    title: "Counselling request update",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 function dispatchCounsellingRequestedCoachNotificationAsync(payload) {
   runPushSafely(dispatchCounsellingRequestedCoachNotification(payload));
 }
@@ -1204,6 +1205,12 @@ function dispatchCounsellingCancelledNotificationAsync(payload) {
   });
 }
 
+function dispatchCounsellingRequestDeclinedNotificationAsync(payload) {
+  dispatchCounsellingRequestDeclinedNotification(payload).catch((err) => {
+    console.error("Counselling request declined notification failed:", err?.message || err);
+  });
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
@@ -1223,8 +1230,6 @@ module.exports = {
   dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
-  dispatchDosageNearCompleteCoachNotification,
-  dispatchDosageNearCompleteCoachNotificationAsync,
   dispatchSupplementOrderLoggedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,
   dispatchSupplementDeliveryRequestedCoachNotificationAsync,
@@ -1261,6 +1266,8 @@ module.exports = {
   dispatchCounsellingScheduledNotificationAsync,
   dispatchCounsellingCancelledNotification,
   dispatchCounsellingCancelledNotificationAsync,
+  dispatchCounsellingRequestDeclinedNotification,
+  dispatchCounsellingRequestDeclinedNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
   FCM_TYPE_BY_KIND,

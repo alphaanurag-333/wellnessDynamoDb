@@ -115,6 +115,20 @@
   text-align: right;
 }
 
+.updated-admin .ua-cp-counselling__intake {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: none;
+}
+
+.updated-admin .ua-cp-counselling__intake-message {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #1a2332;
+}
+
 .updated-admin .ua-cp-counselling__concern {
   margin: 0 0 14px;
   padding: 10px 12px;

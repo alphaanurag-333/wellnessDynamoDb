@@ -26,6 +26,7 @@ import {
   launchTotalQuestionCount,
 } from "../data/launchConfigData.js";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { CfgSelect } from "./shared.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -117,13 +118,14 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
-  const [domainDraft, setDomainDraft] = useState({ name: "", weight: "" });
+  const [domainDraft, setDomainDraft] = useState({ name: "", weight: "", minRequirement: "" });
   const [questionDrafts, setQuestionDrafts] = useState({});
   const [ratingDraft, setRatingDraft] = useState({ name: "", points: "", description: "" });
   const [infoOpen, setInfoOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [focusAreas, setFocusAreas] = useState([]);
   const [focusDraft, setFocusDraft] = useState("");
+  const [focusDomainDraft, setFocusDomainDraft] = useState("");
   const ratingsRef = useRef(ratings);
   const domainsRef = useRef(domains);
   const focusRef = useRef([]);
@@ -149,6 +151,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const liveQuestions = useMemo(() => launchLiveQuestionCount(domains), [domains]);
   const totalQuestions = useMemo(() => launchTotalQuestionCount(domains), [domains]);
   const remainingWeight = useMemo(() => launchRemainingWeight(domains), [domains]);
+  const focusDomainOptions = useMemo(
+    () => domains.map((domain) => ({ value: domain.id, label: domain.name || "Untitled domain" })),
+    [domains],
+  );
 
   const loadConfig = useCallback(async () => {
     setLoading(true);
@@ -183,7 +189,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const loadFocusAreas = useCallback(async () => {
     try {
       const rows = await adminListLaunchFocusAreas(null);
-      const withSaved = (rows || []).map((row) => ({ ...row, savedTitle: row.title }));
+      const withSaved = (rows || []).map((row) => ({
+        ...row,
+        savedTitle: row.title,
+        savedDomainId: row.domainId || "",
+      }));
       focusRef.current = withSaved;
       setFocusAreas(withSaved);
     } catch (error) {
@@ -323,6 +333,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   async function addDomain() {
     const name = domainDraft.name.trim();
     const weight = parseWeight(domainDraft.weight);
+    const minRequirement = parseWeight(domainDraft.minRequirement || "50");
     if (!name) {
       onToast("Domain name is required");
       return;
@@ -333,10 +344,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
     setBusy(true);
     try {
-      const created = await adminCreateLaunchDomain(null, { name, weight, live: true });
+      const created = await adminCreateLaunchDomain(null, { name, weight, minRequirement, live: true });
       setDomains((prev) => [...prev, { ...created, questions: created.questions || [] }]);
       setExpanded((prev) => new Set([...prev, created.id]));
-      setDomainDraft({ name: "", weight: "" });
+      setDomainDraft({ name: "", weight: "", minRequirement: "" });
       onToast(`${name} domain added`);
     } catch (error) {
       onToast(error?.message || "Failed to add domain");
@@ -575,22 +586,61 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
   }
 
+  async function saveFocusDomain(id, domainId) {
+    const area = focusRef.current.find((entry) => entry.id === id);
+    const nextDomainId = String(domainId || "").trim();
+    if (!area || !nextDomainId) return;
+    if (nextDomainId === (area.savedDomainId || area.domainId || "")) return;
+    setBusy(true);
+    try {
+      const updated = await adminUpdateLaunchFocusArea(null, id, { domainId: nextDomainId });
+      setFocusAreas((prev) => {
+        const next = prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          return {
+            ...entry,
+            ...updated,
+            domainId: updated?.domainId || nextDomainId,
+            savedDomainId: updated?.domainId || nextDomainId,
+          };
+        });
+        focusRef.current = next;
+        return next;
+      });
+      onToast("LAUNCH domain updated");
+    } catch (error) {
+      onToast(error?.message || "Failed to update LAUNCH domain");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function addFocusArea() {
     const title = focusDraft.trim();
+    const domainId = String(focusDomainDraft || "").trim();
     if (!title) {
       onToast("Focus point text is required");
+      return;
+    }
+    if (!domainId) {
+      onToast("Select a LAUNCH assessment domain");
       return;
     }
     const sortOrder = focusRef.current.reduce((max, row) => Math.max(max, Number(row.sortOrder) || 0), 0) + 1;
     setBusy(true);
     try {
-      const created = await adminCreateLaunchFocusArea(null, { title, sortOrder, status: "active" });
+      const created = await adminCreateLaunchFocusArea(null, { title, domainId, sortOrder, status: "active" });
       setFocusAreas((prev) => {
-        const next = [...prev, { ...created, savedTitle: created?.title || title }].sort((a, b) => a.sortOrder - b.sortOrder);
+        const next = [...prev, {
+          ...created,
+          savedTitle: created?.title || title,
+          savedDomainId: created?.domainId || domainId,
+        }].sort((a, b) => a.sortOrder - b.sortOrder);
         focusRef.current = next;
         return next;
       });
       setFocusDraft("");
+      setFocusDomainDraft("");
       onToast("Focus point added");
     } catch (error) {
       onToast(error?.message || "Failed to add focus point");
@@ -872,6 +922,19 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       />
                       <span>%</span>
                     </div>
+                    <div className="ua-cfg-drf-section__weight ua-cfg-launch-domain__min-req">
+                      <span>Min req</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={domain.minRequirement ?? 50}
+                        disabled={busy}
+                        onChange={(event) =>
+                          persistDomain(domain.id, { minRequirement: parseWeight(event.target.value) })
+                        }
+                      />
+                      <span>%</span>
+                    </div>
                     <span className={`ua-cfg-drf-section__meta ua-cfg-launch-domain__meta${pointsValid ? "" : " is-invalid"}`}>
                       <span className="ua-cfg-launch-domain__stats">
                         {liveInDomain} of {questions.length} questions · {pointsTotal}/100 pts
@@ -1068,7 +1131,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       <Panel
         className="ua-cfg-drf"
         title="Add a domain"
-        subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like).`}
+        subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like). Minimum requirement is the domain score threshold (e.g. 45, 50, 80) used when flagging focus areas on a client profile.`}
       >
         <div className="ua-cfg-drf-add-section">
           <input
@@ -1088,6 +1151,15 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
             disabled={busy}
             onChange={(event) => setDomainDraft({ ...domainDraft, weight: event.target.value })}
           />
+          <input
+            type="text"
+            inputMode="numeric"
+            className="ua-cfg-drf-add-section__min-req"
+            placeholder="Min requirement % · e.g. 50"
+            value={domainDraft.minRequirement}
+            disabled={busy}
+            onChange={(event) => setDomainDraft({ ...domainDraft, minRequirement: event.target.value })}
+          />
           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addDomain}>
             + Add domain
           </button>
@@ -1097,7 +1169,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       <Panel
         className="ua-cfg-launch-focus"
         title="Areas to focus"
-        subtitle="These points show as suggestions on a client’s LAUNCH page. Coaches can add or remove points for one client without changing this list."
+        subtitle="Link each point to a LAUNCH assessment domain. These suggestions appear on a client’s LAUNCH page; coaches can add or remove points per client without changing this list."
         actions={<span className="ua-cfg-launch-ratings__count">{focusAreas.length} points</span>}
       >
         {focusAreas.length ? (
@@ -1143,6 +1215,15 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       saveFocusTitle(area.id);
                     }
                   }}
+                />
+                <CfgSelect
+                  className="ua-cfg-launch-focus__domain ua-cfg-select--sm"
+                  ariaLabel="LAUNCH assessment domain"
+                  placeholder="Select option"
+                  value={area.domainId || ""}
+                  disabled={busy || !focusDomainOptions.length}
+                  options={focusDomainOptions}
+                  onChange={(next) => saveFocusDomain(area.id, next)}
                 />
                 <button
                   type="button"
@@ -1196,7 +1277,21 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
               if (event.key === "Enter") addFocusArea();
             }}
           />
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm" disabled={busy} onClick={addFocusArea}>
+          <CfgSelect
+            className="ua-cfg-launch-focus__domain ua-cfg-select--sm"
+            ariaLabel="LAUNCH assessment domain for new focus point"
+            placeholder="Select option"
+            value={focusDomainDraft}
+            disabled={busy || !focusDomainOptions.length}
+            options={focusDomainOptions}
+            onChange={setFocusDomainDraft}
+          />
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+            disabled={busy || !focusDomainOptions.length}
+            onClick={addFocusArea}
+          >
             + Add point
           </button>
         </div>

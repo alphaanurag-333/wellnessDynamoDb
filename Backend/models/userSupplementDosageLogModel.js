@@ -5,11 +5,7 @@ const {
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
-const {
-  isValidPeriod,
-  isScheduledCalendarDay,
-  countElapsedScheduledDays,
-} = require("./userSupplementDosageModel");
+const { isValidPeriod } = require("./userSupplementDosageModel");
 
 const TABLE = "UserSupplementDosageLog";
 
@@ -150,38 +146,34 @@ async function queryLogsByUserId(userId) {
   return items;
 }
 
-function computeProgressPercent(dosage, logs) {
-  const periods = Array.isArray(dosage?.periods) ? dosage.periods : [];
-  if (periods.length === 0) return 0;
-
-  const interval = Number(dosage?.intervalDays) || 0;
+function computeScheduleProgressPercent(dosage, asOfDate) {
   const durationDays = Number(dosage?.durationDays) || 0;
-  const totalQuantity = Number(dosage?.totalQuantity) || 0;
-  const totalPerDay = Number(dosage?.totalPerDay)
-    || periods.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
-  if (interval < 1 && durationDays <= 0 && totalQuantity <= 0) return 0;
+  const startDate = String(dosage?.startDate || "").trim();
+  const endDate = String(dosage?.endDate || "").trim();
+  if (durationDays <= 0 || !startDate || !endDate) return 0;
 
-  // Frequency + total qty: Completed % = pack used by elapsed scheduled dose days.
-  // Weekly (every 7d) advances faster than monthly (every 30d) for the same totals.
-  if (totalQuantity > 0 && totalPerDay > 0 && interval >= 1) {
-    const elapsedDoseDays = countElapsedScheduledDays(dosage);
-    if (elapsedDoseDays <= 0) return 0;
-    const dueQty = Math.min(totalQuantity, elapsedDoseDays * totalPerDay);
-    return Math.min(100, Math.floor((dueQty / totalQuantity) * 100));
-  }
+  const today = normalizeLogDate(asOfDate);
+  if (today < startDate) return 0;
+  if (today >= endDate) return 100;
 
-  const periodSet = new Set(periods.map((p) => String(p.period || "").trim()));
+  const startMs = new Date(`${startDate}T00:00:00.000Z`).getTime();
+  const todayMs = new Date(`${today}T00:00:00.000Z`).getTime();
+  const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
+  return Math.min(100, Math.max(0, Math.floor((elapsedDays / durationDays) * 100)));
+}
+
+function computeProgressPercent(dosage, logs) {
+  const durationDays = Number(dosage?.durationDays) || 0;
+  const periods = Array.isArray(dosage?.periods) ? dosage.periods : [];
+  if (durationDays <= 0 || periods.length === 0) return 0;
+
+  const periodSet = new Set(periods.map((p) => p.period));
   const byDate = new Map();
 
   for (const log of logs || []) {
-    const period = String(log?.period || "").trim();
-    const logDate = String(log?.logDate || "").trim();
-    if (!logDate || !periodSet.has(period)) continue;
-    if (interval >= 1 && !isScheduledCalendarDay(dosage, logDate)) continue;
-    if (dosage?.startDate && logDate < dosage.startDate) continue;
-    if (interval < 1 && dosage?.endDate && logDate > dosage.endDate) continue;
-    if (!byDate.has(logDate)) byDate.set(logDate, new Set());
-    byDate.get(logDate).add(period);
+    if (!log?.logDate || !periodSet.has(log.period)) continue;
+    if (!byDate.has(log.logDate)) byDate.set(log.logDate, new Set());
+    byDate.get(log.logDate).add(log.period);
   }
 
   let completedDays = 0;
@@ -189,12 +181,7 @@ function computeProgressPercent(dosage, logs) {
     if (loggedPeriods.size >= periodSet.size) completedDays += 1;
   }
 
-  // Legacy pack window, or open-ended schedule without total qty.
-  const expected = interval >= 1
-    ? countElapsedScheduledDays(dosage)
-    : durationDays;
-  if (expected <= 0) return 0;
-  return Math.min(100, Math.floor((completedDays / expected) * 100));
+  return Math.min(100, Math.floor((completedDays / durationDays) * 100));
 }
 
 function buildTodayCompletionMap(dosage, logs, logDate) {
@@ -275,6 +262,7 @@ module.exports = {
   queryLogsByUserIdAndDate,
   queryLogsByUserId,
   computeProgressPercent,
+  computeScheduleProgressPercent,
   buildTodayCompletionMap,
   normalizeLogDate,
   normalizePeriod,
