@@ -1,39 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { formatLongDate } from "../../api/usersApi.js";
-import { listUserWellnessPrescriptions } from "../../api/wellnessPrescriptionAssignmentApi.js";
+import { mapCounsellingHistoryModalItems } from "../../utils/counsellingReviewHistory.js";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin .ua-cp-drawer")
     || document.querySelector(".updated-admin");
 }
 
-function formatReviewDate(value) {
-  return formatLongDate(value) || "—";
-}
-
-function mapAssignmentsToReviewItems(assignments = []) {
-  return (Array.isArray(assignments) ? assignments : [])
-    .filter(Boolean)
-    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
-    .map((assignment) => ({
-      id: assignment.id,
-      date: formatReviewDate(assignment.date || assignment.reviewAt || assignment.createdAt),
-      authorName: assignment.authorName || "Coach",
-      summary: assignment.summary || "Wellness prescription",
-      cancelled: String(assignment.reviewStatus || "active").toLowerCase() === "cancelled",
-      hasPrescription: Array.isArray(assignment.items) && assignment.items.length > 0,
-    }));
-}
-
 /**
- * Live Review history — wellness prescription saves synced to the user app.
+ * Counselling / review history — same coach meeting list as Counselling → Review Tracking.
  */
-export function ReviewHistoryModal({ user, onClose, onNavigate }) {
-  const userId = String(user?.id || user?._id || "").trim();
-  const [loading, setLoading] = useState(Boolean(userId));
-  const [items, setItems] = useState([]);
-  const [error, setError] = useState("");
+export function ReviewHistoryModal({
+  user,
+  meetings = [],
+  assignments = [],
+  loading = false,
+  onClose,
+  onNavigate,
+}) {
+  const items = useMemo(
+    () => mapCounsellingHistoryModalItems(meetings, assignments),
+    [meetings, assignments],
+  );
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -42,43 +30,6 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
-
-  useEffect(() => {
-    if (!userId) {
-      setItems([]);
-      setLoading(false);
-      setError("");
-      return undefined;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-
-    listUserWellnessPrescriptions(userId)
-      .then((data) => {
-        if (cancelled) return;
-        const assignments = data?.assignments?.length
-          ? data.assignments
-          : [
-            ...(data?.recommended ? [data.recommended] : []),
-            ...(Array.isArray(data?.history) ? data.history : []),
-          ];
-        setItems(mapAssignmentsToReviewItems(assignments));
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setItems([]);
-        setError(err?.message || "Could not load counselling history");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
 
   const overlay = (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
@@ -108,10 +59,6 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
             <div className="ua-cp-review-modal__empty">
               <p className="ua-cp-review-modal__empty-text">Loading counselling history…</p>
             </div>
-          ) : error ? (
-            <div className="ua-cp-review-modal__empty">
-              <p className="ua-cp-review-modal__empty-text">{error}</p>
-            </div>
           ) : items.length === 0 ? (
             <div className="ua-cp-review-modal__empty">
               <p className="ua-cp-review-modal__empty-text">No counselling history yet.</p>
@@ -129,8 +76,13 @@ export function ReviewHistoryModal({ user, onClose, onNavigate }) {
                 <div className="ua-cp-review-item__body">
                   <div className="ua-cp-review-item__top">
                     <div className="ua-cp-review-item__meta">
-                      <strong>{item.date}</strong>
-                      <span>by {item.authorName}</span>
+                      <strong>{item.reviewLabel}</strong>
+                      <span>{item.dateLabel}</span>
+                      <span>
+                        {item.statusLabel}
+                        {" · "}
+                        Schedule by {item.scheduleByLabel}
+                      </span>
                     </div>
                     {item.hasPrescription ? (
                       <button

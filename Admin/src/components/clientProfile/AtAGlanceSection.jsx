@@ -1486,10 +1486,15 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const [glance, setGlance] = useState(null);
   const [glanceLoading, setGlanceLoading] = useState(false);
   const [lastCounselling, setLastCounselling] = useState("");
+  const [counsellingMeetings, setCounsellingMeetings] = useState([]);
+  const [counsellingAssignments, setCounsellingAssignments] = useState([]);
+  const [counsellingHistoryLoading, setCounsellingHistoryLoading] = useState(false);
 
   useEffect(() => {
     setOnboardingProgress(null);
     setLastCounselling("");
+    setCounsellingMeetings([]);
+    setCounsellingAssignments([]);
   }, [user?.id]);
 
   useEffect(() => {
@@ -1497,19 +1502,25 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     if (!userId || isMockNumericId(userId)) return undefined;
 
     let cancelled = false;
+    setCounsellingHistoryLoading(true);
     Promise.all([
       fetchHealConsultancyTracks(userId, { page: 1, limit: 50 }).catch(() => null),
       listUserWellnessPrescriptions(userId).catch(() => null),
     ]).then(([tracksData, prescriptionData]) => {
       if (cancelled) return;
       const tracks = tracksData?.tracks || [];
+      const assignments = assignmentsFromPrescriptionPayload(prescriptionData);
       const prescriptionMeetings = Array.isArray(prescriptionData?.meetings) && prescriptionData.meetings.length
         ? prescriptionData.meetings
-        : coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(prescriptionData));
+        : coachMeetingsFromAssignments(assignments);
       const meetings = Array.isArray(tracksData?.coachMeetings)
         ? mergeMeetingsWithOrphanTracks(tracksData.coachMeetings, tracks)
         : mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracks);
+      setCounsellingMeetings(meetings);
+      setCounsellingAssignments(assignments);
       setLastCounselling(latestCounsellingLabel(tracks, meetings));
+    }).finally(() => {
+      if (!cancelled) setCounsellingHistoryLoading(false);
     });
 
     return () => {
@@ -1632,6 +1643,9 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       {reviewOpen ? (
         <ReviewHistoryModal
           user={user}
+          meetings={counsellingMeetings}
+          assignments={counsellingAssignments}
+          loading={counsellingHistoryLoading}
           onClose={() => setReviewOpen(false)}
           onNavigate={onNavigate}
         />

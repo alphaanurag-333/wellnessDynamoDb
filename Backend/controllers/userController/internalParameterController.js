@@ -20,8 +20,6 @@ const {
 const {
   dispatchLabReportUploadCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
-const { compressLabReportPdfBuffer } = require("../../utils/labReportPdfCompress");
-
 const S3_FOLDER = "user-lab-reports";
 
 function assertPdfUpload(req) {
@@ -35,11 +33,6 @@ function assertPdfUpload(req) {
 
 async function uploadUserLabReportPdf(req) {
   assertPdfUpload(req);
-  const compressed = await compressLabReportPdfBuffer(req.file.buffer, {
-    allowUncompressedIfGsMissing: true,
-  });
-  req.file.buffer = compressed;
-  req.file.size = compressed.length;
   const fileKey = await uploadFileFromRequest(req, S3_FOLDER);
   if (!fileKey) {
     throw new AppError("Failed to upload lab report PDF", 500);

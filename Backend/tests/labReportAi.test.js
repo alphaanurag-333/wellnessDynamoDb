@@ -9,6 +9,8 @@ const {
   mergeAnalysedReportsToPanels,
   applyMergedPanelsToReportAnalysis,
   normalizeMarkerKey,
+  collectPanelsFromSource,
+  MAX_ROWS_PER_PANEL,
 } = require("../utils/labReportAi");
 
 test("parseAiJson reads fenced JSON", () => {
@@ -56,6 +58,46 @@ test("normalizeAiAnalysis keeps extracted markers", () => {
 
 test("normalizeAiAnalysis rejects empty panels", () => {
   assert.throws(() => normalizeAiAnalysis({ panels: [] }), /could not extract/);
+});
+
+test("normalizeAiAnalysis accepts flat markers list with GGT", () => {
+  const analysis = normalizeAiAnalysis(
+    {
+      markers: [
+        {
+          name: "GAMMA GLUTAMYL TRANSFERASE (GGT)",
+          panel: "Liver Function (LFT)",
+          value: "38 U/L",
+          rr: "5–55 U/L",
+          tone: "good",
+        },
+        { name: "HbA1c", panel: "Glucose panel", value: "6.2%", rr: "< 5.7%", tone: "bad" },
+      ],
+    },
+    { reportDate: "2026-10-23" }
+  );
+
+  const lft = analysis.panels.find((panel) => /LFT|LIVER/i.test(panel.title));
+  assert.ok(lft);
+  assert.ok(lft.rows.some((row) => /ggt/i.test(row.name)));
+  assert.equal(analysis.panels.reduce((s, p) => s + p.rows.length, 0), 2);
+});
+
+test("collectPanelsFromSource reads panel.parameters rows", () => {
+  const panels = collectPanelsFromSource({
+    panels: [{ title: "CBC", parameters: [{ name: "Hemoglobin", value: "14" }] }],
+  });
+  assert.equal(panels.length, 1);
+  assert.equal(panels[0].parameters[0].name, "Hemoglobin");
+});
+
+test("normalizeAiAnalysis keeps large LFT panels within cap", () => {
+  const rows = Array.from({ length: MAX_ROWS_PER_PANEL + 10 }, (_, i) => ({
+    name: `Marker ${i}`,
+    value: String(i),
+  }));
+  const analysis = normalizeAiAnalysis({ panels: [{ title: "LFT", rows }] });
+  assert.equal(analysis.panels[0].rows.length, MAX_ROWS_PER_PANEL);
 });
 
 test("panelsToAnalysis round-trips coach edits", () => {

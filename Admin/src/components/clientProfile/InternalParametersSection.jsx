@@ -3042,7 +3042,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
         <div>
           <h2 className="ua-cp-ip-head__title">Internal parameters</h2>
           <p className="ua-cp-ip-head__sub">
-            Coach-recommended blood tests, report uploads, and reviewed results. Blood report PDFs are stored at 1 MB or less for AI analysis.
+            Coach-recommended blood tests, report uploads, and reviewed results. Recommended-test PDFs generated here are kept at 1 MB or less.
           </p>
         </div>
         {live ? (

@@ -1,6 +1,7 @@
 const AppError = require("../../utils/AppError");
 const { uploadBufferToS3 } = require("../../utils/s3");
 const { generateTestRecommendationPdf } = require("../../utils/testRecommendationPdf");
+const { compressLabReportPdfBuffer } = require("../../utils/labReportPdfCompress");
 const { getAppConfig } = require("../../models/appConfigModel");
 const {
   getActiveTestCatalogByIds,
@@ -156,13 +157,15 @@ async function buildTestSnapshots(input) {
 
 async function generateAndUploadRecommendationPdf({ user, coach, reportDate, tests }) {
   const appConfig = await getAppConfig();
-  const pdfBuffer = await generateTestRecommendationPdf({
+  let pdfBuffer = await generateTestRecommendationPdf({
     user: { name: user.name, email: user.email },
     coach: coach ? { name: coach.name } : null,
     reportDate,
     tests,
     appName: appConfig?.appName || "Wellness",
   });
+
+  pdfBuffer = await compressLabReportPdfBuffer(pdfBuffer);
 
   const pdfKey = await uploadBufferToS3({
     buffer: pdfBuffer,

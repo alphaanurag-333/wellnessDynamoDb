@@ -27,6 +27,11 @@ const {
 const {
   dispatchInternalParametersRecommendationNotification,
 } = require("../../services/notificationDispatchService");
+const {
+  syncFattyLiverMetricFromLatestLabReport,
+} = require("../helpers/metabolicMetricsFattyLiverSync");
+const { listAllMetabolicMetricLogsByUser } = require("../../models/healthProgressMetabolicMetricModel");
+const { listBodyMeasurementsByUser, toPublicBodyMeasurement } = require("../../models/userBodyMeasurementModel");
 const { sendStoredObjectAsAttachment } = require("../../utils/s3");
 const {
   readUserIdParam,
@@ -283,6 +288,19 @@ exports.analyzeCoachUserLabReportController = asyncHandler(async (req, res) => {
     aiAnalysis: analysis,
     analysedById: actingCoachId,
   });
+
+  try {
+    const [metabolicLogs, measurementResult] = await Promise.all([
+      listAllMetabolicMetricLogsByUser(userId, { limit: 200 }),
+      listBodyMeasurementsByUser(userId, { page: 1, limit: 200 }),
+    ]);
+    await syncFattyLiverMetricFromLatestLabReport(userId, {
+      metabolicLogs,
+      measurements: measurementResult.items.map(toPublicBodyMeasurement),
+    });
+  } catch (err) {
+    console.error("Fatty liver sync after lab AI analysis failed:", err?.message || err);
+  }
 
   return res.status(200).json({
     status: true,

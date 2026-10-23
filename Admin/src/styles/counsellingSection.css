@@ -540,8 +540,8 @@
     grid-template-areas:
       "label label"
       "sched sched"
-      "done done"
-      "cancel cancel";
+      "status status"
+      "by by";
     gap: 4px 10px;
     padding: 12px 0;
     min-height: 0;
@@ -552,19 +552,19 @@
   }
 
   .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(1)::before {
-    content: "Scheduled · ";
+    content: "Scheduled date · ";
+    color: #8a97ac;
+    font-weight: 600;
+  }
+
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-status::before {
+    content: "Status · ";
     color: #8a97ac;
     font-weight: 600;
   }
 
   .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(2)::before {
-    content: "Completed · ";
-    color: #8a97ac;
-    font-weight: 600;
-  }
-
-  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(3)::before {
-    content: "Cancelled · ";
+    content: "Schedule by · ";
     color: #8a97ac;
     font-weight: 600;
   }
@@ -578,12 +578,12 @@
     grid-area: sched;
   }
 
-  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(2) {
-    grid-area: done;
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-status {
+    grid-area: status;
   }
 
-  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(3) {
-    grid-area: cancel;
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(2) {
+    grid-area: by;
   }
 }
 

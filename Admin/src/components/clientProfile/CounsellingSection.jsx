@@ -15,15 +15,8 @@ import {
   listUserWellnessPrescriptions,
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
-import {
-  formatDateKey,
-  isBeforeCalendarDay,
-  parseDateKey,
-  startOfDay,
-} from "./meetingDateUtils.js";
 import { mergeMeetingsWithOrphanTracks } from "../../utils/counsellingReviewHistory.js";
 import { COUNSELLING_ACTIVITY_EVENT } from "../../utils/counsellingLiveRefresh.js";
 import { useInbox } from "../../context/InboxContext.jsx";
@@ -71,24 +64,6 @@ function formatReviewDay(value) {
   });
 }
 
-/** Prescription calendar days use midnight UTC; real sessions use full ISO timestamps. */
-function formatReviewDateTime(calendarDay, instant) {
-  const day = String(calendarDay || "").trim();
-  const iso = String(instant || "").trim();
-  if (iso) {
-    const date = new Date(iso);
-    if (!Number.isNaN(date.getTime())) {
-      const isDateOnlyPlaceholder =
-        Boolean(day)
-        && /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(iso)
-        && iso.startsWith(day);
-      if (!isDateOnlyPlaceholder) return formatWhen(iso);
-    }
-  }
-  if (day) return formatReviewDay(day);
-  return "—";
-}
-
 function formatWhen(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -100,6 +75,77 @@ function formatWhen(value) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+/** Scheduled column: e.g. 23 Oct 2026 08:30AM */
+function formatReviewScheduledColumn(calendarDay, instant) {
+  const day = String(calendarDay || "").trim();
+  const iso = String(instant || "").trim();
+  if (iso) {
+    const date = new Date(iso);
+    if (!Number.isNaN(date.getTime())) {
+      const isDateOnlyPlaceholder =
+        Boolean(day)
+        && /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(iso)
+        && iso.startsWith(day);
+      if (!isDateOnlyPlaceholder) {
+        const datePart = date.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        const timePart = date
+          .toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          .replace(/\s/g, "");
+        return `${datePart} ${timePart}`;
+      }
+    }
+  }
+  if (day) return formatReviewDay(day);
+  return "—";
+}
+
+function reviewScheduleByLabel(meeting) {
+  const role = String(meeting?.initiatedByRole || "").toLowerCase();
+  return role === "client" ? "Client" : "You";
+}
+
+function reviewTrackingStatusLabel(meeting) {
+  const session = String(meeting?.sessionStatus || "").toLowerCase();
+  if (session === "complete") return "Completed";
+  if (session === "cancel") return "Cancelled";
+  if (session === "pending") {
+    const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+    if (trackStatus === "scheduled") return "Scheduled";
+    return "Pending";
+  }
+
+  const reviewStatus = String(meeting?.reviewStatus || "").toLowerCase();
+  const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+  if (meeting?.cancelled || reviewStatus === "cancelled" || trackStatus === "cancelled") {
+    return "Cancelled";
+  }
+  if (trackStatus === "completed" || trackStatus === "follow_up_needed") return "Completed";
+  if (reviewStatus === "active" && (meeting?.completedAt || meeting?.completedDate)) {
+    return "Completed";
+  }
+  if (trackStatus === "scheduled" && meeting?.scheduledAt) return "Scheduled";
+  if (trackStatus && !["completed", "cancelled", "follow_up_needed"].includes(trackStatus)) {
+    return "Pending";
+  }
+  return "Pending";
+}
+
+function reviewTrackingStatusClass(meeting) {
+  const label = reviewTrackingStatusLabel(meeting).toLowerCase();
+  if (label === "completed") return "completed";
+  if (label === "cancelled") return "cancelled";
+  if (label === "scheduled") return "scheduled";
+  return "active";
 }
 
 function formatOffer(offer) {
@@ -142,9 +188,6 @@ export function CounsellingSection({ user, onToast }) {
   const [scheduledTrack, setScheduledTrack] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
   const [busy, setBusy] = useState(false);
-  const [offerDate, setOfferDate] = useState("");
-  const [offerPeriods, setOfferPeriods] = useState([]);
-  const [pendingOffers, setPendingOffers] = useState([]);
   const [fixedTime, setFixedTime] = useState("18:00");
   const [durationMinutes, setDurationMinutes] = useState(45);
   const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
@@ -290,56 +333,6 @@ export function CounsellingSection({ user, onToast }) {
   useEffect(() => {
     if (selectedOffer?.startLocal) setFixedTime(selectedOffer.startLocal);
   }, [selectedOffer?.id, selectedOffer?.startLocal]);
-
-  function addPendingOffer() {
-    if (!offerDate || !offerPeriods.length) {
-      onToast?.("Pick a date and at least one period");
-      return;
-    }
-    if (isPastOfferDate(offerDate)) {
-      onToast?.("Choose today or a future date");
-      return;
-    }
-    const next = [...pendingOffers];
-    for (const period of offerPeriods) {
-      const key = `${offerDate}#${period}`;
-      if (next.some((row) => `${row.date}#${row.period}` === key)) continue;
-      next.push({ date: offerDate, period });
-    }
-    setPendingOffers(next);
-    setOfferPeriods([]);
-  }
-
-  async function shareAvailability() {
-    if (!activeTrack) return;
-    const offers = pendingOffers.length
-      ? pendingOffers
-      : offerDate && offerPeriods.length
-        ? offerPeriods.map((period) => ({ date: offerDate, period }))
-        : [];
-    if (!offers.length) {
-      onToast?.("Add at least one date and period");
-      return;
-    }
-    if (offers.some((row) => isPastOfferDate(row.date))) {
-      onToast?.("Choose today or a future date");
-      return;
-    }
-    setBusy(true);
-    try {
-      const track = await offerHealConsultancyPeriods(userId, activeTrack.id, {
-        offers,
-      });
-      setActiveTrack(track);
-      setPendingOffers([]);
-      onToast?.("Availability shared with client");
-      await load();
-    } catch (error) {
-      onToast?.(error.message || "Could not share availability");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function confirmTime() {
     if (!activeTrack || !selectedOffer) return;
@@ -501,30 +494,16 @@ export function CounsellingSection({ user, onToast }) {
     scheduledTrack && scheduledTrack.id !== activeTrack?.id ? scheduledTrack : null;
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
-  const showShareBlock =
-    canManage &&
-    (activeTrack?.status === "periods_offered" || activeTrack?.status === "time_requested");
   const showClientIntake =
     canManage && activeTrack?.status === "requested";
   const requestedSlots = activeTrack?.requestedSlots || [];
-  const minOfferDate = useMemo(() => startOfDay(new Date()), []);
-  const selectedOfferDate = useMemo(
-    () => parseDateKey(offerDate) || minOfferDate,
-    [offerDate, minOfferDate],
-  );
-
-  function isPastOfferDate(date) {
-    if (!date) return false;
-    const value = typeof date === "string" ? parseDateKey(date) : startOfDay(date);
-    return value ? isBeforeCalendarDay(value, minOfferDate) : false;
-  }
 
   return (
     <div className="ua-cp-section ua-cp-counselling">
       <header className="ua-cp-counselling__head">
         <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
         <p className="ua-cp-placeholder__sub">
-          Client requests a session, or you offer slots for them to pick. Share date and period windows when they request, they pick one or ask for another time, then you confirm.
+          Client requests a session, or you offer slots for them to pick. They pick a slot or ask for another time, then you confirm.
         </p>
       </header>
 
@@ -641,69 +620,6 @@ export function CounsellingSection({ user, onToast }) {
             </div>
           ) : null}
 
-          {showShareBlock ? (
-            <div className="ua-cp-counselling__block">
-              <h3>Share availability</h3>
-              <div className="ua-cp-counselling__row ua-cp-counselling__row--single">
-                <MeetingDateSelector
-                  value={selectedOfferDate}
-                  onChange={(date) => setOfferDate(formatDateKey(date))}
-                  minDate={minOfferDate}
-                  onInvalidDate={(message) => onToast?.(message)}
-                />
-              </div>
-              <p className="ua-cp-counselling__periods-label">Period windows</p>
-              <div className="ua-cp-counselling__chips">
-                {PERIODS.map((period) => {
-                  const on = offerPeriods.includes(period.key);
-                  return (
-                    <button
-                      key={period.key}
-                      type="button"
-                      className={`ua-cp-counselling__chip${on ? " is-on" : ""}`}
-                      onClick={() => {
-                        setOfferPeriods((prev) =>
-                          prev.includes(period.key)
-                            ? prev.filter((key) => key !== period.key)
-                            : [...prev, period.key],
-                        );
-                      }}
-                    >
-                      {period.label}
-                      <small>{period.range}</small>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="ua-cp-counselling__offer-actions">
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={addPendingOffer} disabled={busy}>
-                  Add to list
-                </button>
-              </div>
-              {pendingOffers.length ? (
-                <ul className="ua-cp-counselling__list ua-cp-counselling__pending">
-                  {pendingOffers.map((row) => (
-                    <li key={`${row.date}-${row.period}`}>
-                      <span>{formatOffer(row)}</span>
-                      <button
-                        type="button"
-                        className="ua-cp-counselling__remove"
-                        onClick={() => setPendingOffers((prev) => prev.filter((item) => !(item.date === row.date && item.period === row.period)))}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <div className="ua-cp-counselling__cta">
-                <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={shareAvailability} disabled={busy}>
-                  {busy ? "Sharing…" : "Share with client"}
-                </button>
-              </div>
-            </div>
-          ) : null}
-
           {activeTrack.status === "periods_offered" ? (
             <>
               {(activeTrack.periodOffers || []).some((row) => String(row.kind || "").toLowerCase() === "slot") ? (
@@ -726,7 +642,7 @@ export function CounsellingSection({ user, onToast }) {
             <div className="ua-cp-counselling__block">
               <h3>Client requested times</h3>
               <p className="ua-cp-counselling__muted">
-                Accept one of the times below, reject to keep existing period offers, or share new availability above.
+                Accept one of the times below, or reject to keep existing slot offers.
               </p>
               {!requestedSlots.length ? (
                 <p className="ua-cp-counselling__muted">No requested slots found.</p>
@@ -858,23 +774,26 @@ export function CounsellingSection({ user, onToast }) {
           <div className="ua-cp-counselling__history-list">
             <div className="ua-cp-counselling__history-row ua-cp-counselling__history-row--head" aria-hidden="true">
               <span className="ua-cp-counselling__history-label">Review</span>
-              <span className="ua-cp-counselling__history-col">Scheduled</span>
-              <span className="ua-cp-counselling__history-col">Completed</span>
-              <span className="ua-cp-counselling__history-col">Cancelled</span>
+              <span className="ua-cp-counselling__history-col">Scheduled Date</span>
+              <span className="ua-cp-counselling__history-col">Status</span>
+              <span className="ua-cp-counselling__history-col">Schedule by</span>
             </div>
             {meetings.map((meeting, index) => {
               const reviewNumber = Math.max(meetings.length - index, 1);
+              const statusClass = reviewTrackingStatusClass(meeting);
               return (
                 <div key={meeting.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
                   <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
                   <span className="ua-cp-counselling__history-date">
-                    {formatReviewDateTime(meeting.scheduledDate, meeting.scheduledAt)}
+                    {formatReviewScheduledColumn(meeting.scheduledDate, meeting.scheduledAt)}
+                  </span>
+                  <span
+                    className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${statusClass}`}
+                  >
+                    {reviewTrackingStatusLabel(meeting)}
                   </span>
                   <span className="ua-cp-counselling__history-date">
-                    {formatReviewDateTime(meeting.completedDate, meeting.completedAt)}
-                  </span>
-                  <span className="ua-cp-counselling__history-date ua-cp-counselling__history-date--muted">
-                    {formatReviewDateTime(meeting.cancelledDate, meeting.cancelledAt)}
+                    {reviewScheduleByLabel(meeting)}
                   </span>
                 </div>
               );

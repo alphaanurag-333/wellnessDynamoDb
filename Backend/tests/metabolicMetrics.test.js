@@ -129,7 +129,7 @@ test("body_fat snapshot stores waistHipRatio", () => {
   assert.ok(snapshot.bodyFatPercent > 0);
 });
 
-test("computeFattyLiverIndex returns expected value", () => {
+test("computeFattyLiverIndex accepts triglycerides in mg/dL", () => {
   const fli = computeFattyLiverIndex({
     bmi: 28,
     waistCm: 95,
@@ -137,7 +137,7 @@ test("computeFattyLiverIndex returns expected value", () => {
     ggt: 45,
   });
   assert.ok(fli != null);
-  assert.ok(fli > 0);
+  assert.ok(fli > 10);
 });
 
 test("getFliRiskCategory maps risk bands", () => {

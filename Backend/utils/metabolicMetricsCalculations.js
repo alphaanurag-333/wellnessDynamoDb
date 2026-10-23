@@ -273,10 +273,21 @@ function computeVisceralFat({ gender, age, heightCm, waistCm, hipCm }) {
   };
 }
 
+/**
+ * Bedogni FLI as implemented on MDCalc with mg/dL triglycerides (typical Indian/US lab units).
+ * Values ≤ 20 are treated as mmol/L and converted to mg/dL for the formula.
+ */
+function triglyceridesMgDlForFli(triglycerides) {
+  const raw = Number(triglycerides);
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  if (raw <= 20) return raw * 88.57;
+  return raw;
+}
+
 function computeFattyLiverIndex({ bmi, waistCm, triglycerides, ggt }) {
   const b = Number(bmi);
   const wc = Number(waistCm);
-  const tg = Number(triglycerides);
+  const tg = triglyceridesMgDlForFli(triglycerides);
   const g = Number(ggt);
   if (!b || !wc || !tg || !g || b <= 0 || wc <= 0 || tg <= 0 || g <= 0) return null;
 
@@ -633,6 +644,7 @@ module.exports = {
   computeVisceralFat,
   computeSamoudaVisceralFat,
   deriveMetricsFromBodyMeasurement,
+  triglyceridesMgDlForFli,
   computeFattyLiverIndex,
   getFliRiskCategory,
   buildFattyLiverSnapshot,

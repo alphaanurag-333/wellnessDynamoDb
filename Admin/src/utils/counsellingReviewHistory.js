@@ -49,10 +49,25 @@ export function mergeMeetingsWithOrphanTracks(meetings, tracks) {
       || calendarDayFrom(track.createdAt);
     if (date && coveredDays.has(date)) continue;
 
+    const initiatedByRole = (() => {
+      const stored = String(track?.initiatedByRole || "").toLowerCase();
+      if (stored === "client" || stored === "user") return "client";
+      if (stored === "coach" || stored === "staff") return "coach";
+      if (Array.isArray(track?.periodOffers) && track.periodOffers.length) return "coach";
+      if (track?.scheduledAt) return "coach";
+      if (String(track?.status || "").toLowerCase() === "requested") return "client";
+      return "coach";
+    })();
+    const sessionStatus =
+      status === "cancelled" ? "cancel" : status === "completed" || status === "follow_up_needed" ? "complete" : "pending";
+
     rows.push({
       id: trackId || `track-${date || status}`,
       date: date || "",
       reviewStatus: status === "cancelled" ? "cancelled" : "active",
+      trackStatus: status,
+      initiatedByRole,
+      sessionStatus,
       scheduledDate: calendarDayFrom(track.scheduledAt),
       scheduledAt: track.scheduledAt || null,
       completedDate:
@@ -73,9 +88,96 @@ export function mergeMeetingsWithOrphanTracks(meetings, tracks) {
   );
 }
 
-/** Most recent past counselling (completed reviews or sessions), not upcoming scheduled slots. */
+export function reviewScheduleByLabel(meeting) {
+  const role = String(meeting?.initiatedByRole || "").toLowerCase();
+  return role === "client" ? "Client" : "You";
+}
+
+export function reviewTrackingStatusLabel(meeting) {
+  const session = String(meeting?.sessionStatus || "").toLowerCase();
+  if (session === "complete") return "Completed";
+  if (session === "cancel") return "Cancelled";
+  if (session === "pending") {
+    const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+    if (trackStatus === "scheduled") return "Scheduled";
+    return "Pending";
+  }
+
+  const reviewStatus = String(meeting?.reviewStatus || "").toLowerCase();
+  const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+  if (meeting?.cancelled || reviewStatus === "cancelled" || trackStatus === "cancelled") {
+    return "Cancelled";
+  }
+  if (trackStatus === "completed" || trackStatus === "follow_up_needed") return "Completed";
+  if (reviewStatus === "active" && (meeting?.completedAt || meeting?.completedDate)) {
+    return "Completed";
+  }
+  if (trackStatus === "scheduled" && meeting?.scheduledAt) return "Scheduled";
+  if (trackStatus && !["completed", "cancelled", "follow_up_needed"].includes(trackStatus)) {
+    return "Pending";
+  }
+  return "Pending";
+}
+
+export function meetingHistoryDateLabel(meeting) {
+  const instant = meeting?.completedAt || meeting?.scheduledAt;
+  if (instant) {
+    const formatted = formatCounsellingDateTime(instant);
+    if (formatted) return formatted;
+  }
+  const day = calendarDayFrom(meeting?.date || meeting?.completedDate || meeting?.scheduledDate);
+  if (day) return formatCounsellingReviewDay(day);
+  return "—";
+}
+
+export function mapCounsellingHistoryModalItems(meetings, assignments = []) {
+  const assignmentById = new Map(
+    (Array.isArray(assignments) ? assignments : []).map((row) => [String(row.id), row]),
+  );
+  const rows = Array.isArray(meetings) ? meetings : [];
+  return rows.map((meeting, index) => {
+    const assignment = assignmentById.get(String(meeting.id));
+    const summary =
+      String(meeting.summary || "").trim()
+      || String(assignment?.summary || "").trim()
+      || "Counselling session";
+    const cancelled =
+      Boolean(meeting?.cancelled)
+      || String(meeting?.reviewStatus || "").toLowerCase() === "cancelled";
+    return {
+      id: String(meeting.id || `review-${index}`),
+      reviewLabel: `Review ${Math.max(rows.length - index, 1)}`,
+      dateLabel: meetingHistoryDateLabel(meeting),
+      statusLabel: reviewTrackingStatusLabel(meeting),
+      scheduleByLabel: reviewScheduleByLabel(meeting),
+      summary,
+      cancelled,
+      hasPrescription: Array.isArray(assignment?.items) && assignment.items.length > 0,
+    };
+  });
+}
+
+function isCompletedCounsellingMeeting(meeting) {
+  if (!meeting) return false;
+  if (meeting.cancelled || String(meeting.reviewStatus || "").toLowerCase() === "cancelled") {
+    return false;
+  }
+  const session = String(meeting.sessionStatus || "").toLowerCase();
+  if (session === "complete") return true;
+  if (session === "cancel" || session === "pending") return false;
+  const trackStatus = String(meeting.trackStatus || "").toLowerCase();
+  if (trackStatus === "completed" || trackStatus === "follow_up_needed") return true;
+  if (String(meeting.reviewStatus || "").toLowerCase() === "active" && meeting.completedAt) {
+    return true;
+  }
+  if (String(meeting.reviewStatus || "").toLowerCase() === "active" && meeting.date && !meeting.scheduledAt) {
+    return true;
+  }
+  return false;
+}
+
+/** Most recent completed counselling / wellness review (not in-progress or scheduled-only sessions). */
 export function latestCounsellingLabel(tracks, meetings) {
-  const now = Date.now();
   const candidates = [];
 
   for (const track of Array.isArray(tracks) ? tracks : []) {
@@ -83,35 +185,20 @@ export function latestCounsellingLabel(tracks, meetings) {
     if (status === "completed" || status === "follow_up_needed") {
       const raw = track.updatedAt || track.scheduledAt;
       pushCandidate(candidates, raw, formatCounsellingDateTime(raw));
-      continue;
-    }
-    if (status === "scheduled" && track.scheduledAt) {
-      const at = new Date(track.scheduledAt).getTime();
-      if (!Number.isNaN(at) && at <= now) {
-        pushCandidate(candidates, track.scheduledAt, formatCounsellingDateTime(track.scheduledAt));
-      }
     }
   }
 
   for (const meeting of Array.isArray(meetings) ? meetings : []) {
-    if (meeting?.cancelled || String(meeting?.reviewStatus || "").toLowerCase() === "cancelled") {
-      continue;
-    }
-    if (meeting.completedAt) {
-      pushCandidate(candidates, meeting.completedAt, formatCounsellingDateTime(meeting.completedAt));
-      continue;
-    }
-    if (meeting.scheduledAt) {
-      const at = new Date(meeting.scheduledAt).getTime();
-      if (!Number.isNaN(at) && at <= now) {
-        pushCandidate(candidates, meeting.scheduledAt, formatCounsellingDateTime(meeting.scheduledAt));
-        continue;
-      }
-    }
-    const day = calendarDayFrom(meeting.date);
-    if (day) {
-      pushCandidate(candidates, `${day}T12:00:00+05:30`, formatCounsellingReviewDay(day));
-    }
+    if (!isCompletedCounsellingMeeting(meeting)) continue;
+    const raw =
+      meeting.completedAt
+      || meeting.scheduledAt
+      || (meeting.date ? `${calendarDayFrom(meeting.date)}T12:00:00+05:30` : null);
+    if (!raw) continue;
+    const label = meeting.completedAt || meeting.scheduledAt
+      ? formatCounsellingDateTime(raw)
+      : formatCounsellingReviewDay(meeting.date);
+    pushCandidate(candidates, raw, label);
   }
 
   candidates.sort((a, b) => b.at - a.at);

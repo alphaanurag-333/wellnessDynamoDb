@@ -97,6 +97,8 @@ module.exports = {
 
   openaiApiKey: str("OPENAI_API_KEY"),
   openaiModel: str("OPENAI_MODEL", "gpt-4.1-mini"),
+  /** Optional stronger model for lab PDF extraction (falls back to OPENAI_MODEL). */
+  openaiLabReportModel: str("OPENAI_LAB_REPORT_MODEL"),
 
   birthdayJobTimezone: str("BIRTHDAY_JOB_TIMEZONE", "Asia/Kolkata"),
   birthdayJobCronSchedule: str("BIRTHDAY_JOB_CRON_SCHEDULE", "5 0 * * *"),

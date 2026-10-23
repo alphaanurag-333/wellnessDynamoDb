@@ -37,13 +37,19 @@ const MEASURE_FIELDS = [
 ];
 
 const METABOLIC_FIELDS = [
-  { label: "BMI", field: "bmi", decimals: 1 },
-  { label: "BMR", field: "bmr", suffix: " kcal", decimals: 0 },
-  { label: "TDEE", field: "tdee", suffix: " kcal", decimals: 0 },
-  { label: "Body fat %", field: "bodyFatPercent", suffix: "%", decimals: 1 },
-  { label: "Visceral fat %", field: "visceralFatPercent", suffix: " cm²", decimals: 2 },
-  { label: "Est. visceral fat", field: "estimatedVisceralFat", suffix: " cm²", decimals: 2 },
-  { label: "Waist - hip ratio", field: "waistHipRatio", decimals: 2 },
+  { label: "BMI", field: "bmi", metricType: "bmi", decimals: 1 },
+  { label: "BMR", field: "bmr", metricType: "bmr", suffix: " kcal", decimals: 0 },
+  { label: "TDEE", field: "tdee", metricType: "bmr", fieldKey: "tdee", suffix: " kcal", decimals: 0 },
+  { label: "Body fat %", field: "bodyFatPercent", metricType: "body_fat", suffix: "%", decimals: 1 },
+  { label: "Visceral fat %", field: "visceralFatPercent", metricType: "visceral_fat", suffix: " cm²", decimals: 2 },
+  { label: "Est. visceral fat", field: "estimatedVisceralFat", metricType: "visceral_fat", suffix: " cm²", decimals: 2 },
+  { label: "Waist - hip ratio", field: "waistHipRatio", metricType: "visceral_fat", decimals: 2 },
+  {
+    label: "Fatty liver index (FLI)",
+    field: "fli",
+    metricType: "fatty_liver",
+    decimals: 1,
+  },
 ];
 
 function hasNumericValue(value) {
@@ -106,7 +112,10 @@ function previousPeriodKey(key, mode) {
 }
 
 export function getPeriodOptions(bodyAnalytics, mode) {
-  const records = bodyAnalytics?.measurements || [];
+  const records = [
+    ...(bodyAnalytics?.measurements || []),
+    ...(bodyAnalytics?.metabolicMetrics || []),
+  ];
   return [...new Set(records.map((row) => periodKey(row.recordedAt || row.createdAt, mode)).filter(Boolean))]
     .sort((a, b) => b.localeCompare(a));
 }
@@ -316,14 +325,44 @@ export function buildMeasurementRows(records, mode, unit, columns) {
   });
 }
 
-export function buildMetabolicRows(measurementRecords, mode, columns, profile = {}) {
+export function buildMetabolicRows(measurementRecords, mode, columns, profile = {}, metabolicLogs = []) {
   const derived = (Array.isArray(measurementRecords) ? measurementRecords : []).map((row) => (
     deriveMetabolicSnapshot(row, profile)
   ));
+  const logs = Array.isArray(metabolicLogs) ? metabolicLogs : [];
 
-  return METABOLIC_FIELDS.map(({ label, field, suffix = "", decimals = 1 }) => {
-    const history = latestMetricValueByPeriod(derived, mode, field);
-    const values = columns.map((column) => formatValue(history[column], suffix, decimals));
+  return METABOLIC_FIELDS.map((spec) => {
+    const {
+      label,
+      field,
+      fieldKey,
+      metricType,
+      suffix = "",
+      decimals = 1,
+    } = spec;
+    const readField = fieldKey || field;
+    const typeLogs = metricType
+      ? logs.filter((log) => String(log.metricType || "").toLowerCase() === metricType)
+      : [];
+
+    const derivedHistory = latestMetricValueByPeriod(derived, mode, field);
+    const logHistory = typeLogs.length
+      ? latestMetricValueByPeriod(typeLogs, mode, readField, (row) => row?.[readField])
+      : null;
+    const history = logHistory
+      ? Object.fromEntries(
+        columns.map((column) => [
+          column,
+          hasNumericValue(logHistory[column]) ? logHistory[column] : derivedHistory[column],
+        ]),
+      )
+      : derivedHistory;
+
+    const values = columns.map((column) => {
+      const raw = history[column];
+      if (!hasNumericValue(raw)) return "-";
+      return formatValue(raw, suffix, decimals);
+    });
     const latest = values[0];
     const previous = values[1];
     const delta = columns.length >= 2 ? formatDelta(latest, previous) : "-";

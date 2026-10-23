@@ -7,11 +7,11 @@ const AppError = require("./AppError");
 
 const execFileAsync = promisify(execFile);
 
-/** OpenAI / app target: keep blood-report PDFs at or below this size. */
+/** Max size for coach-generated recommended-test PDFs on Internal Parameters (admin console). */
 const LAB_REPORT_PDF_MAX_BYTES = 1024 * 1024;
 
 const COMPRESS_FAILED_MESSAGE =
-  "Could not compress this PDF below 1 MB. Upload a smaller file or install Ghostscript on the server.";
+  "Could not compress the recommended-test PDF below 1 MB. Install Ghostscript on the server or reduce the test list.";
 
 let cachedGsBinary = null;
 let gsLookupDone = false;
@@ -79,7 +79,7 @@ async function runGhostscript(inputBuffer, { pdfSettings, colorDpi, grayDpi }, g
   const gs = gsBinary || (await resolveGhostscriptBinary());
   if (!gs) {
     throw new AppError(
-      "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or upload a PDF under 1 MB.",
+      "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or keep generated PDFs under 1 MB.",
       503
     );
   }
@@ -126,8 +126,8 @@ async function runGhostscript(inputBuffer, { pdfSettings, colorDpi, grayDpi }, g
 /**
  * @param {Buffer} buffer
  * @param {{ allowUncompressedIfGsMissing?: boolean }} [options]
- *   When true, returns the original buffer if Ghostscript is unavailable (user upload path).
- *   AI analysis still enforces LAB_REPORT_PDF_MAX_BYTES separately.
+ *   When true, returns the original buffer if Ghostscript is unavailable.
+ *   Default (false): require compression to LAB_REPORT_PDF_MAX_BYTES — used for admin-generated recommendation PDFs.
  */
 async function compressLabReportPdfBuffer(buffer, options = {}) {
   const { allowUncompressedIfGsMissing = false } = options;
@@ -148,7 +148,7 @@ async function compressLabReportPdfBuffer(buffer, options = {}) {
       return buffer;
     }
     throw new AppError(
-      "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or upload a PDF under 1 MB.",
+      "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or keep generated PDFs under 1 MB.",
       503
     );
   }

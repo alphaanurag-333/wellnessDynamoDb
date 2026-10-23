@@ -40,6 +40,9 @@ const {
   toPublicMetabolicMetricLog,
 } = require("../../models/healthProgressMetabolicMetricModel");
 const { sendStoredObjectAsAttachment } = require("../../utils/s3");
+const {
+  syncFattyLiverMetricFromLatestLabReport,
+} = require("../helpers/metabolicMetricsFattyLiverSync");
 
 exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
   const userId = String(req.params.id || "").trim();
@@ -55,14 +58,24 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
     listAllMetabolicMetricLogsByUser(userId, { limit: 200 }),
   ]);
 
+  const measurements = measurementResult.items.map(toPublicBodyMeasurement);
+  await syncFattyLiverMetricFromLatestLabReport(userId, {
+    metabolicLogs,
+    measurements,
+  }).catch((err) => {
+    console.error("Fatty liver sync on body analytics load failed:", err?.message || err);
+  });
+
+  const metabolicLogsAfterSync = await listAllMetabolicMetricLogsByUser(userId, { limit: 200 });
+
   return res.status(200).json({
     status: true,
     message: "Body analytics fetched",
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
     bodyAnalytics: {
-      measurements: measurementResult.items.map(toPublicBodyMeasurement),
-      metabolicMetrics: metabolicLogs.map(toPublicMetabolicMetricLog),
+      measurements,
+      metabolicMetrics: metabolicLogsAfterSync.map(toPublicMetabolicMetricLog),
       photos: photoResult.items.map(toPublicProgressPhoto),
     },
   });

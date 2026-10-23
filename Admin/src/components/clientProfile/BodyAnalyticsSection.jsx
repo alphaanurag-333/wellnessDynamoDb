@@ -728,8 +728,17 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
       historyMode,
       historyWindow,
       { gender: user?.gender, dob: user?.dobIso || user?.dob },
+      bodyAnalytics?.metabolicMetrics,
     ),
-    [bodyAnalytics?.measurements, historyMode, historyWindow, user?.dob, user?.dobIso, user?.gender],
+    [
+      bodyAnalytics?.measurements,
+      bodyAnalytics?.metabolicMetrics,
+      historyMode,
+      historyWindow,
+      user?.dob,
+      user?.dobIso,
+      user?.gender,
+    ],
   );
 
   function onHistoryChange(mode) {

@@ -1,5 +1,9 @@
 const TONES = new Set(["good", "bad", "warn", "neutral"]);
 
+/** Full Indian lab profiles (Thyrocare, Metropolis, etc.) often exceed 40 markers. */
+const MAX_AI_PANELS = 40;
+const MAX_ROWS_PER_PANEL = 150;
+
 function formatAiDateLabel(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value || "").trim() || "—";
@@ -153,22 +157,68 @@ function normalizeRow(row) {
   };
 }
 
+function panelRawRows(panel) {
+  if (Array.isArray(panel?.rows)) return panel.rows;
+  if (Array.isArray(panel?.parameters)) return panel.parameters;
+  if (Array.isArray(panel?.markers)) return panel.markers;
+  if (Array.isArray(panel?.tests)) return panel.tests;
+  return [];
+}
+
 function normalizePanel(panel) {
   const title = String(panel?.title || panel?.name || "Other").trim().slice(0, 80) || "Other";
-  const rows = (Array.isArray(panel?.rows) ? panel.rows : [])
+  const rows = panelRawRows(panel)
     .map(normalizeRow)
     .filter(Boolean)
-    .slice(0, 40);
+    .slice(0, MAX_ROWS_PER_PANEL);
   if (!rows.length) return null;
   return { title: title.toUpperCase(), rows };
 }
 
+function looseMarkerToRow(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  if (item.name || item.parameter) return normalizeRow(item);
+  const keys = Object.keys(item);
+  if (keys.length === 1 && typeof item[keys[0]] !== "object") {
+    return normalizeRow({ name: keys[0], value: item[keys[0]] });
+  }
+  return normalizeRow(item);
+}
+
+function collectPanelsFromSource(source) {
+  if (!source || typeof source !== "object") return [];
+  if (Array.isArray(source.panels) && source.panels.length) {
+    return source.panels;
+  }
+
+  const loose = [];
+  for (const key of ["markers", "tests", "parameters", "results", "analytes", "data"]) {
+    if (Array.isArray(source[key])) loose.push(...source[key]);
+  }
+  if (!loose.length) return [];
+
+  const byPanel = new Map();
+  loose.forEach((item) => {
+    const row = looseMarkerToRow(item);
+    if (!row) return;
+    const panelTitle = String(
+      item?.panel || item?.section || item?.category || item?.group || item?.department || "OTHER TESTS"
+    )
+      .trim()
+      .slice(0, 80) || "OTHER TESTS";
+    if (!byPanel.has(panelTitle)) byPanel.set(panelTitle, []);
+    byPanel.get(panelTitle).push(row);
+  });
+
+  return [...byPanel.entries()].map(([title, rows]) => ({ title, rows }));
+}
+
 function normalizeAiAnalysis(raw, { reportDate } = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
-  const panels = (Array.isArray(source.panels) ? source.panels : [])
+  const panels = collectPanelsFromSource(source)
     .map(normalizePanel)
     .filter(Boolean)
-    .slice(0, 20);
+    .slice(0, MAX_AI_PANELS);
 
   if (!panels.length) {
     const err = new Error("AI could not extract any markers from this report");
@@ -188,16 +238,39 @@ function normalizeAiAnalysis(raw, { reportDate } = {}) {
 function buildLabReportAiPrompt({ reportDate }) {
   const dateHint = reportDate ? ` Report date: ${reportDate}.` : "";
   return [
-    "You are a clinical nutrition coach reading a client's uploaded blood / lab report PDF (often a scan).",
-    "Extract every test marker that is actually present in THIS document. Do not invent values that are not on the report.",
-    "If a field is missing, use value \"—\" and tone \"neutral\".",
-    "Use the report's own reference range when shown; otherwise use common adult Indian lab ranges.",
-    "Optimal is the tighter wellness target (not the lab reference range).",
-    "Tone: good (in optimal / in range), warn (borderline), bad (out of range), neutral (not reported).",
-    "Write interpretation notes in plain English for a wellness coach. No diagnosis, no medication prescriptions.",
+    "You are a clinical nutrition coach reading a client's uploaded blood / lab report PDF (often a multi-page scan from Thyrocare, Metropolis, Dr Lal PathLabs, SRL, or similar).",
+    "",
+    "CRITICAL — COMPLETENESS:",
+    "- Read EVERY page of the PDF from start to finish, including appendices and continuation tables.",
+    "- Extract EVERY numeric or qualitative test result printed on the report. Typical full profiles have 40–120 markers; partial panels have fewer.",
+    "- Do NOT skip rows in tables. Do NOT summarise or sample — one JSON row per test line on the report.",
+    "- Include liver markers (SGPT/ALT, SGOT/AST, GAMMA GLUTAMYL TRANSFERASE / GGT / Gamma GT), kidney markers (creatinine, urea, BUN, uric acid, eGFR), lipids, CBC, thyroid, vitamins, iron studies, electrolytes, urine, and any other sections present.",
+    "- Include calculated indices if printed (HOMA-IR, AVG glucose, LDL/HDL ratios, etc.).",
+    "- Use the exact test name as shown on the report (keep common abbreviations: GGT, SGPT, SGOT, etc.).",
+    "- Do not invent values that are not on the report. If a test is not in this document, omit it (do not add placeholder rows).",
+    "",
+    "GROUP rows into panels that match the lab layout when possible:",
+    "GLUCOSE PANEL · LIPID PROFILE · LIVER FUNCTION (LFT) · KIDNEY FUNCTION (KFT) · COMPLETE BLOOD COUNT (CBC) · THYROID · VITAMINS & MINERALS · IRON STUDIES · INFLAMMATION · ELECTROLYTES · URINE ANALYSIS · OTHER TESTS",
+    "",
+    "For each marker: value (number + unit as printed), rr = reference range from the report, optimal = tighter wellness target, tone (good/warn/bad/neutral), note = short coach-facing interpretation.",
+    "No diagnosis, no medication prescriptions.",
+    "",
     `Return JSON only with this shape:${dateHint}`,
     JSON.stringify({
       panels: [
+        {
+          title: "LIVER FUNCTION (LFT)",
+          rows: [
+            {
+              name: "GGT",
+              optimal: "10 – 30 U/L",
+              rr: "5–55 U/L",
+              value: "42",
+              tone: "warn",
+              note: "Short coach-facing interpretation of this marker.",
+            },
+          ],
+        },
         {
           title: "GLUCOSE PANEL",
           rows: [
@@ -434,6 +507,7 @@ module.exports = {
   parseAiJson,
   normalizeTone,
   normalizeAiAnalysis,
+  collectPanelsFromSource,
   buildLabReportAiPrompt,
   analysisToPanels,
   panelsToAnalysis,
@@ -441,4 +515,6 @@ module.exports = {
   applyMergedPanelsToReportAnalysis,
   normalizeMarkerKey,
   normalizePanelKey,
+  MAX_AI_PANELS,
+  MAX_ROWS_PER_PANEL,
 };
