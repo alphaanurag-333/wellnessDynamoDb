@@ -68,7 +68,7 @@ function renderSection(section, user, onToast, onNavigate, onUserUpdated, sectio
     case "body":
       return <BodyAnalyticsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "medical":
-      return <MedicalConditionsSection user={user} onToast={onToast} />;
+      return <MedicalConditionsSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "internal":
       return <InternalParametersSection user={user} onToast={onToast} onUserUpdated={onUserUpdated} />;
     case "launch":

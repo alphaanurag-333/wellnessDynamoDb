@@ -10,7 +10,7 @@ export const CLIENT_PROFILE_SECTIONS = {
   },
   personal: { view: "console.pii.view", edit: "console.pii.edit" },
   body: { view: "console.body.view", edit: "console.body.edit", upload: "console.body.upload" },
-  medical: { view: "console.pii.view" },
+  medical: { view: "console.pii.view", edit: "console.cl.edit" },
   internal: {
     view: "console.rep.view",
     edit: "console.rep.edit",

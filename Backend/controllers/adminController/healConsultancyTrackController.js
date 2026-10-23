@@ -115,6 +115,7 @@ exports.createCoachHealConsultancyTrackController = asyncHandler(async (req, res
     periodOffers: Array.isArray(body.periodOffers) ? body.periodOffers : [],
     statusUpdatedByRole: req.auth?.role || "wellness_coach",
     statusUpdatedById: coachId,
+    initiatedByRole: "coach",
   };
 
   const offeringSlots = body.status === "periods_offered" && createPayload.periodOffers.length > 0;

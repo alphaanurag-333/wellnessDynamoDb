@@ -4,6 +4,7 @@ const {
   getUserById,
   updateUser,
   isBodyMeasurementEnabled,
+  isProgressPhotosInAppEnabled,
 } = require("../../models/userModel");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
 const { enrichUser } = require("../userController/userProfileHelpers");
@@ -29,6 +30,9 @@ const {
   buildOnboardingStatusUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
+  markStepSkipped,
+  wizardStepAfterSkip,
+  computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
 const { progressPhotoCalendarDay, recordStamp, recordsOnSameDay } = require("../../utils/progressPhotoDay");
 const {
@@ -55,6 +59,7 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Body analytics fetched",
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
+    progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
     bodyAnalytics: {
       measurements: measurementResult.items.map(toPublicBodyMeasurement),
       metabolicMetrics: metabolicLogs.map(toPublicMetabolicMetricLog),
@@ -62,6 +67,20 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
     },
   });
 });
+
+function parseEnabledBodyFlag(body = {}) {
+  if (body.enabled === undefined && body.value === undefined) {
+    return { missing: true, enabled: null };
+  }
+  const raw = body.enabled !== undefined ? body.enabled : body.value;
+  if (raw === true || raw === false) {
+    return { missing: false, enabled: raw };
+  }
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === "true") return { missing: false, enabled: true };
+  if (normalized === "false") return { missing: false, enabled: false };
+  return { missing: false, enabled: null };
+}
 
 exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) => {
   assertStaffCanMutate(req);
@@ -72,22 +91,13 @@ exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) =
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
 
-  if (req.body.enabled === undefined && req.body.bodyMeasurementEnabled === undefined) {
-    throw new AppError("enabled is required", 400);
-  }
-
-  const raw = req.body.enabled !== undefined ? req.body.enabled : req.body.bodyMeasurementEnabled;
-  const enabled =
-    raw === true || raw === false
-      ? raw
-      : String(raw).trim().toLowerCase() === "true"
-        ? true
-        : String(raw).trim().toLowerCase() === "false"
-          ? false
-          : null;
-  if (enabled == null) {
-    throw new AppError("enabled must be true or false", 400);
-  }
+  const parsed = parseEnabledBodyFlag({
+    enabled:
+      req.body.enabled !== undefined ? req.body.enabled : req.body.bodyMeasurementEnabled,
+  });
+  if (parsed.missing) throw new AppError("enabled is required", 400);
+  if (parsed.enabled == null) throw new AppError("enabled must be true or false", 400);
+  const enabled = parsed.enabled;
 
   const updated = await updateUser(userId, { bodyMeasurementEnabled: enabled });
 
@@ -98,6 +108,51 @@ exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) =
       : "Client cannot fill body measurements until you turn this on",
     enabled: isBodyMeasurementEnabled(updated),
     bodyMeasurementEnabled: isBodyMeasurementEnabled(updated),
+    user: await enrichUser(updated),
+  });
+});
+
+exports.patchProgressPhotosInAppSettingsController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = String(req.params.id || "").trim();
+  if (!userId) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const parsed = parseEnabledBodyFlag({
+    enabled:
+      req.body.enabled !== undefined ? req.body.enabled : req.body.progressPhotosInAppEnabled,
+  });
+  if (parsed.missing) throw new AppError("enabled is required", 400);
+  if (parsed.enabled == null) throw new AppError("enabled must be true or false", 400);
+  const enabled = parsed.enabled;
+
+  const updates = { progressPhotosInAppEnabled: enabled };
+
+  if (!enabled) {
+    const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+    if (currentStatus.progressPhotos180 === "pending") {
+      const nextStatus = markStepSkipped(currentStatus, "progressPhotos180");
+      updates.paidOnboardingStepStatus = nextStatus;
+      const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, "progressPhotos180");
+      if (nextWizardStep && nextWizardStep !== user.paidOnboardingStep) {
+        updates.paidOnboardingStep = nextWizardStep;
+      }
+      updates.paidOnboardingCompleted = computePaidOnboardingCompleted(nextStatus);
+    }
+  }
+
+  const updated = await updateUser(userId, updates);
+
+  return res.status(200).json({
+    status: true,
+    message: enabled
+      ? "Client can upload progress photos in the app"
+      : "Progress photos are hidden from the client app",
+    enabled: isProgressPhotosInAppEnabled(updated),
+    progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(updated),
     user: await enrichUser(updated),
   });
 });

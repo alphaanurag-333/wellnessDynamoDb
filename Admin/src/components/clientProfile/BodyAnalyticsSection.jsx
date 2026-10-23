@@ -6,7 +6,9 @@ import {
   fetchUserBodyAnalytics,
   mapApiUserToRow,
   patchUserBodyMeasurementSettings,
+  patchUserProgressPhotosInAppSettings,
   resolveBodyMeasurementClientEnabled,
+  resolveProgressPhotosInAppEnabled,
   reviewUserProgressPhoto,
 } from "../../api/usersApi.js";
 import {
@@ -201,7 +203,7 @@ function PhotoAngleCard({ angle, photos, onOpen }) {
   );
 }
 
-function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
+function PhotoCards({ photosByAngle, latestPhotoDate, onOpen, headTools = null }) {
   const pendingCount = PHOTO_ANGLES.reduce(
     (sum, angle) => sum + (photosByAngle[angle.label] || []).filter((photo) => photo.reviewStatus === "pending").length,
     0,
@@ -219,6 +221,7 @@ function PhotoCards({ photosByAngle, latestPhotoDate, onOpen }) {
             </span>
           ) : null}
         </div>
+        {headTools ? <div className="ua-cp-ba-block__tools">{headTools}</div> : null}
       </div>
       <div className="ua-cp-ba-photos">
         {PHOTO_ANGLES.map((angle) => (
@@ -639,8 +642,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [featureEnabled, setFeatureEnabled] = useState(() => resolveBodyMeasurementClientEnabled(user));
+  const [progressPhotosInApp, setProgressPhotosInApp] = useState(() => resolveProgressPhotosInAppEnabled(user));
   const [settingsBusy, setSettingsBusy] = useState(false);
+  const [progressPhotosBusy, setProgressPhotosBusy] = useState(false);
   const [clientFillConfirm, setClientFillConfirm] = useState(null);
+  const [progressPhotosConfirm, setProgressPhotosConfirm] = useState(null);
 
   const clientFirstName = user?.name?.split(/\s+/)[0] || "Client";
 
@@ -655,6 +661,10 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   }, [user?.bodyMeasurementEnabled, user?.paidOnboardingStepStatus]);
 
   useEffect(() => {
+    setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(user));
+  }, [user?.progressPhotosInAppEnabled, user?.paidOnboardingStepStatus?.progressPhotos180]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadError("");
@@ -665,6 +675,9 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           setBodyAnalytics(analytics);
           if (bodyMeasurementEnabled !== undefined) {
             setFeatureEnabled(Boolean(bodyMeasurementEnabled));
+          }
+          if (data?.progressPhotosInAppEnabled !== undefined) {
+            setProgressPhotosInApp(Boolean(data.progressPhotosInAppEnabled));
           }
         }
       })
@@ -726,6 +739,53 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   function requestToggleBodyMeasurementClientFill() {
     if (settingsBusy) return;
     setClientFillConfirm({ next: !featureEnabled });
+  }
+
+  function requestToggleProgressPhotosInApp() {
+    if (progressPhotosBusy || !canEdit) return;
+    setProgressPhotosConfirm({ next: !progressPhotosInApp });
+  }
+
+  async function applyProgressPhotosInApp(next) {
+    if (!live) {
+      setProgressPhotosInApp(next);
+      onToast?.(
+        next
+          ? "Progress photos enabled in the client app"
+          : "Progress photos hidden from the client app",
+      );
+      return;
+    }
+    setProgressPhotosBusy(true);
+    try {
+      const result = await patchUserProgressPhotosInAppSettings(user.id, { enabled: next });
+      setProgressPhotosInApp(result?.enabled ?? next);
+      if (result?.user) {
+        onUserUpdated?.(mapApiUserToRow(result.user));
+      } else {
+        onUserUpdated?.({
+          ...user,
+          progressPhotosInAppEnabled: next,
+          progressPhotosInAppEnabledRaw: next,
+        });
+      }
+      try {
+        const row = await fetchUser(user.id);
+        if (row) onUserUpdated?.(row);
+      } catch {
+        // best-effort refresh
+      }
+      onToast?.(
+        result?.message
+          || (next
+            ? "Progress photos enabled in the client app"
+            : "Progress photos hidden from the client app"),
+      );
+    } catch (error) {
+      onToast?.(error?.message || "Failed to update progress photo setting");
+    } finally {
+      setProgressPhotosBusy(false);
+    }
   }
 
   async function applyBodyMeasurementClientFill(next) {
@@ -810,6 +870,29 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     </div>
   ) : null;
 
+  const progressPhotosInAppToggle = canEdit ? (
+    <div
+      className="ua-cp-ba-client-entry"
+      title={
+        progressPhotosInApp
+          ? "Client can upload front, right, and left progress photos in the app"
+          : "Progress photo uploads are hidden from the client app"
+      }
+    >
+      <span className="ua-cp-ba-client-entry__label">Lock in App</span>
+      <button
+        type="button"
+        className={`ua-toggle ua-toggle--sm${progressPhotosInApp ? " ua-toggle--on" : ""}`}
+        onClick={requestToggleProgressPhotosInApp}
+        disabled={progressPhotosBusy}
+        aria-pressed={progressPhotosInApp}
+        aria-label="Show progress photos in client app"
+      >
+        <span className="ua-toggle__knob" />
+      </button>
+    </div>
+  ) : null;
+
   if (loading) {
     return <div className="ua-cp-section ua-cp-body-analytics"><p className="ua-page-head__sub">Loading body analytics…</p></div>;
   }
@@ -853,6 +936,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         photosByAngle={photosByAngle}
         latestPhotoDate={latestPhotoDate}
         onOpen={setPhotoAngle}
+        headTools={progressPhotosInAppToggle}
       />
 
       <HistoryTable
@@ -870,6 +954,32 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         labelCol="Metric"
         columns={historyColumns}
         rows={metabolicRows}
+      />
+
+      <ConfirmDialog
+        open={Boolean(progressPhotosConfirm)}
+        tag="Progress photos"
+        title={
+          progressPhotosConfirm?.next
+            ? `Allow ${clientFirstName} to upload progress photos in the app?`
+            : `Disable progress photos in the client app for ${clientFirstName}?`
+        }
+        body={
+          progressPhotosConfirm?.next
+            ? "The client can submit front, right, and left photos during onboarding or later updates. Body measurements are controlled separately under Client fill."
+            : "The client will not be able to upload new progress photos in the app. Pending 180° onboarding will be skipped. You can still review existing uploads here."
+        }
+        confirmLabel={progressPhotosConfirm?.next ? "Enable in app" : "Disable in app"}
+        confirmTone={progressPhotosConfirm?.next ? "primary" : "danger"}
+        onCancel={() => {
+          if (!progressPhotosBusy) setProgressPhotosConfirm(null);
+        }}
+        onConfirm={() => {
+          const next = progressPhotosConfirm?.next;
+          setProgressPhotosConfirm(null);
+          if (next === undefined) return;
+          applyProgressPhotosInApp(next);
+        }}
       />
 
       <ConfirmDialog

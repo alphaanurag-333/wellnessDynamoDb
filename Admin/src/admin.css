@@ -14908,7 +14908,31 @@
 }
 
 .updated-admin .ua-cp-medical__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 10px;
+}
+
+.updated-admin .ua-cp-medical__head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.updated-admin .ua-cp-medical__in-app {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.updated-admin .ua-cp-medical__in-app-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5c6b82;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-medical__title {

@@ -6,6 +6,7 @@ const {
   toCoachAssignedWellnessPrescriptionPublic,
 } = require("../models/coachAssignedWellnessPrescriptionModel");
 const { listHealConsultancyTracksByUserId } = require("../models/userHealConsultancyTrackModel");
+const { attachCounsellingSessionMeta } = require("../utils/counsellingReviewHistory");
 
 function calendarDayFrom(value) {
   const raw = String(value || "").trim();
@@ -126,27 +127,33 @@ async function listEnrichedWellnessPrescriptionsForUser(userId, targetUser) {
   return enrichAssignmentsWithReviewMeta(assignments, targetUser);
 }
 
-function coachMeetingsFromAssignments(assignments, tracks = []) {
+function coachMeetingsFromAssignments(assignments, tracks = [], initiatorContext) {
   return (Array.isArray(assignments) ? assignments : [])
     .map((row) => {
       const date = getReviewAt(row);
       if (!row || !date) return null;
+      const reviewDay = getReviewAt(row);
+      const track = pickConsultancyTrackForReviewDay(reviewDay, tracks);
       const enriched = attachReviewLifecycleDates(row, tracks);
       const reviewStatus = String(row.reviewStatus || "active").toLowerCase();
-      return {
-        id: row.id,
-        date,
-        reviewStatus,
-        summary: row.summary || "",
-        authorName: row.authorName || "",
-        cancelled: reviewStatus === "cancelled",
-        scheduledDate: enriched.scheduledDate || null,
-        completedDate: enriched.completedDate || null,
-        cancelledDate: enriched.cancelledDate || null,
-        scheduledAt: enriched.scheduledAt || null,
-        completedAt: enriched.completedAt || null,
-        cancelledAt: enriched.cancelledAt || null,
-      };
+      return attachCounsellingSessionMeta(
+        {
+          id: row.id,
+          date,
+          reviewStatus,
+          summary: row.summary || "",
+          authorName: row.authorName || "",
+          cancelled: reviewStatus === "cancelled",
+          trackStatus: track?.status || null,
+          scheduledDate: enriched.scheduledDate || null,
+          completedDate: enriched.completedDate || null,
+          cancelledDate: enriched.cancelledDate || null,
+          scheduledAt: enriched.scheduledAt || null,
+          completedAt: enriched.completedAt || null,
+          cancelledAt: enriched.cancelledAt || null,
+        },
+        { track, initiatorContext },
+      );
     })
     .filter(Boolean)
     .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.id).localeCompare(String(a.id)));
@@ -154,7 +161,7 @@ function coachMeetingsFromAssignments(assignments, tracks = []) {
 
 async function loadCoachMeetingSnapshot(userId, targetUser) {
   const uid = String(userId || "").trim();
-  if (!uid) return { assignments: [], meetings: [], lastReviewedAt: null };
+  if (!uid) return { assignments: [], meetings: [], tracks: [], lastReviewedAt: null };
 
   const user = targetUser || (await getUserById(uid));
   const assignments = await listEnrichedWellnessPrescriptionsForUser(uid, user);
@@ -166,9 +173,19 @@ async function loadCoachMeetingSnapshot(userId, targetUser) {
     console.error("[wellness review] consultancy tracks failed", err?.message || err);
   }
   const assignmentsWithDates = assignments.map((row) => attachReviewLifecycleDates(row, tracks));
+  const staffNameMap = await loadStaffNameMap(
+    tracks.flatMap((track) => [
+      track.parentCoachId,
+      track.assignedCoachId,
+      track.statusUpdatedById,
+    ]),
+  );
+  const initiatorContext = { targetUser: user, staffNameMap };
   return {
     assignments: assignmentsWithDates,
-    meetings: coachMeetingsFromAssignments(assignmentsWithDates, tracks),
+    meetings: coachMeetingsFromAssignments(assignmentsWithDates, tracks, initiatorContext),
+    tracks,
+    initiatorContext,
     lastReviewedAt: getLatestActiveReviewAt(assignments) || null,
   };
 }
@@ -189,6 +206,7 @@ module.exports = {
   loadCoachMeetingSnapshot,
   coachMeetingsFromAssignments,
   syncUserLastReviewedAt,
+  loadStaffNameMap,
   resolveAuthorName,
   deriveReviewLifecycleDates,
   attachReviewLifecycleDates,

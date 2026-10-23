@@ -5,6 +5,7 @@ const {
   getUserById,
   updateUser,
   normalizePaidOnboardingStepStatus,
+  isProgressPhotosInAppEnabled,
 } = require("../../models/userModel");
 const { enrichUser } = require("./userProfileHelpers");
 const {
@@ -37,6 +38,10 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
+
+  if (!isProgressPhotosInAppEnabled(user)) {
+    throw new AppError("Progress photo uploads are not available in your app", 403);
+  }
 
   const body = req.body || {};
   const folder = "users/progress-photos";

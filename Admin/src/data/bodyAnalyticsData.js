@@ -420,7 +420,7 @@ export function buildPhotosByAngle(photos, measurements = []) {
     const list = angle.single
       ? mapped
           .slice()
-          .sort((a, b) => String(a.stamp).localeCompare(String(b.stamp)))
+          .sort((a, b) => String(b.stamp).localeCompare(String(a.stamp)))
           .slice(0, 1)
       : mapped;
     return [angle.label, list];
@@ -444,7 +444,9 @@ export function latestPhotoStamp(photos, measurements = []) {
   const onboardingWeight = (measurements || [])
     .filter((row) => row.weightPicUrl)
     .slice()
-    .sort((a, b) => String(a.recordedAt || a.createdAt || "").localeCompare(String(b.recordedAt || b.createdAt || "")))[0];
+    .sort((a, b) =>
+      String(b.recordedAt || b.createdAt || "").localeCompare(String(a.recordedAt || a.createdAt || "")),
+    )[0];
   const stamps = [
     ...(photos || []).map((row) => row.recordedAt || row.createdAt),
     onboardingWeight?.recordedAt || onboardingWeight?.createdAt,

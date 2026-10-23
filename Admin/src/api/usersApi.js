@@ -37,6 +37,19 @@ export function resolveBodyMeasurementClientEnabled(user) {
   return status === "done" || status === "skipped";
 }
 
+/** Matches Backend isProgressPhotosInAppEnabled (coach gate + legacy completed step). */
+export function resolveProgressPhotosInAppEnabled(user) {
+  if (user?.progressPhotosInAppEnabled === true) return true;
+  if (user?.progressPhotosInAppEnabled === false) return false;
+  const status = String(user?.paidOnboardingStepStatus?.progressPhotos180 || "").toLowerCase();
+  return status === "done" || status === "skipped";
+}
+
+/** Default true — coach can hide medical questionnaire from the client app. */
+export function resolveMedicalConditionsInAppEnabled(user) {
+  return user?.medicalConditionsInAppEnabled !== false;
+}
+
 export function mapUiStatusToApi(statusFilter) {
   if (statusFilter === "Active") return "active";
   if (statusFilter === "Disabled") return "inactive";
@@ -655,6 +668,9 @@ export function mapApiUserToRow(user, index = 0) {
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
     bodyMeasurementEnabledRaw: user?.bodyMeasurementEnabled === true,
+    progressPhotosInAppEnabled: resolveProgressPhotosInAppEnabled(user),
+    progressPhotosInAppEnabledRaw: user?.progressPhotosInAppEnabled === true,
+    medicalConditionsInAppEnabled: resolveMedicalConditionsInAppEnabled(user),
     referralCode: String(user?.referralCode || "").trim(),
     referredByCode: String(user?.referredByCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
@@ -874,7 +890,27 @@ export async function fetchUserMedicalConditions(id) {
       `/account/users/${encodeURIComponent(id)}/medical-conditions`,
       { headers: authHeader() },
     );
-    return data.medicalCondition || null;
+    return {
+      medicalCondition: data.medicalCondition || null,
+      medicalConditionsInAppEnabled: data.medicalConditionsInAppEnabled !== false,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserMedicalConditionsInAppSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/medical-conditions/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return {
+      enabled: data.medicalConditionsInAppEnabled ?? data.enabled,
+      message: data.message,
+      user: data.user,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -894,6 +930,7 @@ export async function fetchUserBodyAnalytics(id) {
     return {
       ...analytics,
       bodyMeasurementEnabled: data.bodyMeasurementEnabled,
+      progressPhotosInAppEnabled: data.progressPhotosInAppEnabled,
     };
   } catch (error) {
     normalizeApiError(error);
@@ -908,6 +945,23 @@ export async function patchUserBodyMeasurementSettings(userId, { enabled } = {})
       { headers: authHeader() },
     );
     return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserProgressPhotosInAppSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/progress-photos/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return {
+      enabled: data.progressPhotosInAppEnabled ?? data.enabled,
+      message: data.message,
+      user: data.user,
+    };
   } catch (error) {
     normalizeApiError(error);
   }

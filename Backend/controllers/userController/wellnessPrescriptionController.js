@@ -4,6 +4,7 @@ const { getUserById } = require("../../models/userModel");
 const {
   loadCoachMeetingSnapshot,
 } = require("../../services/wellnessPrescriptionReviewService");
+const { buildUserCounsellingReviewHistory } = require("../../utils/counsellingReviewHistory");
 
 function mapPrescriptionListResponse(assignments) {
   const list = Array.isArray(assignments) ? assignments : [];
@@ -36,15 +37,21 @@ exports.getUserReviewHistoryController = asyncHandler(async (req, res) => {
 
   const user = await getUserById(userId);
   const snapshot = await loadCoachMeetingSnapshot(userId, user);
-  const reviews = [...snapshot.assignments].sort((a, b) =>
-    String(b.date || "").localeCompare(String(a.date || "")),
-  );
+  const history = buildUserCounsellingReviewHistory({
+    assignments: snapshot.assignments,
+    meetings: snapshot.meetings,
+    tracks: snapshot.tracks,
+    initiatorContext: snapshot.initiatorContext,
+  });
 
   return res.status(200).json({
     status: true,
     message: "Review history fetched successfully",
-    reviews,
-    meetings: snapshot.meetings,
+    reviews: history.reviews.sort((a, b) =>
+      String(b.date || "").localeCompare(String(a.date || "")),
+    ),
+    meetings: history.meetings,
+    sessions: history.sessions,
     lastReviewedAt: snapshot.lastReviewedAt,
   });
 });

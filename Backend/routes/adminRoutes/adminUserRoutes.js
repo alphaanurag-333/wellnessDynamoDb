@@ -32,6 +32,7 @@ const {
 } = require("../../controllers/adminController/userEnergyExchangeController");
 const {
   getUserMedicalConditionsAdminController,
+  patchMedicalConditionsInAppSettingsController,
 } = require("../../controllers/adminController/userMedicalConditionController");
 const {
   getUserAtAGlanceController,
@@ -50,6 +51,7 @@ const {
 const {
   getUserBodyAnalyticsController,
   patchBodyMeasurementSettingsController,
+  patchProgressPhotosInAppSettingsController,
   downloadUserProgressPhotoController,
   reviewUserProgressPhotoController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
@@ -85,6 +87,12 @@ router.patch(
   protectAccount,
   authorizeStaff("console.body.edit", { admin: "users.edit" }),
   patchBodyMeasurementSettingsController
+);
+router.patch(
+  "/:id/progress-photos/settings",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  patchProgressPhotosInAppSettingsController
 );
 router.get(
   "/:id/body-analytics/photos/:photoId/:angle/download",
@@ -123,6 +131,12 @@ router.get(
   protectAccount,
   clientView,
   getUserMedicalConditionsAdminController
+);
+router.patch(
+  "/:id/medical-conditions/settings",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  patchMedicalConditionsInAppSettingsController
 );
 router.patch(
   "/:id/onboarding-steps/:stepKey",

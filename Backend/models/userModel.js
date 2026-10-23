@@ -150,6 +150,22 @@ function isBodyMeasurementEnabled(user) {
   return false;
 }
 
+/** Medical questionnaire in the client app — coach can disable; default is visible. */
+function isMedicalConditionsInAppEnabled(user) {
+  return user?.medicalConditionsInAppEnabled !== false;
+}
+
+/** Client 180° progress photos: coach must enable; legacy users who finished the step keep access. */
+function isProgressPhotosInAppEnabled(user) {
+  if (user?.progressPhotosInAppEnabled === true) return true;
+  if (user?.progressPhotosInAppEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.progressPhotos180 === "done" || status.progressPhotos180 === "skipped") {
+    return true;
+  }
+  return false;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -443,6 +459,8 @@ function sanitizeUpdateField(key, value) {
     key === "heartRateEnabled" ||
     key === "sleepTrackingEnabled" ||
     key === "bodyMeasurementEnabled" ||
+    key === "medicalConditionsInAppEnabled" ||
+    key === "progressPhotosInAppEnabled" ||
     key === "labReportSubmissionLocked"
   ) {
     return Boolean(value);
@@ -579,6 +597,7 @@ function buildUserItem(input, { id, now } = {}) {
     heartRateEnabled: input.heartRateEnabled !== false,
     sleepTrackingEnabled: input.sleepTrackingEnabled !== false,
     bodyMeasurementEnabled: input.bodyMeasurementEnabled === true,
+    progressPhotosInAppEnabled: input.progressPhotosInAppEnabled === true,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -1780,6 +1799,8 @@ module.exports = {
   isHeartRateEnabled,
   isSleepTrackingEnabled,
   isBodyMeasurementEnabled,
+  isMedicalConditionsInAppEnabled,
+  isProgressPhotosInAppEnabled,
   buildUserItem,
   toPublicUser,
   createUser,

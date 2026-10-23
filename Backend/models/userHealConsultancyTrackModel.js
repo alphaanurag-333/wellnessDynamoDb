@@ -30,6 +30,13 @@ const ACTIVE_TRACK_STATUSES = new Set([
 
 const MAX_CONCERN_LENGTH = 500;
 const MAX_NOTES_LENGTH = 1000;
+const INITIATED_BY_ROLES = new Set(["client", "coach"]);
+
+function normalizeInitiatedByRole(value) {
+  const next = String(value || "").trim().toLowerCase();
+  if (next === "user") return "client";
+  return INITIATED_BY_ROLES.has(next) ? next : null;
+}
 
 function normalizeTrackStatus(value, fallback = "requested") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -123,6 +130,7 @@ function buildHealConsultancyTrackItem(input, { id, now }) {
     durationMinutes: Number(input.durationMinutes) || null,
     statusUpdatedByRole: input.statusUpdatedByRole ? String(input.statusUpdatedByRole) : null,
     statusUpdatedById: input.statusUpdatedById ? String(input.statusUpdatedById) : null,
+    initiatedByRole: normalizeInitiatedByRole(input.initiatedByRole),
     createdAt: now,
     updatedAt: now,
   };
@@ -284,6 +292,7 @@ module.exports = {
   MAX_CONCERN_LENGTH,
   MAX_NOTES_LENGTH,
   normalizeTrackStatus,
+  normalizeInitiatedByRole,
   isActiveTrackStatus,
   toPublicHealConsultancyTrack,
   toUserFacingHealConsultancyTrack,

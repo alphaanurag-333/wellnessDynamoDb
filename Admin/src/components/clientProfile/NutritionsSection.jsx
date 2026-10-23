@@ -1401,6 +1401,16 @@ export function NutritionsSection({ user, onToast }) {
               <span>Billing amount</span>
               <strong>Rs. {billing.toLocaleString("en-IN")}</strong>
             </div>
+            {canWrite && isHealClient ? (
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                disabled={!canSaveAndSync}
+                onClick={saveRecommendation}
+              >
+                {saving ? "Saving…" : "Save & sync to user app"}
+              </button>
+            ) : null}
           </div>
 
           <div className="ua-cp-fulfil">
@@ -1445,17 +1455,6 @@ export function NutritionsSection({ user, onToast }) {
             ) : (
               <FulfilmentStatus recommendation={recommended} />
             )}
-
-            {canWrite && isHealClient ? (
-              <button
-                type="button"
-                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
-                disabled={!canSaveAndSync}
-                onClick={saveRecommendation}
-              >
-                {saving ? "Saving…" : "Save & sync to user app"}
-              </button>
-            ) : null}
           </div>
 
           <div className="ua-cp-order-history">

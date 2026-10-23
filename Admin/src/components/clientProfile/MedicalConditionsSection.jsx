@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchUserMedicalConditions } from "../../api/usersApi.js";
+import {
+  fetchUserMedicalConditions,
+  mapApiUserToRow,
+  patchUserMedicalConditionsInAppSettings,
+  resolveMedicalConditionsInAppEnabled,
+} from "../../api/usersApi.js";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function formatWhen(value) {
   const raw = String(value || "").trim();
@@ -106,10 +113,18 @@ function rowsFromRecord(record) {
   }).filter(Boolean);
 }
 
-export function MedicalConditionsSection({ user, onToast }) {
+export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
+  const { canEdit } = useClientSectionPermissions("medical");
   const userId = String(user?.id || "").trim();
   const [loading, setLoading] = useState(() => Boolean(userId));
   const [record, setRecord] = useState(null);
+  const [inAppEnabled, setInAppEnabled] = useState(() => resolveMedicalConditionsInAppEnabled(user));
+  const [settingsBusy, setSettingsBusy] = useState(false);
+  const [inAppConfirm, setInAppConfirm] = useState(null);
+
+  useEffect(() => {
+    setInAppEnabled(resolveMedicalConditionsInAppEnabled(user));
+  }, [user?.medicalConditionsInAppEnabled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,7 +138,10 @@ export function MedicalConditionsSection({ user, onToast }) {
     fetchUserMedicalConditions(userId)
       .then((data) => {
         if (cancelled) return;
-        setRecord(data);
+        setRecord(data?.medicalCondition || null);
+        if (data?.medicalConditionsInAppEnabled !== undefined) {
+          setInAppEnabled(Boolean(data.medicalConditionsInAppEnabled));
+        }
       })
       .catch((error) => {
         if (cancelled) return;
@@ -142,14 +160,70 @@ export function MedicalConditionsSection({ user, onToast }) {
   const rows = useMemo(() => rowsFromRecord(record), [record]);
   const submittedAt = formatWhen(record?.updatedAt || record?.createdAt);
 
+  function requestToggleInApp() {
+    if (settingsBusy || !canEdit) return;
+    setInAppConfirm({ next: !inAppEnabled });
+  }
+
+  async function applyInAppSetting(next) {
+    if (!userId) return;
+    setSettingsBusy(true);
+    try {
+      const result = await patchUserMedicalConditionsInAppSettings(userId, { enabled: next });
+      setInAppEnabled(result?.enabled ?? next);
+      if (result?.user) {
+        onUserUpdated?.(mapApiUserToRow(result.user));
+      } else {
+        onUserUpdated?.({ ...user, medicalConditionsInAppEnabled: next });
+      }
+      onToast?.(
+        result?.message
+          || (next
+            ? "Medical conditions enabled in the client app"
+            : "Medical conditions disabled in the client app"),
+      );
+    } catch (error) {
+      onToast?.(error?.message || "Failed to update medical app setting");
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
+
+  const inAppToggle = canEdit ? (
+    <div
+      className="ua-cp-medical__in-app"
+      title={
+        inAppEnabled
+          ? "Client can view and submit medical conditions in the app"
+          : "Medical conditions are hidden from the client app"
+      }
+    >
+      <span className="ua-cp-medical__in-app-label">Lock in App</span>
+      <button
+        type="button"
+        className={`ua-toggle ua-toggle--sm${inAppEnabled ? " ua-toggle--on" : ""}`}
+        onClick={requestToggleInApp}
+        disabled={settingsBusy}
+        aria-pressed={inAppEnabled}
+        aria-label="Show medical conditions in client app"
+      >
+        <span className="ua-toggle__knob" />
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div className="ua-cp-section ua-cp-medical">
       <div className="ua-cp-medical__head">
-        <h2 className="ua-cp-medical__title">Medical conditions</h2>
-        <p className="ua-cp-medical__sub">
-          Answers from paid onboarding medical questionnaire
-          {submittedAt ? ` · submitted ${submittedAt}` : ""}
-        </p>
+        <div className="ua-cp-medical__head-text">
+          <h2 className="ua-cp-medical__title">Medical conditions</h2>
+          <p className="ua-cp-medical__sub">
+            Answers from paid onboarding medical questionnaire
+            {submittedAt ? ` · submitted ${submittedAt}` : ""}
+            {!inAppEnabled ? " · hidden from client app" : ""}
+          </p>
+        </div>
+        {inAppToggle}
       </div>
 
       {loading ? (
@@ -174,10 +248,34 @@ export function MedicalConditionsSection({ user, onToast }) {
           ))}
         </div>
       ) : (
-        <p className="ua-cp-medical__empty" style={{textAlign:"center"}}>
+        <p className="ua-cp-medical__empty" style={{ textAlign: "center" }}>
           This client has not submitted medical condition answers yet.
         </p>
       )}
+
+      <ConfirmDialog
+        open={Boolean(inAppConfirm)}
+        tag="Medical conditions"
+        title={
+          inAppConfirm?.next
+            ? "Show medical conditions in the client app?"
+            : "Disable medical conditions in the client app?"
+        }
+        body={
+          inAppConfirm?.next
+            ? "The client will be able to open and submit the medical questionnaire in the app."
+            : "The client will not see the medical questionnaire in the app. Any pending medical onboarding step will be skipped."
+        }
+        cancelLabel="Cancel"
+        confirmLabel={inAppConfirm?.next ? "Enable in app" : "Disable in app"}
+        confirmTone={inAppConfirm?.next ? "primary" : "danger"}
+        onCancel={() => setInAppConfirm(null)}
+        onConfirm={() => {
+          const next = inAppConfirm?.next;
+          setInAppConfirm(null);
+          if (typeof next === "boolean") applyInAppSetting(next);
+        }}
+      />
     </div>
   );
 }

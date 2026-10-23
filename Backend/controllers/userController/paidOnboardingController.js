@@ -8,6 +8,8 @@ const {
   normalizeWellnessJourneyFor,
   normalizePaidOnboardingStepStatus,
   isBodyMeasurementEnabled,
+  isMedicalConditionsInAppEnabled,
+  isProgressPhotosInAppEnabled,
   USER_ALLOWED_DIETARY_PREFERENCES,
 } = require("../../models/userModel");
 const {
@@ -198,6 +200,8 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
     nextIncompleteStep: getNextIncompleteStep(stepStatus),
     energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
+    medicalConditionsInAppEnabled: isMedicalConditionsInAppEnabled(user),
+    progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
     healPaidAt: user.healPaidAt || null,
     meetingsByStep,
     prefill: {
@@ -361,15 +365,31 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
 });
 
 exports.getMedicalQuestionsController = asyncHandler(async (req, res) => {
-  const questions = await listActiveMedicalConditionQuestions();
   const userId = authedUserId(req);
+  const user = req.currentUser || (userId ? await getUserById(userId) : null);
+  const inAppEnabled = user ? isMedicalConditionsInAppEnabled(user) : true;
+
+  if (!inAppEnabled) {
+    const latest = userId ? await getLatestMedicalConditionForUser(userId) : null;
+    return res.status(200).json({
+      status: true,
+      message: "Medical conditions are disabled in your app",
+      data: {
+        questions: [],
+        answers: latest?.answers || [],
+        medicalConditionsInAppEnabled: false,
+      },
+    });
+  }
+
+  const questions = await listActiveMedicalConditionQuestions();
   const latest = userId ? await getLatestMedicalConditionForUser(userId) : null;
   const answers = latest?.answers || [];
 
   return res.status(200).json({
     status: true,
     message: "Medical condition questions fetched",
-    data: { questions, answers },
+    data: { questions, answers, medicalConditionsInAppEnabled: true },
   });
 });
 
@@ -377,6 +397,10 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
+
+  if (!isMedicalConditionsInAppEnabled(user)) {
+    throw new AppError("Medical conditions are not available in your app", 403);
+  }
 
   const body = req.body || {};
   const questions = await listActiveMedicalConditionQuestions();

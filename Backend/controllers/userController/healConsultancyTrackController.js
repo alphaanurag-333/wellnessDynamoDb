@@ -63,6 +63,7 @@ exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) =
       assignedCoachType: hierarchy.assignedCoachType,
       concern: body.concern,
       status: "requested",
+      initiatedByRole: "client",
     });
   } catch (err) {
     handleValidationError(err);
