@@ -263,3 +263,36 @@ describe("onboardingStepJustCompleted", () => {
     assert.equal(onboardingStepJustCompleted(pending, done, "protocolSettings"), false);
   });
 });
+
+describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
+  const {
+    buildBodyAnalyticsCompletionAppLockUpdates,
+    setCanonicalStepStatus,
+  } = require("../utils/paidOnboardingHelpers");
+
+  it("persists app locks when Body Analytics first becomes done", () => {
+    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const locks = buildBodyAnalyticsCompletionAppLockUpdates({}, pending, done);
+    assert.deepEqual(locks, {
+      progressPhotosInAppEnabled: false,
+      bodyMeasurementEnabled: false,
+      medicalConditionsInAppEnabled: false,
+    });
+  });
+
+  it("does not override coach-enabled gates", () => {
+    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const locks = buildBodyAnalyticsCompletionAppLockUpdates(
+      {
+        progressPhotosInAppEnabled: true,
+        bodyMeasurementEnabled: true,
+        medicalConditionsInAppEnabled: true,
+      },
+      pending,
+      done,
+    );
+    assert.deepEqual(locks, {});
+  });
+});

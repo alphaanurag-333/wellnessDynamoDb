@@ -36,7 +36,7 @@ const {
   wizardStepAfterSkip,
   wizardStepAfterBodyComplete,
   wizardStepAfterMedicalComplete,
-  computePaidOnboardingCompleted,
+  buildOnboardingPersistUpdates,
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
@@ -278,9 +278,8 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
   const updates = {
     ...standardUpdates,
     ...extraUpdates,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: "body",
-    paidOnboardingStepStatus: nextStatus,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   };
 
   const updated = await updateUser(userId, updates);
@@ -338,10 +337,8 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
     : wizardStepAfterBodyComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted:
-      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   notifyOnboardingWhatsAppTransitions({
@@ -433,10 +430,8 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     : wizardStepAfterMedicalComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted:
-      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   notifyOnboardingWhatsAppTransitions({
@@ -478,9 +473,8 @@ exports.skipOnboardingStepController = asyncHandler(async (req, res) => {
   const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, step);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(200).json({

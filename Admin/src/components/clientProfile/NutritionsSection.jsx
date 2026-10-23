@@ -21,6 +21,8 @@ const MAX_TIMINGS = 4;
 const MAX_DAY_PARTS = 3;
 const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const COMPOSITE_PERIOD_SEP = "__";
+const NUTRITIONS_POLL_VISIBLE_MS = 5000;
+const NUTRITIONS_POLL_HIDDEN_MS = 15000;
 
 const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -318,6 +320,21 @@ function mapApiOrderToUi(order, index) {
   };
 }
 
+function recommendationSummary(rec) {
+  const items = rec?.items || [];
+  const historyRow = recommendationToHistoryRow(rec);
+  return {
+    id: rec?.id,
+    itemCount: items.length,
+    sentOn: formatLongDate(rec?.createdAt) || "—",
+    amount: Number(rec?.billingTotal) || 0,
+    status: historyRow.status,
+    tone: historyRow.tone,
+    type: historyRow.type,
+    itemsLabel: items.map((item) => `${item.name} × ${item.qty}`).join(" · ") || "Nutritions",
+  };
+}
+
 function recommendationToHistoryRow(rec) {
   const items = (rec.items || []).map((item) => `${item.name} × ${item.qty}`).join(" · ");
   const selfBilling = rec.deliveryOption === "self_billing";
@@ -404,6 +421,54 @@ function FulfilmentStatus({ recommendation }) {
       {requestedOn ? (
         <p className="ua-cp-nut-log__hint">Delivery was previously requested on {requestedOn}.</p>
       ) : null}
+    </div>
+  );
+}
+
+function SyncedRecommendationModal({ open, onClose, items, billingTotal, sentOnLabel }) {
+  if (!open) return null;
+  const rows = Array.isArray(items) ? items : [];
+  const total = Number(billingTotal) || rows.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div className="ua-cp-modal ua-cp-nut-synced-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="synced-rec-modal-title">
+        <div className="ua-cp-nut-synced-modal__head">
+          <div>
+            <h3 id="synced-rec-modal-title">Sent to client</h3>
+            <p>
+              {sentOnLabel ? `Synced on ${sentOnLabel}. ` : ""}
+              Nutritions the coach sent to the client app.
+            </p>
+          </div>
+          <button type="button" className="ua-cp-nut-bill-modal__close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        {rows.length ? (
+          <div className="ua-cp-nut-synced-modal__items">
+            {rows.map((item) => (
+              <div key={item.id} className="ua-cp-nut-synced-modal__item">
+                <div>
+                  <strong>{item.name}</strong>
+                  {packPriceLabel(item) ? <span>{packPriceLabel(item)}</span> : null}
+                </div>
+                <div className="ua-cp-nut-synced-modal__meta">
+                  <span>Qty {item.qty}</span>
+                  <strong>Rs. {((Number(item.price) || 0) * item.qty).toLocaleString("en-IN")}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="ua-cp-rec-hint">No nutritions in this recommendation.</p>
+        )}
+        <div className="ua-cp-billing-bar ua-cp-nut-synced-modal__total">
+          <span>Billing amount</span>
+          <strong>Rs. {total.toLocaleString("en-IN")}</strong>
+        </div>
+        <div className="ua-cp-nut-synced-modal__foot">
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block" onClick={onClose}>Close</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -756,7 +821,14 @@ function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
             </button>
           ) : null}
           {canRemove && card.status !== "stopped" ? (
-            <button type="button" className="ua-cp-dosage-card__close" onClick={onRemove} aria-label={`Delete ${card.name}`}>×</button>
+            <button
+              type="button"
+              className="ua-cp-dosage-card__edit ua-cp-dosage-card__delete"
+              onClick={onRemove}
+              aria-label={`Delete ${card.name}`}
+            >
+              Delete
+            </button>
           ) : null}
         </div>
       </div>
@@ -800,6 +872,8 @@ export function NutritionsSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = isHealClientUser(user);
   const { canDelete: canRemove, canCreate: canWrite } = useClientSectionPermissions("nutritions");
+  /** Coaches can stop/remove dosages when they can build the schedule (backend: supplement-dosage write). */
+  const canRemoveDosage = canRemove || canWrite;
 
   const [sub, setSub] = useState("recommendation");
   const [pool, setPool] = useState([]);
@@ -810,6 +884,7 @@ export function NutritionsSection({ user, onToast }) {
   const [selected, setSelected] = useState([]);
   const [fulfilment, setFulfilment] = useState("delivery");
   const [coachOrders, setCoachOrders] = useState([]);
+  const [composeCoachOrders, setComposeCoachOrders] = useState(() => [createDraftOrder(1)]);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
@@ -825,10 +900,19 @@ export function NutritionsSection({ user, onToast }) {
   const [pendingDosageDelete, setPendingDosageDelete] = useState(null);
   const [pendingOrderDelete, setPendingOrderDelete] = useState(null);
   const [editingDosageId, setEditingDosageId] = useState(null);
+  const [syncedRecViewOpen, setSyncedRecViewOpen] = useState(false);
+  const [viewRecommendation, setViewRecommendation] = useState(null);
+  const [composingNewRecommendation, setComposingNewRecommendation] = useState(false);
   const dosageFormRef = useRef(null);
+  const dirtyRef = useRef(false);
+  const composingNewRef = useRef(false);
+  const loadInFlightRef = useRef(false);
+  const deliveryRequestedSigRef = useRef("");
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
   const selectedPeriodCount = plannedPeriodCount(addDayParts, addPeriods);
+  const clientName = user?.name?.trim() || "Client";
 
-  const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
     () => pool.filter((item) => !selected.some((row) => row.id === item.id)),
     [pool, selected],
@@ -846,21 +930,95 @@ export function NutritionsSection({ user, onToast }) {
     [activeDosages, editingDosageId],
   );
   const dirty = useMemo(() => {
-    const savedOption = recommended?.deliveryOption === "self_billing" ? "self" : "delivery";
-    const itemsOrOptionChanged = !sameItems(selected, recommended?.items || []) || fulfilment !== savedOption;
-    const hasUnsyncedOrders = fulfilment === "delivery" && coachOrders.some((order) => (
+    const ordersForDraft = composingNewRecommendation || !recommended?.id
+      ? composeCoachOrders
+      : coachOrders;
+    const hasUnsyncedOrders = fulfilment === "delivery" && ordersForDraft.some((order) => (
       !order.saved
       && order.items.length
       && String(order.placedOn || "").trim()
       && String(order.vendor || "").trim()
     ));
-    return itemsOrOptionChanged || hasUnsyncedOrders;
-  }, [coachOrders, fulfilment, recommended, selected]);
+    if (composingNewRecommendation || !recommended?.id) {
+      return selected.length > 0 || hasUnsyncedOrders;
+    }
+    return hasUnsyncedOrders;
+  }, [coachOrders, composeCoachOrders, composingNewRecommendation, fulfilment, recommended, selected]);
 
-  const canSaveAndSync = Boolean(canWrite && isHealClient && selected.length && !saving);
+  useEffect(() => {
+    dirtyRef.current = dirty;
+  }, [dirty]);
+
+  useEffect(() => {
+    composingNewRef.current = composingNewRecommendation;
+  }, [composingNewRecommendation]);
+
+  const currentRecommendation = recommended?.items?.length ? recommended : null;
+  const showComposePanel = composingNewRecommendation || !currentRecommendation;
+  const composeBilling = useMemo(
+    () => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0),
+    [selected],
+  );
+  const canSaveAndSync = Boolean(
+    canWrite
+    && isHealClient
+    && selected.length
+    && !saving
+    && showComposePanel
+    && (composingNewRecommendation || !currentRecommendation || dirty),
+  );
+  const previousRecommendations = useMemo(
+    () => history.filter((entry) => entry?.items?.length),
+    [history],
+  );
+
+  const applyRecommendedToForm = useCallback((rec) => {
+    setSelected((rec?.items || []).map((item) => ({ ...item })));
+    setFulfilment(rec?.deliveryOption === "self_billing" ? "self" : "delivery");
+    const savedOrders = (rec?.deliveryOption === "coach_delivery"
+      ? (rec?.fulfilmentOrders || [])
+      : []
+    ).map(mapApiOrderToUi);
+    setCoachOrders(
+      savedOrders.length
+        ? savedOrders
+        : rec?.deliveryOption === "self_billing"
+          ? []
+          : [createDraftOrder(1)],
+    );
+  }, []);
+
+  function openRecommendationView(rec) {
+    if (!rec) return;
+    setViewRecommendation(rec);
+    setSyncedRecViewOpen(true);
+  }
+
+  function startNewRecommendation() {
+    setComposingNewRecommendation(true);
+    setSelected([]);
+    setFulfilment("delivery");
+    setComposeCoachOrders([createDraftOrder(1)]);
+  }
+
+  function cancelNewRecommendation() {
+    setComposingNewRecommendation(false);
+    if (currentRecommendation) {
+      applyRecommendedToForm(currentRecommendation);
+    } else {
+      setSelected([]);
+      setFulfilment("delivery");
+      setComposeCoachOrders([createDraftOrder(1)]);
+    }
+  }
+  const clientConfirmedNutritionOrder = Boolean(
+    recommended?.deliveryRequestedAt
+    && recommended?.deliveryOption !== "self_billing",
+  );
 
   const load = useCallback(async ({ silent = false } = {}) => {
-    if (!userId) return;
+    if (!userId || loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     if (!silent) setLoading(true);
     setError("");
     const errors = [];
@@ -882,21 +1040,20 @@ export function NutritionsSection({ user, onToast }) {
 
       if (recResult.status === "fulfilled") {
         const current = recResult.value?.recommended || null;
+        const requestedSig = current?.deliveryRequestedAt || "";
+        if (silent && requestedSig && requestedSig !== deliveryRequestedSigRef.current) {
+          onToastRef.current?.(`${clientName} has confirmed the Nutrition Order`);
+        }
+        deliveryRequestedSigRef.current = requestedSig;
+
         setRecommended(current);
         setHistory(recResult.value?.history || []);
-        setSelected((current?.items || []).map((item) => ({ ...item })));
-        setFulfilment(current?.deliveryOption === "self_billing" ? "self" : "delivery");
-        const savedOrders = (current?.deliveryOption === "coach_delivery"
-          ? (current?.fulfilmentOrders || [])
-          : []
-        ).map(mapApiOrderToUi);
-        setCoachOrders(
-          savedOrders.length
-            ? savedOrders
-            : current?.deliveryOption === "self_billing"
-              ? []
-              : [createDraftOrder(1)]
-        );
+        if (!silent || (!dirtyRef.current && !composingNewRef.current)) {
+          applyRecommendedToForm(current);
+          if (current?.items?.length) {
+            setComposingNewRecommendation(false);
+          }
+        }
       } else {
         setRecommended(null);
         setHistory([]);
@@ -919,14 +1076,59 @@ export function NutritionsSection({ user, onToast }) {
         onToast?.(errors[0]);
       }
     } finally {
-      setLoading(false);
-      setPoolLoading(false);
+      loadInFlightRef.current = false;
+      if (!silent) {
+        setLoading(false);
+        setPoolLoading(false);
+      }
     }
-  }, [onToast, userId]);
+  }, [applyRecommendedToForm, clientName, userId]);
 
   useEffect(() => {
+    deliveryRequestedSigRef.current = "";
+    setComposingNewRecommendation(false);
+    setViewRecommendation(null);
+    setSyncedRecViewOpen(false);
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let intervalId = null;
+
+    const tick = () => {
+      load({ silent: true });
+    };
+
+    const reschedule = () => {
+      if (intervalId) window.clearInterval(intervalId);
+      const ms =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? NUTRITIONS_POLL_HIDDEN_MS
+          : NUTRITIONS_POLL_VISIBLE_MS;
+      intervalId = window.setInterval(tick, ms);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+      reschedule();
+    };
+
+    const onFocus = () => tick();
+
+    reschedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load, userId]);
 
   useEffect(() => {
     function onDocClick(event) {
@@ -1094,7 +1296,10 @@ export function NutritionsSection({ user, onToast }) {
 
       let syncedOrders = 0;
       if (fulfilment === "delivery" && recommendationId) {
-        const readyOrders = coachOrders.filter((order) => (
+        const ordersForSave = composingNewRecommendation || !currentRecommendation
+          ? composeCoachOrders
+          : coachOrders;
+        const readyOrders = ordersForSave.filter((order) => (
           order.items.length
           && String(order.placedOn || "").trim()
           && String(order.vendor || "").trim()
@@ -1112,13 +1317,15 @@ export function NutritionsSection({ user, onToast }) {
           syncedOrders += 1;
         }
 
-        const skipped = coachOrders.length - readyOrders.length;
+        const skipped = ordersForSave.length - readyOrders.length;
         if (skipped > 0 && readyOrders.length === 0) {
           onToast?.("Recommendation synced. Add items, date and vendor on each order to sync fulfilment logs.");
         }
       }
 
       await load({ silent: true });
+      setComposingNewRecommendation(false);
+      setComposeCoachOrders([createDraftOrder(1)]);
 
       if (syncedOrders > 0) {
         onToast(`Saved & synced to user app · ${syncedOrders} order${syncedOrders === 1 ? "" : "s"}. Check the client app.`);
@@ -1311,16 +1518,12 @@ export function NutritionsSection({ user, onToast }) {
       });
     };
 
-    if (recommended) {
-      pushOrderRows(recommended);
-      rows.push(recommendationToHistoryRow(recommended));
-    }
     history.forEach((entry) => {
       pushOrderRows(entry);
       rows.push(recommendationToHistoryRow(entry));
     });
     return rows;
-  }, [history, recommended]);
+  }, [history]);
 
   if (!userId) {
     return <p className="ua-page-head__sub">Client is required to load nutritions.</p>;
@@ -1349,113 +1552,257 @@ export function NutritionsSection({ user, onToast }) {
 
       {sub === "recommendation" ? (
         <>
-          <div className="ua-cp-rec-block">
-            <div className="ua-cp-rec-head">
-              <span>Recommendations for the client</span>
-              <span className="ua-cp-rec-head__count">{selected.length} selected</span>
+          {currentRecommendation && !composingNewRecommendation ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--cta">
+              <div className="ua-cp-rec-slot-label">1 · Send new to client</div>
+              <p className="ua-cp-rec-hint">
+                The current plan stays in the client app until you save a new recommendation. Previous plans move to the list below and order history.
+              </p>
+              {canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                  disabled={saving}
+                  onClick={startNewRecommendation}
+                >
+                  Send new recommendation to client
+                </button>
+              ) : null}
             </div>
-            <p className="ua-cp-rec-hint">Pick items from the nutrition bank and set quantities — the bill totals automatically. Saving syncs this plan to the client app.</p>
-            <div className="ua-cp-rec-add">
-              <select
-                className="ua-cp-rec-select"
-                value=""
-                onChange={(e) => addFromPool(e.target.value)}
-                disabled={!canWrite || !isHealClient || poolLoading || saving || !availablePool.length}
-              >
-                <option value="">
-                  {poolLoading
-                    ? "Loading nutritions pool…"
-                    : availablePool.length
-                      ? "+ Add nutritions from pool..."
-                      : pool.length
-                        ? "All nutritions from the pool are selected"
-                        : "Add nutritions in Config → Nutrition bank first"}
-                </option>
-                {availablePool.map((s) => (
-                  <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
-                ))}
-              </select>
-            </div>
-            {selected.length ? (
-              <div className="ua-cp-rec-items">
-                {selected.map((s) => (
-                  <div key={s.id} className="ua-cp-rec-item">
-                    <div className="ua-cp-rec-item__info">
-                      <div className="ua-cp-rec-item__name">{s.name}</div>
-                      {packPriceLabel(s) ? <div className="ua-cp-rec-item__pack">{packPriceLabel(s)}</div> : null}
-                    </div>
-                    <div className="ua-cp-rec-item__meta">
-                      <div className="ua-cp-rec-item__qty">
-                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
-                        <span>{s.qty}</span>
-                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
-                      </div>
-                      <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
-                      <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
-                    </div>
-                  </div>
-                ))}
+          ) : null}
+
+          {showComposePanel ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--compose">
+              <div className="ua-cp-rec-slot-label">
+                {currentRecommendation
+                  ? "1 · New recommendation for client"
+                  : "1 · Recommendations for the client"}
               </div>
-            ) : (!loading ? <p className="ua-cp-rec-hint">No nutritions selected yet.</p> : null)}
-            <div className="ua-cp-billing-bar">
-              <span>Billing amount</span>
-              <strong>Rs. {billing.toLocaleString("en-IN")}</strong>
+              <div className="ua-cp-rec-head">
+                <span>{composingNewRecommendation ? "Build new plan" : "First recommendation"}</span>
+                <span className="ua-cp-rec-head__count">{selected.length} selected</span>
+              </div>
+              <p className="ua-cp-rec-hint">
+                Pick items from the nutrition bank and set quantities — the bill totals automatically. Saving syncs this plan to the client app.
+              </p>
+              <div className="ua-cp-rec-add">
+                <select
+                  className="ua-cp-rec-select"
+                  value=""
+                  onChange={(e) => addFromPool(e.target.value)}
+                  disabled={!canWrite || !isHealClient || poolLoading || saving || !availablePool.length}
+                >
+                  <option value="">
+                    {poolLoading
+                      ? "Loading nutritions pool…"
+                      : availablePool.length
+                        ? "+ Add nutritions from pool..."
+                        : pool.length
+                          ? "All nutritions from the pool are selected"
+                          : "Add nutritions in Config → Nutrition bank first"}
+                  </option>
+                  {availablePool.map((s) => (
+                    <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
+                  ))}
+                </select>
+              </div>
+              {selected.length ? (
+                <div className="ua-cp-rec-items">
+                  {selected.map((s) => (
+                    <div key={s.id} className="ua-cp-rec-item">
+                      <div className="ua-cp-rec-item__info">
+                        <div className="ua-cp-rec-item__name">{s.name}</div>
+                        {packPriceLabel(s) ? <div className="ua-cp-rec-item__pack">{packPriceLabel(s)}</div> : null}
+                      </div>
+                      <div className="ua-cp-rec-item__meta">
+                        <div className="ua-cp-rec-item__qty">
+                          <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
+                          <span>{s.qty}</span>
+                          <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
+                        </div>
+                        <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
+                        <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (!loading ? <p className="ua-cp-rec-hint">No nutritions selected yet.</p> : null)}
+              <div className="ua-cp-billing-bar">
+                <span>Billing amount</span>
+                <strong>Rs. {composeBilling.toLocaleString("en-IN")}</strong>
+              </div>
+
+              <div className="ua-cp-fulfil ua-cp-fulfil--nested">
+                <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
+                <div className="ua-cp-fulfil__options">
+                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
+                    setFulfilment("delivery");
+                    setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
+                  }}>
+                    <strong>Send it to me</strong>
+                    <span>Request delivery from coach</span>
+                  </button>
+                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "self" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("self")}>
+                    <strong>Self billing</strong>
+                    <span>Client buys &amp; uploads bill (PDF)</span>
+                  </button>
+                </div>
+
+                {fulfilment === "delivery" ? (
+                  <CoachFulfilmentLog
+                    orders={composeCoachOrders}
+                    pool={pool}
+                    selected={selected}
+                    disabled={!canWrite || saving || !isHealClient}
+                    canRemoveOrder={canRemove}
+                    onAddOrder={() => setComposeCoachOrders((list) => [...list, createDraftOrder(list.length + 1)])}
+                    onUpdateOrder={(updated) => setComposeCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)))}
+                    onRemoveOrder={(id) => {
+                      const order = composeCoachOrders.find((o) => o.id === id);
+                      if (!order) return;
+                      setComposeCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+                    }}
+                    onSaveOrder={() => onToast?.("Order logs sync when you click Save & sync to user app")}
+                    onAttachBill={() => onToast?.("Save the recommendation first, then attach bills on the current plan")}
+                  />
+                ) : null}
+              </div>
+
+              {canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                  disabled={!canSaveAndSync}
+                  onClick={saveRecommendation}
+                >
+                  {saving ? "Saving…" : "Save & sync to user app"}
+                </button>
+              ) : null}
+              {composingNewRecommendation && canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-rec-sent-actions__edit"
+                  onClick={cancelNewRecommendation}
+                  disabled={saving}
+                >
+                  Cancel new recommendation
+                </button>
+              ) : null}
             </div>
-            {canWrite && isHealClient ? (
-              <button
-                type="button"
-                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
-                disabled={!canSaveAndSync}
-                onClick={saveRecommendation}
+          ) : null}
+
+          {currentRecommendation ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--current">
+              <div className="ua-cp-rec-slot-label">2 · Current · Sent to client</div>
+              <div className="ua-cp-rec-head">
+                <span>Live in client app</span>
+                <span className="ua-cp-rec-head__count">
+                  {currentRecommendation.items.length} item{currentRecommendation.items.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="ua-cp-rec-synced-summary">
+                Sent on {formatLongDate(currentRecommendation.createdAt) || "—"}
+                {" · "}
+                Rs. {(Number(currentRecommendation.billingTotal) || 0).toLocaleString("en-IN")}
+              </p>
+              <div
+                className={`ua-cp-rec-current-actions${clientConfirmedNutritionOrder ? " ua-cp-rec-current-actions--confirmed" : ""}`}
               >
-                {saving ? "Saving…" : "Save & sync to user app"}
-              </button>
-            ) : null}
-          </div>
+                {clientConfirmedNutritionOrder ? (
+                  <p className="ua-cp-rec-delivery-confirmed" role="status">
+                    {clientName} has confirmed the Nutrition Order
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-rec-current-actions__view"
+                  onClick={() => openRecommendationView(currentRecommendation)}
+                >
+                  View
+                </button>
+              </div>
 
-          <div className="ua-cp-fulfil">
-            <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
-            <div className="ua-cp-fulfil__options">
-              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
-                setFulfilment("delivery");
-                setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
-              }}>
-                <strong>Send it to me</strong>
-                <span>Request delivery from coach</span>
-              </button>
-              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "self" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("self")}>
-                <strong>Self billing</strong>
-                <span>Client buys &amp; uploads bill (PDF)</span>
-              </button>
+              <div className="ua-cp-fulfil ua-cp-fulfil--nested">
+                <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
+                <div className="ua-cp-fulfil__options">
+                  <button
+                    type="button"
+                    disabled
+                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption !== "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
+                  >
+                    <strong>Send it to me</strong>
+                    <span>Request delivery from coach</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption === "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
+                  >
+                    <strong>Self billing</strong>
+                    <span>Client buys &amp; uploads bill (PDF)</span>
+                  </button>
+                </div>
+
+                {currentRecommendation.deliveryOption !== "self_billing" ? (
+                  <CoachFulfilmentLog
+                    orders={coachOrders}
+                    pool={pool}
+                    selected={currentRecommendation.items}
+                    disabled={!canWrite || saving || !isHealClient}
+                    canRemoveOrder={canRemove}
+                    onAddOrder={addCoachOrder}
+                    onUpdateOrder={updateCoachOrder}
+                    onRemoveOrder={(id) => {
+                      const order = coachOrders.find((o) => o.id === id);
+                      if (!order) return;
+                      const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
+                      if (saved && !canRemove) return;
+                      setPendingOrderDelete({
+                        id: order.id,
+                        number: order.number,
+                        saved,
+                      });
+                    }}
+                    onSaveOrder={saveCoachOrder}
+                    onAttachBill={attachBill}
+                  />
+                ) : (
+                  <FulfilmentStatus recommendation={currentRecommendation} />
+                )}
+              </div>
             </div>
+          ) : null}
 
-            {fulfilment === "delivery" ? (
-              <CoachFulfilmentLog
-                orders={coachOrders}
-                pool={pool}
-                selected={selected}
-                disabled={!canWrite || saving || !isHealClient}
-                canRemoveOrder={canRemove}
-                onAddOrder={addCoachOrder}
-                onUpdateOrder={updateCoachOrder}
-                onRemoveOrder={(id) => {
-                  const order = coachOrders.find((o) => o.id === id);
-                  if (!order) return;
-                  const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
-                  if (saved && !canRemove) return;
-                  setPendingOrderDelete({
-                    id: order.id,
-                    number: order.number,
-                    saved,
-                  });
-                }}
-                onSaveOrder={saveCoachOrder}
-                onAttachBill={attachBill}
-              />
-            ) : (
-              <FulfilmentStatus recommendation={recommended} />
-            )}
-          </div>
+          {previousRecommendations.length ? (
+            <div className="ua-cp-rec-previous">
+              <div className="ua-cp-rec-slot-label">Previous · Sent to client</div>
+              <div className="ua-cp-rec-previous__list">
+                {previousRecommendations.map((entry) => {
+                  const summary = recommendationSummary(entry);
+                  return (
+                    <div key={entry.id} className="ua-cp-rec-previous__card">
+                      <div className="ua-cp-rec-previous__main">
+                        <strong>{summary.sentOn}</strong>
+                        <span>{summary.itemCount} nutrition{summary.itemCount === 1 ? "" : "s"} · {summary.type}</span>
+                        <span className="ua-cp-rec-previous__items">{summary.itemsLabel}</span>
+                      </div>
+                      <div className="ua-cp-rec-previous__side">
+                        <strong>Rs. {summary.amount.toLocaleString("en-IN")}</strong>
+                        <span className={`ua-cp-order-status ua-cp-order-status--${summary.tone}`}>{summary.status}</span>
+                        <button
+                          type="button"
+                          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                          onClick={() => openRecommendationView(entry)}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="ua-cp-order-history">
             <div className="ua-cp-order-history__label">Order history · Since joining</div>
@@ -1471,7 +1818,7 @@ export function NutritionsSection({ user, onToast }) {
               )) : (
                 <div className="ua-cp-order-table__row">
                   <div>—</div>
-                  <div>No recommendations saved yet</div>
+                  <div>No completed recommendations yet — older plans appear here after you send a new one</div>
                   <div>—</div>
                   <div>—</div>
                 </div>
@@ -1482,7 +1829,7 @@ export function NutritionsSection({ user, onToast }) {
       ) : (
         <>
           <p className="ua-cp-dosage-hint">
-            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and start date, then add it to the schedule below. Finish date and <strong>% Completed</strong> use the nutrition bank pack size ÷ daily dosage (days of supply). Use <strong>Edit</strong> to change an entry, or add the same nutrition again to merge timings (max {MAX_PERIODS}). <strong>Push to app</strong> when ready for the client.
+            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and start date, then add it to the schedule below. Finish date and <strong>% Completed</strong> use the nutrition bank pack size ÷ daily dosage (days of supply). Use <strong>Edit</strong> or <strong>Delete</strong> on a card, or add the same nutrition again to merge timings (max {MAX_PERIODS}). <strong>Push to app</strong> when ready for the client.
           </p>
           {editingDosage ? (
             <p className="ua-cp-dosage-edit-banner">
@@ -1676,7 +2023,7 @@ export function NutritionsSection({ user, onToast }) {
                   key={dosage.id}
                   card={mapDosageToCard(dosage)}
                   canEdit={canWrite}
-                  canRemove={canRemove}
+                  canRemove={canRemoveDosage}
                   isEditing={dosage.id === editingDosageId}
                   onEdit={() => beginEditDosage(dosage)}
                   onRemove={() => setPendingDosageDelete({
@@ -1745,6 +2092,17 @@ export function NutritionsSection({ user, onToast }) {
           setPendingOrderDelete(null);
           if (id) removeCoachOrder(id);
         }}
+      />
+
+      <SyncedRecommendationModal
+        open={syncedRecViewOpen}
+        onClose={() => {
+          setSyncedRecViewOpen(false);
+          setViewRecommendation(null);
+        }}
+        items={viewRecommendation?.items || []}
+        billingTotal={viewRecommendation?.billingTotal}
+        sentOnLabel={viewRecommendation?.createdAt ? formatLongDate(viewRecommendation.createdAt) : ""}
       />
     </div>
   );

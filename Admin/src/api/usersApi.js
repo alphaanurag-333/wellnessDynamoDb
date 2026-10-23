@@ -29,25 +29,36 @@ function mapApiStatusToUi(status) {
   return "Disabled";
 }
 
-/** Matches Backend/models/userModel isBodyMeasurementEnabled (coach gate + legacy completed step). */
+/** Matches Backend/models/userModel isBodyMeasurementEnabled. */
 export function resolveBodyMeasurementClientEnabled(user) {
   if (user?.bodyMeasurementEnabled === true) return true;
   if (user?.bodyMeasurementEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
   const status = String(user?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase();
   return status === "done" || status === "skipped";
 }
 
-/** Matches Backend isProgressPhotosInAppEnabled (coach gate + legacy completed step). */
+/** Matches Backend isProgressPhotosInAppEnabled. */
 export function resolveProgressPhotosInAppEnabled(user) {
   if (user?.progressPhotosInAppEnabled === true) return true;
   if (user?.progressPhotosInAppEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
   const status = String(user?.paidOnboardingStepStatus?.progressPhotos180 || "").toLowerCase();
   return status === "done" || status === "skipped";
 }
 
-/** Default true — coach can hide medical questionnaire from the client app. */
+/** Matches Backend isMedicalConditionsInAppEnabled. */
 export function resolveMedicalConditionsInAppEnabled(user) {
-  return user?.medicalConditionsInAppEnabled !== false;
+  if (user?.medicalConditionsInAppEnabled === true) return true;
+  if (user?.medicalConditionsInAppEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
+  return true;
 }
 
 export function mapUiStatusToApi(statusFilter) {

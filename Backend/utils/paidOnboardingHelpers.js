@@ -359,6 +359,36 @@ function buildOnboardingStatusUpdates(nextStatus) {
   };
 }
 
+/**
+ * When Body Analytics is marked done (At a Glance or all sub-steps complete),
+ * hide progress photos, body measurement client fill, and medical conditions
+ * in the client app unless the coach already turned a gate on explicitly.
+ */
+function buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus) {
+  if (!onboardingStepJustCompleted(previousStatus, nextStatus, "bodyAnalytics")) {
+    return {};
+  }
+  const updates = {};
+  if (user?.progressPhotosInAppEnabled !== true) {
+    updates.progressPhotosInAppEnabled = false;
+  }
+  if (user?.bodyMeasurementEnabled !== true) {
+    updates.bodyMeasurementEnabled = false;
+  }
+  if (user?.medicalConditionsInAppEnabled !== true) {
+    updates.medicalConditionsInAppEnabled = false;
+  }
+  return updates;
+}
+
+function buildOnboardingPersistUpdates(user, previousStatus, nextStatus, extra = {}) {
+  return {
+    ...buildOnboardingStatusUpdates(nextStatus),
+    ...buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus),
+    ...extra,
+  };
+}
+
 /** Wipe client + coach onboarding so a re-upgraded Heal user can start the wizard again. */
 function buildPaidOnboardingResetUpdates() {
   return {
@@ -411,6 +441,8 @@ module.exports = {
   advanceWizardStep,
   publicCanonicalStepStatus,
   buildOnboardingStatusUpdates,
+  buildBodyAnalyticsCompletionAppLockUpdates,
+  buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,
   applyBodyAnalyticsPhotoReview,

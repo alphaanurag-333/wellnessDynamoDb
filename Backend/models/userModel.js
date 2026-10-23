@@ -139,27 +139,33 @@ function isSleepTrackingEnabled(user) {
   return user?.sleepTrackingEnabled !== false;
 }
 
-/** Client body-measurement form: coach must enable; legacy users who already finished the step keep access. */
+/** Client body-measurement form: coach must enable; legacy access until Body Analytics is done. */
 function isBodyMeasurementEnabled(user) {
   if (user?.bodyMeasurementEnabled === true) return true;
   if (user?.bodyMeasurementEnabled === false) return false;
   const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
   if (status.bodyMeasurement === "done" || status.bodyMeasurement === "skipped") {
     return true;
   }
   return false;
 }
 
-/** Medical questionnaire in the client app — coach can disable; default is visible. */
+/** Medical questionnaire in the client app — locked after Body Analytics unless coach enables. */
 function isMedicalConditionsInAppEnabled(user) {
-  return user?.medicalConditionsInAppEnabled !== false;
+  if (user?.medicalConditionsInAppEnabled === true) return true;
+  if (user?.medicalConditionsInAppEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
+  return true;
 }
 
-/** Client 180° progress photos: coach must enable; legacy users who finished the step keep access. */
+/** Client 180° progress photos: coach must enable; legacy access until Body Analytics is done. */
 function isProgressPhotosInAppEnabled(user) {
   if (user?.progressPhotosInAppEnabled === true) return true;
   if (user?.progressPhotosInAppEnabled === false) return false;
   const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
   if (status.progressPhotos180 === "done" || status.progressPhotos180 === "skipped") {
     return true;
   }

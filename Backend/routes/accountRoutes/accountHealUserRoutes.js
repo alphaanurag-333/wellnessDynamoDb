@@ -356,7 +356,7 @@ const dosageWrite = staff("console.diet.create", { admin: "users.clientHub.welln
 router.get("/:userId/supplement-dosages", dosage, listCoachUserSupplementDosagesController);
 router.post("/:userId/supplement-dosages", dosageWrite, createCoachUserSupplementDosageController);
 router.post("/:userId/supplement-dosages/publish", dosageWrite, publishCoachUserSupplementDosagesController);
-router.delete("/:userId/supplement-dosages/:dosageId", requireAdmin, deleteCoachUserSupplementDosageController);
+router.delete("/:userId/supplement-dosages/:dosageId", dosageWrite, deleteCoachUserSupplementDosageController);
 
 const meal = staff("console.diet.view", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" });
 const mealWrite = staff("console.diet.edit", { admin: "users.clientHub.tracking.meal-tracking", coach: "clientTab.tracking.meal-tracking" });

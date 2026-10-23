@@ -35,7 +35,9 @@ function assertPdfUpload(req) {
 
 async function uploadUserLabReportPdf(req) {
   assertPdfUpload(req);
-  const compressed = await compressLabReportPdfBuffer(req.file.buffer);
+  const compressed = await compressLabReportPdfBuffer(req.file.buffer, {
+    allowUncompressedIfGsMissing: true,
+  });
   req.file.buffer = compressed;
   req.file.size = compressed.length;
   const fileKey = await uploadFileFromRequest(req, S3_FOLDER);

@@ -27,7 +27,7 @@ const { dispatchProgressPhotoReviewedNotification } = require("../../services/no
 const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 const {
   applyBodyAnalyticsPhotoReview,
-  buildOnboardingStatusUpdates,
+  buildOnboardingPersistUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
   markStepSkipped,
@@ -338,10 +338,9 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         photo: updated,
       }));
     if (nextStatus) {
-      const updates = {
-        ...buildOnboardingStatusUpdates(nextStatus),
+      const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, {
         ...(rejectedAngleDay ? { paidOnboardingStep: "photos180" } : {}),
-      };
+      });
       const saved = await updateUser(userId, updates);
       const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
       onboarding = {

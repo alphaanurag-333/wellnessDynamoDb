@@ -32,7 +32,10 @@ function resolveCounsellingInitiatedBy(track) {
   return "client";
 }
 
-function resolveInitiatedByDisplayName(initiatedByRole, { targetUser, track, meeting, staffNameMap } = {}) {
+function resolveInitiatedByDisplayName(initiatedByRole, { targetUser, track, meeting, staffNameMap, genericInitiatorLabels } = {}) {
+  if (genericInitiatorLabels) {
+    return initiatedByRole === "client" ? "Self" : "Coach";
+  }
   if (initiatedByRole === "client") {
     return String(targetUser?.name || "").trim() || "Client";
   }
@@ -91,6 +94,7 @@ function attachCounsellingSessionMeta(meeting, { track, initiatorContext } = {})
     track,
     meeting,
     staffNameMap: initiatorContext?.staffNameMap,
+    genericInitiatorLabels: initiatorContext?.genericInitiatorLabels,
   });
   const sessionStatus = resolveCounsellingSessionStatus({
     reviewStatus: meeting.reviewStatus,

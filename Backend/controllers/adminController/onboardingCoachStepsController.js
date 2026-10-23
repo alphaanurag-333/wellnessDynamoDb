@@ -18,17 +18,17 @@ const {
 } = require("../../models/userProtocolModel");
 const {
   markStepDone,
-  computePaidOnboardingCompleted,
+  buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
 const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 
 async function persistStepDone(user, stepKey) {
   const previousStatus = user.paidOnboardingStepStatus;
   const nextStatus = markStepDone(user.paidOnboardingStepStatus, stepKey);
-  const updated = await updateUser(user.id, {
-    paidOnboardingStepStatus: nextStatus,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
-  });
+  const updated = await updateUser(
+    user.id,
+    buildOnboardingPersistUpdates(user, previousStatus, nextStatus),
+  );
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,
     previousStatus,

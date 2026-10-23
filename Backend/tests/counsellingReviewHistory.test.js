@@ -92,4 +92,38 @@ describe("counselling review history", () => {
     assert.equal(pending.initiatedByRole, "client");
     assert.equal(pending.sessionStatus, "pending");
   });
+
+  it("uses Self and Coach labels for user app review-history", () => {
+    const history = buildUserCounsellingReviewHistory({
+      assignments: [
+        {
+          id: "rx-1",
+          date: "2026-09-01",
+          reviewStatus: "active",
+          summary: "Protocol",
+          completedDate: "2026-09-01",
+          authorName: "Dr. Ankit",
+        },
+      ],
+      meetings: [],
+      tracks: [
+        {
+          id: "track-open",
+          status: "requested",
+          concern: "Help",
+          initiatedByRole: "client",
+        },
+      ],
+      initiatorContext: {
+        targetUser: { name: "Madhupriya S." },
+        genericInitiatorLabels: true,
+      },
+    });
+
+    assert.equal(history.reviews[0].initiatedBy, "Coach");
+    assert.equal(history.reviews[0].initiatedByRole, "coach");
+    const pending = history.sessions.find((row) => row.id === "track-open");
+    assert.equal(pending.initiatedBy, "Self");
+    assert.equal(pending.initiatedByRole, "client");
+  });
 });

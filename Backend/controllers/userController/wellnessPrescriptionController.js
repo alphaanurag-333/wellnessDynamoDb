@@ -41,7 +41,10 @@ exports.getUserReviewHistoryController = asyncHandler(async (req, res) => {
     assignments: snapshot.assignments,
     meetings: snapshot.meetings,
     tracks: snapshot.tracks,
-    initiatorContext: snapshot.initiatorContext,
+    initiatorContext: {
+      ...snapshot.initiatorContext,
+      genericInitiatorLabels: true,
+    },
   });
 
   return res.status(200).json({

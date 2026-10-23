@@ -75,8 +75,8 @@ async function resolveGhostscriptBinary() {
   return null;
 }
 
-async function runGhostscript(inputBuffer, { pdfSettings, colorDpi, grayDpi }) {
-  const gs = await resolveGhostscriptBinary();
+async function runGhostscript(inputBuffer, { pdfSettings, colorDpi, grayDpi }, gsBinary) {
+  const gs = gsBinary || (await resolveGhostscriptBinary());
   if (!gs) {
     throw new AppError(
       "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or upload a PDF under 1 MB.",
@@ -123,12 +123,34 @@ async function runGhostscript(inputBuffer, { pdfSettings, colorDpi, grayDpi }) {
   }
 }
 
-async function compressLabReportPdfBuffer(buffer) {
+/**
+ * @param {Buffer} buffer
+ * @param {{ allowUncompressedIfGsMissing?: boolean }} [options]
+ *   When true, returns the original buffer if Ghostscript is unavailable (user upload path).
+ *   AI analysis still enforces LAB_REPORT_PDF_MAX_BYTES separately.
+ */
+async function compressLabReportPdfBuffer(buffer, options = {}) {
+  const { allowUncompressedIfGsMissing = false } = options;
+
   if (!buffer?.length) {
     throw new AppError("PDF file is empty", 400);
   }
   if (buffer.length <= LAB_REPORT_PDF_MAX_BYTES) {
     return buffer;
+  }
+
+  const gs = await resolveGhostscriptBinary();
+  if (!gs) {
+    if (allowUncompressedIfGsMissing) {
+      console.warn(
+        "Lab report PDF exceeds 1 MB and Ghostscript is not installed; storing uncompressed file."
+      );
+      return buffer;
+    }
+    throw new AppError(
+      "PDF compression is not available on the server (Ghostscript missing). Set GHOSTSCRIPT_BIN or upload a PDF under 1 MB.",
+      503
+    );
   }
 
   const passes = [
@@ -141,7 +163,7 @@ async function compressLabReportPdfBuffer(buffer) {
 
   let current = buffer;
   for (const pass of passes) {
-    current = await runGhostscript(current, pass);
+    current = await runGhostscript(current, pass, gs);
     if (current.length <= LAB_REPORT_PDF_MAX_BYTES) {
       return current;
     }

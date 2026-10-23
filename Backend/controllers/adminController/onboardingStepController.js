@@ -8,8 +8,8 @@ const {
   setCanonicalStepStatus,
   getNextIncompleteStep,
   countCompletedSteps,
-  computePaidOnboardingCompleted,
   onboardingStepLabel,
+  buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
 const {
   dispatchOnboardingReminderNotification,
@@ -75,10 +75,7 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = user.paidOnboardingStepStatus;
-  const updated = await updateUser(user.id, {
-    paidOnboardingStepStatus: nextStatus,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
-  });
+  const updated = await updateUser(user.id, buildOnboardingPersistUpdates(user, previousStatus, nextStatus));
 
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,

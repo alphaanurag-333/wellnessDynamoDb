@@ -856,7 +856,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           : "Client cannot fill body measurements until you enable this"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Client fill</span>
+      <span className="ua-cp-ba-client-entry__label">Lock in App</span>
       <button
         type="button"
         className={`ua-toggle ua-toggle--sm${featureEnabled ? " ua-toggle--on" : ""}`}
