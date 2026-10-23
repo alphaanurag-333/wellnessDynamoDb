@@ -856,46 +856,48 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     />
   );
 
+  const bodyMeasurementDisabledInApp = !featureEnabled;
   const bodyMeasurementClientToggle = canEdit ? (
     <div
       className="ua-cp-ba-client-entry"
       title={
-        featureEnabled
-          ? "Client can fill body measurements (height, weight, neck, etc.)"
-          : "Client cannot fill body measurements until you enable this"
+        bodyMeasurementDisabledInApp
+          ? "Body measurements are hidden from the client app"
+          : "Client can fill body measurements (height, weight, neck, etc.)"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Lock in App</span>
+      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${featureEnabled ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${bodyMeasurementDisabledInApp ? " ua-toggle--on" : ""}`}
         onClick={requestToggleBodyMeasurementClientFill}
         disabled={settingsBusy}
-        aria-pressed={featureEnabled}
-        aria-label="Allow client to fill body measurements"
+        aria-pressed={bodyMeasurementDisabledInApp}
+        aria-label="Disable body measurements in client app"
       >
         <span className="ua-toggle__knob" />
       </button>
     </div>
   ) : null;
 
+  const progressPhotosDisabledInApp = !progressPhotosInApp;
   const progressPhotosInAppToggle = canEdit ? (
     <div
       className="ua-cp-ba-client-entry"
       title={
-        progressPhotosInApp
-          ? "Client can upload front, right, and left progress photos in the app"
-          : "Progress photo uploads are hidden from the client app"
+        progressPhotosDisabledInApp
+          ? "Progress photo uploads are hidden from the client app"
+          : "Client can upload front, right, and left progress photos in the app"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Lock in App</span>
+      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${progressPhotosInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${progressPhotosDisabledInApp ? " ua-toggle--on" : ""}`}
         onClick={requestToggleProgressPhotosInApp}
         disabled={progressPhotosBusy}
-        aria-pressed={progressPhotosInApp}
-        aria-label="Show progress photos in client app"
+        aria-pressed={progressPhotosDisabledInApp}
+        aria-label="Disable progress photos in client app"
       >
         <span className="ua-toggle__knob" />
       </button>

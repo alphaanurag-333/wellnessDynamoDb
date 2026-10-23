@@ -1,188 +1,301 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DIET_PLAN_SECTIONS } from "../../data/foodData.js";
 import {
-  assignUserDietPlan,
-  deleteUserDietPlanAssignment,
-  listDietPlanCatalog,
   listUserDietPlanAssignments,
+  saveUserPersonalisedDietPlan,
 } from "../../api/dietPlanCatalogApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { DietPlanBookPanel } from "./DietPlanBookPanel.jsx";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
-const SLOT_LABELS = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-  snack: "Snack",
-};
-
-function todayIsoDate() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
+function isLiveUserId(userId) {
+  return Boolean(userId) && !isMockNumericId(userId);
 }
 
-function formatDateLabel(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-  const d = new Date(`${raw}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return raw;
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+function cloneSections(sections) {
+  return (Array.isArray(sections) ? sections : []).map((section) => ({
+    ...section,
+    rows: (section.rows || []).map((row) => ({ ...row })),
+  }));
 }
 
-function mealsToSections(meals) {
-  const grouped = new Map();
-  (Array.isArray(meals) ? meals : []).forEach((meal, index) => {
-    const slot = meal.slot && SLOT_LABELS[meal.slot] ? meal.slot : "other";
-    if (!grouped.has(slot)) {
-      grouped.set(slot, {
-        id: slot,
-        title: SLOT_LABELS[slot] || "Meals",
-        rows: [],
-      });
-    }
-    const quantity = meal.calories ? `${meal.calories} kcal` : (meal.notes || "—");
-    grouped.get(slot).rows.push({
-      id: meal.id || `${slot}-${index}`,
-      label: meal.title,
-      description: meal.foods || meal.notes || "—",
-      quantity,
-    });
-  });
-  return [...grouped.values()];
+function sectionsEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function DietPlanSection({ section }) {
+function defaultSections() {
+  const stamp = Date.now();
+  return [{
+    id: `section-${stamp}`,
+    title: "New section",
+    rows: [{
+      id: `row-${stamp}`,
+      label: "Option 1",
+      description: "New item",
+      quantity: "—",
+    }],
+  }];
+}
+
+function DietPlanSection({
+  section,
+  editing,
+  onUpdateSectionTitle,
+  onUpdateRow,
+  onRemoveRow,
+  onAddRow,
+  onRemoveSection,
+}) {
   return (
     <div className="ua-cp-food-diet-section">
       <div className="ua-cp-food-diet-section__head">
-        <span>{section.title}</span>
+        {editing ? (
+          <input
+            type="text"
+            className="ua-cp-food-diet-row__input ua-cp-food-diet-section__title-input"
+            value={section.title}
+            onChange={(e) => onUpdateSectionTitle(section.id, e.target.value)}
+            aria-label="Section title"
+          />
+        ) : (
+          <span>{section.title}</span>
+        )}
         <span className="ua-cp-food-diet-section__qty-label">Quantity</span>
+        {editing ? (
+          <button
+            type="button"
+            className="ua-cp-food-diet-section__remove"
+            onClick={() => onRemoveSection(section.id)}
+            aria-label={`Remove ${section.title}`}
+          >
+            ×
+          </button>
+        ) : null}
       </div>
       <div className="ua-cp-food-diet-section__body">
         {section.rows.map((row) => (
           <div key={row.id} className="ua-cp-food-diet-row">
-            <span className="ua-cp-food-diet-row__label">{row.label}</span>
-            <span className="ua-cp-food-diet-row__desc">{row.description}</span>
-            <span className="ua-cp-food-diet-row__qty">{row.quantity}</span>
+            {editing ? (
+              <input
+                type="text"
+                className="ua-cp-food-diet-row__input ua-cp-food-diet-row__input--label"
+                value={row.label}
+                onChange={(e) => onUpdateRow(section.id, row.id, "label", e.target.value)}
+              />
+            ) : (
+              <span className="ua-cp-food-diet-row__label">{row.label}</span>
+            )}
+            {editing ? (
+              <textarea
+                className="ua-cp-food-diet-row__input ua-cp-food-diet-row__input--desc"
+                value={row.description}
+                rows={2}
+                onChange={(e) => onUpdateRow(section.id, row.id, "description", e.target.value)}
+              />
+            ) : (
+              <span className="ua-cp-food-diet-row__desc">{row.description}</span>
+            )}
+            {editing ? (
+              <input
+                type="text"
+                className="ua-cp-food-diet-row__input ua-cp-food-diet-row__input--qty"
+                value={row.quantity}
+                onChange={(e) => onUpdateRow(section.id, row.id, "quantity", e.target.value)}
+              />
+            ) : (
+              <span className="ua-cp-food-diet-row__qty">{row.quantity}</span>
+            )}
+            {editing ? (
+              <button
+                type="button"
+                className="ua-cp-food-diet-row__remove"
+                onClick={() => onRemoveRow(section.id, row.id)}
+                aria-label="Remove row"
+              >
+                ×
+              </button>
+            ) : null}
           </div>
         ))}
+        {editing ? (
+          <button type="button" className="ua-cp-food-diet-section__add" onClick={() => onAddRow(section.id)}>
+            + Add row
+          </button>
+        ) : null}
       </div>
-    </div>
-  );
-}
-
-function AssignedPlanCard({ plan }) {
-  const sections = mealsToSections(plan.meals);
-  return (
-    <div className="ua-cp-food-diet-plan">
-      <div className="ua-cp-food-diet-plan__meta">
-        <strong>{plan.name || "Diet plan"}</strong>
-        <span>
-          {[plan.category, plan.type].filter(Boolean).join(" · ") || "Catalog plan"}
-        </span>
-        {plan.description ? <p>{plan.description}</p> : null}
-      </div>
-      {sections.length ? sections.map((section) => (
-        <DietPlanSection key={`${plan.id}-${section.id}`} section={section} />
-      )) : (
-        <p className="ua-cp-food-diet__empty">No meals listed on this plan.</p>
-      )}
     </div>
   );
 }
 
 export function DietPlanPanel({ user, onToast, appVisible = true }) {
   const userId = String(user?.id || "").trim();
+  const live = isLiveUserId(userId);
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
-  const { canCreate: canAssign, canDelete: canRemove } = useClientSectionPermissions("food");
+  const { canEdit } = useClientSectionPermissions("food");
 
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [catalog, setCatalog] = useState([]);
-  const [recommended, setRecommended] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [startDate, setStartDate] = useState(todayIsoDate);
-  const [note, setNote] = useState("");
-  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignmentId, setAssignmentId] = useState("");
+  const [sections, setSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
+  const [savedSections, setSavedSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
+  const [editing, setEditing] = useState(false);
+  const [bookOpen, setBookOpen] = useState(false);
+
+  const dirty = useMemo(() => !sectionsEqual(sections, savedSections), [sections, savedSections]);
+  const canManage = canEdit && (!live || isHealClient);
 
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError("");
     try {
-      const catalogData = await listDietPlanCatalog({ status: "active", limit: 100 });
-      setCatalog(catalogData?.plans || []);
-      if (!isHealClient) {
-        setRecommended(null);
-        setHistory([]);
+      if (!live) {
+        const seed = cloneSections(DIET_PLAN_SECTIONS);
+        setSections(seed);
+        setSavedSections(cloneSections(seed));
+        setAssignmentId("");
         return;
       }
-      const assignmentData = await listUserDietPlanAssignments(userId);
-      setRecommended(assignmentData?.recommended || null);
-      setHistory(assignmentData?.history || []);
+      if (!isHealClient) {
+        setSections(defaultSections());
+        setSavedSections(defaultSections());
+        setAssignmentId("");
+        return;
+      }
+      const data = await listUserDietPlanAssignments(userId);
+      const nextAssignmentId = String(data?.recommended?.id || "").trim();
+      const fromApi = Array.isArray(data?.personalisedSections) ? data.personalisedSections : [];
+      const nextSections = fromApi.length
+        ? cloneSections(fromApi)
+        : defaultSections();
+      setAssignmentId(nextAssignmentId);
+      setSections(nextSections);
+      setSavedSections(cloneSections(nextSections));
     } catch (err) {
-      setError(err?.message || "Failed to load diet plans");
-      onToast?.(err?.message || "Failed to load diet plans");
+      setError(err?.message || "Failed to load diet plan");
+      onToast?.(err?.message || "Failed to load diet plan");
     } finally {
       setLoading(false);
     }
-  }, [isHealClient, onToast, userId]);
+  }, [isHealClient, live, onToast, userId]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const selectedPlans = useMemo(
-    () => catalog.filter((plan) => selectedIds.includes(plan.id)),
-    [catalog, selectedIds],
-  );
-
-  function togglePlan(id) {
-    setSelectedIds((current) => (
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-    ));
+  function updateSectionTitle(sectionId, value) {
+    setSections((list) => list.map((section) => (
+      section.id === sectionId ? { ...section, title: value } : section
+    )));
   }
 
-  async function handleAssign() {
-    if (!selectedIds.length) {
-      onToast?.("Select at least one diet plan");
+  function updateRow(sectionId, rowId, field, value) {
+    setSections((list) => list.map((section) => (
+      section.id !== sectionId
+        ? section
+        : {
+          ...section,
+          rows: section.rows.map((row) => (
+            row.id === rowId ? { ...row, [field]: value } : row
+          )),
+        }
+    )));
+  }
+
+  function removeRow(sectionId, rowId) {
+    setSections((list) => list.map((section) => (
+      section.id !== sectionId
+        ? section
+        : { ...section, rows: section.rows.filter((row) => row.id !== rowId) }
+    )));
+  }
+
+  function addRow(sectionId) {
+    setSections((list) => list.map((section) => {
+      if (section.id !== sectionId) return section;
+      const optionCount = section.rows.filter((r) => String(r.label || "").startsWith("Option")).length;
+      const label = optionCount > 0 ? `Option ${optionCount + 1}` : `Option ${section.rows.length + 1}`;
+      return {
+        ...section,
+        rows: [
+          ...section.rows,
+          {
+            id: `${sectionId}-${Date.now()}`,
+            label,
+            description: "New item",
+            quantity: "—",
+          },
+        ],
+      };
+    }));
+  }
+
+  function removeSection(sectionId) {
+    setSections((list) => list.filter((section) => section.id !== sectionId));
+  }
+
+  function addSection() {
+    const stamp = Date.now();
+    setSections((list) => [
+      ...list,
+      {
+        id: `section-${stamp}`,
+        title: "New section",
+        rows: [{
+          id: `row-${stamp}`,
+          label: "Option 1",
+          description: "New item",
+          quantity: "—",
+        }],
+      },
+    ]);
+  }
+
+  function startEdit() {
+    setSections(cloneSections(savedSections));
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setSections(cloneSections(savedSections));
+    setEditing(false);
+  }
+
+  async function savePlan() {
+    if (!sections.length) {
+      onToast?.("Add at least one section");
       return;
     }
-    if (!startDate) {
-      onToast?.("Start date is required");
+    const hasRow = sections.some((section) => section.rows.length > 0);
+    if (!hasRow) {
+      onToast?.("Add at least one row before saving");
       return;
     }
+
     setSaving(true);
     try {
-      await assignUserDietPlan(userId, {
-        planIds: selectedIds,
-        startDate,
-        note,
+      if (!live) {
+        setSavedSections(cloneSections(sections));
+        setEditing(false);
+        onToast?.("Diet plan saved (demo client)");
+        return;
+      }
+      const assignment = await saveUserPersonalisedDietPlan(userId, {
+        sections,
+        assignmentId: assignmentId || undefined,
       });
-      setAssignOpen(false);
-      setSelectedIds([]);
-      setNote("");
-      setStartDate(todayIsoDate());
-      onToast?.("Diet plan assigned & synced to client app");
-      await load();
+      const nextId = String(assignment?.id || "").trim();
+      const nextSections = assignment?.personalisedSections?.length
+        ? cloneSections(assignment.personalisedSections)
+        : cloneSections(sections);
+      setAssignmentId(nextId);
+      setSections(nextSections);
+      setSavedSections(cloneSections(nextSections));
+      setEditing(false);
+      onToast?.("Diet plan saved & synced to client app");
     } catch (err) {
-      onToast?.(err?.message || "Could not assign diet plan");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(assignmentId) {
-    if (!assignmentId) return;
-    setSaving(true);
-    try {
-      await deleteUserDietPlanAssignment(userId, assignmentId);
-      onToast?.("Diet plan assignment removed");
-      await load();
-    } catch (err) {
-      onToast?.(err?.message || "Could not remove assignment");
+      onToast?.(err?.message || "Could not save diet plan");
     } finally {
       setSaving(false);
     }
@@ -192,6 +305,8 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
     return <p className="ua-cp-food-diet__empty">Client is required to load a diet plan.</p>;
   }
 
+  const showEditor = editing && canManage;
+
   return (
     <div className="ua-cp-food-diet">
       {!appVisible ? (
@@ -200,125 +315,79 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
       <div className="ua-cp-food-diet__head">
         <div>
           <strong className="ua-cp-food-diet__title">Personalised diet plan</strong>
-          <span className="ua-cp-food-diet__sub">
-            {recommended
-              ? `Current plan from ${formatDateLabel(recommended.startDate) || "coach assignment"}`
-              : "Pick a catalog plan and assign it to this client"}
-          </span>
+          <span className="ua-cp-food-diet__sub">Meal sections with client-choosable options &amp; quantities</span>
         </div>
-        {canAssign && isHealClient ? (
+        <div className="ua-cp-food-diet__actions">
           <button
             type="button"
-            className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__edit"
-            onClick={() => setAssignOpen((open) => !open)}
-            disabled={saving || loading}
+            className={`ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__book${bookOpen ? " ua-cp-food-diet__book--open" : ""}`}
+            aria-expanded={bookOpen}
+            disabled={loading}
+            onClick={() => setBookOpen((open) => !open)}
           >
-            {assignOpen ? "Close catalog" : recommended ? "Replace plan" : "Assign plan"}
+            Diet plan book
           </button>
-        ) : null}
+          {canManage ? (
+            showEditor ? (
+              <>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saving}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                  onClick={savePlan}
+                  disabled={saving || !dirty}
+                >
+                  {saving ? "Saving…" : "✓ Save plan"}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__edit"
+                onClick={startEdit}
+                disabled={saving || loading}
+              >
+                ✎ Edit plan
+              </button>
+            )
+          ) : null}
+        </div>
       </div>
+
+      <DietPlanBookPanel userId={userId} open={bookOpen} onToast={onToast} />
 
       {loading ? <p className="ua-cp-food-diet__empty">Loading diet plan…</p> : null}
       {error && !loading ? <p className="ua-cp-food-diet__empty">{error}</p> : null}
 
-      {!isHealClient && !loading ? (
-        <p className="ua-cp-food-diet__empty">Diet plans can only be assigned to Heal (paid) clients.</p>
+      {!isHealClient && live && !loading ? (
+        <p className="ua-cp-food-diet__empty">Diet plans can only be managed for Heal (paid) clients.</p>
       ) : null}
 
-      {assignOpen && canAssign && isHealClient ? (
-        <div className="ua-cp-food-diet-assign">
-          <div className="ua-cp-food-diet-assign__fields">
-            <label>
-              Start date
-              <input
-                type="date"
-                value={startDate}
-                data-allow-future="true"
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </label>
-            <label>
-              Note (optional)
-              <input
-                type="text"
-                value={note}
-                placeholder="Shown to the client"
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="ua-cp-food-diet-catalog">
-            {catalog.length ? catalog.map((plan) => {
-              const checked = selectedIds.includes(plan.id);
-              return (
-                <button
-                  key={plan.id}
-                  type="button"
-                  className={`ua-cp-food-diet-catalog__item${checked ? " ua-cp-food-diet-catalog__item--on" : ""}`}
-                  onClick={() => togglePlan(plan.id)}
-                >
-                  <strong>{plan.name}</strong>
-                  <span>{[plan.category, plan.type].filter(Boolean).join(" · ")}</span>
-                  {plan.description ? <em>{plan.description}</em> : null}
-                </button>
-              );
-            }) : (
-              <p className="ua-cp-food-diet__empty">No active catalog plans available.</p>
-            )}
-          </div>
-          <div className="ua-cp-food-diet__actions">
-            <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => setAssignOpen(false)} disabled={saving}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
-              onClick={handleAssign}
-              disabled={saving || !selectedPlans.length}
-            >
-              {saving
-                ? "Assigning…"
-                : selectedPlans.length
-                  ? `Assign ${selectedPlans.length} plan${selectedPlans.length === 1 ? "" : "s"}`
-                  : "Assign plan"}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {recommended && !loading ? (
-        <div className="ua-cp-food-diet-current">
-          {recommended.note ? <p className="ua-cp-food-diet__note">{recommended.note}</p> : null}
-          {(recommended.plans || []).map((plan) => (
-            <AssignedPlanCard key={plan.id} plan={plan} />
+      {!loading && (live ? isHealClient : true) ? (
+        <>
+          {sections.map((section) => (
+            <DietPlanSection
+              key={section.id}
+              section={section}
+              editing={showEditor}
+              onUpdateSectionTitle={updateSectionTitle}
+              onUpdateRow={updateRow}
+              onRemoveRow={removeRow}
+              onAddRow={addRow}
+              onRemoveSection={removeSection}
+            />
           ))}
-          {canRemove ? (
-            <button
-              type="button"
-              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-              onClick={() => handleDelete(recommended.id)}
-              disabled={saving}
-            >
-              Remove current assignment
+          {showEditor ? (
+            <button type="button" className="ua-cp-food-diet__add-section" onClick={addSection}>
+              + Add section
             </button>
           ) : null}
-        </div>
-      ) : null}
-
-      {!loading && isHealClient && !recommended && !assignOpen && !error ? (
-        <p className="ua-cp-food-diet__empty" style={{textAlign:"center"}}>No diet plan assigned yet.</p>
-      ) : null}
-
-      {history.length ? (
-        <div className="ua-cp-food-diet-history">
-          <strong>Previous assignments</strong>
-          {history.map((entry) => (
-            <div key={entry.id} className="ua-cp-food-diet-history__row">
-              <span>{formatDateLabel(entry.startDate) || "—"}</span>
-              <span>{entry.plans.map((plan) => plan.name).filter(Boolean).join(", ") || "Diet plan"}</span>
-            </div>
-          ))}
-        </div>
+          {!sections.length && !showEditor ? (
+            <p className="ua-cp-food-diet__empty">No diet plan yet. Click Edit plan to build one for this client.</p>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

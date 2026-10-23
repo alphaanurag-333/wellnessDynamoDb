@@ -98,6 +98,12 @@ function isBroadcastNotification(item) {
 /** User inbox (list + unread count) only includes notifications from this window. */
 const USER_INBOX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Hidden from GET /user/notifications when delivered as an OS push (see pushOnly on record). */
+function isUserInboxNotification(item) {
+  if (!item) return false;
+  return item.pushOnly !== true;
+}
+
 function isSentOnOrAfterUserJoined(notification, userCreatedAt) {
   const joinedAt = String(userCreatedAt || "").trim();
   if (!joinedAt) return true;
@@ -210,6 +216,7 @@ async function createTargetedNotification({
   title = null,
   image = "",
   comment = null,
+  pushOnly = false,
 }) {
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("userId is required");
@@ -232,6 +239,7 @@ async function createTargetedNotification({
   if (referenceType) item.referenceType = String(referenceType).trim();
   if (actorUserId) item.actorUserId = String(actorUserId).trim();
   if (comment) item.comment = String(comment).trim();
+  if (pushOnly === true) item.pushOnly = true;
 
   await docClient.send(
     new PutCommand({
@@ -468,8 +476,8 @@ async function listApplicableNotificationsForUser(userId) {
     isSentOnOrAfterUserJoined(item, userCreatedAt)
   );
 
-  const merged = [...applicableBroadcasts, ...targeted].filter((item) =>
-    isWithinUserInboxWindow(item)
+  const merged = [...applicableBroadcasts, ...targeted].filter(
+    (item) => isWithinUserInboxWindow(item) && isUserInboxNotification(item)
   );
   merged.sort(sortBySentAtDesc);
   return merged;
@@ -548,4 +556,5 @@ module.exports = {
   normalizeKind,
   isSupportedAudience,
   isNotificationVisibleToUser,
+  isUserInboxNotification,
 };

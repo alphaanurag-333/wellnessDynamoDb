@@ -87,6 +87,7 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
     status: "confirmed",
     selectedSlotId: slot.id,
     confirmedAt: new Date().toISOString(),
+    confirmedByRole: "Client",
     confirmedStartAt: slot.startAt,
     confirmedEndAt: slot.endAt,
     durationMinutes,

@@ -3,9 +3,9 @@ const assert = require("node:assert/strict");
 const { isLabReportSubmissionLocked, labReportSubmissionState } = require("../utils/labReportSubmission");
 
 describe("isLabReportSubmissionLocked", () => {
-  it("stays open when the client has never submitted", () => {
-    assert.equal(isLabReportSubmissionLocked({}, { hasReports: false }), false);
-    assert.equal(isLabReportSubmissionLocked(null, { hasReports: false }), false);
+  it("is locked for new clients until a coach enables upload", () => {
+    assert.equal(isLabReportSubmissionLocked({}, { hasReports: false }), true);
+    assert.equal(isLabReportSubmissionLocked(null, { hasReports: false }), true);
   });
 
   it("locks once a report exists and a coach has not re-opened it", () => {

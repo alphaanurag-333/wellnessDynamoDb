@@ -2,13 +2,12 @@ const LAB_REPORT_SUBMISSION_LOCKED_MESSAGE =
   "Your wellness coach can enable it.";
 
 /**
- * Missing flag on older accounts stays locked once a report exists.
- * An explicit false means a coach re-opened the submit panel.
+ * Locked by default for new clients until a coach enables upload in Internal parameters.
+ * An explicit false means the coach allowed a new report in the app.
  */
 function isLabReportSubmissionLocked(user, { hasReports = false } = {}) {
-  if (user?.labReportSubmissionLocked === true) return true;
   if (user?.labReportSubmissionLocked === false) return false;
-  return Boolean(hasReports);
+  return true;
 }
 
 function labReportSubmissionState(user, { hasReports = false } = {}) {

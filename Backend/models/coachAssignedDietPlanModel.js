@@ -4,6 +4,7 @@ const {
   DeleteCommand,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
 const { docClient } = require("../config/db");
@@ -180,6 +181,57 @@ async function listCoachAssignedDietPlansByUserId(userId) {
   return items.map((row) => toCoachAssignedDietPlanPublic(row)).filter(Boolean);
 }
 
+async function updateCoachAssignedDietPlan(id, { plans, pdfKey, note, startDate } = {}) {
+  const assignmentId = String(id || "").trim();
+  if (!assignmentId) throw new Error("id is required");
+
+  const existing = await getCoachAssignedDietPlanRecordById(assignmentId);
+  if (!existing) {
+    const err = new Error("Assignment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const names = { "#updatedAt": "updatedAt" };
+  const values = { ":updatedAt": new Date().toISOString() };
+  const sets = ["#updatedAt = :updatedAt"];
+
+  if (plans !== undefined) {
+    names["#plans"] = "plans";
+    values[":plans"] = normalizePlans(plans);
+    sets.push("#plans = :plans");
+  }
+  if (pdfKey !== undefined) {
+    names["#pdfKey"] = "pdfKey";
+    values[":pdfKey"] = String(pdfKey || "").trim();
+    sets.push("#pdfKey = :pdfKey");
+  }
+  if (note !== undefined) {
+    names["#note"] = "note";
+    values[":note"] = normalizeNote(note);
+    sets.push("#note = :note");
+  }
+  if (startDate !== undefined) {
+    names["#startDate"] = "startDate";
+    values[":startDate"] = normalizeStartDate(startDate);
+    sets.push("#startDate = :startDate");
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: assignmentId },
+      UpdateExpression: `SET ${sets.join(", ")}`,
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values,
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toCoachAssignedDietPlanPublic(Attributes);
+}
+
 async function deleteCoachAssignedDietPlan(id) {
   const record = await getCoachAssignedDietPlanRecordById(id);
   if (!record) {
@@ -234,6 +286,7 @@ module.exports = {
   getCoachAssignedDietPlanRecordById,
   listCoachAssignedDietPlansByUserId,
   deleteCoachAssignedDietPlan,
+  updateCoachAssignedDietPlan,
   isDietPlanCatalogReferenced,
   toCoachAssignedDietPlanPublic,
   normalizeStartDate,

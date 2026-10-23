@@ -227,6 +227,7 @@ async function saveUserLabReportAiAnalysis(id, {
   aiAnalysis = null,
   aiError = null,
   analysedById = null,
+  clearAiAnalysis = false,
 } = {}) {
   const record = await getUserLabReportRecordById(id);
   if (!record) {
@@ -238,6 +239,16 @@ async function saveUserLabReportAiAnalysis(id, {
   const now = new Date().toISOString();
   const status = normalizeAiStatus(aiStatus);
   const analysed = status === "analysed";
+  let storedAnalysis = null;
+  if (analysed) {
+    storedAnalysis = aiAnalysis || null;
+  } else if (clearAiAnalysis) {
+    storedAnalysis = null;
+  } else if (aiAnalysis != null) {
+    storedAnalysis = aiAnalysis;
+  } else {
+    storedAnalysis = record.aiAnalysis || null;
+  }
 
   await docClient.send(
     new UpdateCommand({
@@ -247,7 +258,7 @@ async function saveUserLabReportAiAnalysis(id, {
         "SET aiStatus = :aiStatus, aiAnalysis = :aiAnalysis, aiError = :aiError, aiAnalysedAt = :aiAnalysedAt, aiAnalysedById = :aiAnalysedById, updatedAt = :updatedAt",
       ExpressionAttributeValues: {
         ":aiStatus": status,
-        ":aiAnalysis": analysed ? (aiAnalysis || null) : (aiAnalysis || record.aiAnalysis || null),
+        ":aiAnalysis": storedAnalysis,
         ":aiError": status === "failed" ? String(aiError || "AI analysis failed") : null,
         ":aiAnalysedAt": analysed ? now : (record.aiAnalysedAt || null),
         ":aiAnalysedById": analysed

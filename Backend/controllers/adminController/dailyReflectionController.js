@@ -8,6 +8,7 @@ const {
 } = require("../helpers/healthProgressControllerHelpers");
 const {
   getSettings,
+  ensureBedtimeSettingsPersisted,
   upsertSettings,
   upsertSettingsFields,
   listCatalogWithSettings,
@@ -41,9 +42,9 @@ function formatBedtimePushResult(push) {
 
   let message;
   if (delivered) {
-    message = "Bedtime reminder pushed to the app";
+    message = "Bedtime push notification sent (phone tray, not in-app inbox)";
   } else if (noDevice) {
-    message = "Reminder saved in the app inbox, but this user has no push device registered";
+    message = "No FCM token — reminder saved in the app inbox as fallback only";
   } else if (fcmError?.code === "messaging/mismatched-credential") {
     message =
       "Reminder saved in the app inbox, but FCM rejected the device token (Firebase project / SenderId mismatch)";
@@ -253,6 +254,10 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
     mapSettingsError(err);
   }
 
+  if (bedtime !== undefined) {
+    await ensureBedtimeSettingsPersisted(userId, bedtime);
+  }
+
   const date = resolveTargetDate(req.query, req.body);
   const form = await buildUserDrfForm(userId, updated, date);
 
@@ -310,13 +315,13 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
   const { userId, user } = await coachContext(req);
   const settings = await getSettings(userId);
   const bedtime = settings.bedtime || DEFAULT_BEDTIME;
+  await ensureBedtimeSettingsPersisted(userId, bedtime);
   const actor = resolveStaffActor(req);
   const fcmToken = parseFcmIdFromBody(req.body);
 
   const { notification, push } = await dispatchDailyReflectionBedtimeNotification({
     userId,
     bedtime,
-    clientName: user?.name,
     coachName: actor.displayName,
     actorUserId: actor.id,
     fcmToken: fcmToken || null,

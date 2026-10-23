@@ -64,6 +64,8 @@ module.exports = {
   awsS3PublicBaseUrl: str("AWS_S3_PUBLIC_BASE_URL"),
 
   firebaseServiceAccountPath: str("FIREBASE_SERVICE_ACCOUNT_PATH"),
+  /** Shared secret for POST /api/internal/cron/* (use host crontab / EventBridge if in-process cron is off). */
+  internalCronSecret: str("INTERNAL_CRON_SECRET"),
 
   zoomAccountId: str("ZOOM_ACCOUNT_ID"),
   zoomClientId: str("ZOOM_CLIENT_ID"),
@@ -116,6 +118,7 @@ module.exports = {
   challengeLifecycleCronSchedule: str("CHALLENGE_LIFECYCLE_CRON_SCHEDULE", "15 * * * *"),
   challengeLifecycleCronEnabled: cronEnabled("CHALLENGE_LIFECYCLE_CRON_ENABLED"),
 
+  /** Bedtime FCM: cron ticks every minute; each user gets push at (bedtime − 30 min) in timezone below. */
   dailyReflectionBedtimeCronTimezone: str(
     "DAILY_REFLECTION_BEDTIME_CRON_TIMEZONE",
     "Asia/Kolkata"
@@ -124,7 +127,7 @@ module.exports = {
     "DAILY_REFLECTION_BEDTIME_CRON_SCHEDULE",
     "* * * * *"
   ),
-  dailyReflectionBedtimeCronEnabled: cronEnabled("DAILY_REFLECTION_BEDTIME_CRON_ENABLED"),
+  dailyReflectionBedtimeCronEnabled: process.env.DAILY_REFLECTION_BEDTIME_CRON_ENABLED !== "false",
 
   accountDualRead: process.env.ACCOUNT_DUAL_READ !== "false",
   accountDualWrite: bool("ACCOUNT_DUAL_WRITE"),

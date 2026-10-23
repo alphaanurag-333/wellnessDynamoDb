@@ -17,12 +17,11 @@ async function executeDailyReflectionBedtimeJob(trigger = "cron") {
   running = true;
   try {
     const result = await runDailyReflectionBedtimeJob();
-    if (result.matchedUsers > 0 || result.failed > 0) {
-      console.log(
-        `[daily-reflection-bedtime-cron] Completed (${trigger}) at ${result.nowClock} [${result.timezone}]: ` +
-          `matched=${result.matchedUsers}, sent=${result.sent}, skipped=${result.skipped}, failed=${result.failed}`
-      );
-    }
+    console.log(
+      `[daily-reflection-bedtime-cron] Completed (${trigger}) at ${result.nowClock} [${result.timezone}]: ` +
+        `scanned=${result.scannedSettings}, matched=${result.matchedUsers}, sent=${result.sent}, ` +
+        `skipped=${result.skipped}, failed=${result.failed}`
+    );
     return result;
   } catch (err) {
     console.error(`[daily-reflection-bedtime-cron] Failed (${trigger}):`, err?.message || err);
@@ -35,7 +34,7 @@ async function executeDailyReflectionBedtimeJob(trigger = "cron") {
 function startDailyReflectionBedtimeCron() {
   if (!config.dailyReflectionBedtimeCronEnabled) {
     console.log(
-      "[daily-reflection-bedtime-cron] Disabled (set DAILY_REFLECTION_BEDTIME_CRON_ENABLED=true to enable)"
+      "[daily-reflection-bedtime-cron] Disabled via DAILY_REFLECTION_BEDTIME_CRON_ENABLED=false"
     );
     return null;
   }

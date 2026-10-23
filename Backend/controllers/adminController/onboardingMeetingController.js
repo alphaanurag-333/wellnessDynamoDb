@@ -102,6 +102,7 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
     ...mirrorRequestedSlots([]),
     selectedSlotId: null,
     confirmedAt: null,
+    confirmedByRole: null,
     confirmedStartAt: null,
     confirmedEndAt: null,
   };
@@ -205,6 +206,7 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     slots: [confirmedSlot],
     selectedSlotId: confirmedSlot.id,
     confirmedAt: new Date().toISOString(),
+    confirmedByRole: "Coach",
     confirmedStartAt: startAt,
     confirmedEndAt: endAt,
     durationMinutes,

@@ -51,6 +51,7 @@ async function runDailyReflectionBedtimeJob(options = {}) {
     timezone,
     dateOnly,
     nowClock,
+    scannedSettings: settingsRows.length,
     matchedUsers: 0,
     sent: 0,
     skipped: 0,
@@ -84,11 +85,12 @@ async function runDailyReflectionBedtimeJob(options = {}) {
 
       const notificationId = notification?.id || notification?._id || null;
       const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+      const deduped = Boolean(push?.skipped && push?.reason === "deduped");
       const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
 
-      if (!notificationId) {
+      if (deduped) {
         results.skipped += 1;
-        results.details.push({ userId, status: "skipped_no_notification" });
+        results.details.push({ userId, status: "skipped_deduped", notificationId });
       } else if (delivered) {
         results.sent += 1;
         results.details.push({

@@ -5,7 +5,10 @@ const {
   createCoachAssignedDietPlan,
   listCoachAssignedDietPlansByUserId,
   deleteCoachAssignedDietPlan,
+  updateCoachAssignedDietPlan,
 } = require("../../models/coachAssignedDietPlanModel");
+const { deleteStoredMedia } = require("../../utils/s3");
+const { sectionsFromAssignment } = require("../../utils/personalisedDietPlan");
 const {
   updateUser,
   toPublicUser,
@@ -26,7 +29,7 @@ const {
   handleValidationError,
   resolveCoachIdForUser,
   loadAssignmentForUser,
-  buildPlanSnapshots,
+  resolveAssignmentPlans,
   generateAndUploadAssignmentPdf,
 } = require("../helpers/dietPlanCatalogControllerHelpers");
 
@@ -41,13 +44,17 @@ exports.listCoachUserDietPlanAssignmentsController = asyncHandler(async (req, re
 
   const assignments = await listCoachAssignedDietPlansByUserId(userId);
 
+  const recommended = assignments[0] || null;
+  const personalisedSections = recommended ? sectionsFromAssignment(recommended) : [];
+
   return res.status(200).json({
     status: true,
     message: "Diet plan assignments fetched successfully",
     assignments,
-    recommended: assignments[0] || null,
+    recommended,
     history: assignments.length > 1 ? assignments.slice(1) : [],
     dietPlanEnabled: isDietPlanEnabled(user),
+    personalisedSections,
   });
 });
 
@@ -99,7 +106,7 @@ exports.createCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
   if (!startDate) throw new AppError("startDate is required", 400);
 
   const note = parseNote(req.body);
-  const plans = await buildPlanSnapshots(req.body.planIds);
+  const plans = await resolveAssignmentPlans(req.body);
   const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
 
   const pdfKey = await generateAndUploadAssignmentPdf({
@@ -139,6 +146,71 @@ exports.createCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
     status: true,
     message: "Diet plan assigned successfully",
     assignment,
+    personalisedSections: sectionsFromAssignment(assignment),
+  });
+});
+
+exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const assignmentId = readAssignmentIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  const existing = await loadAssignmentForUser(assignmentId, userId);
+
+  const plans = await resolveAssignmentPlans(req.body);
+  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
+  const startDate = parseStartDate(req.body) || existing.startDate;
+  const note = parseNote(req.body);
+
+  const pdfKey = await generateAndUploadAssignmentPdf({
+    user,
+    coach,
+    startDate,
+    note: note !== undefined ? note : existing.note,
+    plans,
+  });
+
+  const previousPdfKey = existing.pdfKey;
+  let assignment;
+  try {
+    assignment = await updateCoachAssignedDietPlan(assignmentId, {
+      plans,
+      pdfKey,
+      startDate,
+      ...(note !== undefined ? { note } : {}),
+    });
+  } catch (err) {
+    if (pdfKey && pdfKey !== previousPdfKey) {
+      await deleteStoredMedia(pdfKey).catch(() => {});
+    }
+    handleValidationError(err);
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Diet plan assignment not found", 404);
+    }
+    throw err;
+  }
+
+  if (previousPdfKey && previousPdfKey !== pdfKey) {
+    await deleteStoredMedia(previousPdfKey).catch(() => {});
+  }
+
+  dispatchDietPlanAssignmentNotification({
+    userId,
+    assignmentId: assignment?.id,
+    coachName: coach?.name || "Your coach",
+  }).catch((err) => {
+    console.error("Diet plan assignment notification failed:", err?.message || err);
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Diet plan saved successfully",
+    assignment,
+    personalisedSections: sectionsFromAssignment(assignment),
   });
 });
 

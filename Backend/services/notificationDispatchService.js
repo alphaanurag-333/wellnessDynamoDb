@@ -5,6 +5,7 @@ const {
   createNotification,
   createTargetedNotification,
   findTargetedNotificationForUser,
+  updateNotification,
 } = require("../models/notificationModel");
 const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
@@ -35,7 +36,7 @@ const FCM_TYPE_BY_KIND = {
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
   reminder_due: "reminder_due_notification",
-  daily_reflection_reminder: "reminder_notification",
+  daily_reflection_reminder: "daily_reflection_reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
   mental_wellbeing_assigned: "mental_wellbeing_notification",
   yoga_assigned: "yoga_assigned_notification",
@@ -70,7 +71,7 @@ const FCM_TYPE_BY_KIND = {
 
 function buildPushData(notification) {
   const kind = notification.kind || "admin_broadcast";
-  return {
+  const data = {
     notificationId: notification.id || notification._id || "",
     type: FCM_TYPE_BY_KIND[kind] || "admin_notification",
     kind,
@@ -80,6 +81,46 @@ function buildPushData(notification) {
     comment: notification.comment || "",
     audienceType: notification.audienceType || "",
   };
+  if (kind === "daily_reflection_reminder") {
+    data.targetScreen = "daily_reflection";
+    data.displayAsSystemPush = "true";
+    data.showSystemNotification = "true";
+    data.skipInAppInbox = "true";
+    data.title = String(notification.title || "Bedtime reminder").trim();
+    data.body = String(notification.message || "").trim();
+  }
+  return data;
+}
+
+const DAILY_REFLECTION_PUSH_TITLE = "Bedtime reminder";
+
+function buildDailyReflectionBedtimePushStub({
+  userId,
+  message,
+  referenceId = null,
+  referenceType = "daily_reflection_bedtime",
+  actorUserId = null,
+  id = null,
+}) {
+  return {
+    id: id || "",
+    _id: id || "",
+    userId,
+    kind: "daily_reflection_reminder",
+    message,
+    title: DAILY_REFLECTION_PUSH_TITLE,
+    referenceId,
+    referenceType,
+    actorUserId,
+  };
+}
+
+function pushDelivered(push) {
+  return Boolean(push && !push.skipped && Number(push.successCount) > 0);
+}
+
+async function sendDailyReflectionBedtimePush(userId, stub, options = {}) {
+  return deliverTargetedPush(userId, stub, options);
 }
 
 async function deliverBroadcastPush(notification) {
@@ -359,6 +400,22 @@ function formatBedtimeLabel(value) {
   return `${display}:${m || "00"} ${suffix}`;
 }
 
+/** Shown in bedtime reminder copy, e.g. 18:01 → "6:01". */
+function formatBedtimeAroundLabel(value) {
+  const raw = String(value || "22:30");
+  const [h, m] = raw.split(":");
+  const hour = Number(h);
+  if (!Number.isFinite(hour)) return raw;
+  const display = hour % 12 || 12;
+  const minute = String(m ?? "00").padStart(2, "0");
+  return `${display}:${minute}`;
+}
+
+function buildDailyReflectionBedtimeMessage(bedtime) {
+  const timeLabel = formatBedtimeAroundLabel(bedtime);
+  return `Your daily reflection form is ready. Log tonight's check-in around ${timeLabel}.`;
+}
+
 async function dispatchDailyReflectionBedtimeNotification({
   userId,
   bedtime,
@@ -366,25 +423,33 @@ async function dispatchDailyReflectionBedtimeNotification({
   actorUserId = null,
   fcmToken = null,
 }) {
-  const name = String(coachName || "Your coach").trim() || "Your coach";
-  const timeLabel = formatBedtimeLabel(bedtime);
-  const message = `${name} sent a bedtime reminder. Your daily reflection form is ready — log tonight’s check-in around ${timeLabel}.`;
-
-  const notification = await createTargetedNotification({
+  void coachName;
+  const message = buildDailyReflectionBedtimeMessage(bedtime);
+  const stub = buildDailyReflectionBedtimePushStub({
     userId,
-    kind: "daily_reflection_reminder",
     message,
-    referenceType: "daily_reflection_bedtime",
     actorUserId,
-    title: "Bedtime reminder",
   });
 
   let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
   try {
-    push = await deliverTargetedPush(userId, notification, { fcmToken });
+    push = await sendDailyReflectionBedtimePush(userId, stub, { fcmToken });
   } catch (err) {
     console.error("FCM push failed:", err?.message || err);
   }
+
+  let notification = null;
+  if (!pushDelivered(push)) {
+    notification = await createTargetedNotification({
+      userId,
+      kind: "daily_reflection_reminder",
+      message,
+      referenceType: "daily_reflection_bedtime",
+      actorUserId,
+      title: DAILY_REFLECTION_PUSH_TITLE,
+    });
+  }
+
   return { notification, push };
 }
 
@@ -409,28 +474,58 @@ async function ensureDailyReflectionBedtimeReminderNotification({
     kind: "daily_reflection_reminder",
     referenceId,
   });
+  if (existing?.pushOnly === true) {
+    return {
+      notification: existing,
+      push: { successCount: 0, failureCount: 0, skipped: true, reason: "deduped" },
+    };
+  }
 
-  const timeLabel = formatBedtimeLabel(bedtime);
-  const message = `Your daily reflection form is ready — log tonight’s check-in around ${timeLabel}.`;
+  const message = buildDailyReflectionBedtimeMessage(bedtime);
+  const stub = buildDailyReflectionBedtimePushStub({
+    userId: uid,
+    message,
+    referenceId,
+    id: existing?.id || existing?._id || null,
+  });
 
-  let notification = existing;
-  if (!notification) {
+  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
+  try {
+    push = await sendDailyReflectionBedtimePush(uid, stub);
+  } catch (err) {
+    console.error("FCM push failed:", err?.message || err);
+  }
+
+  let notification = existing || null;
+  const notificationId = existing?.id || existing?._id || null;
+
+  if (pushDelivered(push)) {
+    if (notificationId) {
+      notification = await updateNotification(notificationId, { message, pushOnly: true });
+    } else {
+      notification = await createTargetedNotification({
+        userId: uid,
+        kind: "daily_reflection_reminder",
+        message,
+        referenceId,
+        referenceType: "daily_reflection_bedtime",
+        title: DAILY_REFLECTION_PUSH_TITLE,
+        pushOnly: true,
+      });
+    }
+  } else if (!notification) {
     notification = await createTargetedNotification({
       userId: uid,
       kind: "daily_reflection_reminder",
       message,
       referenceId,
       referenceType: "daily_reflection_bedtime",
-      title: "Bedtime reminder",
+      title: DAILY_REFLECTION_PUSH_TITLE,
     });
+  } else if (notification.message !== message && notificationId) {
+    notification = await updateNotification(notificationId, { message });
   }
 
-  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
-  try {
-    push = await deliverTargetedPush(uid, notification);
-  } catch (err) {
-    console.error("FCM push failed:", err?.message || err);
-  }
   return { notification, push };
 }
 
@@ -1270,5 +1365,6 @@ module.exports = {
   dispatchCounsellingRequestDeclinedNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
+  buildDailyReflectionBedtimeMessage,
   FCM_TYPE_BY_KIND,
 };

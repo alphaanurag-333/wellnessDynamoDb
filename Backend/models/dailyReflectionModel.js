@@ -178,6 +178,36 @@ async function getSettings(userId) {
   return formatSettings(Item);
 }
 
+async function hasSettingsRecord(userId) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE,
+      Key: { userId, recordKey: SETTINGS_KEY },
+      ProjectionExpression: "userId",
+    })
+  );
+  return Boolean(Item?.userId);
+}
+
+/** Ensures DailyReflection settings exist so the bedtime cron can find this user. */
+async function ensureBedtimeSettingsPersisted(userId, bedtime = "22:30") {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  const normalizedBedtime = normalizeBedtime(bedtime) || "22:30";
+  const exists = await hasSettingsRecord(uid);
+  if (exists) {
+    const current = await getSettings(uid);
+    if (current.bedtime) return current;
+    return upsertSettingsFields(uid, { bedtime: normalizedBedtime });
+  }
+
+  return upsertSettingsFields(uid, {
+    bedtime: normalizedBedtime,
+    activities: defaultActivitySettings(),
+  });
+}
+
 async function upsertSettings(userId, activities) {
   return upsertSettingsFields(userId, { activities });
 }
@@ -383,6 +413,7 @@ module.exports = {
   listCatalogWithSettings,
   getSettings,
   listAllDailyReflectionSettings,
+  ensureBedtimeSettingsPersisted,
   upsertSettings,
   upsertSettingsFields,
   getDayLog,

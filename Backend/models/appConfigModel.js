@@ -85,6 +85,39 @@ function normalizeGuidelineList(value) {
     .filter(Boolean);
 }
 
+const LEGACY_PROGRESS_PHOTO_CAMERA_GUIDELINE =
+  "Place the camera at eye level, capturing full-body shots from three angles: front, side, and back, following the frame.";
+
+const PROGRESS_PHOTO_CAMERA_GUIDELINE =
+  "Place the camera at eye level, capturing full-body shots from three angles: Front, right & left profile, following the frame.";
+
+const DEFAULT_PROGRESS_PHOTO_GUIDELINES = {
+  en: [
+    "Please capture your photo in a well-lit space; where you are standing facing towards the source of light.",
+    "Your background should be clean and plain in color, avoid any colorful background.",
+    "Please wear a form-fitting clothing (e.g., swimwear or gym wear) in every photo.",
+    PROGRESS_PHOTO_CAMERA_GUIDELINE,
+    "Stand relaxed with a natural posture, keeping your shoulder straight rather than flexing or posing, to see real changes.",
+  ],
+  hi: [],
+};
+
+function patchProgressPhotoCameraGuideline(guidelines) {
+  const normalized = normalizeProgressPhotoGuidelines(guidelines);
+  let changed = false;
+  normalized.en = normalized.en.map((line) => {
+    if (
+      line === LEGACY_PROGRESS_PHOTO_CAMERA_GUIDELINE
+      || /three angles:\s*front,\s*side,\s*and\s*back/i.test(line)
+    ) {
+      changed = true;
+      return PROGRESS_PHOTO_CAMERA_GUIDELINE;
+    }
+    return line;
+  });
+  return { guidelines: normalized, changed };
+}
+
 function parseStoredArray(value) {
   if (typeof value === "string") {
     try {
@@ -336,7 +369,7 @@ async function createAppConfig() {
     body_measurement_guide_video: "",
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_IMAGE_FIELDS.map((field) => [field, ""])),
     ...Object.fromEntries(BODY_MEASUREMENT_INFO_SHOWN_FIELDS.map((field) => [field, true])),
-    progress_photo_guidelines: { en: [], hi: [] },
+    progress_photo_guidelines: DEFAULT_PROGRESS_PHOTO_GUIDELINES,
     health_progress_trackers: DEFAULT_HEALTH_PROGRESS_TRACKERS.map((row) => ({ ...row })),
     web_locations: [],
     web_contact_details: [],
@@ -509,6 +542,8 @@ module.exports = {
   normalizeBodyMeasurementGuideType,
   normalizeBodyMeasurementInfoShown,
   normalizeProgressPhotoGuidelines,
+  DEFAULT_PROGRESS_PHOTO_GUIDELINES,
+  patchProgressPhotoCameraGuideline,
   normalizeHealthProgressTrackers,
   normalizeWebLocations,
   normalizeWebContactDetails,

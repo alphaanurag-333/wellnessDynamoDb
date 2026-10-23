@@ -251,3 +251,35 @@ Weeks are ordered **oldest first** within the month. Only days inside the month 
 | 90–100 | Excellent | `excellent` |
 
 Progress bar thresholds: **50** (Average), **80** (Good), **100** (Excellent).
+
+---
+
+## Bedtime reminder push (FCM)
+
+Automatic and coach-triggered bedtime reminders are sent as **OS push notifications** (phone notification tray), not as in-app inbox items when delivery succeeds.
+
+| FCM data field | Value |
+|----------------|--------|
+| `type` | `daily_reflection_reminder_notification` |
+| `showSystemNotification` | `true` |
+| `skipInAppInbox` | `true` |
+| `title` / `body` | Same as tray copy |
+
+**Mobile app:** On FCM receive, show a **system notification** (e.g. `flutter_local_notifications` on Android/iOS). Do **not** only append to the in-app Notifications list when `skipInAppInbox=true`. Use Android channel `ir_wellness_default`.
+
+**Body copy:** `Your daily reflection form is ready. Log tonight's check-in around {bedtime}.`
+
+**Schedule:** Server cron sends at **bedtime − 30 minutes** (Asia/Kolkata by default).
+
+### Deployment (automatic push)
+
+1. **In-process cron** (default ON): Node server runs `* * * * *` in `Asia/Kolkata`. Do **not** set `DAILY_REFLECTION_BEDTIME_CRON_ENABLED=false` unless you use an external scheduler.
+2. **External cron** (recommended on multi-instance hosts): set `INTERNAL_CRON_SECRET`, then every minute:
+
+```bash
+curl -s -X POST "https://YOUR_API/api/internal/cron/daily-reflection-bedtime" \
+  -H "X-Cron-Secret: YOUR_SECRET"
+```
+
+3. Coach must **save bedtime** (or use **Push to app** once) so the client appears in `DailyReflection` settings for the job scan.
+4. Server logs: `[daily-reflection-bedtime-cron] Completed ... scanned=N, matched=M, sent=S`

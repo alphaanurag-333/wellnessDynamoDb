@@ -267,6 +267,18 @@ exports.analyzeCoachUserLabReportController = asyncHandler(async (req, res) => {
   const record = await loadLabReportForUser(reportId, userId);
   if (!record.fileKey) throw new AppError("This report has no file to analyse", 422);
 
+  const isResubmit =
+    record.aiStatus === "analysed"
+    || record.aiStatus === "failed"
+    || Boolean(record.aiAnalysis?.panels?.length);
+  if (isResubmit) {
+    await saveUserLabReportAiAnalysis(reportId, {
+      aiStatus: "pending",
+      aiError: null,
+      clearAiAnalysis: true,
+    }).catch(() => {});
+  }
+
   let analysis;
   try {
     analysis = await analyzeLabReportFile({
@@ -278,9 +290,11 @@ exports.analyzeCoachUserLabReportController = asyncHandler(async (req, res) => {
       aiStatus: "failed",
       aiError: err?.message || "AI analysis failed",
       analysedById: actingCoachId,
+      clearAiAnalysis: true,
     }).catch(() => {});
     if (err instanceof AppError) throw err;
-    throw new AppError(err?.message || "AI analysis failed", 502);
+    const statusCode = err?.name === "LabReportRejectError" ? 422 : 502;
+    throw new AppError(err?.message || "AI analysis failed", statusCode);
   }
 
   const report = await saveUserLabReportAiAnalysis(reportId, {

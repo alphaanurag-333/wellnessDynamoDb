@@ -43,6 +43,7 @@ const {
 const {
   listCoachUserDietPlanAssignmentsController,
   createCoachUserDietPlanAssignmentController,
+  updateCoachUserDietPlanAssignmentController,
   deleteCoachUserDietPlanAssignmentController,
   updateCoachUserDietPlanEnabledController,
 } = require("../../controllers/adminController/dietPlanCatalogAssignmentController");
@@ -303,6 +304,7 @@ const diet = staff("console.diet.view", { admin: "users.clientHub.care.diet-plan
 const dietWrite = staff("console.diet.create", { admin: "users.clientHub.care.diet-plan", coach: "clientTab.care.diet-plan" });
 router.get("/:userId/diet-plan-assignments", diet, listCoachUserDietPlanAssignmentsController);
 router.post("/:userId/diet-plan-assignments", dietWrite, createCoachUserDietPlanAssignmentController);
+router.patch("/:userId/diet-plan-assignments/:assignmentId", dietWrite, updateCoachUserDietPlanAssignmentController);
 router.patch("/:userId/diet-plan-enabled", dietWrite, updateCoachUserDietPlanEnabledController);
 router.delete("/:userId/diet-plan-assignments/:assignmentId", requireAdmin, deleteCoachUserDietPlanAssignmentController);
 

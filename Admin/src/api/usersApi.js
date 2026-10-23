@@ -51,6 +51,12 @@ export function resolveProgressPhotosInAppEnabled(user) {
   return status === "done" || status === "skipped";
 }
 
+/** Matches Backend isLabReportSubmissionLocked (no reports required). */
+export function resolveLabReportSubmissionLocked(user) {
+  if (user?.labReportSubmissionLocked === false) return false;
+  return true;
+}
+
 /** Matches Backend isMedicalConditionsInAppEnabled. */
 export function resolveMedicalConditionsInAppEnabled(user) {
   if (user?.medicalConditionsInAppEnabled === true) return true;
@@ -702,11 +708,7 @@ export function mapApiUserToRow(user, index = 0) {
     onboardingTotal,
     onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
-    labReportSubmissionLocked: user?.labReportSubmissionLocked === true
-      ? true
-      : user?.labReportSubmissionLocked === false
-        ? false
-        : undefined,
+    labReportSubmissionLocked: resolveLabReportSubmissionLocked(user),
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
   };

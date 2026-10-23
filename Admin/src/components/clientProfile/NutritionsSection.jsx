@@ -320,6 +320,29 @@ function mapApiOrderToUi(order, index) {
   };
 }
 
+function coachOrderHasLocalEdits(order) {
+  if (order.saved) return false;
+  return (
+    (order.items?.length ?? 0) > 0
+    || String(order.placedOn || "").trim()
+    || String(order.vendor || "").trim()
+    || String(order.tracking || "").trim()
+    || String(order.expectedDelivery || "").trim()
+    || String(order.billName || "").trim()
+  );
+}
+
+/** True while silent polling must not overwrite in-progress coach fulfilment orders. */
+function coachOrdersNeedPollProtection(orders) {
+  if (!Array.isArray(orders) || !orders.length) return false;
+  const unsaved = orders.filter((o) => !o.saved);
+  const saved = orders.filter((o) => o.saved);
+  if (unsaved.some(coachOrderHasLocalEdits)) return true;
+  if (saved.length > 0 && unsaved.length > 0) return true;
+  if (unsaved.length > 1) return true;
+  return false;
+}
+
 function recommendationSummary(rec) {
   const items = rec?.items || [];
   const historyRow = recommendationToHistoryRow(rec);
@@ -906,6 +929,7 @@ export function NutritionsSection({ user, onToast }) {
   const dosageFormRef = useRef(null);
   const dirtyRef = useRef(false);
   const composingNewRef = useRef(false);
+  const localNutritionFormEditRef = useRef(false);
   const loadInFlightRef = useRef(false);
   const deliveryRequestedSigRef = useRef("");
   const onToastRef = useRef(onToast);
@@ -939,14 +963,23 @@ export function NutritionsSection({ user, onToast }) {
       && String(order.placedOn || "").trim()
       && String(order.vendor || "").trim()
     ));
+    const hasPendingCoachOrderEdits = fulfilment === "delivery"
+      && coachOrdersNeedPollProtection(ordersForDraft);
     if (composingNewRecommendation || !recommended?.id) {
-      return selected.length > 0 || hasUnsyncedOrders;
+      return selected.length > 0 || hasUnsyncedOrders || hasPendingCoachOrderEdits;
     }
-    return hasUnsyncedOrders;
+    return hasUnsyncedOrders || hasPendingCoachOrderEdits;
   }, [coachOrders, composeCoachOrders, composingNewRecommendation, fulfilment, recommended, selected]);
+
+  function touchLocalNutritionEdits() {
+    localNutritionFormEditRef.current = true;
+  }
 
   useEffect(() => {
     dirtyRef.current = dirty;
+    if (!dirty && !composingNewRef.current) {
+      localNutritionFormEditRef.current = false;
+    }
   }, [dirty]);
 
   useEffect(() => {
@@ -973,6 +1006,7 @@ export function NutritionsSection({ user, onToast }) {
   );
 
   const applyRecommendedToForm = useCallback((rec) => {
+    localNutritionFormEditRef.current = false;
     setSelected((rec?.items || []).map((item) => ({ ...item })));
     setFulfilment(rec?.deliveryOption === "self_billing" ? "self" : "delivery");
     const savedOrders = (rec?.deliveryOption === "coach_delivery"
@@ -1048,7 +1082,14 @@ export function NutritionsSection({ user, onToast }) {
 
         setRecommended(current);
         setHistory(recResult.value?.history || []);
-        if (!silent || (!dirtyRef.current && !composingNewRef.current)) {
+        if (
+          !silent
+          || (
+            !dirtyRef.current
+            && !composingNewRef.current
+            && !localNutritionFormEditRef.current
+          )
+        ) {
           applyRecommendedToForm(current);
           if (current?.items?.length) {
             setComposingNewRecommendation(false);
@@ -1146,6 +1187,7 @@ export function NutritionsSection({ user, onToast }) {
   function addFromPool(id) {
     const item = pool.find((s) => s.id === id);
     if (!item) return;
+    touchLocalNutritionEdits();
     setSelected((list) => {
       const existing = list.find((x) => x.id === item.id);
       if (existing) return list.map((x) => (x.id === item.id ? { ...x, qty: x.qty + 1 } : x));
@@ -1155,10 +1197,12 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   function addCoachOrder() {
+    touchLocalNutritionEdits();
     setCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
   }
 
   function updateCoachOrder(updated) {
+    touchLocalNutritionEdits();
     setCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
   }
 
@@ -1181,7 +1225,28 @@ export function NutritionsSection({ user, onToast }) {
       return;
     }
 
+    touchLocalNutritionEdits();
     setCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+  }
+
+  function addComposeCoachOrder() {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
+  }
+
+  function updateComposeCoachOrder(updated) {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
+  }
+
+  function removeComposeCoachOrder(id) {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+  }
+
+  function adjustSelectedItem(id, fn) {
+    touchLocalNutritionEdits();
+    setSelected((list) => fn(list));
   }
 
   async function saveCoachOrder(id) {
@@ -1616,12 +1681,12 @@ export function NutritionsSection({ user, onToast }) {
                       </div>
                       <div className="ua-cp-rec-item__meta">
                         <div className="ua-cp-rec-item__qty">
-                          <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
+                          <button type="button" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
                           <span>{s.qty}</span>
-                          <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
+                          <button type="button" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
                         </div>
                         <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
-                        <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
+                        <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
                       </div>
                     </div>
                   ))}
@@ -1655,12 +1720,12 @@ export function NutritionsSection({ user, onToast }) {
                     selected={selected}
                     disabled={!canWrite || saving || !isHealClient}
                     canRemoveOrder={canRemove}
-                    onAddOrder={() => setComposeCoachOrders((list) => [...list, createDraftOrder(list.length + 1)])}
-                    onUpdateOrder={(updated) => setComposeCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)))}
+                    onAddOrder={addComposeCoachOrder}
+                    onUpdateOrder={updateComposeCoachOrder}
                     onRemoveOrder={(id) => {
                       const order = composeCoachOrders.find((o) => o.id === id);
                       if (!order) return;
-                      setComposeCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+                      removeComposeCoachOrder(id);
                     }}
                     onSaveOrder={() => onToast?.("Order logs sync when you click Save & sync to user app")}
                     onAttachBill={() => onToast?.("Save the recommendation first, then attach bills on the current plan")}

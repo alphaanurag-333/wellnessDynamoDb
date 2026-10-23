@@ -24,6 +24,49 @@ const MEETING_STATUSES = new Set([
 
 const ACTIVE_STATUSES = new Set(["slots_offered", "time_requested", "confirmed"]);
 
+const CONFIRMED_BY_ROLES = new Set(["Client", "Coach"]);
+
+/** Who confirmed the meeting time (user app vs coach/staff accept). */
+function normalizeConfirmedByRole(value) {
+  const next = String(value || "").trim().toLowerCase();
+  if (["client", "user"].includes(next)) return "Client";
+  if (
+    ["coach", "wellness_coach", "assistant_wellness_coach", "admin", "staff"].includes(next)
+  ) {
+    return "Coach";
+  }
+  const raw = String(value || "").trim();
+  return CONFIRMED_BY_ROLES.has(raw) ? raw : null;
+}
+
+/**
+ * Legacy meetings confirmed before confirmedByRole was stored: client booking
+ * keeps every offered slot; coach accept collapses to the chosen time only when
+ * multiple slots were offered.
+ */
+function inferConfirmedByRole(item) {
+  if (!item || item.status !== "confirmed") return null;
+  if (normalizeConfirmedByRole(item.confirmedByRole)) return null;
+  const slots = Array.isArray(item.slots) ? item.slots : [];
+  const selectedId = String(item.selectedSlotId || "").trim();
+  if (
+    slots.length > 1 &&
+    selectedId &&
+    slots.some((s) => String(s.id) === selectedId)
+  ) {
+    return "Client";
+  }
+  return null;
+}
+
+function resolvePublicConfirmedByRole(item) {
+  return (
+    normalizeConfirmedByRole(item?.confirmedByRole) ||
+    inferConfirmedByRole(item) ||
+    ""
+  );
+}
+
 const HOLD_OPTIONS_MS = {
   "2 hours": 2 * 60 * 60 * 1000,
   "6 hours": 6 * 60 * 60 * 1000,
@@ -89,6 +132,7 @@ function toPublicOnboardingMeeting(item) {
     zoomJoinUrl: item.zoomJoinUrl || null,
     zoomStartUrl: item.zoomStartUrl || null,
     confirmedAt: item.confirmedAt || null,
+    confirmedByRole: resolvePublicConfirmedByRole(item),
     confirmedStartAt: item.confirmedStartAt || null,
     confirmedEndAt: item.confirmedEndAt || null,
     coachId: item.coachId || null,
@@ -148,6 +192,7 @@ function buildItem(input, { id, now }) {
     zoomJoinUrl: input.zoomJoinUrl || null,
     zoomStartUrl: input.zoomStartUrl || null,
     confirmedAt: input.confirmedAt || null,
+    confirmedByRole: normalizeConfirmedByRole(input.confirmedByRole),
     confirmedStartAt: input.confirmedStartAt || null,
     confirmedEndAt: input.confirmedEndAt || null,
     coachId: input.coachId ? String(input.coachId) : null,
@@ -208,6 +253,7 @@ async function updateOnboardingMeeting(id, updates) {
     "zoomJoinUrl",
     "zoomStartUrl",
     "confirmedAt",
+    "confirmedByRole",
     "confirmedStartAt",
     "confirmedEndAt",
     "coachId",
@@ -223,6 +269,9 @@ async function updateOnboardingMeeting(id, updates) {
         err.name = "ValidationError";
         throw err;
       }
+    }
+    if (key === "confirmedByRole") {
+      value = normalizeConfirmedByRole(val);
     }
     exprNames[`#${key}`] = key;
     exprValues[`:${key}`] = value;
@@ -361,6 +410,8 @@ module.exports = {
   SCHEDULE_STEP_KEYS,
   isScheduleStepKey,
   holdExpiresAtFrom,
+  normalizeConfirmedByRole,
+  resolvePublicConfirmedByRole,
   normalizeSlots,
   normalizeRequestedSlots,
   resolveRequestedSlots,

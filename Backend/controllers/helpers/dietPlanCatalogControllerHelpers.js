@@ -7,6 +7,10 @@ const {
   snapshotPlan,
 } = require("../../models/dietPlanCatalogModel");
 const {
+  parseSections,
+  buildPersonalisedPlanSnapshot,
+} = require("../../utils/personalisedDietPlan");
+const {
   getCoachAssignedDietPlanRecordById,
 } = require("../../models/coachAssignedDietPlanModel");
 const {
@@ -57,6 +61,32 @@ async function loadAssignmentForUser(assignmentId, userId) {
   return record;
 }
 
+function parsePersonalisedSections(body) {
+  let raw = body?.sections;
+  if (raw === undefined || raw === null) {
+    if (body?.personalised === true || body?.personalisedPlan === true) {
+      throw new AppError("sections are required for a personalised diet plan", 400);
+    }
+    return null;
+  }
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      throw new AppError("sections must be a valid JSON array", 400);
+    }
+  }
+  try {
+    const parsed = parseSections(raw);
+    if (!parsed) {
+      throw new AppError("sections must be an array", 400);
+    }
+    return parsed;
+  } catch (err) {
+    handleValidationError(err);
+  }
+}
+
 async function buildPlanSnapshots(input) {
   const ids = Array.isArray(input)
     ? [...new Set(input.map((id) => String(id || "").trim()).filter(Boolean))]
@@ -74,6 +104,19 @@ async function buildPlanSnapshots(input) {
   plans.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 
   return plans.map((plan) => snapshotPlan(plan)).filter(Boolean);
+}
+
+async function resolveAssignmentPlans(body) {
+  const personalisedRequest =
+    body?.personalised === true
+    || body?.personalisedPlan === true
+    || (body?.sections !== undefined && body?.sections !== null);
+
+  if (personalisedRequest) {
+    const sections = parsePersonalisedSections(body);
+    return [buildPersonalisedPlanSnapshot(sections)];
+  }
+  return buildPlanSnapshots(body?.planIds);
 }
 
 async function generateAndUploadAssignmentPdf({ user, coach, startDate, note, plans }) {
@@ -117,5 +160,7 @@ module.exports = {
   resolveCoachIdForUser,
   loadAssignmentForUser,
   buildPlanSnapshots,
+  parsePersonalisedSections,
+  resolveAssignmentPlans,
   generateAndUploadAssignmentPdf,
 };

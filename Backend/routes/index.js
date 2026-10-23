@@ -52,6 +52,7 @@ const adminReferralTreeRoutes = require("./adminRoutes/adminReferralTreeRoutes")
 const adminEnergyExchangeRoutes = require("./adminRoutes/adminEnergyExchangeRoutes");
 const adminProgramCatalogRoutes = require("./adminRoutes/adminProgramCatalogRoutes");
 const publicAppConfigRoutes = require("./publicRoutes/publicAppConfigRoutes");
+const internalCronRoutes = require("./internalCronRoutes");
 const miscRoutes = require("./userRoutes/miscRoutes");
 const userAuthRoutes = require("./userRoutes/authRoutes");
 const waterTrackingRoutes = require("./userRoutes/waterTrackingRoutes");
@@ -228,5 +229,6 @@ router.use("/user/supplements", supplementDosageRoutes);
 router.use("/user/wellness-prescriptions", wellnessPrescriptionRoutes);
 router.use("/public", publicAppConfigRoutes);
 router.use("/public/misc", miscRoutes);
+router.use("/internal/cron", internalCronRoutes);
 
 module.exports = router;

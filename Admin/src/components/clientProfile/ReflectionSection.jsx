@@ -436,7 +436,7 @@ export function ReflectionSection({ user, onToast }) {
       }
       const result = await pushUserDailyReflectionBedtime(userId);
       setPushOpen(false);
-      onToast?.(result?.message || "Bedtime reminder pushed to app");
+      onToast?.(result?.message || "Bedtime push notification sent");
     } catch (err) {
       onToast?.(err?.message || "Could not send bedtime reminder");
     } finally {

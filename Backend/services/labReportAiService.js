@@ -140,6 +140,7 @@ async function analyzeLabReportFile({ fileKey, reportDate }) {
   try {
     analysis = normalizeAiAnalysis(parsed, { reportDate });
   } catch (err) {
+    if (err.name === "LabReportRejectError") throw err;
     throw new AppError(err.message || "AI could not extract markers from this report", 422);
   }
 

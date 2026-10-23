@@ -189,23 +189,24 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
     }
   }
 
+  const medicalDisabledInApp = !inAppEnabled;
   const inAppToggle = canEdit ? (
     <div
       className="ua-cp-medical__in-app"
       title={
-        inAppEnabled
-          ? "Client can view and submit medical conditions in the app"
-          : "Medical conditions are hidden from the client app"
+        medicalDisabledInApp
+          ? "Medical conditions are hidden from the client app"
+          : "Client can view and submit medical conditions in the app"
       }
     >
-      <span className="ua-cp-medical__in-app-label">Lock in App</span>
+      <span className="ua-cp-medical__in-app-label">Disabled in the app</span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${inAppEnabled ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${medicalDisabledInApp ? " ua-toggle--on" : ""}`}
         onClick={requestToggleInApp}
         disabled={settingsBusy}
-        aria-pressed={inAppEnabled}
-        aria-label="Show medical conditions in client app"
+        aria-pressed={medicalDisabledInApp}
+        aria-label="Disable medical conditions in client app"
       >
         <span className="ua-toggle__knob" />
       </button>

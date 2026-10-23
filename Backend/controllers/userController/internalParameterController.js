@@ -70,12 +70,7 @@ async function submissionLockedForUser(userId, { reports } = {}) {
 async function assertLabReportSubmissionOpen(userId) {
   const user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
-  if (user.labReportSubmissionLocked === true) {
-    throw new AppError(LAB_REPORT_SUBMISSION_LOCKED_MESSAGE, 403);
-  }
-  if (user.labReportSubmissionLocked === false) return;
-  const existing = await listUserLabReportsByUserId(userId);
-  if (existing.length > 0) {
+  if (user.labReportSubmissionLocked !== false) {
     throw new AppError(LAB_REPORT_SUBMISSION_LOCKED_MESSAGE, 403);
   }
 }

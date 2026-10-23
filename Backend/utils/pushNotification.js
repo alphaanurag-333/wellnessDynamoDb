@@ -12,11 +12,14 @@ function chunkArray(items, size) {
 }
 
 function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
+  const pushTitle = String(title || "IR Wellness").trim() || "IR Wellness";
+  const pushBody = String(body || "").trim();
+
   const message = {
     tokens,
     notification: {
-      title: String(title || "IR Wellness").trim() || "IR Wellness",
-      body: String(body || "").trim(),
+      title: pushTitle,
+      body: pushBody,
     },
     android: {
       priority: "high",
@@ -24,11 +27,19 @@ function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
         channelId: DEFAULT_ANDROID_CHANNEL_ID,
         sound: "default",
         defaultSound: true,
+        priority: "HIGH",
       },
     },
     apns: {
+      headers: {
+        "apns-priority": "10",
+      },
       payload: {
         aps: {
+          alert: {
+            title: pushTitle,
+            body: pushBody,
+          },
           sound: "default",
         },
       },
