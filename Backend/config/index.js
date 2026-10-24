@@ -89,11 +89,131 @@ module.exports = {
   bhashsmsUobBaTemplate: str("BHASHSMS_UOB_BA_TEMPLATE", "ir_uob_ba_01"),
   bhashsmsUobBrTemplate: str("BHASHSMS_UOB_BR_TEMPLATE", "ir_uob_br_01"),
   bhashsmsUobClTemplate: str("BHASHSMS_UOB_CL_TEMPLATE", "ir_uob_cl_01"),
+  bhashsmsCommitLetterUserTemplate: str(
+    "BHASHSMS_COMMIT_LETTER_USER_TEMPLATE",
+    "irw_commit_letter_messtouser"
+  ),
+  bhashsmsCommitLetterUpdateWcTemplate: str(
+    "BHASHSMS_COMMIT_LETTER_UPDATE_WC_TEMPLATE",
+    "irw_commit_letter_update_messtowc"
+  ),
+  bhashsmsCommitLetterUpdateWcAwcTemplate: str(
+    "BHASHSMS_COMMIT_LETTER_UPDATE_WC_AWC_TEMPLATE",
+    "irw_commit_letter_update_messtowcawc"
+  ),
   bhashsmsUobHapTemplate: str("BHASHSMS_UOB_HAP_TEMPLATE", "ir_uob_hap_01"),
+  bhashsmsReportBrfHapConfavailUserTemplate: str(
+    "BHASHSMS_REPORTBRF_HAP_CONFAVAIL_USER_TEMPLATE",
+    "irw_reportbrf_hap_confavail_messtouser"
+  ),
   bhashsmsUobLauTemplate: str("BHASHSMS_UOB_LAU_TEMPLATE", "ir_uob_lau_01"),
+  bhashsmsLaunchInitWcScheduleMeetUserTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_WC_SCHEDULE_MEET_USER_TEMPLATE",
+    "irw_launch_init_schedmeet_confavail_messtouser"
+  ),
+  bhashsmsLaunchInitSchedmeetUserAvailWcTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_SCHEDMEET_USERAVAIL_WC_TEMPLATE",
+    "irw_launch_init_schedmeet_useravail_messtowc_01"
+  ),
+  bhashsmsLaunchInitSchedmeetUserAvailWcAwcTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_SCHEDMEET_USERAVAIL_WC_AWC_TEMPLATE",
+    "irw_launch_init_schedmeet_useravail_messtowcawc"
+  ),
+  bhashsmsLaunchInitSchedmeetUserSlotWcTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_SCHEDMEET_USERSLOT_WC_TEMPLATE",
+    "irw_launch_init_schedmeet_userslot_messtowc"
+  ),
+  bhashsmsLaunchInitSchedmeetUserSlotWcAwcTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_SCHEDMEET_USERSLOT_WC_AWC_TEMPLATE",
+    "irw_launch_init_schedmeet_userslot_messtowcawc"
+  ),
+  bhashsmsLaunchInitSchedmeetMeetInvUserTemplate: str(
+    "BHASHSMS_LAUNCH_INIT_SCHEDMEET_MEETINV_USER_TEMPLATE",
+    "irw_launch_init_schedmeet_meetinv_messtouser_01"
+  ),
+  bhashsmsRcaAnalReportUserTemplate: str(
+    "BHASHSMS_RCA_ANAL_REPORT_USER_TEMPLATE",
+    "irw_rca_anal_report_messtouser"
+  ),
+  bhashsmsHapSchedmeetUserAvailWcTemplate: str(
+    "BHASHSMS_HAP_SCHEDMEET_USERAVAIL_WC_TEMPLATE",
+    "irw_hap_schedmeet_useravail_messtowc"
+  ),
+  bhashsmsHapSchedmeetUserAvailWcAwcTemplate: str(
+    "BHASHSMS_HAP_SCHEDMEET_USERAVAIL_WC_AWC_TEMPLATE",
+    "irw_hap_schedmeet_useravail_messtowcawc_01"
+  ),
+  bhashsmsHapSchedmeetUserSlotWcTemplate: str(
+    "BHASHSMS_HAP_SCHEDMEET_USERSLOT_WC_TEMPLATE",
+    "irw_hap_schedmeet_userslot_messtowc"
+  ),
+  bhashsmsHapSchedmeetUserSlotWcAwcTemplate: str(
+    "BHASHSMS_HAP_SCHEDMEET_USERSLOT_WC_AWC_TEMPLATE",
+    "irw_hap_schedmeet_userslot_messtowcawc"
+  ),
+  bhashsmsHapSchedmeetMeetInvUserTemplate: str(
+    "BHASHSMS_HAP_SCHEDMEET_MEETINV_USER_TEMPLATE",
+    "irw_hap_schedmeet_meetinv_messtouser"
+  ),
+  bhashsmsProtocolSetWcScheduleMeetUserTemplate: str(
+    "BHASHSMS_PROTOCOLSET_WC_SCHEDULE_MEET_USER_TEMPLATE",
+    "irw_protocolset_wc_schemeet_messtouser"
+  ),
   bhashsmsUobPiCoachTemplate: str("BHASHSMS_UOB_PI_COACH_TEMPLATE", "ir_uob_pi_011"),
   bhashsmsUobPiUserTemplate: str("BHASHSMS_UOB_PI_USER_TEMPLATE", "ir_uob_pi_012"),
+  bhashsmsProgramInitSchedmeetConfavailUserTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_CONFAVAIL_USER_TEMPLATE",
+    "irw_programinit_schedmeet_confavail_messtouser"
+  ),
+  bhashsmsProgramInitSchedmeetUserAvailWcTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_USERAVAIL_WC_TEMPLATE",
+    "irw_programinit_schedmeet_useravail_messtowc"
+  ),
+  bhashsmsProgramInitSchedmeetUserAvailWcAwcTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_USERAVAIL_WC_AWC_TEMPLATE",
+    "irw_programinit_schedmeet_useravail_messtowcawc"
+  ),
+  bhashsmsProgramInitSchedmeetUserSlotWcTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_USERSLOT_WC_TEMPLATE",
+    "irw_programinit_schedmeet_userslot_messtowc"
+  ),
+  bhashsmsProgramInitSchedmeetUserSlotWcAwcTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_USERSLOT_WC_AWC_TEMPLATE",
+    "irw_programinit_schedmeet_userslot_messtowcawc"
+  ),
+  bhashsmsProgramInitSchedmeetMeetInvUserTemplate: str(
+    "BHASHSMS_PROGRAMINIT_SCHEDMEET_MEETINV_USER_TEMPLATE",
+    "irw_programinit_schedmeet_meetinv_messtouser"
+  ),
   bhashsmsUobRbTemplate: str("BHASHSMS_UOB_RB_TEMPLATE", "ir_uob_rb_01"),
+  bhashsmsUob180SubmitWcTemplate: str(
+    "BHASHSMS_UOB_180_SUBMIT_WC_TEMPLATE",
+    "irw_bodyana_init_180submit_messtowc_01"
+  ),
+  bhashsmsUob180SubmitWcAwcTemplate: str(
+    "BHASHSMS_UOB_180_SUBMIT_WC_AWC_TEMPLATE",
+    "irw_ba_180sub_messtowcawc"
+  ),
+  bhashsmsUob180ReviewUserTemplate: str(
+    "BHASHSMS_UOB_180_REVIEW_USER_TEMPLATE",
+    "irw_bodyana_init_180review_messtouser"
+  ),
+  bhashsmsUob180ReshareUserTemplate: str(
+    "BHASHSMS_UOB_180_RESHARE_USER_TEMPLATE",
+    "irw_bodyana_init_180reshare_messtouser"
+  ),
+  bhashsmsUobInternalParaTestListUserTemplate: str(
+    "BHASHSMS_INTERNALPARA_TESTLIST_USER_TEMPLATE",
+    "irw_internalpara_testlist_shared_messtouser"
+  ),
+  bhashsmsUobInternalParaTestReportSubmitWcTemplate: str(
+    "BHASHSMS_INTERNALPARA_TESTREPORT_SUBMIT_WC_TEMPLATE",
+    "irw_internalpara_testreport_submit_messtowc"
+  ),
+  bhashsmsUobInternalParaTestReportSubmitWcAwcTemplate: str(
+    "BHASHSMS_INTERNALPARA_TESTREPORT_SUBMIT_WC_AWC_TEMPLATE",
+    "irw_internalpara_testreport_submit_messtowcawc"
+  ),
   bhashsmsUseMessageAsParams: bool("BHASHSMS_USE_MESSAGE_AS_PARAMS"),
   bhashsmsAllowSessionText: bool("BHASHSMS_ALLOW_SESSION_TEXT"),
 

@@ -11,7 +11,7 @@ const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
 const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
-const { sendWhatsAppText } = require("../utils/whatsapp");
+const { sendWhatsAppText, sendNamedWhatsAppTemplate, firstName } = require("../utils/whatsapp");
 const { resolveWhatsappNumber } = require("./meetingAssigneeService");
 const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync } = require("./whatsappJourneyService");
 const {
@@ -324,15 +324,16 @@ async function dispatchInternalParametersRecommendationNotification({
   let whatsapp = null;
   try {
     const user = await getUserById(userId);
-    const wa = resolveWhatsappNumber(user);
-    if (wa) {
-      whatsapp = await sendWhatsAppText({
-        toPhoneCountryCode: wa.phoneCountryCode,
-        toPhone: wa.phone,
-        message,
-      });
-    } else {
+    if (!user) {
+      whatsapp = { sent: false, reason: "missing_user" };
+    } else if (!resolveWhatsappNumber(user)) {
       whatsapp = { sent: false, reason: "missing_phone" };
+    } else {
+      whatsapp = await sendNamedWhatsAppTemplate({
+        templateKey: "uobInternalParaTestListUser",
+        person: user,
+        params: [firstName(user.name)],
+      });
     }
   } catch (err) {
     console.error(

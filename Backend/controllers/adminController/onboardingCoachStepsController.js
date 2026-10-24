@@ -20,7 +20,10 @@ const {
   markStepDone,
   buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
-const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const {
+  notifyOnboardingWhatsAppTransitions,
+  notifyProtocolSettingsDesignStartedToUserAsync,
+} = require("../../services/whatsappJourneyService");
 
 async function persistStepDone(user, stepKey) {
   const previousStatus = user.paidOnboardingStepStatus;
@@ -120,6 +123,7 @@ exports.saveStaffUserProtocolController = asyncHandler(async (req, res) => {
   }
 
   if (!latest) {
+    notifyProtocolSettingsDesignStartedToUserAsync(user);
     await persistStepDone(user, "protocolSettings");
   }
 

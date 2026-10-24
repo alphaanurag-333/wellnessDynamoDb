@@ -13,6 +13,7 @@ const {
   handleValidationError,
 } = require("../helpers/reminderControllerHelpers");
 const { assertStaffCanAccessUser, resolveStaffActor } = require("../staffAccess");
+const { notifyProtocolSettingsDesignStartedToUserAsync } = require("../../services/whatsappJourneyService");
 
 function parsePointList(raw) {
   if (!Array.isArray(raw)) return null;
@@ -70,8 +71,10 @@ exports.getStaffUserProtocolSettingsController = asyncHandler(async (req, res) =
 });
 
 exports.saveStaffUserProtocolSettingsController = asyncHandler(async (req, res) => {
-  const { actor, userId } = await staffProtocolContext(req);
+  const { actor, userId, user } = await staffProtocolContext(req);
   const sections = parseSectionsBody(req.body || {});
+  const prior = await listProtocolVersionsByUserId(userId, { page: 1, limit: 1 });
+  const isFirstVersion = !prior.items?.length;
 
   let created;
   try {
@@ -84,6 +87,10 @@ exports.saveStaffUserProtocolSettingsController = asyncHandler(async (req, res) 
     });
   } catch (err) {
     handleValidationError(err);
+  }
+
+  if (isFirstVersion) {
+    notifyProtocolSettingsDesignStartedToUserAsync(user);
   }
 
   const result = await listProtocolVersionsByUserId(userId, { page: 1, limit: 100 });

@@ -15,18 +15,168 @@ const NAMED_TEMPLATES = {
   uobBa: { configKey: "bhashsmsUobBaTemplate", defaultName: "ir_uob_ba_01", kind: "text" },
   uobBr: { configKey: "bhashsmsUobBrTemplate", defaultName: "ir_uob_br_01", kind: "text" },
   uobCl: { configKey: "bhashsmsUobClTemplate", defaultName: "ir_uob_cl_01", kind: "text" },
+  commitLetterInitUser: {
+    configKey: "bhashsmsCommitLetterUserTemplate",
+    defaultName: "irw_commit_letter_messtouser",
+    kind: "text",
+  },
+  commitLetterUpdateWc: {
+    configKey: "bhashsmsCommitLetterUpdateWcTemplate",
+    defaultName: "irw_commit_letter_update_messtowc",
+    kind: "text",
+  },
+  commitLetterUpdateWcAwc: {
+    configKey: "bhashsmsCommitLetterUpdateWcAwcTemplate",
+    defaultName: "irw_commit_letter_update_messtowcawc",
+    kind: "text",
+  },
   uobHap: { configKey: "bhashsmsUobHapTemplate", defaultName: "ir_uob_hap_01", kind: "text" },
+  reportBrfHapConfavailUser: {
+    configKey: "bhashsmsReportBrfHapConfavailUserTemplate",
+    defaultName: "irw_reportbrf_hap_confavail_messtouser",
+    kind: "text",
+  },
   uobLaunch: { configKey: "bhashsmsUobLauTemplate", defaultName: "ir_uob_lau_01", kind: "text" },
+  launchInitWcScheduleMeetUser: {
+    configKey: "bhashsmsLaunchInitWcScheduleMeetUserTemplate",
+    defaultName: "irw_launch_init_schedmeet_confavail_messtouser",
+    kind: "text",
+  },
   uobPiCoach: { configKey: "bhashsmsUobPiCoachTemplate", defaultName: "ir_uob_pi_011", kind: "text" },
   uobPiUser: { configKey: "bhashsmsUobPiUserTemplate", defaultName: "ir_uob_pi_012", kind: "text" },
+  programInitSchedmeetConfavailUser: {
+    configKey: "bhashsmsProgramInitSchedmeetConfavailUserTemplate",
+    defaultName: "irw_programinit_schedmeet_confavail_messtouser",
+    kind: "text",
+  },
+  programInitSchedmeetUserAvailWc: {
+    configKey: "bhashsmsProgramInitSchedmeetUserAvailWcTemplate",
+    defaultName: "irw_programinit_schedmeet_useravail_messtowc",
+    kind: "text",
+  },
+  programInitSchedmeetUserAvailWcAwc: {
+    configKey: "bhashsmsProgramInitSchedmeetUserAvailWcAwcTemplate",
+    defaultName: "irw_programinit_schedmeet_useravail_messtowcawc",
+    kind: "text",
+  },
+  programInitSchedmeetUserSlotWc: {
+    configKey: "bhashsmsProgramInitSchedmeetUserSlotWcTemplate",
+    defaultName: "irw_programinit_schedmeet_userslot_messtowc",
+    kind: "text",
+  },
+  programInitSchedmeetUserSlotWcAwc: {
+    configKey: "bhashsmsProgramInitSchedmeetUserSlotWcAwcTemplate",
+    defaultName: "irw_programinit_schedmeet_userslot_messtowcawc",
+    kind: "text",
+  },
+  programInitSchedmeetMeetInvUser: {
+    configKey: "bhashsmsProgramInitSchedmeetMeetInvUserTemplate",
+    defaultName: "irw_programinit_schedmeet_meetinv_messtouser",
+    kind: "text",
+  },
   uobReportsBriefing: { configKey: "bhashsmsUobRbTemplate", defaultName: "ir_uob_rb_01", kind: "text" },
+  uob180SubmitWc: {
+    configKey: "bhashsmsUob180SubmitWcTemplate",
+    defaultName: "irw_bodyana_init_180submit_messtowc_01",
+    kind: "text",
+  },
+  uob180SubmitWcAwc: {
+    configKey: "bhashsmsUob180SubmitWcAwcTemplate",
+    defaultName: "irw_ba_180sub_messtowcawc",
+    kind: "text",
+  },
+  uob180ReviewUser: {
+    configKey: "bhashsmsUob180ReviewUserTemplate",
+    defaultName: "irw_bodyana_init_180review_messtouser",
+    kind: "text",
+  },
+  uob180ReshareUser: {
+    configKey: "bhashsmsUob180ReshareUserTemplate",
+    defaultName: "irw_bodyana_init_180reshare_messtouser",
+    kind: "text",
+  },
+  uobInternalParaTestListUser: {
+    configKey: "bhashsmsUobInternalParaTestListUserTemplate",
+    defaultName: "irw_internalpara_testlist_shared_messtouser",
+    kind: "text",
+  },
+  uobInternalParaTestReportSubmitWc: {
+    configKey: "bhashsmsUobInternalParaTestReportSubmitWcTemplate",
+    defaultName: "irw_internalpara_testreport_submit_messtowc",
+    kind: "text",
+  },
+  uobInternalParaTestReportSubmitWcAwc: {
+    configKey: "bhashsmsUobInternalParaTestReportSubmitWcAwcTemplate",
+    defaultName: "irw_internalpara_testreport_submit_messtowcawc",
+    kind: "text",
+  },
+  launchInitSchedmeetUserAvailWc: {
+    configKey: "bhashsmsLaunchInitSchedmeetUserAvailWcTemplate",
+    defaultName: "irw_launch_init_schedmeet_useravail_messtowc_01",
+    kind: "text",
+  },
+  launchInitSchedmeetUserAvailWcAwc: {
+    configKey: "bhashsmsLaunchInitSchedmeetUserAvailWcAwcTemplate",
+    defaultName: "irw_launch_init_schedmeet_useravail_messtowcawc",
+    kind: "text",
+  },
+  launchInitSchedmeetUserSlotWc: {
+    configKey: "bhashsmsLaunchInitSchedmeetUserSlotWcTemplate",
+    defaultName: "irw_launch_init_schedmeet_userslot_messtowc",
+    kind: "text",
+  },
+  launchInitSchedmeetUserSlotWcAwc: {
+    configKey: "bhashsmsLaunchInitSchedmeetUserSlotWcAwcTemplate",
+    defaultName: "irw_launch_init_schedmeet_userslot_messtowcawc",
+    kind: "text",
+  },
+  launchInitSchedmeetMeetInvUser: {
+    configKey: "bhashsmsLaunchInitSchedmeetMeetInvUserTemplate",
+    defaultName: "irw_launch_init_schedmeet_meetinv_messtouser_01",
+    kind: "text",
+  },
+  rcaAnalReportUser: {
+    configKey: "bhashsmsRcaAnalReportUserTemplate",
+    defaultName: "irw_rca_anal_report_messtouser",
+    kind: "text",
+  },
+  hapSchedmeetUserAvailWc: {
+    configKey: "bhashsmsHapSchedmeetUserAvailWcTemplate",
+    defaultName: "irw_hap_schedmeet_useravail_messtowc",
+    kind: "text",
+  },
+  hapSchedmeetUserAvailWcAwc: {
+    configKey: "bhashsmsHapSchedmeetUserAvailWcAwcTemplate",
+    defaultName: "irw_hap_schedmeet_useravail_messtowcawc_01",
+    kind: "text",
+  },
+  hapSchedmeetUserSlotWc: {
+    configKey: "bhashsmsHapSchedmeetUserSlotWcTemplate",
+    defaultName: "irw_hap_schedmeet_userslot_messtowc",
+    kind: "text",
+  },
+  hapSchedmeetUserSlotWcAwc: {
+    configKey: "bhashsmsHapSchedmeetUserSlotWcAwcTemplate",
+    defaultName: "irw_hap_schedmeet_userslot_messtowcawc",
+    kind: "text",
+  },
+  hapSchedmeetMeetInvUser: {
+    configKey: "bhashsmsHapSchedmeetMeetInvUserTemplate",
+    defaultName: "irw_hap_schedmeet_meetinv_messtouser",
+    kind: "text",
+  },
+  protocolSetWcScheduleMeetUser: {
+    configKey: "bhashsmsProtocolSetWcScheduleMeetUserTemplate",
+    defaultName: "irw_protocolset_wc_schemeet_messtouser",
+    kind: "text",
+  },
 };
 
 const SLOT_TEMPLATE_BY_STEP = {
-  launch: "uobLaunch",
+  launch: "launchInitWcScheduleMeetUser",
   reportsBriefing: "uobReportsBriefing",
-  hap: "uobHap",
-  programInitiation: "uobPiUser",
+  hap: "reportBrfHapConfavailUser",
+  programInitiation: "programInitSchedmeetConfavailUser",
 };
 
 function formatE164(phoneCountryCode, phone) {

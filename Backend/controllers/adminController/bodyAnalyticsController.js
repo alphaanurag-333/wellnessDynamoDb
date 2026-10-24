@@ -24,7 +24,10 @@ const {
   normalizeReviewStatus,
 } = require("../../models/userProgressPhotoModel");
 const { dispatchProgressPhotoReviewedNotification } = require("../../services/notificationDispatchService");
-const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const {
+  notifyOnboardingWhatsAppTransitions,
+  notifyProgressPhotos180ReshareToUserAsync,
+} = require("../../services/whatsappJourneyService");
 const {
   applyBodyAnalyticsPhotoReview,
   buildOnboardingPersistUpdates,
@@ -320,6 +323,9 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   }
 
   const rejectedAngleDay = action === "rejected" && angle !== "weight";
+  if (action === "rejected") {
+    notifyProgressPhotos180ReshareToUserAsync(user);
+  }
   dispatchProgressPhotoReviewedNotification({
     userId,
     photoId,

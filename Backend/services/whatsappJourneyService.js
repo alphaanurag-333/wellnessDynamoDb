@@ -105,12 +105,104 @@ async function notifyBodyAnalyticsDoneToCoaches(user) {
   });
 }
 
+async function notifyProgressPhotos180SubmittedToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "uob180SubmitWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "uob180SubmitWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyProgressPhotos180SubmittedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "uob180ReviewUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyProgressPhotos180ReshareToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "uob180ReshareUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
 async function notifyLabReportUpdatedToCoaches(user) {
   if (!user) return [];
   const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "uobInternalParaTestReportSubmitWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
   return notifyAssignedCoaches({
     user,
-    templateKey: "uobBr",
+    templateKey: "uobInternalParaTestReportSubmitWc",
     paramsForCoach: (coach) => [firstName(coach.name), clientName],
   });
 }
@@ -118,7 +210,7 @@ async function notifyLabReportUpdatedToCoaches(user) {
 async function notifyCommitmentLetterReady(user) {
   if (!user) return { sent: false, reason: "missing_user" };
   return sendNamedWhatsAppTemplate({
-    templateKey: "uobCl",
+    templateKey: "commitLetterInitUser",
     person: user,
     params: [firstName(user.name)],
   });
@@ -127,9 +219,338 @@ async function notifyCommitmentLetterReady(user) {
 async function notifyCommitmentLetterUpdatedToCoaches(user) {
   if (!user) return [];
   const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "commitLetterUpdateWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
   return notifyAssignedCoaches({
     user,
-    templateKey: "uobPiCoach",
+    templateKey: "commitLetterUpdateWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyLaunchMeetingCoachConfirmedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "launchInitSchedmeetMeetInvUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyRcaAnalReportToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "rcaAnalReportUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyHapMeetingCoachConfirmedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "hapSchedmeetMeetInvUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyProgramInitMeetingCoachConfirmedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "programInitSchedmeetMeetInvUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyProtocolSettingsDesignStartedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "protocolSetWcScheduleMeetUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
+async function notifyLaunchMeetingClientProposedSlotsToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "launchInitSchedmeetUserSlotWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "launchInitSchedmeetUserSlotWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyLaunchMeetingSlotConfirmedByClientToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "launchInitSchedmeetUserAvailWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "launchInitSchedmeetUserAvailWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyHapMeetingClientProposedSlotsToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "hapSchedmeetUserSlotWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "hapSchedmeetUserSlotWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyHapMeetingSlotConfirmedByClientToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "hapSchedmeetUserAvailWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "hapSchedmeetUserAvailWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyProgramInitMeetingClientProposedSlotsToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "programInitSchedmeetUserSlotWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "programInitSchedmeetUserSlotWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyProgramInitMeetingSlotConfirmedByClientToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "programInitSchedmeetUserAvailWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "programInitSchedmeetUserAvailWc",
     paramsForCoach: (coach) => [firstName(coach.name), clientName],
   });
 }
@@ -148,6 +569,10 @@ async function notifyOnboardingSlotsOffered({ user, userId, stepKey }) {
 
 function notifyOnboardingWhatsAppTransitions({ user, previousStatus, nextStatus }) {
   if (!user) return;
+  if (onboardingStepJustCompleted(previousStatus, nextStatus, "progressPhotos180")) {
+    runWhatsAppSafely("uob-180-submit", notifyProgressPhotos180SubmittedToCoaches(user));
+    runWhatsAppSafely("uob-180-review-user", notifyProgressPhotos180SubmittedToUser(user));
+  }
   if (onboardingStepJustCompleted(previousStatus, nextStatus, "bodyAnalytics")) {
     runWhatsAppSafely("uob-ba", notifyBodyAnalyticsDoneToCoaches(user));
   }
@@ -165,15 +590,82 @@ function notifyProgramPaymentConfirmedAsync(payload) {
 }
 
 function notifyLabReportUpdatedToCoachesAsync(user) {
-  runWhatsAppSafely("uob-br", notifyLabReportUpdatedToCoaches(user));
+  runWhatsAppSafely("internalpara-testreport-submit", notifyLabReportUpdatedToCoaches(user));
 }
 
 function notifyCommitmentLetterUpdatedToCoachesAsync(user) {
-  runWhatsAppSafely("uob-pi-011", notifyCommitmentLetterUpdatedToCoaches(user));
+  runWhatsAppSafely("commit-letter-update", notifyCommitmentLetterUpdatedToCoaches(user));
 }
 
 function notifyOnboardingSlotsOfferedAsync(payload) {
   runWhatsAppSafely("uob-slots", notifyOnboardingSlotsOffered(payload));
+}
+
+function notifyProgressPhotos180ReshareToUserAsync(user) {
+  runWhatsAppSafely("uob-180-reshare-user", notifyProgressPhotos180ReshareToUser(user));
+}
+
+function notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "launch-schedmeet-useravail",
+    notifyLaunchMeetingSlotConfirmedByClientToCoaches(user)
+  );
+}
+
+function notifyLaunchMeetingClientProposedSlotsToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "launch-schedmeet-userslot",
+    notifyLaunchMeetingClientProposedSlotsToCoaches(user)
+  );
+}
+
+function notifyLaunchMeetingCoachConfirmedToUserAsync(user) {
+  runWhatsAppSafely("launch-schedmeet-meetinv-user", notifyLaunchMeetingCoachConfirmedToUser(user));
+}
+
+function notifyRcaAnalReportToUserAsync(user) {
+  runWhatsAppSafely("rca-anal-report-user", notifyRcaAnalReportToUser(user));
+}
+
+function notifyLaunchMeetingConfirmedClientWhatsAppAsync(user) {
+  notifyRcaAnalReportToUserAsync(user);
+}
+
+function notifyHapMeetingSlotConfirmedByClientToCoachesAsync(user) {
+  runWhatsAppSafely("hap-schedmeet-useravail", notifyHapMeetingSlotConfirmedByClientToCoaches(user));
+}
+
+function notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "programinit-schedmeet-useravail",
+    notifyProgramInitMeetingSlotConfirmedByClientToCoaches(user)
+  );
+}
+
+function notifyProgramInitMeetingClientProposedSlotsToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "programinit-schedmeet-userslot",
+    notifyProgramInitMeetingClientProposedSlotsToCoaches(user)
+  );
+}
+
+function notifyHapMeetingClientProposedSlotsToCoachesAsync(user) {
+  runWhatsAppSafely("hap-schedmeet-userslot", notifyHapMeetingClientProposedSlotsToCoaches(user));
+}
+
+function notifyHapMeetingCoachConfirmedToUserAsync(user) {
+  runWhatsAppSafely("hap-schedmeet-meetinv-user", notifyHapMeetingCoachConfirmedToUser(user));
+}
+
+function notifyProgramInitMeetingCoachConfirmedToUserAsync(user) {
+  runWhatsAppSafely(
+    "programinit-schedmeet-meetinv-user",
+    notifyProgramInitMeetingCoachConfirmedToUser(user)
+  );
+}
+
+function notifyProtocolSettingsDesignStartedToUserAsync(user) {
+  runWhatsAppSafely("protocolset-wc-schemeet-user", notifyProtocolSettingsDesignStartedToUser(user));
 }
 
 module.exports = {
@@ -184,6 +676,10 @@ module.exports = {
   notifyProgramPaymentConfirmed,
   notifyProgramPaymentConfirmedAsync,
   notifyBodyAnalyticsDoneToCoaches,
+  notifyProgressPhotos180SubmittedToCoaches,
+  notifyProgressPhotos180SubmittedToUser,
+  notifyProgressPhotos180ReshareToUser,
+  notifyProgressPhotos180ReshareToUserAsync,
   notifyLabReportUpdatedToCoaches,
   notifyLabReportUpdatedToCoachesAsync,
   notifyCommitmentLetterReady,
@@ -191,5 +687,28 @@ module.exports = {
   notifyCommitmentLetterUpdatedToCoachesAsync,
   notifyOnboardingSlotsOffered,
   notifyOnboardingSlotsOfferedAsync,
+  notifyLaunchMeetingSlotConfirmedByClientToCoaches,
+  notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyLaunchMeetingClientProposedSlotsToCoaches,
+  notifyLaunchMeetingClientProposedSlotsToCoachesAsync,
+  notifyLaunchMeetingCoachConfirmedToUser,
+  notifyLaunchMeetingCoachConfirmedToUserAsync,
+  notifyRcaAnalReportToUser,
+  notifyRcaAnalReportToUserAsync,
+  notifyLaunchMeetingConfirmedClientWhatsAppAsync,
+  notifyHapMeetingSlotConfirmedByClientToCoaches,
+  notifyHapMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyProgramInitMeetingSlotConfirmedByClientToCoaches,
+  notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyProgramInitMeetingClientProposedSlotsToCoaches,
+  notifyProgramInitMeetingClientProposedSlotsToCoachesAsync,
+  notifyHapMeetingClientProposedSlotsToCoaches,
+  notifyHapMeetingClientProposedSlotsToCoachesAsync,
+  notifyHapMeetingCoachConfirmedToUser,
+  notifyHapMeetingCoachConfirmedToUserAsync,
+  notifyProgramInitMeetingCoachConfirmedToUser,
+  notifyProgramInitMeetingCoachConfirmedToUserAsync,
+  notifyProtocolSettingsDesignStartedToUser,
+  notifyProtocolSettingsDesignStartedToUserAsync,
   notifyOnboardingWhatsAppTransitions,
 };
