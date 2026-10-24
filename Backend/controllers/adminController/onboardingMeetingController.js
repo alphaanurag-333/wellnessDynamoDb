@@ -27,6 +27,12 @@ const {
   dispatchOnboardingSlotsOfferedNotificationAsync,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const {
+  notifyLaunchMeetingCoachConfirmedToUserAsync,
+  notifyLaunchMeetingConfirmedClientWhatsAppAsync,
+  notifyHapMeetingCoachConfirmedToUserAsync,
+  notifyProgramInitMeetingCoachConfirmedToUserAsync,
+} = require("../../services/whatsappJourneyService");
 
 function handleMeetingError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -102,6 +108,7 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
     ...mirrorRequestedSlots([]),
     selectedSlotId: null,
     confirmedAt: null,
+    confirmedByRole: null,
     confirmedStartAt: null,
     confirmedEndAt: null,
   };
@@ -205,6 +212,7 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     slots: [confirmedSlot],
     selectedSlotId: confirmedSlot.id,
     confirmedAt: new Date().toISOString(),
+    confirmedByRole: "Coach",
     confirmedStartAt: startAt,
     confirmedEndAt: endAt,
     durationMinutes,
@@ -216,6 +224,16 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     userId: user.id,
     stepKey: meeting.stepKey,
   });
+
+  const stepKey = String(meeting.stepKey || "").trim();
+  if (stepKey === "launch") {
+    notifyLaunchMeetingCoachConfirmedToUserAsync(user);
+    notifyLaunchMeetingConfirmedClientWhatsAppAsync(user);
+  } else if (stepKey === "hap") {
+    notifyHapMeetingCoachConfirmedToUserAsync(user);
+  } else if (stepKey === "programInitiation") {
+    notifyProgramInitMeetingCoachConfirmedToUserAsync(user);
+  }
 
   return res.status(200).json({
     status: true,

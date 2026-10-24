@@ -5,6 +5,8 @@ import {
   accountLogin,
   accountLoginTotp,
   accountMe,
+  accountSendLoginOtp,
+  accountVerifyLoginOtp,
   accountSwitchRole,
   clearAccountAuth,
   readAccountAuth,
@@ -23,8 +25,15 @@ import {
   stripConfigPermissionSlugsForRole,
 } from "../utils/permissions.js";
 import { canPreviewLiveRole, liveRoleIdsForSession, staticViewAsMenuRoles, toViewAsMenuRole } from "../utils/liveRoles.js";
+import { usePanelSessionGuard } from "../hooks/usePanelSessionGuard.js";
 import { loadAppConfig } from "../store/loadAppConfig.js";
 import { clearAdminProfile, setAdminProfile } from "../store/slices/adminProfileSlice.js";
+import {
+  announcePanelSessionExpired,
+  clearPanelSession,
+  ensurePanelSessionForAuth,
+  startPanelSession,
+} from "../utils/panelSession.js";
 
 const VIEW_AS_STORAGE_KEY = "ua-view-as";
 
@@ -74,11 +83,23 @@ function sessionPermissions(account) {
   return stripConfigPermissionSlugsForRole(list, activeUi || "wc");
 }
 
+function readLiveAccountAuth() {
+  const stored = readAccountAuth();
+  if (!stored?.accessToken) return null;
+  const session = ensurePanelSessionForAuth(stored);
+  if (session.expired) {
+    announcePanelSessionExpired(session.reason);
+    clearAccountAuth();
+    return null;
+  }
+  return stored;
+}
+
 export function ViewAsProvider({ children }) {
   const dispatch = useDispatch();
-  const [auth, setAuth] = useState(() => readAccountAuth());
+  const [auth, setAuth] = useState(() => readLiveAccountAuth());
   const [viewAs, setViewAsState] = useState(() => uiFromAccount(readAccountAuth()?.account));
-  const [bootstrapping, setBootstrapping] = useState(Boolean(readAccountAuth()?.accessToken));
+  const [bootstrapping, setBootstrapping] = useState(() => Boolean(readAccountAuth()?.accessToken));
   const [authError, setAuthError] = useState("");
   const [liveMenuRoles, setLiveMenuRoles] = useState(() => staticViewAsMenuRoles());
   const [accessRoles, setAccessRoles] = useState([]);
@@ -110,7 +131,18 @@ export function ViewAsProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
     async function bootstrap() {
-      if (!readAccountAuth()?.accessToken) {
+      const stored = readAccountAuth();
+      if (!stored?.accessToken) {
+        setBootstrapping(false);
+        loadAppConfig({ publicOnly: true });
+        return;
+      }
+      const session = ensurePanelSessionForAuth(stored);
+      if (session.expired) {
+        announcePanelSessionExpired(session.reason);
+        clearAccountAuth();
+        setAuth(null);
+        dispatch(clearAdminProfile());
         setBootstrapping(false);
         loadAppConfig({ publicOnly: true });
         return;
@@ -155,13 +187,12 @@ export function ViewAsProvider({ children }) {
     }
   }, []);
 
-  const login = useCallback(
-    async ({ email, password, activeRole }) => {
-      setAuthError("");
-      const result = await accountLogin({ email, password, activeRole });
+  const finishLogin = useCallback(
+    async (result) => {
       if (result?.mfaRequired) {
         return result;
       }
+      startPanelSession();
       setAuth(result);
       setViewAsLocal(uiFromAccount(result.account));
       if (result?.account) dispatch(setAdminProfile(result.account));
@@ -172,26 +203,47 @@ export function ViewAsProvider({ children }) {
     [dispatch, reloadLiveRoles, setViewAsLocal],
   );
 
+  const login = useCallback(
+    async ({ email, phone, phoneCountryCode, password, activeRole }) => {
+      setAuthError("");
+      return finishLogin(await accountLogin({ email, phone, phoneCountryCode, password, activeRole }));
+    },
+    [finishLogin],
+  );
+
+  const sendLoginOtp = useCallback(async ({ phone, phoneCountryCode }) => {
+    setAuthError("");
+    return accountSendLoginOtp({ phone, phoneCountryCode });
+  }, []);
+
+  const loginWithOtp = useCallback(
+    async ({ phone, phoneCountryCode, otp, activeRole }) => {
+      setAuthError("");
+      return finishLogin(await accountVerifyLoginOtp({ phone, phoneCountryCode, otp, activeRole }));
+    },
+    [finishLogin],
+  );
+
   const completeTotpLogin = useCallback(
     async ({ mfaToken, code }) => {
       setAuthError("");
-      const stored = await accountLoginTotp({ mfaToken, code });
-      setAuth(stored);
-      setViewAsLocal(uiFromAccount(stored.account));
-      if (stored?.account) dispatch(setAdminProfile(stored.account));
-      loadAppConfig();
-      await reloadLiveRoles();
-      return stored;
+      return finishLogin(await accountLoginTotp({ mfaToken, code }));
     },
-    [dispatch, reloadLiveRoles, setViewAsLocal],
+    [finishLogin],
   );
 
   const logout = useCallback(() => {
     clearAccountAuth();
+    clearPanelSession();
     setAuth(null);
     setAuthError("");
     dispatch(clearAdminProfile());
   }, [dispatch]);
+
+  usePanelSessionGuard({
+    isAuthenticated: Boolean(auth?.accessToken),
+    onExpired: logout,
+  });
 
   const setAccount = useCallback((account) => {
     if (!account) return;
@@ -415,6 +467,8 @@ export function ViewAsProvider({ children }) {
       authError,
       setAuthError,
       login,
+      sendLoginOtp,
+      loginWithOtp,
       completeTotpLogin,
       logout,
       setAccount,
@@ -443,6 +497,8 @@ export function ViewAsProvider({ children }) {
       bootstrapping,
       authError,
       login,
+      sendLoginOtp,
+      loginWithOtp,
       completeTotpLogin,
       logout,
       setAccount,

@@ -8,7 +8,12 @@ function parseFcmIdFromBody(body) {
 
 function readFcmToken(item) {
   if (!item) return "";
-  return String(item.fcmId || item.fcm_id || "").trim();
+  const raw =
+    item.fcmId ??
+    item.fcm_id ??
+    item.fcm_token ??
+    item.fcmToken;
+  return raw != null ? String(raw).trim() : "";
 }
 
 module.exports = { parseFcmIdFromBody, readFcmToken };

@@ -1,8 +1,15 @@
 import api, { authHeader, normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
+import {
+  adminCreateConfigDropdown,
+  adminGetConfigDropdown,
+  fetchActiveConfigDropdown,
+} from "./configDropdownApi.js";
 
 export const TEST_CATALOG_PAGE_SIZE = 20;
+export const BLOOD_TEST_CATEGORY_SLUG = "blood-test-category";
 
+/** Fallback labels. Live options come from Configs → Dropdowns (blood-test-category). */
 export const TEST_CATEGORIES = [
   "Hematology",
   "Diabetes",
@@ -17,8 +24,62 @@ export const TEST_CATEGORIES = [
   "Other",
 ];
 
-export function testCategoryOptions(extra = []) {
-  const set = new Set(TEST_CATEGORIES);
+function labelsFromDropdown(list) {
+  return (Array.isArray(list?.options) ? list.options : [])
+    .filter((row) => row && row.on !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => String(row.label || row.value || "").trim())
+    .filter(Boolean);
+}
+
+function bloodTestCategoryPayload() {
+  return {
+    slug: BLOOD_TEST_CATEGORY_SLUG,
+    title: "Blood test categories",
+    status: "active",
+    options: TEST_CATEGORIES.map((label, index) => ({
+      label,
+      value: label,
+      on: true,
+      sortOrder: index + 1,
+    })),
+  };
+}
+
+/** Creates the dropdown list on first use so Configs → Dropdowns can edit it. */
+export async function ensureBloodTestCategoryDropdown(existingLists) {
+  const found = (existingLists || []).find((row) => row?.slug === BLOOD_TEST_CATEGORY_SLUG);
+  if (found) return found;
+  try {
+    const list = await adminGetConfigDropdown(null, BLOOD_TEST_CATEGORY_SLUG);
+    if (list) return list;
+  } catch {
+    /* missing on this server — create it below */
+  }
+  try {
+    return await adminCreateConfigDropdown(null, bloodTestCategoryPayload());
+  } catch {
+    try {
+      return await fetchActiveConfigDropdown(BLOOD_TEST_CATEGORY_SLUG);
+    } catch {
+      return null;
+    }
+  }
+}
+
+/** Active blood-test categories from the common dropdowns page. */
+export async function fetchTestCategories() {
+  const list = await ensureBloodTestCategoryDropdown();
+  const labels = labelsFromDropdown(list);
+  return labels.length ? labels : [...TEST_CATEGORIES];
+}
+
+export function testCategoryOptions(extra = [], base = TEST_CATEGORIES) {
+  const set = new Set();
+  (base || []).forEach((value) => {
+    const next = String(value || "").trim();
+    if (next) set.add(next);
+  });
   extra.forEach((value) => {
     const next = String(value || "").trim();
     if (next) set.add(next);
@@ -61,8 +122,35 @@ export function mapTestCatalog(row) {
     name: String(row.name || "").trim(),
     type: String(row.type || "SINGLE").toUpperCase() === "PROFILE" ? "PROFILE" : "SINGLE",
     category: String(row.category || "").trim(),
+    fastingType: String(row.fastingType || "").trim(),
+    duration: String(row.duration || "").trim(),
+    lines: Array.isArray(row.lines)
+      ? row.lines.map((line) => ({
+          category: String(line?.category || "").trim(),
+          name: String(line?.name || "").trim(),
+          fastingType: String(line?.fastingType || "").trim(),
+          duration: String(line?.duration || "").trim(),
+        }))
+      : [],
+    kind: row.kind === "goal" ? "goal" : "test",
     status: row.status === "inactive" ? "inactive" : "active",
     live: row.status !== "inactive",
+    sections: Array.isArray(row.sections)
+      ? row.sections.map((section, sectionIndex) => ({
+          id: String(section?.id || `section-${sectionIndex + 1}`),
+          category: String(section?.category || "").trim(),
+          tests: (Array.isArray(section?.tests) ? section.tests : []).map((test, testIndex) => ({
+            id: String(test?.id || `test-${sectionIndex + 1}-${testIndex + 1}`),
+            name: String(test?.name || "").trim(),
+            code: String(test?.code || "").trim(),
+            hours: Number.isFinite(Number(test?.hours)) ? Math.max(0, Math.round(Number(test.hours))) : 0,
+            selected: test?.selected !== false,
+          })),
+        }))
+      : [],
+    dismissedCategories: Array.isArray(row.dismissedCategories)
+      ? row.dismissedCategories.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
     sequence: Number(row.sequence) || 0,
     parameters,
     createdAt: row.createdAt,
@@ -100,6 +188,9 @@ export async function adminCreateTestCatalog(token, fields) {
         testId: String(fields.testId ?? "").trim() || undefined,
         type: fields.type || "SINGLE",
         category: String(fields.category ?? "").trim(),
+        fastingType: String(fields.fastingType ?? "").trim(),
+        duration: String(fields.duration ?? "").trim(),
+        lines: Array.isArray(fields.lines) ? fields.lines : [],
         status: fields.status || (fields.live === false ? "inactive" : "active"),
         sequence: Number(fields.sequence) || 0,
         parameters: Array.isArray(fields.parameters) ? fields.parameters : [],
@@ -118,6 +209,9 @@ export async function adminUpdateTestCatalog(token, id, fields) {
   if (fields.testId !== undefined) payload.testId = String(fields.testId).trim();
   if (fields.type !== undefined) payload.type = fields.type;
   if (fields.category !== undefined) payload.category = String(fields.category).trim();
+  if (fields.fastingType !== undefined) payload.fastingType = String(fields.fastingType).trim();
+  if (fields.duration !== undefined) payload.duration = String(fields.duration).trim();
+  if (fields.lines !== undefined) payload.lines = fields.lines;
   if (fields.sequence !== undefined) payload.sequence = Number(fields.sequence) || 0;
   if (fields.parameters !== undefined) payload.parameters = fields.parameters;
   if (fields.status !== undefined) payload.status = String(fields.status);
@@ -127,6 +221,46 @@ export async function adminUpdateTestCatalog(token, id, fields) {
     const { data } = await api.patch(`${catalogBase()}/${encodeURIComponent(id)}`, payload, {
       headers: authHeader(tokenOrStored(token)),
     });
+    return mapTestCatalog(data.test);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminListTestGoals(token) {
+  try {
+    const { data } = await api.get(`${catalogBase()}/goals`, {
+      headers: authHeader(tokenOrStored(token)),
+    });
+    return (Array.isArray(data.goals) ? data.goals : []).map(mapTestCatalog).filter((row) => row?.kind === "goal");
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminSaveTestGoal(token, goal) {
+  const sections = (Array.isArray(goal?.sections) ? goal.sections : [])
+    .map((section) => ({
+      ...section,
+      category: String(section?.category || "").trim(),
+    }))
+    .filter((section) => section.category);
+  const payload = {
+    kind: "goal",
+    name: String(goal?.name || "").trim(),
+    category: sections[0]?.category || "Goal",
+    status: goal?.status === "inactive" ? "inactive" : "active",
+    sections,
+    dismissedCategories: Array.isArray(goal?.dismissedCategories) ? goal.dismissedCategories : [],
+  };
+  try {
+    const { data } = goal?.id
+      ? await api.patch(`${catalogBase()}/${encodeURIComponent(goal.id)}`, payload, {
+          headers: authHeader(tokenOrStored(token)),
+        })
+      : await api.post(catalogBase(), payload, {
+          headers: authHeader(tokenOrStored(token)),
+        });
     return mapTestCatalog(data.test);
   } catch (error) {
     normalizeApiError(error);

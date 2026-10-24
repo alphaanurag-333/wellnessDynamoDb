@@ -16,6 +16,15 @@ const {
   dispatchOnboardingMeetingConfirmedNotificationAsync,
   dispatchOnboardingTimeRequestedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const {
+  notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyLaunchMeetingClientProposedSlotsToCoachesAsync,
+  notifyHapMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyHapMeetingClientProposedSlotsToCoachesAsync,
+  notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyProgramInitMeetingClientProposedSlotsToCoachesAsync,
+  notifyLaunchMeetingConfirmedClientWhatsAppAsync,
+} = require("../../services/whatsappJourneyService");
 
 function authedUserId(req) {
   const userId = req.auth?.sub || req.user?.id;
@@ -87,6 +96,7 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
     status: "confirmed",
     selectedSlotId: slot.id,
     confirmedAt: new Date().toISOString(),
+    confirmedByRole: "Client",
     confirmedStartAt: slot.startAt,
     confirmedEndAt: slot.endAt,
     durationMinutes,
@@ -98,6 +108,16 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
     userId,
     stepKey: meeting.stepKey,
   });
+
+  const stepKey = String(meeting.stepKey || "").trim();
+  if (stepKey === "launch" && user) {
+    notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync(user);
+    notifyLaunchMeetingConfirmedClientWhatsAppAsync(user);
+  } else if (stepKey === "hap" && user) {
+    notifyHapMeetingSlotConfirmedByClientToCoachesAsync(user);
+  } else if (stepKey === "programInitiation" && user) {
+    notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync(user);
+  }
 
   return res.status(200).json({
     status: true,
@@ -133,6 +153,15 @@ exports.requestUserOnboardingMeetingTimeController = asyncHandler(async (req, re
     user,
     stepKey: meeting.stepKey,
   });
+
+  const stepKey = String(meeting.stepKey || "").trim();
+  if (stepKey === "launch" && user) {
+    notifyLaunchMeetingClientProposedSlotsToCoachesAsync(user);
+  } else if (stepKey === "hap" && user) {
+    notifyHapMeetingClientProposedSlotsToCoachesAsync(user);
+  } else if (stepKey === "programInitiation" && user) {
+    notifyProgramInitMeetingClientProposedSlotsToCoachesAsync(user);
+  }
 
   return res.status(200).json({
     status: true,

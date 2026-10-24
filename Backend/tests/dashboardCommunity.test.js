@@ -75,6 +75,22 @@ describe("pickUpcomingBirthdays", () => {
     assert.equal(rows.some((row) => row.name === "No Dob"), false);
   });
 
+  it("keeps only birthdays inside the next 15 days when a window is set", () => {
+    const users = [
+      { id: "1", name: "Today User", dob: "1990-08-18" },
+      { id: "2", name: "Later Aug", dob: "1991-08-28" },
+      { id: "3", name: "Day 15", dob: "1988-09-02" },
+      { id: "4", name: "Day 16", dob: "1999-09-03" },
+      { id: "5", name: "Nov User", dob: "1992-11-01" },
+    ];
+
+    const rows = pickUpcomingBirthdays(users, 10, "2026-08-18", 15);
+    assert.deepEqual(
+      rows.map((row) => row.name),
+      ["Today User", "Later Aug", "Day 15"]
+    );
+  });
+
   it("keeps only Heal, Eagle, and Maintenance users", () => {
     const users = [
       { id: "1", name: "Dipti", userTier: "heal", clientCategory: "individual", dob: "1990-10-11" },

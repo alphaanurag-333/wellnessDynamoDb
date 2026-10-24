@@ -3,6 +3,7 @@ const { protectAccount } = require("../../middleware/auth");
 const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listTestCatalogController,
+  listTestGoalsController,
   getTestCatalogByIdController,
   createTestCatalogController,
   updateTestCatalogController,
@@ -11,6 +12,7 @@ const {
 
 const router = express.Router();
 
+router.get("/goals", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), listTestGoalsController);
 router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), listTestCatalogController);
 router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), getTestCatalogByIdController);
 router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "test-catalog.edit" }), createTestCatalogController);

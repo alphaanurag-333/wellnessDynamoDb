@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
@@ -19,7 +19,7 @@ import {
   tierChangeBlockedWithoutCoach,
   WC_OR_AWC_REQUIRED_MESSAGE,
 } from "../../data/usersData.js";
-import { adminListHealthConcerns } from "../../api/healthConcernApi.js";
+import { adminListHealthConcerns, fetchPublicHealthConcernOptions } from "../../api/healthConcernApi.js";
 import {
   moveUserToEagle,
   moveUserToHeal,
@@ -28,7 +28,10 @@ import {
   moveMaintenanceUserToHeal,
   updateUserPersonalDetails,
   GENDER_UI_OPTIONS,
+  isGirlOnlyHealthConcern,
   toApiGender,
+  parseWellnessJourneyTokens,
+  formatWellnessJourneyDisplay,
 } from "../../api/usersApi.js";
 import {
   PERSON_NAME_MAX_LEN,
@@ -103,6 +106,14 @@ function parseStateField(value, fallbackCountry = "") {
   return { state: raw, country: String(fallbackCountry || "").trim() };
 }
 
+function wellnessSlug(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
 function formFromUser(user) {
   return {
     name: user?.name || "",
@@ -115,7 +126,85 @@ function formFromUser(user) {
       ? (user?.country ? `${user.stateRaw} (${user.country})` : user.stateRaw)
       : (user?.state || ""),
     healthConcernId: user?.healthConcernId || "",
+    wellnessJourneyFor: parseWellnessJourneyTokens(
+      user?.wellnessJourneyForRaw?.length ? user.wellnessJourneyForRaw : user?.wellnessJourneyFor,
+    ),
   };
+}
+
+function resolveJourneyPayload(selected, options) {
+  return (selected || []).map((token) => {
+    const slug = wellnessSlug(token);
+    const match = (options || []).find((opt) => wellnessSlug(opt.title) === slug);
+    return match?.title || token;
+  }).filter(Boolean);
+}
+
+function WellnessJourneyPicker({ options = [], selected = [], disabled, onChange, isOptionLocked }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const selectedSlugs = new Set((selected || []).map(wellnessSlug).filter(Boolean));
+  const extraSelected = (selected || []).filter(
+    (token) => !options.some((opt) => wellnessSlug(opt.title) === wellnessSlug(token)),
+  );
+  const rows = [
+    ...options.map((opt) => ({ key: opt.id || opt.title, title: opt.title })),
+    ...extraSelected.map((title) => ({ key: `extra:${title}`, title })),
+  ];
+  const summary = formatWellnessJourneyDisplay(selected) || "Select";
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onDoc(event) {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  function toggle(title) {
+    if (isOptionLocked?.(title)) return;
+    const slug = wellnessSlug(title);
+    const next = selectedSlugs.has(slug)
+      ? (selected || []).filter((token) => wellnessSlug(token) !== slug)
+      : [...(selected || []), title];
+    onChange(next);
+  }
+
+  return (
+    <div className={`ua-cp-journey${open ? " is-open" : ""}`} ref={rootRef}>
+      <button
+        type="button"
+        className="ua-cp-field__input ua-cp-field__input--select ua-cp-journey__btn"
+        disabled={disabled}
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        {summary}
+      </button>
+      {open ? (
+        <div className="ua-cp-journey__menu" role="listbox" aria-multiselectable="true">
+          {rows.length ? rows.map((row) => {
+            const locked = Boolean(isOptionLocked?.(row.title));
+            const checked = !locked && selectedSlugs.has(wellnessSlug(row.title));
+            return (
+              <label key={row.key} className={`ua-cp-journey__opt${checked ? " is-on" : ""}${locked ? " is-locked" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={disabled || locked}
+                  onChange={() => toggle(row.title)}
+                />
+                <span>{row.title}</span>
+              </label>
+            );
+          }) : (
+            <p className="ua-cp-journey__empty">No journey options available</p>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function DosageBadge({ label, tone }) {
@@ -123,19 +212,17 @@ function DosageBadge({ label, tone }) {
 }
 
 export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack = false, onBack }) {
-  const { can, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
+  const { can, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const archived = useClientProfileArchived();
-  const canEditPii = !archived && can("console.pii.edit");
-  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
+  const coachPersona = viewAsPersona === "wc" || viewAsPersona === "awc" || viewAs === "wc" || viewAs === "awc";
+  const coachEditEnabled = can("console.cl.edit") || can("console.pii.edit");
+  // Full personal details stay with Admin. WC / AWC with edit can change only the two coaching fields.
+  const canEditAllDetails = !archived && Boolean(isAdminView);
+  const canEditConcernAndJourney = canEditAllDetails || (!archived && coachPersona && coachEditEnabled);
+  const canEditPii = canEditAllDetails;
+  const canEditWellnessJourney = canEditConcernAndJourney;
+  const canStartEdit = canEditPii || canEditConcernAndJourney;
   const canChangeTier = !archived && Boolean(isAdminView);
-  const canUpgradePaidTier =
-    canChangeTier
-    || (
-      !archived
-      && sessionUi === "wc"
-      && (viewAs === "wc" || viewAsPersona === "wc")
-      && can("console.cl.edit")
-    );
   const [editing, setEditing] = useState(false);
   const [tierBusy, setTierBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -143,27 +230,52 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const [form, setForm] = useState(() => formFromUser(user));
 
   useEffect(() => {
-    if (!canEditPii && editing) setEditing(false);
-  }, [canEditPii, editing]);
+    if (!canStartEdit && editing) setEditing(false);
+  }, [canStartEdit, editing]);
 
   useEffect(() => {
     if (!editing) setForm(formFromUser(user));
   }, [user, editing]);
 
   useEffect(() => {
+    if (!editing || toApiGender(form.gender) === "female") return;
+    setForm((prev) => {
+      const journey = (prev.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+      const concern = goalOptions.find((opt) => opt.id === prev.healthConcernId);
+      const clearConcern = isGirlOnlyHealthConcern(concern?.title);
+      if (journey.length === (prev.wellnessJourneyFor || []).length && !clearConcern) return prev;
+      return {
+        ...prev,
+        wellnessJourneyFor: journey,
+        ...(clearConcern ? { healthConcernId: "" } : {}),
+      };
+    });
+  }, [editing, form.gender, goalOptions]);
+
+  useEffect(() => {
     let cancelled = false;
-    adminListHealthConcerns(null, { limit: 200, status: "active" })
-      .then((result) => {
-        if (cancelled) return;
-        setGoalOptions(
-          (result?.healthConcerns || [])
-            .filter((row) => row?.id && row?.title)
-            .map((row) => ({ id: row.id, title: row.title })),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setGoalOptions([]);
-      });
+    (async () => {
+      let rows = [];
+      try {
+        const result = await adminListHealthConcerns(null, { limit: 200, status: "active" });
+        rows = (result?.healthConcerns || [])
+          .filter((row) => row?.id && row?.title)
+          .map((row) => ({ id: row.id, title: row.title }));
+      } catch {
+        rows = [];
+      }
+      if (!rows.length) {
+        try {
+          const publicOpts = await fetchPublicHealthConcernOptions();
+          rows = (publicOpts || [])
+            .filter((row) => row?.label || row?.title)
+            .map((row) => ({ id: row.id || row.value, title: row.label || row.title }));
+        } catch {
+          rows = [];
+        }
+      }
+      if (!cancelled) setGoalOptions(rows);
+    })();
     return () => {
       cancelled = true;
     };
@@ -185,18 +297,18 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const userReferralCode = String(user?.referralCode || "").trim();
   const usedReferralCode = String(user?.referredByCode || "").trim();
   const fields = [
-    { key: "name", label: "Full name", editable: true },
-    { key: "dob", label: "Date of birth", editable: true },
-    { key: "gender", label: "Gender", editable: true },
+    { key: "name", label: "Full name", editable: canEditPii },
+    { key: "dob", label: "Date of birth", editable: canEditPii },
+    { key: "gender", label: "Gender", editable: canEditPii },
     { key: "email", label: "Email", value: user.email, editable: false },
-    { key: "phone", label: "Phone", editable: true },
-    { key: "whatsapp", label: "WhatsApp", editable: true },
-    { key: "address", label: "Complete address", editable: true },
+    { key: "phone", label: "Phone", editable: canEditPii },
+    { key: "whatsapp", label: "WhatsApp", editable: canEditPii },
+    { key: "address", label: "Complete address", editable: canEditPii },
     { key: "state", label: "State", editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
-    { key: "goal", label: "Primary health concern", editable: true },
+    { key: "goal", label: "Primary health concern", editable: canEditConcernAndJourney },
     { key: "dietaryPreference", label: "Dietary preference", value: user.dietaryPreference, editable: false },
-    { key: "wellnessJourneyFor", label: "Wellness journey for", value: user.wellnessJourneyFor, editable: false },
+    { key: "wellnessJourneyFor", label: "Wellness journey for", editable: canEditWellnessJourney },
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
     { key: "referralCode", label: "Referral code", value: userReferralCode || "—", editable: false },
@@ -213,7 +325,42 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function save() {
-    if (!canEditPii || !userId || saveBusy) return;
+    if (!canStartEdit || !userId || saveBusy) return;
+    const payload = {};
+
+    if (canEditConcernAndJourney) {
+      const apiGenderForConcern = toApiGender(form.gender);
+      if (apiGenderForConcern !== "female" && form.healthConcernId) {
+        const selectedConcern = goalOptions.find((opt) => opt.id === form.healthConcernId);
+        if (isGirlOnlyHealthConcern(selectedConcern?.title)) {
+          onToast("PCOD / PCOS is available for Girl only.");
+          return;
+        }
+      }
+      const journey = apiGenderForConcern === "female"
+        ? form.wellnessJourneyFor
+        : (form.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+      payload.wellnessJourneyFor = resolveJourneyPayload(journey, goalOptions);
+      if (form.healthConcernId) {
+        payload.primaryHealthConcern = form.healthConcernId;
+      }
+    }
+
+    if (!canEditPii) {
+      setSaveBusy(true);
+      try {
+        const updated = await updateUserPersonalDetails(userId, payload);
+        onUserUpdated?.(updated);
+        setEditing(false);
+        onToast("Personal details saved");
+      } catch (err) {
+        onToast(err?.message || "Could not save personal details");
+      } finally {
+        setSaveBusy(false);
+      }
+      return;
+    }
+
     const name = sanitizePersonName(form.name).trim();
     const nameError = validatePersonName(name);
     if (nameError) {
@@ -268,14 +415,12 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       return;
     }
 
-    const payload = {
-      name,
-      dob: dobIso || null,
-      addressLine1: String(form.address || "").trim() || null,
-      state: state || null,
-      country: country || null,
-      gender: apiGender,
-    };
+    payload.name = name;
+    payload.dob = dobIso || null;
+    payload.addressLine1 = String(form.address || "").trim() || null;
+    payload.state = state || null;
+    payload.country = country || null;
+    payload.gender = apiGender;
 
     if (phoneParts.phone) {
       payload.phone = phoneParts.phone;
@@ -284,10 +429,6 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
     if (sameWhatsapp && phoneParts.phone) {
       payload.whatsappSameAsMobile = true;
-    }
-
-    if (form.healthConcernId) {
-      payload.primaryHealthConcern = form.healthConcernId;
     }
 
     setSaveBusy(true);
@@ -322,7 +463,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function convertToEagle() {
-    if (!canUpgradePaidTier || isEagleClient(user) || !userId || tierBusy) return;
+    if (!canChangeTier || isEagleClient(user) || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
@@ -340,17 +481,12 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function convertTier() {
-    const wcHealUpgrade = canUpgradePaidTier && !canChangeTier
-      && (currentTier === "Seek" || currentTier === "Consultancy");
-    if (canChangeTier) {
-      if (!tierActions.canConvert || !userId || tierBusy) return;
-    } else if (!wcHealUpgrade || !userId || tierBusy) {
-      return;
-    }
+    if (!canChangeTier || !tierActions.canConvert || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
+    if (isEagleClient(user) && currentTier === "Seek to Heal") return;
     setTierBusy(true);
     try {
       const updated = currentTier === "Seek to Heal"
@@ -366,20 +502,21 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   }
 
   async function downgradeTier() {
-    if (!canChangeTier || !tierActions.canDowngrade || !userId || tierBusy) return;
+    const eagleToSeek = isEagleClient(user);
+    if (!canChangeTier || (!tierActions.canDowngrade && !eagleToSeek) || !userId || tierBusy) return;
     if (tierChangeBlocked) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
     setTierBusy(true);
     try {
-      if (currentTier === "Maintenance") {
+      if (!eagleToSeek && currentTier === "Maintenance") {
         const updated = await moveMaintenanceUserToHeal(userId);
         onUserUpdated?.(updated);
         onToast(`${user.name} moved back to HEAL`);
         return;
       }
-      if (currentTier === "Seek to Heal") {
+      if (eagleToSeek || currentTier === "Seek to Heal") {
         const updated = await moveUserToSeek(userId);
         onUserUpdated?.(updated);
         onToast(`${user.name} moved down to SEEK`);
@@ -396,6 +533,9 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   function fieldValue(f) {
     if (f.value !== undefined) return f.value;
     if (f.key === "goal") return goalLabel;
+    if (f.key === "wellnessJourneyFor") {
+      return formatWellnessJourneyDisplay(form.wellnessJourneyFor) || user.wellnessJourneyFor || "";
+    }
     if (f.key === "gender" && !editing) return user.gender || "";
     if (f.key === "address" && !editing) return user.address || form.address || "";
     if (f.key === "state" && !editing) return user.state || form.state || "";
@@ -435,10 +575,24 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           onChange={(e) => setForm((prev) => ({ ...prev, healthConcernId: e.target.value }))}
         >
           <option value="">Select goal</option>
-          {goalOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>{opt.title}</option>
-          ))}
+          {goalOptions.map((opt) => {
+            const girlOnly = isGirlOnlyHealthConcern(opt.title) && toApiGender(form.gender) !== "female";
+            return (
+              <option key={opt.id} value={opt.id} disabled={girlOnly}>{opt.title}</option>
+            );
+          })}
         </select>
+      );
+    }
+    if (f.key === "wellnessJourneyFor") {
+      return (
+        <WellnessJourneyPicker
+          options={goalOptions}
+          selected={form.wellnessJourneyFor}
+          disabled={saveBusy}
+          isOptionLocked={(title) => toApiGender(form.gender) !== "female" && isGirlOnlyHealthConcern(title)}
+          onChange={(next) => setForm((prev) => ({ ...prev, wellnessJourneyFor: next }))}
+        />
       );
     }
     if (f.key === "gender") {
@@ -447,7 +601,21 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
           className="ua-cp-field__input ua-cp-field__input--select"
           value={form.gender}
           disabled={saveBusy}
-          onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+          onChange={(e) => {
+            const gender = e.target.value;
+            setForm((prev) => {
+              const next = { ...prev, gender };
+              if (toApiGender(gender) !== "female") {
+                const selected = goalOptions.find((opt) => opt.id === prev.healthConcernId);
+                if (isGirlOnlyHealthConcern(selected?.title)) next.healthConcernId = "";
+                const hadGirlOnlyJourney = (prev.wellnessJourneyFor || []).some((token) => isGirlOnlyHealthConcern(token));
+                if (hadGirlOnlyJourney) {
+                  next.wellnessJourneyFor = (prev.wellnessJourneyFor || []).filter((token) => !isGirlOnlyHealthConcern(token));
+                }
+              }
+              return next;
+            });
+          }}
         >
           <option value="">Select gender</option>
           {GENDER_UI_OPTIONS.map((opt) => (
@@ -497,7 +665,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             <p className="ua-cp-personal__email">{user.email}</p>
           </div>
           <div className="ua-cp-personal__actions">
-            {canEditPii ? (
+            {canStartEdit ? (
               editing ? (
                 <>
                   <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saveBusy}>Cancel</button>
@@ -538,8 +706,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             Convert to HEAL
           </button>
         ) : null}
-        {(canChangeTier && tierActions.canConvert)
-          || (canUpgradePaidTier && !canChangeTier && (currentTier === "Seek" || currentTier === "Consultancy")) ? (
+        {canChangeTier && tierActions.canConvert && !(isEagleClient(user) && currentTier === "Seek to Heal") ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--up"
@@ -550,7 +717,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             {tierActions.convertLabel}
           </button>
         ) : null}
-        {canUpgradePaidTier && !isEagleClient(user) ? (
+        {canChangeTier && !isEagleClient(user) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--eagle"
@@ -563,15 +730,19 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
             Convert to EAGLE
           </button>
         ) : null}
-        {canChangeTier && tierActions.canDowngrade ? (
+        {canChangeTier && (tierActions.canDowngrade || isEagleClient(user)) ? (
           <button
             type="button"
             className="ua-cp-tier-action ua-cp-tier-action--down"
-            title={tierChangeBlocked ? WC_OR_AWC_REQUIRED_MESSAGE : tierActions.downgradeTitle}
+            title={tierChangeBlocked
+              ? WC_OR_AWC_REQUIRED_MESSAGE
+              : (isEagleClient(user)
+                ? "Move this Eagle client back to SEEK. They leave Eagle and paid coaching entitlements end."
+                : tierActions.downgradeTitle)}
             onClick={downgradeTier}
             disabled={tierBusy || tierChangeBlocked}
           >
-            {tierActions.downgradeLabel}
+            {isEagleClient(user) ? "Move down to SEEK" : tierActions.downgradeLabel}
           </button>
         ) : null}
         <span className="ua-cp-status-badge"><span className="ua-cp-status-badge__dot" />{user.status || "Active"}</span>

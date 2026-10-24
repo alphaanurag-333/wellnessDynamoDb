@@ -12,6 +12,7 @@ const {
   updateHealthConcern,
   deleteHealthConcern,
   listHealthConcerns,
+  reorderHealthConcerns,
 } = require("../../models/healthConcernModel");
 const { getProgramCatalogRecordById } = require("../../models/programCatalogModel");
 
@@ -114,6 +115,31 @@ exports.updateHealthConcernController = asyncHandler(async (req, res) => {
     throw err;
   }
   return res.status(200).json({ status: true, message: "Health concern updated successfully", healthConcern });
+});
+
+exports.reorderHealthConcernsController = asyncHandler(async (req, res) => {
+  const orderedIds = Array.isArray(req.body.orderedIds) ? req.body.orderedIds : null;
+  if (!orderedIds || orderedIds.length === 0) {
+    throw new AppError("orderedIds array is required", 400);
+  }
+
+  let healthConcerns;
+  try {
+    healthConcerns = await reorderHealthConcerns(orderedIds);
+  } catch (err) {
+    if (err?.statusCode === 404) throw new AppError(err.message, 404);
+    if (err?.message === "orderedIds must be unique" || err?.message === "orderedIds is required") {
+      throw new AppError(err.message, 400);
+    }
+    if (err?.name === "ConditionalCheckFailedException") throw new AppError("Health concern not found", 404);
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Health concern order updated successfully",
+    healthConcerns,
+  });
 });
 
 exports.deleteHealthConcernController = asyncHandler(async (req, res) => {

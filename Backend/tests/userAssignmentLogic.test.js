@@ -203,6 +203,29 @@ describe("resolveConversionAssignment", () => {
     );
   });
 
+  it("does not copy WC or AWC from a deleted referrer", () => {
+    const referralRecord = {
+      referralCode: "OLDUSER1",
+      entityType: "user",
+      entityId: USER_C_ID,
+      ownerCoachId: COACH_ID,
+    };
+    const deletedReferer = {
+      id: USER_C_ID,
+      status: "deleted",
+      userTier: "heal",
+      assignedCoachId: ASSISTANT_ID,
+      assignedCoachType: "assistant_wellness_coach",
+      parentCoachId: COACH_ID,
+      assignmentStatus: "assigned",
+    };
+
+    assert.throws(
+      () => resolveConversionAssignment(referralRecord, { refererUser: deletedReferer }, "OLDUSER1"),
+      (err) => err.name === "InvalidReferralCodeError"
+    );
+  });
+
   it("leaves peer referral pending admin when referer has no owning coach", () => {
     const referralRecord = {
       referralCode: "PEER4444",

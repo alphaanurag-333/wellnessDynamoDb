@@ -1,5 +1,20 @@
 const TONES = new Set(["good", "bad", "warn", "neutral"]);
 
+/** Full Indian lab profiles (Thyrocare, Metropolis, etc.) often exceed 40 markers. */
+const MAX_AI_PANELS = 40;
+const MAX_ROWS_PER_PANEL = 150;
+
+const NOT_LAB_REPORT_MESSAGE =
+  "This file does not appear to be a blood or lab report. Ask the client to upload their pathology PDF or scan (e.g. Thyrocare, Metropolis, Dr Lal PathLabs).";
+
+const PROMPT_PLACEHOLDER_NOTE = "short coach-facing interpretation of this marker";
+
+/** Example values from the prompt schema — copying these means the model ignored the PDF. */
+const PROMPT_EXAMPLE_ROW_SIGNATURES = [
+  { nameKey: "ggt", valueKey: "42" },
+  { nameKey: "hba1c", valueKey: "68" },
+];
+
 function formatAiDateLabel(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value || "").trim() || "—";
@@ -70,8 +85,72 @@ function extractAllBalancedJsonObjects(text) {
 function scoreParsedObject(obj) {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return 0;
   if ("related" in obj || "proteinGm" in obj || "caloriesKcal" in obj) return 3;
-  if ("panels" in obj || "bloodSummary" in obj) return 2;
-  return 1;
+  let score = 0;
+  if ("panels" in obj || "bloodSummary" in obj) score = 2;
+  if (obj.isLabReport === true || obj.isLabReport === "true") score += 1;
+  return score || 1;
+}
+
+function normalizeValueKey(value) {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function resolveIsLabReport(source) {
+  if (!source || typeof source !== "object") return null;
+  if (source.isLabReport === false || source.isLabReport === "false") return false;
+  if (source.related === false || source.related === "false") return false;
+  if (source.isLabReport === true || source.isLabReport === "true") return true;
+  if (source.related === true || source.related === "true") return true;
+  const kind = String(source.documentKind || source.documentType || "").trim().toLowerCase();
+  if (/(invoice|receipt|order|bill|menu|resume|selfie|photo|unrelated)/.test(kind)) return false;
+  if (/(lab|pathology|blood|report|biochemistry|diagnostic)/.test(kind)) return true;
+  return null;
+}
+
+function rejectLabReport(message) {
+  const err = new Error(message || NOT_LAB_REPORT_MESSAGE);
+  err.name = "LabReportRejectError";
+  return err;
+}
+
+function rowUsesPromptPlaceholderNote(row) {
+  const note = String(row?.note || row?.interpretation || "").trim().toLowerCase();
+  return note.includes(PROMPT_PLACEHOLDER_NOTE);
+}
+
+function matchesPromptExampleRow(row) {
+  const nameKey = normalizeMarkerKey(row?.name || row?.parameter);
+  const valueKey = normalizeValueKey(row?.value ?? row?.reading);
+  if (!nameKey || !valueKey) return false;
+  return PROMPT_EXAMPLE_ROW_SIGNATURES.some(
+    (sig) => sig.nameKey === nameKey && sig.valueKey === valueKey
+  );
+}
+
+function assertExtractedFromDocument(source, panels) {
+  const rows = panels.flatMap((panel) => panel.rows || panelRawRows(panel) || []);
+  if (rows.some(rowUsesPromptPlaceholderNote)) {
+    throw rejectLabReport();
+  }
+  const exampleHits = rows.filter((row) => matchesPromptExampleRow(row)).length;
+  if (exampleHits >= 2) {
+    throw rejectLabReport();
+  }
+  const rejectReason = String(source?.rejectReason || source?.message || "").trim();
+  if (rejectReason && resolveIsLabReport(source) !== true) {
+    throw rejectLabReport(rejectReason.slice(0, 400));
+  }
+}
+
+function assertLabReportDocument(source, panels) {
+  const flag = resolveIsLabReport(source);
+  if (flag === false) {
+    const reason = String(source?.rejectReason || source?.message || "").trim();
+    throw rejectLabReport(reason || NOT_LAB_REPORT_MESSAGE);
+  }
+  assertExtractedFromDocument(source, panels);
 }
 
 function parseAiJson(text) {
@@ -153,24 +232,76 @@ function normalizeRow(row) {
   };
 }
 
+function panelRawRows(panel) {
+  if (Array.isArray(panel?.rows)) return panel.rows;
+  if (Array.isArray(panel?.parameters)) return panel.parameters;
+  if (Array.isArray(panel?.markers)) return panel.markers;
+  if (Array.isArray(panel?.tests)) return panel.tests;
+  return [];
+}
+
 function normalizePanel(panel) {
   const title = String(panel?.title || panel?.name || "Other").trim().slice(0, 80) || "Other";
-  const rows = (Array.isArray(panel?.rows) ? panel.rows : [])
+  const rows = panelRawRows(panel)
     .map(normalizeRow)
     .filter(Boolean)
-    .slice(0, 40);
+    .slice(0, MAX_ROWS_PER_PANEL);
   if (!rows.length) return null;
   return { title: title.toUpperCase(), rows };
 }
 
+function looseMarkerToRow(item) {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+  if (item.name || item.parameter) return normalizeRow(item);
+  const keys = Object.keys(item);
+  if (keys.length === 1 && typeof item[keys[0]] !== "object") {
+    return normalizeRow({ name: keys[0], value: item[keys[0]] });
+  }
+  return normalizeRow(item);
+}
+
+function collectPanelsFromSource(source) {
+  if (!source || typeof source !== "object") return [];
+  if (Array.isArray(source.panels) && source.panels.length) {
+    return source.panels;
+  }
+
+  const loose = [];
+  for (const key of ["markers", "tests", "parameters", "results", "analytes", "data"]) {
+    if (Array.isArray(source[key])) loose.push(...source[key]);
+  }
+  if (!loose.length) return [];
+
+  const byPanel = new Map();
+  loose.forEach((item) => {
+    const row = looseMarkerToRow(item);
+    if (!row) return;
+    const panelTitle = String(
+      item?.panel || item?.section || item?.category || item?.group || item?.department || "OTHER TESTS"
+    )
+      .trim()
+      .slice(0, 80) || "OTHER TESTS";
+    if (!byPanel.has(panelTitle)) byPanel.set(panelTitle, []);
+    byPanel.get(panelTitle).push(row);
+  });
+
+  return [...byPanel.entries()].map(([title, rows]) => ({ title, rows }));
+}
+
 function normalizeAiAnalysis(raw, { reportDate } = {}) {
   const source = raw && typeof raw === "object" ? raw : {};
-  const panels = (Array.isArray(source.panels) ? source.panels : [])
+  const rawPanels = collectPanelsFromSource(source);
+  assertLabReportDocument(source, rawPanels);
+
+  const panels = rawPanels
     .map(normalizePanel)
     .filter(Boolean)
-    .slice(0, 20);
+    .slice(0, MAX_AI_PANELS);
 
   if (!panels.length) {
+    if (resolveIsLabReport(source) === false) {
+      throw rejectLabReport(String(source?.rejectReason || source?.message || "").trim());
+    }
     const err = new Error("AI could not extract any markers from this report");
     err.name = "AiParseError";
     throw err;
@@ -188,34 +319,56 @@ function normalizeAiAnalysis(raw, { reportDate } = {}) {
 function buildLabReportAiPrompt({ reportDate }) {
   const dateHint = reportDate ? ` Report date: ${reportDate}.` : "";
   return [
-    "You are a clinical nutrition coach reading a client's uploaded blood / lab report PDF (often a scan).",
-    "Extract every test marker that is actually present in THIS document. Do not invent values that are not on the report.",
-    "If a field is missing, use value \"—\" and tone \"neutral\".",
-    "Use the report's own reference range when shown; otherwise use common adult Indian lab ranges.",
-    "Optimal is the tighter wellness target (not the lab reference range).",
-    "Tone: good (in optimal / in range), warn (borderline), bad (out of range), neutral (not reported).",
-    "Write interpretation notes in plain English for a wellness coach. No diagnosis, no medication prescriptions.",
+    "You are a clinical nutrition coach reading a client's uploaded blood / lab report PDF (often a multi-page scan from Thyrocare, Metropolis, Dr Lal PathLabs, SRL, or similar).",
+    "",
+    "STEP 1 — DOCUMENT CHECK (mandatory):",
+    "- Decide if the attached file is actually a pathology / blood / urine lab report with test results.",
+    "- Invoices, receipts, food photos, prescriptions without results, marketing PDFs, and unrelated documents are NOT lab reports.",
+    "- If it is NOT a lab report: set isLabReport to false, rejectReason to a short coach-facing explanation, and return empty panels [], empty bloodSummary [], empty protocolItems []. Do NOT invent lab values.",
+    "- If it IS a lab report: set isLabReport to true and continue to extraction.",
+    "",
+    "CRITICAL — COMPLETENESS:",
+    "- Read EVERY page of the PDF from start to finish, including appendices and continuation tables.",
+    "- Extract EVERY numeric or qualitative test result printed on the report. Typical full profiles have 40–120 markers; partial panels have fewer.",
+    "- Do NOT skip rows in tables. Do NOT summarise or sample — one JSON row per test line on the report.",
+    "- Include liver markers (SGPT/ALT, SGOT/AST, GAMMA GLUTAMYL TRANSFERASE / GGT / Gamma GT), kidney markers (creatinine, urea, BUN, uric acid, eGFR), lipids, CBC, thyroid, vitamins, iron studies, electrolytes, urine, and any other sections present.",
+    "- Include calculated indices if printed (HOMA-IR, AVG glucose, LDL/HDL ratios, etc.).",
+    "- Use the exact test name as shown on the report (keep common abbreviations: GGT, SGPT, SGOT, etc.).",
+    "- Do not invent values that are not on the report. If a test is not in this document, omit it (do not add placeholder rows).",
+    "",
+    "GROUP rows into panels that match the lab layout when possible:",
+    "GLUCOSE PANEL · LIPID PROFILE · LIVER FUNCTION (LFT) · KIDNEY FUNCTION (KFT) · COMPLETE BLOOD COUNT (CBC) · THYROID · VITAMINS & MINERALS · IRON STUDIES · INFLAMMATION · ELECTROLYTES · URINE ANALYSIS · OTHER TESTS",
+    "",
+    "For each marker: value (number + unit as printed), rr = reference range from the report, optimal = tighter wellness target, tone (good/warn/bad/neutral), note = short coach-facing interpretation.",
+    "No diagnosis, no medication prescriptions.",
+    "",
     `Return JSON only with this shape:${dateHint}`,
     JSON.stringify({
+      isLabReport: true,
+      rejectReason: "",
       panels: [
         {
-          title: "GLUCOSE PANEL",
+          title: "PANEL NAME FROM REPORT",
           rows: [
             {
-              name: "HbA1c",
-              optimal: "5 – 5.3%",
-              rr: "Below 5.7%",
-              value: "6.8",
-              tone: "bad",
-              note: "Short coach-facing interpretation of this marker.",
+              name: "Exact test name from report",
+              optimal: "wellness target",
+              rr: "reference range printed on report",
+              value: "result + unit from report",
+              tone: "good",
+              note: "Brief interpretation based on this result only.",
             },
           ],
         },
       ],
-      bloodSummary: ["3–8 bullets synthesising the latest panel"],
-      protocolItems: ["4–8 nutrition / lifestyle recommendations a coach can action"],
-      nutritionSummary: "One short paragraph for the nutrition summary card.",
+      bloodSummary: ["Bullets only from extracted results"],
+      protocolItems: ["Coach actions grounded in this report"],
+      nutritionSummary: "Short paragraph grounded in this report.",
     }),
+    "",
+    "Rules:",
+    "- isLabReport must be a boolean.",
+    "- Never copy example placeholder text; every value must come from the uploaded file.",
   ].join("\n");
 }
 
@@ -434,6 +587,7 @@ module.exports = {
   parseAiJson,
   normalizeTone,
   normalizeAiAnalysis,
+  collectPanelsFromSource,
   buildLabReportAiPrompt,
   analysisToPanels,
   panelsToAnalysis,
@@ -441,4 +595,9 @@ module.exports = {
   applyMergedPanelsToReportAnalysis,
   normalizeMarkerKey,
   normalizePanelKey,
+  resolveIsLabReport,
+  assertLabReportDocument,
+  NOT_LAB_REPORT_MESSAGE,
+  MAX_AI_PANELS,
+  MAX_ROWS_PER_PANEL,
 };

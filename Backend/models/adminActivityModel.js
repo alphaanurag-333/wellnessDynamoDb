@@ -16,6 +16,7 @@ const KINDS = new Set([
   "lab",
   "coach",
   "counselling",
+  "nutrition",
   "reminder",
   "system",
 ]);
@@ -30,6 +31,7 @@ const KIND_META = {
   lab: { label: "Lab", icon: "🧪", fromDefault: "Client" },
   coach: { label: "Coach", icon: "🩺", fromDefault: "Coach" },
   counselling: { label: "Counselling", icon: "🩺", fromDefault: "Client" },
+  nutrition: { label: "Nutrition", icon: "💊", fromDefault: "System" },
   reminder: { label: "Reminder", icon: "🔔", fromDefault: "Admin" },
   system: { label: "System", icon: "🔔", fromDefault: "System" },
 };

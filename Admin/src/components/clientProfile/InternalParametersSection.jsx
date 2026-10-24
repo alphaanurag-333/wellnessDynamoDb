@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
   INTERNAL_PARAMS,
   cloneAiPanels,
@@ -8,20 +9,26 @@ import {
 } from "../../data/internalParametersData.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
+  appendUserGoalTests,
   createUserTestRecommendation,
+  deleteUserTestRecommendation,
+  deleteUserLabReport,
   downloadUserTestRecommendationPdf,
   fetchTestCatalog,
   fetchUserLabReports,
+  updateUserLabReportSubmission,
   fetchUserTestRecommendations,
   reviewUserLabReport,
   analyzeUserLabReport,
   updateUserLabReportAnalysis,
   patchOnboardingStep,
 } from "../../api/onboardingApi.js";
+import { resolveLabReportSubmissionLocked } from "../../api/usersApi.js";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
+  analysisToDisplayPanels,
   applyMergedPanelsToReportAnalysis,
-  findLatestAnalysedReport,
+  isReportAiAnalysed,
   mergeAnalysedReportsToPanels,
 } from "../../utils/labReportPanels.js";
 
@@ -74,9 +81,17 @@ function todayIso() {
 
 function formatDisplayDate(value) {
   if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  const raw = String(value).trim();
+  const dayOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = dayOnly
+    ? new Date(Number(dayOnly[1]), Number(dayOnly[2]) - 1, Number(dayOnly[3]))
+    : new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function assignmentDate(entry) {
+  return entry?.createdAt || entry?.updatedAt || entry?.reportDate || "";
 }
 
 function triggerFileDownload(href, filename) {
@@ -237,11 +252,139 @@ function addDaysIso(value, days) {
 }
 
 function reportAiStatusText(report) {
-  if (report?.aiStatus === "failed") {
-    return report?.aiAnalysis?.panels?.length ? "AI analysis failed — showing last result" : "AI analysis failed";
-  }
-  if (report?.aiStatus === "analysed") return "AI analysed";
+  if (report?.aiStatus === "pending") return "AI analysis in progress";
+  if (report?.aiStatus === "failed") return "AI analysis failed";
+  if (isReportAiAnalysed(report)) return "AI analysed";
   return "ready for AI analysis";
+}
+
+function formatTestDuration(value) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  if (/^\d+(\.\d+)?$/.test(text)) return `${text} ${Number(text) === 1 ? "hr" : "hrs"}`;
+  return text;
+}
+
+function hoursFromDuration(duration, hours) {
+  const n = Number(hours);
+  if (Number.isFinite(n) && n >= 0) return Math.min(168, Math.round(n));
+  const match = String(duration || "").match(/(\d+)/);
+  return match ? Math.min(168, Number(match[1])) : 12;
+}
+
+function codeFromLine(line) {
+  const code = String(line?.code || "").trim().toUpperCase();
+  if (code) return code;
+  const fasting = String(line?.fastingType || "").trim();
+  if (/post/i.test(fasting)) return "PPBS";
+  if (/non/i.test(fasting)) return "NF";
+  return "FBS";
+}
+
+function fastingFromCodeHours(code, hours) {
+  const post = /^(pfbs|ppbs|pp|post)/i.test(String(code || ""));
+  const h = Number(hours) || 0;
+  return post ? "Post-prandial" : h > 0 ? "Fasting" : "Non-fasting";
+}
+
+function durationFromHours(hours) {
+  const h = Number(hours) || 0;
+  return h === 1 ? "1 hr" : `${h} hrs`;
+}
+
+function newCustomId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `custom::${crypto.randomUUID()}`;
+  }
+  return `custom::${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function emptyCustomTest(category) {
+  return {
+    id: newCustomId(),
+    custom: true,
+    name: "",
+    code: "FBS",
+    hours: 12,
+    category: category || "Other",
+    fastingType: "Fasting",
+    duration: "12 hrs",
+    kind: "test",
+  };
+}
+
+function isCustomAssignment(test) {
+  if (!test) return false;
+  if (test.custom === true) return true;
+  return String(test.itemId || test.id || "").trim().startsWith("custom::");
+}
+
+function moveItem(list, from, to) {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function GripIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <circle cx="4" cy="3" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="3" r="1.15" fill="currentColor" />
+      <circle cx="4" cy="7" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="7" r="1.15" fill="currentColor" />
+      <circle cx="4" cy="11" r="1.15" fill="currentColor" />
+      <circle cx="10" cy="11" r="1.15" fill="currentColor" />
+    </svg>
+  );
+}
+
+function CodeField({ value, disabled, onChange }) {
+  return (
+    <input
+      className="ua-cfg-goals-field ua-cfg-goals-field--code"
+      value={value}
+      disabled={disabled}
+      placeholder="Code"
+      aria-label="Code"
+      onChange={(event) => onChange(event.target.value.toUpperCase())}
+      onBlur={() => {
+        if (!String(value || "").trim()) onChange("FBS");
+      }}
+    />
+  );
+}
+
+/** One pickable item per catalog line; entries without lines stay a single item. */
+function catalogItems(catalog) {
+  return (catalog || []).flatMap((entry) => {
+    const kind = entry?.kind === "goal" ? "goal" : "test";
+    const lines = Array.isArray(entry?.lines) ? entry.lines.filter((line) => line?.name) : [];
+    if (!lines.length) {
+      return [{
+        ...entry,
+        catalogId: entry.id,
+        kind,
+        code: codeFromLine(entry),
+        hours: hoursFromDuration(entry.duration, entry.hours),
+      }];
+    }
+    return lines.map((line, index) => ({
+      id: `${entry.id}::${index}`,
+      catalogId: entry.id,
+      lineIndex: index,
+      testId: entry.testId,
+      panelName: entry.name,
+      name: line.name,
+      category: line.category || entry.category,
+      fastingType: line.fastingType || "",
+      duration: line.duration || "",
+      code: codeFromLine(line),
+      hours: hoursFromDuration(line.duration, line.hours),
+      kind,
+    }));
+  });
 }
 
 function catalogGroups(catalog) {
@@ -253,6 +396,47 @@ function catalogGroups(catalog) {
     map.get(id).tests.push(test);
   });
   return [...map.values()];
+}
+
+/** Active admin-created goals from Configs → Goals & Tests. */
+function catalogGoalPresets(catalog) {
+  return (catalog || [])
+    .filter((row) => row?.kind === "goal" && row.status !== "inactive")
+    .filter((row) => Array.isArray(row.lines) && row.lines.some((line) => line?.name))
+    .map((row) => ({
+      id: String(row.id),
+      name: String(row.name || "").trim() || "Goal",
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** One group per catalog entry (e.g. "Glucose Test" or a goal), holding that entry's lines. */
+function testTitleGroups(items) {
+  const map = new Map();
+  (items || []).forEach((item) => {
+    const id = String(item.catalogId || item.id);
+    if (!map.has(id)) {
+      map.set(id, {
+        id,
+        name: item.panelName || item.name || "Test",
+        kind: item.kind === "goal" ? "goal" : "test",
+        tests: [],
+        searchText: "",
+      });
+    }
+    map.get(id).tests.push(item);
+  });
+  return [...map.values()].map((group) => ({
+    ...group,
+    searchText: [
+      group.name,
+      group.kind === "goal" ? "goal" : "",
+      ...group.tests.flatMap((test) => [test.name, test.category]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase(),
+  }));
 }
 
 function EditActions({ editing, onEdit, onCancel, onSave }) {
@@ -419,11 +603,12 @@ function reportInRange(reportDate, range, fromDate, toDate) {
   return true;
 }
 
-function LiveReportHistory({ reports, busy, onToast, onReview }) {
+function LiveReportHistory({ reports, busy, onToast, onReview, onDelete, canDelete = false }) {
   const [range, setRange] = useState("all");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [viewing, setViewing] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const filtered = reports.filter((report) => reportInRange(report.reportDate, range, fromDate, toDate));
 
   function openReport(report) {
@@ -466,8 +651,7 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
       </div>
       {filtered.length ? filtered.map((report) => {
         const reviewed = report.reviewStatus === "reviewed";
-        // Prefer the AI payload itself; `aiStatus` can be inconsistent on older records.
-        const hasAi = Boolean(report.aiAnalysis?.panels?.length);
+        const hasAi = isReportAiAnalysed(report);
         const outOfRange = report.aiAnalysis?.panels?.flatMap((panel) =>
           (panel.rows || [])
             .filter((row) => row.tone === "bad" || row.tone === "warn")
@@ -532,6 +716,17 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
                     Mark reviewed
                   </button>
                 ) : null}
+                {canDelete ? (
+                  <button
+                    type="button"
+                    className="ua-cp-ip-history__delete"
+                    disabled={busy}
+                    aria-label={`Delete report ${formatDisplayDate(report.reportDate)}`}
+                    onClick={() => setPendingDelete(report)}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             </div>
             {outOfRange.length ? (
@@ -544,6 +739,21 @@ function LiveReportHistory({ reports, busy, onToast, onReview }) {
           </div>
         );
       }) : <p>No lab reports in this range.</p>}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete blood report"
+        title={`Delete the report from ${formatDisplayDate(pendingDelete?.reportDate)}?`}
+        body="This removes the report from the client’s app. The file is deleted and cannot be restored."
+        cancelLabel="Keep report"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const id = pendingDelete?.id;
+          setPendingDelete(null);
+          if (id) onDelete?.(id);
+        }}
+      />
       <LabReportPdfModal
         open={Boolean(viewing)}
         url={viewing?.fileUrl || ""}
@@ -561,7 +771,16 @@ function pinnedGroupIds(groups, selectedMap) {
     .map((group) => group.id);
 }
 
-function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false }) {
+function NamespaceSearch({
+  groups,
+  namespaces,
+  onAdd,
+  onToast,
+  disabled = false,
+  placeholder = "+ Add a test category…",
+  allAddedLabel = "All categories added",
+  noMatchLabel = "No matching categories",
+}) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
@@ -576,7 +795,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
     return namespaces.filter((ns) => {
       if (existingIds.has(ns.id)) return false;
       if (!q) return true;
-      return String(ns.name || "").toLowerCase().includes(q);
+      return String(ns.searchText || ns.name || "").toLowerCase().includes(q);
     });
   }, [search, existingIds, namespaces]);
 
@@ -670,7 +889,7 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
         <input
           ref={inputRef}
           type="text"
-          placeholder="+ Add a test category…"
+          placeholder={placeholder}
           value={search}
           disabled={disabled}
           onChange={(e) => {
@@ -700,18 +919,112 @@ function NamespaceSearch({ groups, namespaces, onAdd, onToast, disabled = false 
                   pick(ns);
                 }}
               >
-                {ns.name}
+                <span>{ns.name}</span>
+                {ns.kind === "goal" ? (
+                  <span className="ua-cp-ip-ns-dropdown__meta">Goal</span>
+                ) : ns.category ? (
+                  <span className="ua-cp-ip-ns-dropdown__meta">{ns.category}</span>
+                ) : null}
               </button>
             </li>
           )) : (
             <li className="ua-cp-ip-ns-dropdown__empty">
-              {existingIds.size >= namespaces.length ? "All categories added" : "No matching categories"}
+              {existingIds.size >= namespaces.length ? allAddedLabel : noMatchLabel}
             </li>
           )}
         </ul>
       ) : null}
     </div>
   );
+}
+
+function sameCategoryName(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+function testIdentityKey(test) {
+  return `${String(test?.category || "").trim().toLowerCase()}::${String(test?.name || "").trim().toLowerCase()}`;
+}
+
+function extrasFromRecommendation({ items, goalGroups, selectedMap }) {
+  const extras = {};
+  const extraItemIds = new Set();
+  const pinnedGoals = (goalGroups || []).filter((group) =>
+    (group.tests || []).some((test) => selectedMap[test.id]),
+  );
+
+  pinnedGoals.forEach((group) => {
+    extras[group.id] = {};
+  });
+
+  const nativeKeys = new Set();
+  pinnedGoals.forEach((group) => {
+    group.tests.forEach((test) => nativeKeys.add(`${group.id}::${testIdentityKey(test)}`));
+  });
+
+  (items || []).forEach((item) => {
+    if (item?.kind === "goal" || !selectedMap[item.id]) return;
+    const host = pinnedGoals.find((group) => {
+      const native = group.tests.some((test) => sameCategoryName(test.category, item.category));
+      if (!native) return false;
+      return !nativeKeys.has(`${group.id}::${testIdentityKey(item)}`);
+    });
+    if (!host) return;
+    const category = String(
+      host.tests.find((test) => sameCategoryName(test.category, item.category))?.category || item.category || "Other",
+    ).trim() || "Other";
+    if (!extras[host.id][category]) extras[host.id][category] = [];
+    extras[host.id][category].push(item);
+    extraItemIds.add(item.id);
+  });
+
+  return { extras, extraItemIds };
+}
+
+function customRowsFromRecommendation(recommended, { items, extraItemIds, goalGroups, selectedMap }) {
+  const extras = {};
+  const standalone = [];
+  const knownIds = new Set((items || []).map((item) => String(item.id || "")));
+  const pinnedGoals = (goalGroups || []).filter((group) =>
+    (group.tests || []).some((test) => selectedMap[test.id]),
+  );
+
+  (recommended?.tests || []).forEach((test) => {
+    if (!isCustomAssignment(test)) return;
+    const itemId = String(test.itemId || test.id || "").trim();
+    if (itemId && (extraItemIds.has(itemId) || knownIds.has(itemId))) return;
+
+    const hours = hoursFromDuration(test.duration, test.hours);
+    const code = String(test.code || "").trim().toUpperCase() || codeFromLine(test);
+    const category = String(test.category || "Other").trim() || "Other";
+    const row = {
+      id: itemId || newCustomId(),
+      custom: true,
+      name: test.name || "",
+      code,
+      hours,
+      category,
+      fastingType: test.fastingType || fastingFromCodeHours(code, hours),
+      duration: test.duration || durationFromHours(hours),
+      kind: "test",
+    };
+
+    const host = pinnedGoals.find((group) =>
+      group.tests.some((entry) => sameCategoryName(entry.category, category)),
+    );
+    if (host) {
+      if (!extras[host.id]) extras[host.id] = {};
+      const sectionName = String(
+        host.tests.find((entry) => sameCategoryName(entry.category, category))?.category || category,
+      ).trim() || "Other";
+      if (!extras[host.id][sectionName]) extras[host.id][sectionName] = [];
+      extras[host.id][sectionName].push(row);
+    } else {
+      standalone.push(row);
+    }
+  });
+
+  return { extras, standalone };
 }
 
 function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = true }) {
@@ -917,28 +1230,37 @@ function MockRecommendedTestsTab({ user, onToast, canEdit = true, canExport = tr
   );
 }
 
-function selectedFromRecommendation(catalog, recommended) {
+function selectedFromRecommendation(items, recommended) {
   const map = {};
-  const assigned = new Set();
+  const assignedItems = new Set();
+  const assignedLegacy = new Set();
   (recommended?.tests || []).forEach((test) => {
+    const itemId = String(test.itemId || "").trim();
+    if (itemId) {
+      assignedItems.add(itemId);
+      return;
+    }
     [test.testId, test.id, test.catalogId].forEach((value) => {
       const next = String(value || "").trim();
-      if (next) assigned.add(next);
+      if (next) assignedLegacy.add(next);
     });
     const name = String(test.name || "").trim().toLowerCase();
-    if (name) assigned.add(`name:${name}`);
+    if (name) assignedLegacy.add(`name:${name}`);
   });
-  catalog.forEach((test) => {
-    const id = String(test.id || "").trim();
-    const testId = String(test.testId || "").trim();
-    const name = String(test.name || "").trim().toLowerCase();
-    map[id] = assigned.has(id) || assigned.has(testId) || Boolean(name && assigned.has(`name:${name}`));
+  items.forEach((item) => {
+    const id = String(item.id || "").trim();
+    const name = String(item.name || "").trim().toLowerCase();
+    map[id] = assignedItems.has(id)
+      || assignedLegacy.has(String(item.catalogId || ""))
+      || assignedLegacy.has(String(item.testId || ""))
+      || Boolean(name && assignedLegacy.has(`name:${name}`));
   });
   return map;
 }
 
-function AssignedTestHistory({ userId, current, history, onToast }) {
+function AssignedTestHistory({ userId, current, history, onToast, onDelete, canDelete = false, busy = false }) {
   const [expandedId, setExpandedId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const rows = useMemo(() => {
     const list = [];
     if (current?.id) list.push({ ...current, status: "current" });
@@ -961,19 +1283,23 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
   return (
     <div className="ua-cp-ip-assign-history">
       <h3 className="ua-cp-ip-assign-history__title">Assigned test history</h3>
-      <p className="ua-cp-ip-assign-history__intro">Every published list is kept, newest first.</p>
+      <p className="ua-cp-ip-assign-history__intro">Lists are shown by the date they were published, newest first.</p>
       {rows.map((entry) => {
         const tests = testsFromRecommendation(entry);
         const expanded = expandedId === entry.id;
         const preview = tests.slice(0, 3).map((test) => test.name || test.testId).filter(Boolean).join(", ");
+        const publishedOn = formatDisplayDate(assignmentDate(entry));
+        const reportOn = formatDisplayDate(entry.reportDate);
+        const showReportDate = Boolean(entry.reportDate) && reportOn !== publishedOn;
         return (
           <div key={entry.id} className="ua-cp-ip-history__item">
             <div className="ua-cp-ip-history__row">
               <div className="ua-cp-ip-history__info">
-                <strong>{formatDisplayDate(entry.reportDate || entry.createdAt)}</strong>
+                <strong>{publishedOn}</strong>
                 <span>
                   {tests.length} test{tests.length === 1 ? "" : "s"}
                   {preview ? ` · ${preview}${tests.length > 3 ? "…" : ""}` : ""}
+                  {showReportDate ? ` · Report date ${reportOn}` : ""}
                 </span>
               </div>
               <div className="ua-cp-ip-history__actions">
@@ -990,18 +1316,29 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
                 <button
                   type="button"
                   className="ua-cp-ip-history__dl"
-                  aria-label={`Download assigned tests ${formatDisplayDate(entry.reportDate)}`}
+                  aria-label={`Download assigned tests ${publishedOn}`}
                   onClick={() => downloadRecommendationList({
                     userId,
                     recommendationId: entry.id,
                     pdfUrl: entry.pdfUrl,
-                    reportDate: entry.reportDate,
+                    reportDate: entry.reportDate || assignmentDate(entry),
                     tests,
                     onToast,
                   })}
                 >
                   ↓
                 </button>
+                {canDelete ? (
+                  <button
+                    type="button"
+                    className="ua-cp-ip-history__delete"
+                    disabled={busy}
+                    aria-label={`Delete assigned tests ${publishedOn}`}
+                    onClick={() => setPendingDelete(entry)}
+                  >
+                    ×
+                  </button>
+                ) : null}
               </div>
             </div>
             {expanded ? (
@@ -1018,47 +1355,156 @@ function AssignedTestHistory({ userId, current, history, onToast }) {
           </div>
         );
       })}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag="Delete recommended tests"
+        title={
+          pendingDelete?.status === "current"
+            ? "Delete the current recommended test list?"
+            : `Delete the list from ${formatDisplayDate(assignmentDate(pendingDelete))}?`
+        }
+        body={
+          pendingDelete?.status === "current"
+            ? "This removes the list sent to the client. The next older list, if any, becomes current."
+            : "This permanently removes this published list and its PDF."
+        }
+        cancelLabel="Keep list"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const id = pendingDelete?.id;
+          setPendingDelete(null);
+          if (id) onDelete?.(id);
+        }}
+      />
     </div>
   );
 }
 
-function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, canEdit = true, canExport = true }) {
-  const allGroups = useMemo(() => catalogGroups(catalog), [catalog]);
-  const [selected, setSelected] = useState(() => selectedFromRecommendation(catalog, recommended));
-  const [presets, setPresets] = useState([]);
-  const [focusedPreset, setFocusedPreset] = useState("");
-  const [reportDate, setReportDate] = useState(recommended?.reportDate || todayIso());
+function groupTestsByCategory(tests) {
+  const map = new Map();
+  (tests || []).forEach((test) => {
+    const category = String(test.category || "Other").trim() || "Other";
+    if (!map.has(category)) map.set(category, []);
+    map.get(category).push(test);
+  });
+  return [...map.entries()].map(([name, rows]) => ({ name, tests: rows }));
+}
+
+function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, onToast, onPublish, onDelete, onReloadCatalog, canEdit = true, canExport = true, canDelete = false }) {
+  const items = useMemo(() => catalogItems(catalog), [catalog]);
+  const allGroups = useMemo(() => testTitleGroups(items), [items]);
+  const goalGroups = useMemo(() => allGroups.filter((group) => group.kind === "goal"), [allGroups]);
+  const testGroups = useMemo(() => allGroups.filter((group) => group.kind !== "goal"), [allGroups]);
+  const goalPresets = useMemo(() => catalogGoalPresets(catalog), [catalog]);
+  const [selected, setSelected] = useState(() => selectedFromRecommendation(catalogItems(catalog), recommended));
+  const [reportDate, setReportDate] = useState(todayIso());
   const [dirty, setDirty] = useState(!recommended);
+  const [goalExtras, setGoalExtras] = useState({});
+  const [customRows, setCustomRows] = useState([]);
+  const [drag, setDrag] = useState(null);
+  const [savingGoal, setSavingGoal] = useState(false);
+  const keepDirtyAfterGoalSaveRef = useRef(false);
+  const keepSelectedNamesRef = useRef(new Set());
   const [pinnedIds, setPinnedIds] = useState(() => {
-    const initial = selectedFromRecommendation(catalog, recommended);
-    return pinnedGroupIds(catalogGroups(catalog), initial);
+    const initialItems = catalogItems(catalog);
+    const initial = selectedFromRecommendation(initialItems, recommended);
+    return pinnedGroupIds(testTitleGroups(initialItems), initial);
   });
 
   useEffect(() => {
-    const nextSelected = selectedFromRecommendation(catalog, recommended);
-    setSelected(nextSelected);
-    setReportDate(recommended?.reportDate || todayIso());
-    setDirty(!recommended);
-    setPinnedIds(pinnedGroupIds(catalogGroups(catalog), nextSelected));
-  }, [catalog, recommended]);
+    const nextSelected = selectedFromRecommendation(items, recommended);
+    const groups = testTitleGroups(items);
+    const nextGoals = groups.filter((group) => group.kind === "goal");
+    const { extras, extraItemIds } = extrasFromRecommendation({
+      items,
+      goalGroups: nextGoals,
+      selectedMap: nextSelected,
+    });
+    const customHydrate = customRowsFromRecommendation(recommended, {
+      items,
+      extraItemIds,
+      goalGroups: nextGoals,
+      selectedMap: nextSelected,
+    });
+    Object.entries(customHydrate.extras).forEach(([goalId, byCategory]) => {
+      extras[goalId] = extras[goalId] || {};
+      Object.entries(byCategory).forEach(([category, rows]) => {
+        extras[goalId][category] = [...(extras[goalId][category] || []), ...rows];
+      });
+    });
+    const customSelected = {};
+    Object.values(customHydrate.extras).forEach((byCategory) => {
+      Object.values(byCategory).forEach((rows) => {
+        rows.forEach((row) => { customSelected[row.id] = true; });
+      });
+    });
+    customHydrate.standalone.forEach((row) => { customSelected[row.id] = true; });
+    if (keepSelectedNamesRef.current.size) {
+      items.forEach((item) => {
+        const key = String(item.name || "").trim().toLowerCase();
+        if (key && keepSelectedNamesRef.current.has(key)) customSelected[item.id] = true;
+      });
+      keepSelectedNamesRef.current = new Set();
+    }
+    setSelected({ ...nextSelected, ...customSelected });
+    setReportDate(todayIso());
+    const keepDirty = keepDirtyAfterGoalSaveRef.current;
+    keepDirtyAfterGoalSaveRef.current = false;
+    setDirty(keepDirty || !recommended);
+    setGoalExtras(extras);
+    setCustomRows(customHydrate.standalone);
+    setPinnedIds(
+      groups
+        .filter((group) => {
+          if (group.kind === "goal") return group.tests.some((test) => nextSelected[test.id]);
+          return group.tests.some((test) => nextSelected[test.id] && !extraItemIds.has(test.id));
+        })
+        .map((group) => group.id),
+    );
+  }, [items, recommended]);
 
   const selectedIds = useMemo(
     () => Object.entries(selected).filter(([, on]) => on).map(([id]) => id),
     [selected],
   );
 
-  const visibleGroups = useMemo(
-    () => allGroups.filter((group) => pinnedIds.includes(group.id)),
-    [allGroups, pinnedIds],
+  const visibleGoalGroups = useMemo(
+    () => goalGroups.filter((group) => pinnedIds.includes(group.id)),
+    [goalGroups, pinnedIds],
+  );
+  const visibleTestGroups = useMemo(
+    () => testGroups.filter((group) => pinnedIds.includes(group.id)),
+    [testGroups, pinnedIds],
   );
 
   function markDirty() {
     setDirty(true);
   }
 
+  function extrasForGoal(goalId) {
+    return Object.values(goalExtras[goalId] || {}).flat();
+  }
+
+  function allAssignableTests() {
+    return [...items, ...extrasForGoalAll(), ...customRows];
+  }
+
+  function extrasForGoalAll() {
+    return Object.values(goalExtras).flatMap((byCategory) => Object.values(byCategory || {}).flat());
+  }
+
+  function testsForGroup(group) {
+    if (group?.kind === "goal") return [...group.tests, ...extrasForGoal(group.id)];
+    if (group?.kind === "custom") return customRows;
+    return group?.tests || [];
+  }
+
   function countGroup(group) {
-    const total = group.tests.length;
-    const n = group.tests.filter((test) => selected[test.id]).length;
+    const tests = testsForGroup(group);
+    const total = tests.length;
+    const n = tests.filter((test) => selected[test.id]).length;
     return { n, total };
   }
 
@@ -1068,31 +1514,130 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
   }
 
   function toggleGroup(group) {
-    const { n, total } = countGroup(group);
-    const next = n !== total;
+    const tests = testsForGroup(group);
+    const n = tests.filter((test) => selected[test.id]).length;
+    const next = n !== tests.length;
     setSelected((prev) => {
       const copy = { ...prev };
-      group.tests.forEach((test) => { copy[test.id] = next; });
+      tests.forEach((test) => { copy[test.id] = next; });
       return copy;
     });
     markDirty();
   }
 
-  function removeGroup(id) {
+  function removeGroup(id, kind = "test") {
     const group = allGroups.find((entry) => entry.id === id);
-    if (group) {
+    const extraTests = kind === "goal" ? extrasForGoal(id) : [];
+    if (group || extraTests.length) {
       setSelected((prev) => {
         const copy = { ...prev };
-        group.tests.forEach((test) => { copy[test.id] = false; });
+        (group?.tests || []).forEach((test) => { copy[test.id] = false; });
+        extraTests.forEach((test) => { copy[test.id] = false; });
         return copy;
+      });
+    }
+    if (kind === "goal") {
+      setGoalExtras((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
       });
     }
     setPinnedIds((ids) => ids.filter((entry) => entry !== id));
     markDirty();
-    onToast("Category removed");
+    onToast(kind === "goal" ? "Goal removed" : "Test removed");
   }
 
-  function addCategory(group) {
+  function addCustomToCategory(goalId, category) {
+    const row = emptyCustomTest(category);
+    setGoalExtras((prev) => {
+      const byGoal = { ...(prev[goalId] || {}) };
+      byGoal[category] = [...(byGoal[category] || []), row];
+      return { ...prev, [goalId]: byGoal };
+    });
+    setSelected((prev) => ({ ...prev, [row.id]: true }));
+    markDirty();
+  }
+
+  function addStandaloneCustom() {
+    const row = emptyCustomTest("Other");
+    setCustomRows((list) => [...list, row]);
+    setSelected((prev) => ({ ...prev, [row.id]: true }));
+    markDirty();
+  }
+
+  function patchCustomTest(id, patch, { goalId, category } = {}) {
+    const nextPatch = { ...patch };
+    if (patch.code != null || patch.hours != null) {
+      const current = goalId
+        ? (goalExtras[goalId]?.[category] || []).find((test) => test.id === id)
+        : customRows.find((test) => test.id === id);
+      const code = patch.code != null ? patch.code : current?.code;
+      const hours = patch.hours != null ? patch.hours : current?.hours;
+      nextPatch.fastingType = fastingFromCodeHours(code, hours);
+      nextPatch.duration = durationFromHours(hours);
+    }
+    if (goalId) {
+      setGoalExtras((prev) => ({
+        ...prev,
+        [goalId]: {
+          ...(prev[goalId] || {}),
+          [category]: (prev[goalId]?.[category] || []).map((test) => (
+            test.id === id ? { ...test, ...nextPatch } : test
+          )),
+        },
+      }));
+    } else {
+      setCustomRows((list) => list.map((test) => (test.id === id ? { ...test, ...nextPatch } : test)));
+    }
+    markDirty();
+  }
+
+  function removeExtraFromCategory(goalId, category, itemId) {
+    setGoalExtras((prev) => {
+      const byGoal = { ...(prev[goalId] || {}) };
+      byGoal[category] = (byGoal[category] || []).filter((test) => test.id !== itemId);
+      if (!byGoal[category].length) delete byGoal[category];
+      const next = { ...prev, [goalId]: byGoal };
+      if (!Object.keys(byGoal).length) delete next[goalId];
+      return next;
+    });
+    setSelected((prev) => ({ ...prev, [itemId]: false }));
+    markDirty();
+    onToast("Test removed");
+  }
+
+  function removeStandaloneCustom(id) {
+    setCustomRows((list) => list.filter((test) => test.id !== id));
+    setSelected((prev) => ({ ...prev, [id]: false }));
+    markDirty();
+    onToast("Test removed");
+  }
+
+  function onCustomDrop({ goalId, category, index }) {
+    if (!drag || drag.type !== "custom") return;
+    const sameList = drag.goalId === goalId && drag.category === category;
+    if (!sameList) {
+      setDrag(null);
+      return;
+    }
+    if (goalId) {
+      setGoalExtras((prev) => ({
+        ...prev,
+        [goalId]: {
+          ...(prev[goalId] || {}),
+          [category]: moveItem(prev[goalId]?.[category] || [], drag.index, index),
+        },
+      }));
+    } else {
+      setCustomRows((list) => moveItem(list, drag.index, index));
+    }
+    setDrag(null);
+    markDirty();
+  }
+
+  function addGroup(group) {
     if (!group || pinnedIds.includes(group.id)) return;
     setPinnedIds((ids) => [...ids, group.id]);
     setSelected((prev) => {
@@ -1103,34 +1648,23 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     markDirty();
   }
 
-  function togglePreset(goal) {
-    const applying = !presets.includes(goal);
-    setFocusedPreset(applying ? goal : "");
-    setPresets(applying ? [goal] : []);
-
-    const matched = applying ? groupsForPreset(allGroups, goal) : [];
-    const nextSelected = {};
-    catalog.forEach((test) => { nextSelected[test.id] = false; });
-    matched.forEach((group) => {
-      group.tests.forEach((test) => { nextSelected[test.id] = true; });
-    });
-    setSelected(nextSelected);
-    setPinnedIds(matched.map((group) => group.id));
-    markDirty();
-    onToast(
-      applying
-        ? (matched.length ? `${goal} preset applied` : `No tests in catalog for ${goal}`)
-        : `Removed ${goal} preset`,
-    );
-  }
-
-  function presetClass(goal) {
-    return presets.includes(goal) ? " ua-cp-ip-preset__pill--applied" : "";
+  function toggleGoalPreset(goal) {
+    if (pinnedIds.includes(goal.id)) {
+      removeGroup(goal.id, "goal");
+      return;
+    }
+    const group = goalGroups.find((entry) => entry.id === goal.id);
+    if (!group) {
+      onToast(`No tests in catalog for ${goal.name}`);
+      return;
+    }
+    addGroup(group);
+    onToast(`${goal.name} added`);
   }
 
   async function downloadList() {
     const selectedTests = selectedIds
-      .map((id) => catalog.find((test) => test.id === id))
+      .map((id) => allAssignableTests().find((test) => test.id === id))
       .filter(Boolean);
     await downloadRecommendationList({
       userId: user?.id,
@@ -1143,12 +1677,255 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
   }
 
   async function publish() {
-    if (!selectedIds.length) {
+    const catalogIds = selectedIds.filter((id) => !String(id).startsWith("custom::"));
+    const customTests = allAssignableTests()
+      .filter((test) => test.custom && selected[test.id])
+      .map((test) => ({
+        id: test.id,
+        itemId: test.id,
+        name: String(test.name || "").trim(),
+        code: String(test.code || "FBS").trim().toUpperCase() || "FBS",
+        hours: hoursFromDuration(test.duration, test.hours),
+        category: test.category || "Other",
+      }));
+    if (customTests.some((test) => test.name.length < 2)) {
+      onToast("Test names need at least 2 characters");
+      return;
+    }
+    if (!catalogIds.length && !customTests.length) {
       onToast("Select at least one test");
       return;
     }
-    const ok = await onPublish({ reportDate, testIds: selectedIds });
+    const ok = await onPublish({ reportDate, testIds: catalogIds, customTests });
     if (ok) setDirty(false);
+  }
+
+  function extrasToSave(goalId) {
+    return extrasForGoal(goalId)
+      .filter((test) => test.custom)
+      .map((test) => ({
+        id: test.id,
+        name: String(test.name || "").trim(),
+        code: String(test.code || "FBS").trim().toUpperCase() || "FBS",
+        hours: hoursFromDuration(test.duration, test.hours),
+        category: test.category || "Other",
+        selected: selected[test.id] !== false,
+      }))
+      .filter((test) => test.name.length >= 2);
+  }
+
+  async function saveToGoal(goalId) {
+    const ids = goalId ? [goalId] : visibleGoalGroups.map((group) => group.id);
+    const payloads = ids
+      .map((id) => ({ id, tests: extrasToSave(id) }))
+      .filter((entry) => entry.tests.length);
+    if (!payloads.length) {
+      onToast("Add a named test under a goal first");
+      return;
+    }
+    const userId = user?.id;
+    if (!userId || !onReloadCatalog) return;
+    setSavingGoal(true);
+    try {
+      keepSelectedNamesRef.current = new Set(
+        payloads.flatMap((entry) => entry.tests.map((test) => test.name.toLowerCase())),
+      );
+      keepDirtyAfterGoalSaveRef.current = true;
+      for (const entry of payloads) {
+        await appendUserGoalTests(userId, entry.id, entry.tests);
+      }
+      onToast(payloads.length === 1
+        ? "Tests saved to the goal. Publish when you want to send the list to the client."
+        : "Tests saved to the goals. Publish when you want to send the list to the client.");
+      await onReloadCatalog();
+    } catch (err) {
+      keepDirtyAfterGoalSaveRef.current = false;
+      keepSelectedNamesRef.current = new Set();
+      onToast(err?.message || "Failed to save tests to the goal");
+    } finally {
+      setSavingGoal(false);
+    }
+  }
+
+  function renderTestRows(tests, { goalId, category } = {}) {
+    return tests.map((test, testIndex) => {
+      const on = !!selected[test.id];
+      const custom = Boolean(test.custom);
+      const editable = custom && canEdit && !busy;
+      return (
+        <div
+          key={test.id}
+          className={`ua-cfg-goals-lines__row${on ? " is-on" : ""}${custom ? " is-extra" : ""}`}
+          onDragOver={(event) => {
+            if (drag?.type === "custom" && drag.goalId === goalId && drag.category === category) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onCustomDrop({ goalId, category, index: testIndex });
+          }}
+        >
+          <span
+            className="ua-cfg-goals-grip"
+            draggable={editable}
+            aria-hidden="true"
+            onDragStart={(event) => {
+              if (!editable) return;
+              event.stopPropagation();
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", test.id);
+              setDrag({ type: "custom", goalId, category, index: testIndex });
+            }}
+            onDragEnd={() => setDrag(null)}
+          >
+            <GripIcon />
+          </span>
+          <input
+            type="checkbox"
+            className="ua-cfg-goals-check"
+            checked={on}
+            disabled={!canEdit || busy}
+            aria-label={`Include ${test.name || "test"}`}
+            onChange={() => toggleTest(test.id)}
+          />
+          <input
+            className="ua-cfg-goals-field"
+            value={test.name}
+            disabled={!editable}
+            readOnly={!custom}
+            placeholder="Test name"
+            aria-label="Test name"
+            onChange={(event) => patchCustomTest(test.id, { name: event.target.value }, { goalId, category })}
+          />
+          <CodeField
+            value={test.code || "FBS"}
+            disabled={!editable}
+            onChange={(code) => patchCustomTest(test.id, { code }, { goalId, category })}
+          />
+          <label className="ua-cfg-goals-hours">
+            <input
+              type="number"
+              min="0"
+              max="168"
+              className="ua-cfg-goals-field ua-cfg-goals-field--hours"
+              value={test.hours ?? hoursFromDuration(test.duration)}
+              disabled={!editable}
+              aria-label="Fasting or prep hours"
+              onChange={(event) => {
+                const hours = event.target.value === "" ? "" : Number(event.target.value);
+                patchCustomTest(test.id, { hours }, { goalId, category });
+              }}
+            />
+            <span>hrs</span>
+          </label>
+          {custom && canEdit ? (
+            <button
+              type="button"
+              className="ua-cfg-goals-icon"
+              aria-label="Remove test"
+              disabled={busy}
+              onClick={() => {
+                if (goalId) removeExtraFromCategory(goalId, category, test.id);
+                else removeStandaloneCustom(test.id);
+              }}
+            >
+              ×
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+      );
+    });
+  }
+
+  function renderTestEditor(tests, { goalId, category, label, onAdd } = {}) {
+    return (
+      <div className="ua-cfg-goals-lines ua-cp-ip-test-editor" aria-label={label}>
+        <div className="ua-cfg-goals-lines__head" aria-hidden="true">
+          <span />
+          <span />
+          <span>Test</span>
+          <span>BM/PM</span>
+          <span>Duration</span>
+          <span />
+        </div>
+        {renderTestRows(tests, { goalId, category })}
+        {canEdit && onAdd ? (
+          <button type="button" className="ua-cfg-goals-add" disabled={busy} onClick={onAdd}>
+            + Add test
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderGroupCard(group, { asGoal = false } = {}) {
+    const counts = countGroup(group);
+    const allOn = counts.total > 0 && counts.n === counts.total;
+    const partial = counts.n > 0 && !allOn;
+    const sections = asGoal ? groupTestsByCategory(group.tests) : null;
+
+    return (
+      <div key={group.id} className={`ua-cp-ip-test-group${asGoal ? " ua-cp-ip-test-group--goal" : ""}`}>
+        <div className="ua-cp-ip-test-group__head">
+          <button
+            style={{ borderRadius: "5px" }}
+            type="button"
+            className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
+            onClick={() => toggleGroup(group)}
+            disabled={!canEdit || busy}
+            aria-label={`Toggle ${group.name}`}
+          >
+            {allOn ? "✓" : partial ? "−" : ""}
+          </button>
+          <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
+          {asGoal ? <span className="ua-cp-ip-test-group__badge">Goal</span> : null}
+          <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
+          {asGoal && canEdit && extrasToSave(group.id).length ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+              disabled={busy || savingGoal}
+              onClick={() => saveToGoal(group.id)}
+            >
+              {savingGoal ? "Saving…" : "Save to goal"}
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              className="ua-cp-ip-test-group__remove"
+              onClick={() => removeGroup(group.id, asGoal ? "goal" : "test")}
+              disabled={busy}
+              aria-label={asGoal ? "Remove goal" : "Remove test"}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
+        {asGoal && sections?.length ? (
+          sections.map((section) => {
+            const extraTests = goalExtras[group.id]?.[section.name] || [];
+            return (
+              <div key={`${group.id}-${section.name}`} className="ua-cp-ip-goal-section">
+                <div className="ua-cp-ip-goal-section__label">{section.name}</div>
+                {renderTestEditor([...section.tests, ...extraTests], {
+                  goalId: group.id,
+                  category: section.name,
+                  label: `${group.name} · ${section.name}`,
+                  onAdd: () => addCustomToCategory(group.id, section.name),
+                })}
+              </div>
+            );
+          })
+        ) : (
+          renderTestEditor(group.tests, {
+            label: `${group.name} tests`,
+          })
+        )}
+      </div>
+    );
   }
 
   const published = Boolean(recommended) && !dirty;
@@ -1165,15 +1942,25 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
             <span>Report date</span>
             <input type="date" value={reportDate} onChange={(e) => { setReportDate(e.target.value); markDirty(); }} />
           </label>
+          {canEdit && visibleGoalGroups.some((group) => extrasToSave(group.id).length) ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--outline"
+              disabled={busy || savingGoal}
+              onClick={() => saveToGoal()}
+            >
+              {savingGoal ? "Saving…" : "Save to goal"}
+            </button>
+          ) : null}
           {published ? (
             <button type="button" className="ua-cp-btn ua-cp-btn--muted" disabled>Published</button>
           ) : canEdit ? (
-            <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy} onClick={publish}>
+            <button type="button" className="ua-cp-btn ua-cp-btn--green" disabled={busy || savingGoal} onClick={publish}>
               {busy ? "Publishing…" : "Publish"}
             </button>
           ) : null}
           {canExport ? (
-          <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
+            <button type="button" className="ua-cp-btn ua-cp-btn--orange" onClick={downloadList}>↓ Download list</button>
           ) : null}
         </div>
       </div>
@@ -1185,79 +1972,95 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
           </div>
         ) : (
           <div className="ua-cp-ip-banner">
-            Unpublished changes — publishing sends the updated list to {firstName(user)} on WhatsApp and in the app.
+            Unpublished changes — Save to goal updates the goal catalog without notifying the client. Publish sends the list to {firstName(user)} on WhatsApp and in the app.
           </div>
         )
       ) : null}
 
       {catalog.length ? (
         <>
-          <div className="ua-cp-ip-preset">
-            <p className="ua-cp-ip-preset__label">Quick preset · goal</p>
-            <div className="ua-cp-ip-preset__pills">
-              {INTERNAL_PARAMS.goalPresets.map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  className={`ua-cp-ip-preset__pill${presetClass(g)}`}
-                  onClick={() => togglePreset(g)}
-                >
-                  {g}
-                </button>
-              ))}
+          <section className="ua-cp-ip-assign-block">
+            <div className="ua-cp-ip-assign-block__head">
+              <div>
+                <h4 className="ua-cp-ip-assign-block__title">Assign by goal</h4>
+                <p className="ua-cp-ip-assign-block__sub">Add tests with + Add test, then Save to goal. That updates the goal without publishing to the client.</p>
+              </div>
             </div>
-          </div>
-          {canEdit ? (
-            <NamespaceSearch
-              groups={visibleGroups}
-              namespaces={allGroups}
-              onAdd={addCategory}
-              onToast={onToast}
-              disabled={busy}
-            />
-          ) : null}
-          {visibleGroups.length ? visibleGroups.map((group) => {
-            const counts = countGroup(group);
-            const allOn = counts.total > 0 && counts.n === counts.total;
-            const partial = counts.n > 0 && !allOn;
-            return (
-              <div key={group.id} className="ua-cp-ip-test-group">
-                <div className="ua-cp-ip-test-group__head">
-                  <button style={{borderRadius:"5px"}}
-                    type="button"
-                    className={`ua-cp-ip-check ua-cp-ip-check--head${allOn || partial ? " ua-cp-ip-check--on" : ""}${partial ? " ua-cp-ip-check--partial" : ""}`}
-                    onClick={() => toggleGroup(group)}
-                    aria-label={`Toggle ${group.name}`}
-                  >
-                    {allOn ? "✓" : partial ? "−" : ""}
-                  </button>
-                  <strong className="ua-cp-ip-test-group__title">{group.name}</strong>
-                  <span className="ua-cp-ip-test-group__count">{counts.n}/{counts.total} selected</span>
-                  <button type="button" className="ua-cp-ip-test-group__remove" onClick={() => removeGroup(group.id)} aria-label="Remove category">×</button>
-                </div>
-                <div className="ua-cp-ip-test-group__grid" style={{padding:"10px 40px 10px"}}>
-                  {group.tests.map((test) => (
-                    <label key={test.id} className="ua-cp-ip-test-item" onMouseDown={(e) => e.preventDefault()}>
-                      <input
-                        type="checkbox"
-                        checked={!!selected[test.id]}
-                        onChange={() => toggleTest(test.id)}
-                      />
-                      <span style={{borderRadius:"5px"}} className={`ua-cp-ip-check${selected[test.id] ? " ua-cp-ip-check--on" : ""}`}>
-                        {selected[test.id] ? "✓" : ""}
-                      </span>
-                      <span className="ua-cp-ip-test-item__label">{test.name}</span>
-                    </label>
-                  ))}
+            {goalPresets.length ? (
+              <div className="ua-cp-ip-preset">
+                <p className="ua-cp-ip-preset__label">Quick add · goal</p>
+                <div className="ua-cp-ip-preset__pills">
+                  {goalPresets.map((g) => {
+                    const applied = pinnedIds.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`ua-cp-ip-preset__pill${applied ? " ua-cp-ip-preset__pill--applied" : ""}`}
+                        onClick={() => toggleGoalPreset(g)}
+                        disabled={!canEdit || busy}
+                        title={applied ? `Remove ${g.name}` : `Add ${g.name}`}
+                      >
+                        {applied ? `✓ ${g.name}` : `+ ${g.name}`}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            );
-          }) : (
-            <p className="ua-cp-ip-assign-history__empty">No categories added yet. Search above to add tests from the catalog.</p>
-          )}
+            ) : (
+              <p className="ua-cp-ip-assign-history__empty">No active goals yet. Create them under Configs → Goals &amp; Tests.</p>
+            )}
+            {canEdit && goalGroups.length ? (
+              <NamespaceSearch
+                groups={visibleGoalGroups}
+                namespaces={goalGroups}
+                onAdd={addGroup}
+                onToast={onToast}
+                disabled={busy}
+                placeholder="+ Search a goal, e.g. Fat Loss…"
+                allAddedLabel="All goals added"
+                noMatchLabel="No matching goals"
+              />
+            ) : null}
+            {visibleGoalGroups.length
+              ? visibleGoalGroups.map((group) => renderGroupCard(group, { asGoal: true }))
+              : goalPresets.length || goalGroups.length
+                ? <p className="ua-cp-ip-assign-history__empty">No goals added yet. Use a quick add or search above.</p>
+                : null}
+          </section>
+
+          <section className="ua-cp-ip-assign-block">
+            <div className="ua-cp-ip-assign-block__head">
+              <div>
+                <h4 className="ua-cp-ip-assign-block__title">Assign individual tests</h4>
+                <p className="ua-cp-ip-assign-block__sub">Add or remove single tests without mixing them into goals.</p>
+              </div>
+            </div>
+            {canEdit && testGroups.length ? (
+              <NamespaceSearch
+                groups={visibleTestGroups}
+                namespaces={testGroups}
+                onAdd={addGroup}
+                onToast={onToast}
+                disabled={busy}
+                placeholder="+ Search a test, e.g. Glucose Test…"
+                allAddedLabel="All tests added"
+                noMatchLabel="No matching tests"
+              />
+            ) : null}
+            {visibleTestGroups.length
+              ? visibleTestGroups.map((group) => renderGroupCard(group))
+              : (
+                <p className="ua-cp-ip-assign-history__empty">
+                  {testGroups.length
+                    ? "No individual tests added yet. Search above to add one."
+                    : "No individual tests in the catalog. Use goals above, or add tests under Configs."}
+                </p>
+              )}
+          </section>
         </>
       ) : (
-        <p>No live tests in the catalog yet. Add them under Configs → Blood test catalog.</p>
+        <p>No live tests in the catalog yet. Add them under Configs → Goals &amp; Tests.</p>
       )}
 
       <AssignedTestHistory
@@ -1265,6 +2068,9 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
         current={recommended}
         history={history}
         onToast={onToast}
+        onDelete={onDelete}
+        canDelete={canDelete}
+        busy={busy}
       />
     </div>
   );
@@ -1304,7 +2110,7 @@ function AiReadingCell({ reading, editing, onChange }) {
   );
 }
 
-function MockReportAnalysisTab({ onToast }) {
+function MockReportAnalysisTab({ onToast, canCreate = false }) {
   const { aiDates, protocol, nutritionSummary: initialNutrition } = INTERNAL_PARAMS;
   const [analysed, setAnalysed] = useState(INTERNAL_PARAMS.reportUpload.analysed);
   const [aiPanels, setAiPanels] = useState(() => cloneAiPanels(INTERNAL_PARAMS.aiPanels));
@@ -1393,14 +2199,19 @@ function MockReportAnalysisTab({ onToast }) {
         </div>
         <div className="ua-cp-ip-upload__actions">
           <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => onToast("Downloading report")}>↓ Download</button>
-          {analysed ? (
-            <>
-              <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
-              <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Resubmitting to AI"); }}>⚡ Resubmit to AI</button>
-            </>
-          ) : (
-            <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm" onClick={() => { setAnalysed(true); onToast("Submitted to AI"); }}>⚡ Submit to AI</button>
-          )}
+          {analysed ? <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span> : null}
+          {canCreate ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+              onClick={() => {
+                setAnalysed(true);
+                onToast(analysed ? "Resubmitting to AI" : "Submitted to AI");
+              }}
+            >
+              ⚡ {analysed ? "Resubmit to AI" : "Submit to AI"}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1575,7 +2386,7 @@ function LiveReportAnalysisTab({
   onToast,
   clientName,
   canEdit = true,
-  canUpload = true,
+  canCreate = false,
   canExport = true,
   showMarkStepComplete = false,
   stepBusy = false,
@@ -1595,36 +2406,39 @@ function LiveReportAnalysisTab({
   }, [reports, selectedId]);
 
   const selected = reports.find((report) => report.id === selectedId) || reports[0];
-  const latestAnalysed = findLatestAnalysedReport(reports);
-  const latestAnalysis = latestAnalysed?.aiAnalysis;
-  const merged = useMemo(() => mergeAnalysedReportsToPanels(reports), [reports]);
-  const analysed = merged.dates.length > 0;
-  const older = reports.filter(
-    (report) => report.id !== latestAnalysed?.id && report.aiStatus === "analysed" && report.aiAnalysis
+  const selectedAnalysis = isReportAiAnalysed(selected) ? selected.aiAnalysis : null;
+  const selectedDisplay = useMemo(
+    () => analysisToDisplayPanels(selectedAnalysis),
+    [selected?.id, selected?.aiStatus, selected?.aiAnalysedAt, selected?.updatedAt, selectedAnalysis]
+  );
+  const trendMerged = useMemo(() => mergeAnalysedReportsToPanels(reports), [reports]);
+  const analysed = selectedDisplay.dates.length > 0;
+  const otherAnalysedReports = reports.filter(
+    (report) => report.id !== selected?.id && isReportAiAnalysed(report)
   );
 
   const [aiDraft, setAiDraft] = useState(null);
   const [aiEditing, setAiEditing] = useState(false);
-  const [bloodSummary, setBloodSummary] = useState(latestAnalysis?.bloodSummary || []);
+  const [bloodSummary, setBloodSummary] = useState(selectedAnalysis?.bloodSummary || []);
   const [summaryDraft, setSummaryDraft] = useState("");
   const [summaryEditing, setSummaryEditing] = useState(false);
-  const [protocolItems, setProtocolItems] = useState(latestAnalysis?.protocolItems || []);
+  const [protocolItems, setProtocolItems] = useState(selectedAnalysis?.protocolItems || []);
   const [protocolDraft, setProtocolDraft] = useState([]);
   const [protocolEditing, setProtocolEditing] = useState(false);
-  const [nutritionLatest, setNutritionLatest] = useState(latestAnalysis?.nutritionSummary || "");
+  const [nutritionLatest, setNutritionLatest] = useState(selectedAnalysis?.nutritionSummary || "");
   const [nutritionDraft, setNutritionDraft] = useState("");
   const [nutritionEditing, setNutritionEditing] = useState(false);
 
   useEffect(() => {
     setAiDraft(null);
     setAiEditing(false);
-    setBloodSummary(latestAnalysis?.bloodSummary || []);
+    setBloodSummary(selectedAnalysis?.bloodSummary || []);
     setSummaryEditing(false);
-    setProtocolItems(latestAnalysis?.protocolItems || []);
+    setProtocolItems(selectedAnalysis?.protocolItems || []);
     setProtocolEditing(false);
-    setNutritionLatest(latestAnalysis?.nutritionSummary || "");
+    setNutritionLatest(selectedAnalysis?.nutritionSummary || "");
     setNutritionEditing(false);
-  }, [latestAnalysed?.id, latestAnalysed?.aiAnalysedAt, latestAnalysed?.updatedAt]);
+  }, [selected?.id, selected?.aiStatus, selected?.aiAnalysedAt, selected?.updatedAt, selectedAnalysis]);
 
   if (!selected) {
     const name = clientName || "The client";
@@ -1648,7 +2462,8 @@ function LiveReportAnalysisTab({
     );
   }
 
-  const panels = aiEditing && aiDraft ? aiDraft : merged.panels;
+  const panels = aiEditing && aiDraft ? aiDraft : selectedDisplay.panels;
+  const dateColumns = selectedDisplay.dates;
 
   function updateReading(panelIdx, rowIdx, readingIdx, nextReading) {
     setAiDraft((prev) => {
@@ -1658,20 +2473,16 @@ function LiveReportAnalysisTab({
     });
   }
 
-  async function persistLatest(nextAnalysis, toast) {
-    if (!latestAnalysed) return;
-    await onSaveAnalysis(latestAnalysed.id, { aiAnalysis: nextAnalysis });
+  async function persistSelectedAnalysis(nextAnalysis, toast) {
+    if (!selected?.id || !isReportAiAnalysed(selected)) return;
+    await onSaveAnalysis(selected.id, { aiAnalysis: nextAnalysis });
     onToast?.(toast);
   }
 
-  async function persistMergedPanels(nextPanels, toast) {
-    for (let colIdx = 0; colIdx < merged.reportIds.length; colIdx += 1) {
-      const reportId = merged.reportIds[colIdx];
-      const report = reports.find((item) => item.id === reportId);
-      if (!report) continue;
-      const nextAnalysis = applyMergedPanelsToReportAnalysis(report, nextPanels, colIdx);
-      await onSaveAnalysis(reportId, { aiAnalysis: nextAnalysis });
-    }
+  async function persistSelectedPanels(nextPanels, toast) {
+    if (!selected?.id || !isReportAiAnalysed(selected)) return;
+    const nextAnalysis = applyMergedPanelsToReportAnalysis(selected, nextPanels, 0);
+    await onSaveAnalysis(selected.id, { aiAnalysis: nextAnalysis });
     onToast?.(toast);
   }
 
@@ -1680,7 +2491,7 @@ function LiveReportAnalysisTab({
       <div className="ua-cp-ip-upload-list">
         {reports.map((report, index) => {
           const isSelected = report.id === selected.id;
-          const reportAnalysed = Boolean(report.aiAnalysis?.panels?.length);
+          const reportAnalysed = isReportAiAnalysed(report);
           return (
             <div
               key={report.id}
@@ -1719,7 +2530,7 @@ function LiveReportAnalysisTab({
                 {reportAnalysed && report.aiStatus === "analysed" ? (
                   <span className="ua-cp-ip-badge ua-cp-ip-badge--good">AI analysed</span>
                 ) : null}
-                {canUpload ? (
+                {canCreate ? (
                 <button
                   type="button"
                   className="ua-cp-btn ua-cp-btn--ai ua-cp-btn--sm"
@@ -1779,12 +2590,20 @@ function LiveReportAnalysisTab({
                   setAiEditing(false);
                 }}
                 onSave={async () => {
-                  await persistMergedPanels(aiDraft || panels, "AI interpretation saved");
+                  await persistSelectedPanels(aiDraft || panels, "AI interpretation saved");
                   setAiDraft(null);
                   setAiEditing(false);
                 }}
               />
             </div>
+            {trendMerged.dates.length > 1 ? (
+              <p className="ua-cp-ip-rec__sub">
+                Showing AI results for this selected upload only ({formatDisplayDate(selected.reportDate)}).
+                {otherAnalysedReports.length
+                  ? ` ${otherAnalysedReports.length} other analysed report${otherAnalysedReports.length === 1 ? "" : "s"} — select one in the list above to view it.`
+                  : ""}
+              </p>
+            ) : null}
             <div className="ua-cp-ip-ai__table-wrap">
               <table className="ua-cp-ip-ai__table">
                 <thead>
@@ -1792,14 +2611,14 @@ function LiveReportAnalysisTab({
                     <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--1">Parameter</th>
                     <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--2">Optimal</th>
                     <th className="ua-cp-ip-ai__sticky ua-cp-ip-ai__sticky--3">RR · PharmEasy</th>
-                    {merged.dates.map((d) => <th key={d}>{d}</th>)}
+                    {dateColumns.map((d) => <th key={d}>{d}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {panels.map((panel, panelIdx) => (
                     <Fragment key={panel.title}>
                       <tr className="ua-cp-ip-ai__cat">
-                        <td colSpan={3 + merged.dates.length}>{panel.title}</td>
+                        <td colSpan={3 + dateColumns.length}>{panel.title}</td>
                       </tr>
                       {panel.rows.map((row, rowIdx) => (
                         <tr key={row.name}>
@@ -1838,8 +2657,8 @@ function LiveReportAnalysisTab({
                 onCancel={() => setSummaryEditing(false)}
                 onSave={async () => {
                   const nextSummary = summaryDraft.split("\n").map((s) => s.trim()).filter(Boolean);
-                  await persistLatest({
-                    ...latestAnalysis,
+                  await persistSelectedAnalysis({
+                    ...selectedAnalysis,
                     bloodSummary: nextSummary,
                     protocolItems,
                     nutritionSummary: nutritionLatest,
@@ -1869,7 +2688,7 @@ function LiveReportAnalysisTab({
             <div className="ua-cp-ip-protocol__head">
               <div>
                 <strong>Protocol · nutritionist recommendation</strong>
-                <span>AI-generated · {formatDisplayDate(latestAnalysed?.reportDate)}</span>
+                <span>AI-generated · {formatDisplayDate(selected?.reportDate)}</span>
               </div>
               <EditActions
                 editing={protocolEditing}
@@ -1880,8 +2699,8 @@ function LiveReportAnalysisTab({
                 onCancel={() => setProtocolEditing(false)}
                 onSave={async () => {
                   const nextItems = protocolDraft.map((s) => s.trim()).filter(Boolean);
-                  await persistLatest({
-                    ...latestAnalysis,
+                  await persistSelectedAnalysis({
+                    ...selectedAnalysis,
                     bloodSummary,
                     protocolItems: nextItems,
                     nutritionSummary: nutritionLatest,
@@ -1911,10 +2730,10 @@ function LiveReportAnalysisTab({
             </div>
           </div>
 
-          {older.length ? (
+          {otherAnalysedReports.length ? (
             <div className="ua-cp-ip-prev">
               <h4 className="ua-cp-ip-prev__title">Previous protocols</h4>
-              {older.map((report) => (
+              {otherAnalysedReports.map((report) => (
                 <div key={report.id} className="ua-cp-ip-prev__card">
                   <div className="ua-cp-ip-prev__date">{formatDisplayDate(report.reportDate)}</div>
                   <ul>{(report.aiAnalysis?.protocolItems || []).map((item) => <li key={item}>{item}</li>)}</ul>
@@ -1927,7 +2746,7 @@ function LiveReportAnalysisTab({
         <p className="ua-cp-ip-rec__sub">Submit the client-uploaded PDF to AI to extract markers and generate the interpretation.</p>
       )}
 
-      {analysed || older.length ? (
+      {analysed || otherAnalysedReports.length ? (
         <div className="ua-cp-ip-nutrition">
           <div className="ua-cp-ip-nutrition__head">
             <h4>Nutrition summary</h4>
@@ -1941,8 +2760,8 @@ function LiveReportAnalysisTab({
                 onCancel={() => setNutritionEditing(false)}
                 onSave={async () => {
                   const nextText = nutritionDraft.trim();
-                  await persistLatest({
-                    ...latestAnalysis,
+                  await persistSelectedAnalysis({
+                    ...selectedAnalysis,
                     bloodSummary,
                     protocolItems,
                     nutritionSummary: nextText,
@@ -1956,7 +2775,7 @@ function LiveReportAnalysisTab({
           {analysed ? (
             <div className="ua-cp-ip-nutrition__latest">
               <span className="" style={{fontSize: '10px', fontWeight: '800', letterSpacing: '0.05em', color: 'rgb(43, 143, 91)', background: 'rgb(231, 246, 238)', padding: '3px 8px', borderRadius: '5px'}}>Latest</span>
-              <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(latestAnalysed?.reportDate)}</span>
+              <span className="ua-cp-ip-nutrition__date">{formatDisplayDate(selected?.reportDate)}</span>
               {nutritionEditing ? (
                 <textarea
                   className="ua-cfg-dp-add__content ua-cp-ip-edit-textarea ua-cp-ip-edit-textarea--compact"
@@ -1969,10 +2788,10 @@ function LiveReportAnalysisTab({
               )}
             </div>
           ) : null}
-          {older.length ? (
+          {otherAnalysedReports.length ? (
             <>
               <h4 className="ua-cp-ip-nutrition__hist-title">History</h4>
-              {older.map((report) => (
+              {otherAnalysedReports.map((report) => (
                 <div key={report.id} className="ua-cp-ip-nutrition__hist-card">
                   <div className="ua-cp-ip-nutrition__date">{formatDisplayDate(report.reportDate)}</div>
                   <p>{report.aiAnalysis?.nutritionSummary || "—"}</p>
@@ -1996,7 +2815,7 @@ function LiveReportAnalysisTab({
 
 export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const { can } = useViewAs();
-  const { canEdit, canUpload, canExport } = useClientSectionPermissions("internal");
+  const { canEdit, canCreate, canExport, canDelete } = useClientSectionPermissions("internal");
   const canEditOnboarding = can("console.cl.edit");
   const [tab, setTab] = useState("tests");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -2008,6 +2827,8 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const [busy, setBusy] = useState(false);
   const [stepBusy, setStepBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submissionLocked, setSubmissionLocked] = useState(() => resolveLabReportSubmissionLocked(user));
+  const [submissionBusy, setSubmissionBusy] = useState(false);
 
   const userId = user?.id;
   const live = Boolean(userId && !/^\d+$/.test(String(userId)));
@@ -2030,7 +2851,13 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       setHistory(Array.isArray(rec.value?.history) ? rec.value.history : []);
     }
     if (labs.status === "fulfilled") {
-      setReports(Array.isArray(labs.value) ? labs.value : []);
+      const nextReports = Array.isArray(labs.value?.reports) ? labs.value.reports : [];
+      setReports(nextReports);
+      if (typeof labs.value?.submissionLocked === "boolean") {
+        setSubmissionLocked(labs.value.submissionLocked);
+      } else {
+        setSubmissionLocked(resolveLabReportSubmissionLocked(user));
+      }
     }
     if (tests.status === "fulfilled") {
       const list = Array.isArray(tests.value) ? tests.value : tests.value?.tests || [];
@@ -2042,6 +2869,13 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     const failed = [tests, rec, labs].find((result) => result.status === "rejected");
     if (failed) throw failed.reason;
   };
+
+  async function handleReloadCatalog() {
+    if (!live) return;
+    const tests = await fetchTestCatalog(userId);
+    const list = Array.isArray(tests) ? tests : tests?.tests || [];
+    setCatalog(list);
+  }
 
   useEffect(() => {
     if (!live) return undefined;
@@ -2056,6 +2890,19 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       cancelled = true;
     };
   }, [userId]);
+
+  async function handleDeleteReport(reportId) {
+    try {
+      setBusy(true);
+      await deleteUserLabReport(userId, reportId);
+      onToast?.("Blood report deleted");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to delete blood report");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleReview(reportId) {
     try {
@@ -2074,7 +2921,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     try {
       setBusy(true);
       await analyzeUserLabReport(userId, reportId);
-      onToast?.("Submitted to AI");
+      onToast?.("AI analysis updated");
       await reload();
     } catch (err) {
       onToast?.(err?.message || "Failed to analyse report");
@@ -2116,6 +2963,39 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       onToast?.(err?.message || "Failed to mark step complete");
     } finally {
       setStepBusy(false);
+    }
+  }
+
+  async function handleSubmissionEnabled(enabled) {
+    if (!userId || !live) return;
+    const previous = submissionLocked;
+    setSubmissionLocked(!enabled);
+    setSubmissionBusy(true);
+    try {
+      const locked = await updateUserLabReportSubmission(userId, enabled);
+      setSubmissionLocked(locked);
+      onUserUpdated?.({ ...user, labReportSubmissionLocked: locked });
+      onToast?.(enabled
+        ? "Client can submit a new report in the app"
+        : "Client report upload disabled in the app");
+    } catch (err) {
+      setSubmissionLocked(previous);
+      onToast?.(err?.message || "Failed to update client report upload");
+    } finally {
+      setSubmissionBusy(false);
+    }
+  }
+
+  async function handleDeleteRecommendation(recommendationId) {
+    try {
+      setBusy(true);
+      await deleteUserTestRecommendation(userId, recommendationId);
+      onToast?.("Recommended test list deleted");
+      await reload();
+    } catch (err) {
+      onToast?.(err?.message || "Failed to delete recommended tests");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -2163,8 +3043,35 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       <div className="ua-cp-ip-head">
         <div>
           <h2 className="ua-cp-ip-head__title">Internal parameters</h2>
-          <p className="ua-cp-ip-head__sub">Coach-recommended blood tests, report uploads, and reviewed results.</p>
+          <p className="ua-cp-ip-head__sub">
+            Coach-recommended blood tests, report uploads, and reviewed results. Recommended-test PDFs generated here are kept at 1 MB or less.
+          </p>
         </div>
+        {live ? (
+          <div
+            className={`ua-cp-ip-submit${submissionLocked ? " ua-cp-ip-submit--locked" : ""}`}
+            title={submissionLocked
+              ? "The client cannot submit or update a blood report in the app. Turn this on to allow a new upload."
+              : "The client can submit a blood report in the app. Turn this off to disable new uploads."}
+          >
+            <div className="ua-cp-ip-submit__text">
+              <span className="ua-cp-ip-submit__label">Client report upload</span>
+              <span className="ua-cp-ip-submit__status">
+                {submissionLocked ? "Disabled in the app" : "Allowed in the app"}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={`ua-toggle${submissionLocked ? "" : " ua-toggle--on"}`}
+              aria-pressed={!submissionLocked}
+              aria-label={submissionLocked ? "Allow the client to upload a new report" : "Disable new report uploads in the app"}
+              disabled={submissionBusy || !canEdit}
+              onClick={() => handleSubmissionEnabled(submissionLocked)}
+            >
+              <span className="ua-toggle__knob" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {live && loading ? <p>Loading internal parameters…</p> : null}
@@ -2208,7 +3115,14 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
 
       {historyOpen && historyCount > 0 ? (
         live ? (
-          <LiveReportHistory reports={reports} busy={busy} onToast={onToast} onReview={handleReview} />
+          <LiveReportHistory
+            reports={reports}
+            busy={busy}
+            onToast={onToast}
+            onReview={handleReview}
+            onDelete={handleDeleteReport}
+            canDelete={canDelete}
+          />
         ) : (
           <MockReportHistory onToast={onToast} />
         )
@@ -2234,8 +3148,11 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
             busy={busy}
             onToast={onToast}
             onPublish={handlePublish}
+            onDelete={handleDeleteRecommendation}
+            onReloadCatalog={handleReloadCatalog}
             canEdit={canEdit}
             canExport={canExport}
+            canDelete={canDelete}
           />
         ) : (
           <MockRecommendedTestsTab user={user} onToast={onToast} canEdit={canEdit} canExport={canExport} />
@@ -2249,14 +3166,14 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
           onToast={onToast}
           clientName={firstName(user)}
           canEdit={canEdit}
-          canUpload={canUpload}
+          canCreate={canCreate}
           canExport={canExport}
           showMarkStepComplete={internalStepPending && canEditOnboarding}
           stepBusy={stepBusy}
           onMarkStepComplete={handleMarkStepComplete}
         />
       ) : (
-        <MockReportAnalysisTab onToast={onToast} />
+        <MockReportAnalysisTab onToast={onToast} canCreate={canCreate} />
       )}
     </div>
   );

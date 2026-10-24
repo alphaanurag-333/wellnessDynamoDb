@@ -7,8 +7,7 @@ const {
   normalizeAiAnalysis,
 } = require("../utils/labReportAi");
 
-const MAX_FILE_BYTES = 15 * 1024 * 1024;
-const REQUEST_TIMEOUT_MS = 90_000;
+const REQUEST_TIMEOUT_MS = 180_000;
 
 function assertAiConfigured() {
   if (config.openaiApiKey) return;
@@ -63,10 +62,15 @@ function openAiInputContent({ buffer, mimeType, fileName }) {
   };
 }
 
+function labReportModel() {
+  return config.openaiLabReportModel || config.openaiModel || "gpt-4.1-mini";
+}
+
 async function callOpenAi({ buffer, mimeType, prompt, fileName }, { jsonFormat = true } = {}) {
   const body = {
-    model: config.openaiModel || "gpt-4.1-mini",
-    temperature: 0.2,
+    model: labReportModel(),
+    temperature: 0.1,
+    max_output_tokens: 16_384,
     input: [
       {
         role: "user",
@@ -106,12 +110,9 @@ async function callOpenAi({ buffer, mimeType, prompt, fileName }, { jsonFormat =
 async function analyzeLabReportFile({ fileKey, reportDate }) {
   assertAiConfigured();
 
-  const { buffer, contentType } = await getStoredObjectBuffer(fileKey);
+  let { buffer, contentType } = await getStoredObjectBuffer(fileKey);
   if (!buffer?.length) {
     throw new AppError("The uploaded report file is empty", 422);
-  }
-  if (buffer.length > MAX_FILE_BYTES) {
-    throw new AppError("Report file is too large for AI analysis (max 15 MB)", 413);
   }
 
   const mimeType = mimeFromKey(fileKey, contentType);
@@ -135,11 +136,22 @@ async function analyzeLabReportFile({ fileKey, reportDate }) {
     throw new AppError(err.message || "AI did not return a usable analysis", 502);
   }
 
+  let analysis;
   try {
-    return normalizeAiAnalysis(parsed, { reportDate });
+    analysis = normalizeAiAnalysis(parsed, { reportDate });
   } catch (err) {
+    if (err.name === "LabReportRejectError") throw err;
     throw new AppError(err.message || "AI could not extract markers from this report", 422);
   }
+
+  const markerCount = (analysis.panels || []).reduce((sum, panel) => sum + (panel.rows?.length || 0), 0);
+  if (markerCount < 12) {
+    console.warn(
+      `Lab report AI extracted only ${markerCount} markers for ${fileKey}; consider resubmitting or using OPENAI_LAB_REPORT_MODEL.`
+    );
+  }
+
+  return analysis;
 }
 
 module.exports = {

@@ -54,10 +54,41 @@ function collectOrderedKeys(analysed, getPanels, getKey) {
   return keys;
 }
 
+export function isReportAiAnalysed(report) {
+  return report?.aiStatus === "analysed" && Boolean(report?.aiAnalysis?.panels?.length);
+}
+
 export function findLatestAnalysedReport(reports) {
   return (reports || [])
-    .filter((report) => report?.aiStatus === "analysed" && report?.aiAnalysis?.panels?.length)
+    .filter((report) => isReportAiAnalysed(report))
     .sort((a, b) => reportSortKey(b) - reportSortKey(a))[0] || null;
+}
+
+/** Single-report table shape used by the coach UI (one date column). */
+export function analysisToDisplayPanels(aiAnalysis) {
+  if (!aiAnalysis?.panels?.length) {
+    return { dates: [], panels: [], reportIds: [] };
+  }
+  const dateLabel = aiAnalysis.dateLabel || "—";
+  return {
+    dates: [dateLabel],
+    reportIds: [],
+    panels: aiAnalysis.panels.map((panel) => ({
+      title: panel.title,
+      rows: (panel.rows || []).map((row) => ({
+        name: row.name,
+        optimal: row.optimal,
+        rr: row.rr,
+        readings: [
+          {
+            value: row.value ?? "—",
+            tone: normalizeTone(row.tone),
+            note: row.note || "",
+          },
+        ],
+      })),
+    })),
+  };
 }
 
 export function mergeAnalysedReportsToPanels(reports, { maxDates = 4 } = {}) {

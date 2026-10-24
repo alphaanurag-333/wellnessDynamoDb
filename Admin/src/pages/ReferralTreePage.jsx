@@ -7,6 +7,7 @@ import { fetchReferralOverview, fetchReferralTree } from "../api/referralTreeApi
 import { fetchUsers } from "../api/usersApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
+import { userTierBadgeFromApi } from "../data/usersData.js";
 import "./referralTree.css";
 
 const COACH_SCOPED_UI = new Set(["wc", "awc", "trainee"]);
@@ -16,13 +17,32 @@ function looksLikeUserId(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
-function tierLabel(tier) {
-  const key = String(tier || "").toLowerCase();
-  if (key === "heal") return "Heal";
-  if (key === "seek") return "Seek";
-  if (key === "consultancy_only") return "Consultancy";
-  if (key === "maintenance") return "Maintenance";
-  return tier || "—";
+function hasClientTier(user) {
+  if (user?.userTier || user?.tier) return true;
+  return String(user?.clientCategory || "").toLowerCase() === "eagle";
+}
+
+function TierBadge({ user, className = "" }) {
+  if (!hasClientTier(user)) return <span className={className}>—</span>;
+  const badge = userTierBadgeFromApi(user);
+  return (
+    <span
+      className={`ua-tier ${className}`.trim()}
+      title={badge.label}
+      style={{
+        background: badge.style.bg,
+        color: badge.style.color,
+        borderColor: badge.style.border,
+      }}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
+function tierNameStyle(user) {
+  if (!hasClientTier(user)) return undefined;
+  return { color: userTierBadgeFromApi(user).style.color };
 }
 
 function entityLabel(entityType) {
@@ -381,7 +401,11 @@ export function ReferralTreePage() {
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => onPickSuggestion(user)}
                       >
-                        <span className="ua-rt-suggest__name" title={user.name || "Unnamed"}>
+                        <span
+                          className="ua-rt-suggest__name"
+                          title={user.name || "Unnamed"}
+                          style={tierNameStyle(user)}
+                        >
                           {shortLabel(user.name || "Unnamed", 42)}
                         </span>
                         <span className="ua-rt-suggest__code">{user.referralCode || user.id}</span>
@@ -545,7 +569,11 @@ export function ReferralTreePage() {
                           }}
                         >
                           <div className="ua-rt-cell-name" data-label="Referrer">
-                            <span className="ua-rt-name ua-rt-ellipsis" title={fullName}>
+                            <span
+                              className="ua-rt-name ua-rt-ellipsis"
+                              title={fullName}
+                              style={tierNameStyle(row)}
+                            >
                               {shortLabel(fullName, 32)}
                             </span>
                             {canOpenUser ? (
@@ -561,8 +589,8 @@ export function ReferralTreePage() {
                           <div className="ua-rt-mono" data-label="Code">
                             {row.referralCode || "—"}
                           </div>
-                          <div className="ua-rt-tier ua-rt-ellipsis" data-label="Tier" title={tierLabel(row.userTier)}>
-                            {tierLabel(row.userTier)}
+                          <div className="ua-rt-tier" data-label="Tier">
+                            <TierBadge user={row} />
                           </div>
                           <div className="ua-rt-direct" data-label="Direct">
                             {row.directCount}
@@ -607,15 +635,22 @@ export function ReferralTreePage() {
                                 className="ua-rt-name ua-rt-ellipsis"
                                 to={UPDATED_ADMIN_PATHS.userDetail(row.id)}
                                 title={clientName}
+                                style={tierNameStyle(row)}
                               >
                                 {shortLabel(clientName, 28)}
                               </Link>
                             ) : (
-                              <span className="ua-rt-name ua-rt-ellipsis" title={clientName}>
+                              <span
+                                className="ua-rt-name ua-rt-ellipsis"
+                                title={clientName}
+                                style={tierNameStyle(row)}
+                              >
                                 {shortLabel(clientName, 28)}
                               </span>
                             )}
-                            <span className="ua-rt-sub">{tierLabel(row.userTier)}</span>
+                            <span className="ua-rt-sub">
+                              <TierBadge user={row} />
+                            </span>
                           </div>
                           <div className="ua-rt-via" data-label="Joined via">
                             {row.referredByUserId ? (

@@ -89,6 +89,23 @@ const SEED_LISTS = [
     ],
   },
   {
+    slug: "blood-test-category",
+    title: "Blood test categories",
+    options: [
+      { label: "Hematology", value: "Hematology" },
+      { label: "Diabetes", value: "Diabetes" },
+      { label: "Cardiac", value: "Cardiac" },
+      { label: "Thyroid", value: "Thyroid" },
+      { label: "Vitamins", value: "Vitamins" },
+      { label: "Liver", value: "Liver" },
+      { label: "Kidney", value: "Kidney" },
+      { label: "Inflammation", value: "Inflammation" },
+      { label: "Hormones", value: "Hormones" },
+      { label: "Metabolic", value: "Metabolic" },
+      { label: "Other", value: "Other" },
+    ],
+  },
+  {
     slug: "banner-placement",
     title: "Banner placement",
     options: [

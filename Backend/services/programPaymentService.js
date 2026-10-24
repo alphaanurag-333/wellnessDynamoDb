@@ -435,6 +435,14 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
     console.error("[ProgramPayment] clear challenge temp flag failed", err.message);
   }
 
+  try {
+    const { ensurePurchasedProgramTrackers } = require("./healthProgressProgramTrackerService");
+    const latestUser = await getUserById(user.id);
+    if (latestUser) await ensurePurchasedProgramTrackers(latestUser);
+  } catch (err) {
+    console.error("[ProgramPayment] health progress tracker sync failed", err.message);
+  }
+
   const bundled = transaction?.userSnapshot?.bundledSubscription;
   if (bundled?.enabled && !isEagle) {
     const isFyBundle =

@@ -912,7 +912,7 @@ function TestCatalogPreview({ tests, surface, item }) {
               {live.map((entry) => (
                 <div key={entry.id} className="ua-cfg-preview-dp__item">
                   <strong>{entry.name}</strong>
-                  <p>{entry.category} · {entry.type === "PROFILE" ? "Profile" : "Single"}</p>
+                  <p>{[entry.category, entry.fastingType || (entry.type === "PROFILE" ? "Profile" : "Single"), entry.duration].filter(Boolean).join(" · ")}</p>
                 </div>
               ))}
             </div>
@@ -1032,7 +1032,7 @@ function PrakritiPreview({ questions, surface, item }) {
             <strong>Prakriti assessment</strong>
           </div>
           <p className="ua-cfg-preview-launch__intro">
-            Tick the statements that describe the client. Dominant dosha becomes their Prakṛti.
+            Tick the statements that describe the client. Dominant dosha becomes their Prakriti.
           </p>
           {shown.length ? (
             <div className="ua-cfg-preview-launch__domains">

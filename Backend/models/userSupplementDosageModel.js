@@ -37,7 +37,7 @@ const MEAL_TIMING_SET = new Set(MEAL_TIMINGS);
 const COMPOSITE_PERIOD_SEP = "__";
 const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const MEAL_RELATIONS = new Set(["before", "after"]);
-const STATUSES = new Set(["active", "stopped"]);
+const STATUSES = new Set(["draft", "active", "stopped"]);
 
 const PERIOD_ORDER_INDEX = PERIOD_ORDER.reduce((acc, id, index) => {
   acc[id] = index;
@@ -200,10 +200,34 @@ function computeDosageMetrics(packSize, periods) {
   return { totalPerDay, durationDays };
 }
 
+function withComputedScheduleFields(dosage) {
+  if (!dosage) return dosage;
+  const packSize = Number(dosage.packSize) || 0;
+  const totalPerDay = Number(dosage.totalPerDay) || 0;
+  const startDate = String(dosage.startDate || "").trim();
+  const hasEnd = String(dosage.endDate || "").trim();
+  const hasDuration = Number(dosage.durationDays) > 0;
+
+  if ((hasEnd && hasDuration) || !startDate || packSize <= 0 || totalPerDay <= 0) {
+    return dosage;
+  }
+
+  try {
+    const { durationDays } = computeDosageMetrics(packSize, dosage.periods || []);
+    return {
+      ...dosage,
+      durationDays,
+      endDate: addDaysToDate(normalizeStartDate(startDate), durationDays - 1),
+    };
+  } catch {
+    return dosage;
+  }
+}
+
 function toUserSupplementDosagePublic(item, extras = {}) {
   const row = withLegacyId(item);
   if (!row) return null;
-  return {
+  const base = {
     id: row.id,
     _id: row._id,
     userId: row.userId,
@@ -226,6 +250,7 @@ function toUserSupplementDosagePublic(item, extras = {}) {
     updatedAt: row.updatedAt,
     ...extras,
   };
+  return withComputedScheduleFields(base);
 }
 
 async function queryUserSupplementDosagesByUserId(userId) {
@@ -254,10 +279,15 @@ async function queryUserSupplementDosagesByUserId(userId) {
   return items;
 }
 
-async function listUserSupplementDosagesByUserId(userId, { includeStopped = true } = {}) {
+async function listUserSupplementDosagesByUserId(userId, { includeStopped = true, includeDraft = true } = {}) {
   const items = await queryUserSupplementDosagesByUserId(userId);
   return items
-    .filter((row) => includeStopped || String(row.status || "").toLowerCase() !== "stopped")
+    .filter((row) => {
+      const status = String(row.status || "active").toLowerCase();
+      if (status === "stopped") return includeStopped;
+      if (status === "draft") return includeDraft;
+      return true;
+    })
     .map((row) => toUserSupplementDosagePublic(row))
     .filter(Boolean);
 }
@@ -285,6 +315,7 @@ async function createUserSupplementDosage({
   periods,
   createdByRole = "wellness_coach",
   createdById,
+  status = "draft",
 }) {
   const uid = String(userId || "").trim();
   const parentCoachId = String(coachId || "").trim();
@@ -314,7 +345,7 @@ async function createUserSupplementDosage({
     durationDays,
     startDate: normalizedStart,
     endDate,
-    status: "active",
+    status: STATUSES.has(String(status || "").toLowerCase()) ? String(status).toLowerCase() : "draft",
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
@@ -359,6 +390,58 @@ async function stopUserSupplementDosage(id) {
   return toUserSupplementDosagePublic(Attributes);
 }
 
+async function activateUserSupplementDosage(id) {
+  const record = await getUserSupplementDosageRecordById(id);
+  if (!record) {
+    const err = new Error("Dosage plan not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: "SET #status = :status, updatedAt = :updatedAt",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: {
+        ":status": "active",
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toUserSupplementDosagePublic(Attributes);
+}
+
+async function publishDraftDosagesForUser(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) return [];
+
+  const items = await queryUserSupplementDosagesByUserId(uid);
+  const drafts = items.filter((row) => String(row.status || "").toLowerCase() === "draft");
+  if (!drafts.length) return [];
+
+  const published = [];
+  for (const draft of drafts) {
+    const supplementId = String(draft.supplementId || "").trim();
+    const activeSame = items.filter(
+      (row) => row.id !== draft.id
+        && String(row.supplementId || "").trim() === supplementId
+        && String(row.status || "").toLowerCase() === "active",
+    );
+    for (const row of activeSame) {
+      await stopUserSupplementDosage(row.id);
+    }
+    published.push(await activateUserSupplementDosage(draft.id));
+  }
+
+  return published;
+}
+
 module.exports = {
   PERIODS,
   PERIOD_ORDER,
@@ -374,6 +457,8 @@ module.exports = {
   getUserSupplementDosageRecordById,
   listUserSupplementDosagesByUserId,
   stopUserSupplementDosage,
+  activateUserSupplementDosage,
+  publishDraftDosagesForUser,
   toUserSupplementDosagePublic,
   normalizePeriods,
   normalizeStartDate,

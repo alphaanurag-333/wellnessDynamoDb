@@ -15,6 +15,9 @@ const SORT_ORDER_MIN = 0;
 const SORT_ORDER_MAX = 100000;
 const WEIGHT_MIN = 0;
 const WEIGHT_MAX = 100;
+const MIN_REQUIREMENT_MIN = 0;
+const MIN_REQUIREMENT_MAX = 100;
+const MIN_REQUIREMENT_DEFAULT = 50;
 
 function normalizeStatus(value, fallback = "active") {
   const next = String(value || fallback).toLowerCase().trim();
@@ -31,6 +34,13 @@ function normalizeWeight(value, fallback = 0) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(WEIGHT_MAX, Math.max(WEIGHT_MIN, Math.round(n)));
+}
+
+function normalizeMinRequirement(value, fallback = MIN_REQUIREMENT_DEFAULT) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(MIN_REQUIREMENT_MAX, Math.max(MIN_REQUIREMENT_MIN, Math.round(n)));
 }
 
 function normalizeBool(value, fallback = false) {
@@ -59,6 +69,7 @@ function toPublicDomain(item) {
     _id: row._id,
     name: row.name,
     weight: normalizeWeight(row.weight),
+    minRequirement: normalizeMinRequirement(row.minRequirement),
     live,
     fixed: normalizeBool(row.fixed),
     sortOrder: normalizeSortOrder(row.sortOrder),
@@ -92,6 +103,7 @@ async function nextSortOrder() {
 async function createLaunchDomain({
   name,
   weight = 0,
+  minRequirement,
   live = true,
   fixed = false,
   sortOrder,
@@ -103,6 +115,7 @@ async function createLaunchDomain({
     id: uuidv4(),
     name: String(name || "").trim(),
     weight: normalizeWeight(weight),
+    minRequirement: normalizeMinRequirement(minRequirement),
     live: isLive,
     fixed: normalizeBool(fixed),
     sortOrder:
@@ -197,11 +210,15 @@ module.exports = {
   ALLOWED_STATUS,
   WEIGHT_MIN,
   WEIGHT_MAX,
+  MIN_REQUIREMENT_MIN,
+  MIN_REQUIREMENT_MAX,
+  MIN_REQUIREMENT_DEFAULT,
   SORT_ORDER_MIN,
   SORT_ORDER_MAX,
   normalizeStatus,
   normalizeSortOrder,
   normalizeWeight,
+  normalizeMinRequirement,
   normalizeBool,
   createLaunchDomain,
   getLaunchDomainById,

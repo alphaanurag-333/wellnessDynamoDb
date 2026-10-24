@@ -9,6 +9,10 @@ const {
   mergeAnalysedReportsToPanels,
   applyMergedPanelsToReportAnalysis,
   normalizeMarkerKey,
+  collectPanelsFromSource,
+  MAX_ROWS_PER_PANEL,
+  NOT_LAB_REPORT_MESSAGE,
+  resolveIsLabReport,
 } = require("../utils/labReportAi");
 
 test("parseAiJson reads fenced JSON", () => {
@@ -56,6 +60,110 @@ test("normalizeAiAnalysis keeps extracted markers", () => {
 
 test("normalizeAiAnalysis rejects empty panels", () => {
   assert.throws(() => normalizeAiAnalysis({ panels: [] }), /could not extract/);
+});
+
+test("normalizeAiAnalysis rejects non-lab documents", () => {
+  assert.throws(
+    () =>
+      normalizeAiAnalysis({
+        isLabReport: false,
+        rejectReason: "This is an invoice",
+        panels: [],
+      }),
+    /invoice/i
+  );
+  assert.throws(
+    () =>
+      normalizeAiAnalysis({
+        isLabReport: false,
+        panels: [
+          {
+            title: "LFT",
+            rows: [{ name: "GGT", value: "42", rr: "5–55", note: "Fabricated" }],
+          },
+        ],
+      }),
+    /does not appear to be a blood/i
+  );
+});
+
+test("normalizeAiAnalysis rejects prompt placeholder rows", () => {
+  assert.throws(
+    () =>
+      normalizeAiAnalysis({
+        isLabReport: true,
+        panels: [
+          {
+            title: "LFT",
+            rows: [
+              {
+                name: "GGT",
+                value: "42",
+                rr: "5–55",
+                note: "Short coach-facing interpretation of this marker.",
+              },
+              {
+                name: "HbA1c",
+                value: "6.8%",
+                rr: "< 5.7%",
+                note: "High",
+              },
+            ],
+          },
+        ],
+      }),
+    /does not appear to be a blood/i
+  );
+});
+
+test("resolveIsLabReport reads documentKind", () => {
+  assert.equal(resolveIsLabReport({ documentKind: "invoice" }), false);
+  assert.equal(resolveIsLabReport({ documentKind: "pathology lab report" }), true);
+  assert.equal(resolveIsLabReport({ panels: [] }), null);
+});
+
+test("NOT_LAB_REPORT_MESSAGE is coach-facing", () => {
+  assert.match(NOT_LAB_REPORT_MESSAGE, /blood or lab report/i);
+});
+
+test("normalizeAiAnalysis accepts flat markers list with GGT", () => {
+  const analysis = normalizeAiAnalysis(
+    {
+      markers: [
+        {
+          name: "GAMMA GLUTAMYL TRANSFERASE (GGT)",
+          panel: "Liver Function (LFT)",
+          value: "38 U/L",
+          rr: "5–55 U/L",
+          tone: "good",
+        },
+        { name: "HbA1c", panel: "Glucose panel", value: "6.2%", rr: "< 5.7%", tone: "bad" },
+      ],
+    },
+    { reportDate: "2026-10-23" }
+  );
+
+  const lft = analysis.panels.find((panel) => /LFT|LIVER/i.test(panel.title));
+  assert.ok(lft);
+  assert.ok(lft.rows.some((row) => /ggt/i.test(row.name)));
+  assert.equal(analysis.panels.reduce((s, p) => s + p.rows.length, 0), 2);
+});
+
+test("collectPanelsFromSource reads panel.parameters rows", () => {
+  const panels = collectPanelsFromSource({
+    panels: [{ title: "CBC", parameters: [{ name: "Hemoglobin", value: "14" }] }],
+  });
+  assert.equal(panels.length, 1);
+  assert.equal(panels[0].parameters[0].name, "Hemoglobin");
+});
+
+test("normalizeAiAnalysis keeps large LFT panels within cap", () => {
+  const rows = Array.from({ length: MAX_ROWS_PER_PANEL + 10 }, (_, i) => ({
+    name: `Marker ${i}`,
+    value: String(i),
+  }));
+  const analysis = normalizeAiAnalysis({ panels: [{ title: "LFT", rows }] });
+  assert.equal(analysis.panels[0].rows.length, MAX_ROWS_PER_PANEL);
 });
 
 test("panelsToAnalysis round-trips coach edits", () => {

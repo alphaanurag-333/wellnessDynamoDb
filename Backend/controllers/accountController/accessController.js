@@ -39,19 +39,16 @@ const {
   ACCOUNT_TO_UI_ROLE,
   TOTAL_PERM_SLOTS,
   PERM_CATALOG,
-  ALL_CONSOLE_PERMISSIONS,
   isValidConsolePermission,
 } = require("../../config/consolePermissionCatalog");
 const {
   toPublicAccessRequest,
-  createAccessPermissionRequest,
   getAccessPermissionRequestById,
   listAccessPermissionRequests,
   getPendingRequestForTarget,
   listPendingForTarget,
   updateAccessPermissionRequest,
   supersedePendingForTarget,
-  supersedeAllPendingForTarget,
 } = require("../../models/accessPermissionRequestModel");
 const {
   listAccessAuditLogs,
@@ -142,8 +139,6 @@ async function listNestedTraineesForWellnessCoach(coachId, { search, page, limit
   }
   return paginateAccounts(accounts, page, limit);
 }
-
-const WC_REQUESTABLE_ROLES = new Set(["assistant_wellness_coach"]);
 
 function actorDisplayName(req) {
   return String(req.account?.name || req.user?.name || "Staff").trim() || "Staff";
@@ -244,23 +239,6 @@ function paginateAccounts(accounts, page, limit) {
   };
 }
 
-function isAccessAdmin(req) {
-  return Boolean(req.auth?.isSuperAdmin || req.auth?.role === "admin");
-}
-
-function flattenGrantKeys(grants) {
-  if (grants == null) return new Set(ALL_CONSOLE_PERMISSIONS.map((slug) => slug.replace(/^console\./, "")));
-  const keys = new Set();
-  for (const [featureId, actions] of Object.entries(grants || {})) {
-    for (const action of actions || []) keys.add(`${featureId}.${action}`);
-  }
-  return keys;
-}
-
-function featureLabel(featureId) {
-  return PERM_CATALOG.find((row) => row[2] === featureId)?.[1] || featureId;
-}
-
 function sanitizeGrantsMap(grants) {
   if (grants == null) return null;
   if (typeof grants !== "object" || Array.isArray(grants)) {
@@ -274,72 +252,6 @@ function sanitizeGrantsMap(grants) {
     if (ordered.length) out[featureId] = ordered;
   }
   return out;
-}
-
-function grantsEqual(a, b) {
-  const left = flattenGrantKeys(a);
-  const right = flattenGrantKeys(b);
-  if (left.size !== right.size) return false;
-  for (const key of left) {
-    if (!right.has(key)) return false;
-  }
-  return true;
-}
-
-function describePermissionChange({ reset, currentGrants, proposedGrants, targetName }) {
-  const name = String(targetName || "this member").trim() || "this member";
-  if (reset) return `Reset permissions to role default for ${name}`;
-  const current = flattenGrantKeys(currentGrants);
-  const next = flattenGrantKeys(proposedGrants);
-  const added = [...next].filter((key) => !current.has(key));
-  const removed = [...current].filter((key) => !next.has(key));
-  if (added.length === 1 && removed.length === 0) {
-    const [featureId, action] = added[0].split(".");
-    return `Grant ${action} on ${featureLabel(featureId)} for ${name}`;
-  }
-  if (removed.length === 1 && added.length === 0) {
-    const [featureId, action] = removed[0].split(".");
-    return `Revoke ${action} on ${featureLabel(featureId)} for ${name}`;
-  }
-  const n = added.length + removed.length;
-  return `Update ${n || ""} permission${n === 1 ? "" : "s"} for ${name}`.replace(/\s+/g, " ").trim();
-}
-
-function splitPermissionChanges({ reset, currentGrants, proposedGrants, targetName }) {
-  const name = String(targetName || "this member").trim() || "this member";
-  if (reset) {
-    return [
-      {
-        title: `Reset permissions to role default for ${name}`,
-        changeType: "reset",
-        reset: true,
-      },
-    ];
-  }
-  const current = flattenGrantKeys(currentGrants);
-  const next = flattenGrantKeys(proposedGrants);
-  const added = [...next].filter((key) => !current.has(key));
-  const removed = [...current].filter((key) => !next.has(key));
-  const changes = [];
-  for (const key of added) {
-    const [featureId, action] = key.split(".");
-    changes.push({
-      title: `Grant ${action} on ${featureLabel(featureId)} for ${name}`,
-      changeType: "grant",
-      featureId,
-      action,
-    });
-  }
-  for (const key of removed) {
-    const [featureId, action] = key.split(".");
-    changes.push({
-      title: `Revoke ${action} on ${featureLabel(featureId)} for ${name}`,
-      changeType: "revoke",
-      featureId,
-      action,
-    });
-  }
-  return changes;
 }
 
 function cloneGrantsMap(grants) {
@@ -1238,6 +1150,10 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       bio: pub.bio || null,
       phone: pub.phone || null,
       phoneCountryCode: pub.phoneCountryCode || null,
+      whatsappPhone: pub.whatsappPhone || pub.phone || null,
+      whatsappCountryCode: pub.whatsappCountryCode || (pub.phone ? pub.phoneCountryCode : null) || null,
+      mobilePhone: pub.mobilePhone || null,
+      mobileCountryCode: pub.mobileCountryCode || null,
       status: pub.status,
       displayStatus,
       approvalStatus: pub.approvalStatus || null,
@@ -1486,6 +1402,10 @@ exports.getAccessMember = asyncHandler(async (req, res) => {
       email: pub.email,
       phone: pub.phone || null,
       phoneCountryCode: pub.phoneCountryCode || null,
+      whatsappPhone: pub.whatsappPhone || pub.phone || null,
+      whatsappCountryCode: pub.whatsappCountryCode || (pub.phone ? pub.phoneCountryCode : null) || null,
+      mobilePhone: pub.mobilePhone || null,
+      mobileCountryCode: pub.mobileCountryCode || null,
       profileImage: pub.profileImage || null,
       dateOfBirth: pub.dateOfBirth || pub.dob || null,
       country: pub.country || null,
@@ -1564,61 +1484,6 @@ exports.setAccessMemberPermissions = asyncHandler(async (req, res) => {
   }
 
   const pub = toPublicAccount(account);
-  if (req.auth?.role === "wellness_coach" && !isAccessAdmin(req)) {
-    if (!(await canViewTeamAccount(req, pub, primaryAccountRole))) {
-      throw new AppError("Team member not found", 404);
-    }
-    if (!WC_REQUESTABLE_ROLES.has(primaryAccountRole)) {
-      throw new AppError("Only Admin can change this member's permissions", 403);
-    }
-
-    const { roles: consoleRoles } = await listRoles({
-      scope: CONSOLE_SCOPE,
-      status: "active",
-      page: 1,
-      limit: 100,
-    });
-    const uiRole = ACCOUNT_TO_UI_ROLE[primaryAccountRole] || primaryAccountRole;
-    const consoleRole = consoleRoles.find((r) => r.roleKey === uiRole) || null;
-    const membership = getMembership(account, primaryAccountRole);
-    const roleGrants = consoleRole ? permissionsToGrantsMap(consoleRole.permissions || []) : {};
-    const currentGrants =
-      membership?.permissionOverrides?.consoleGrants !== undefined
-        ? membership.permissionOverrides.consoleGrants
-        : roleGrants;
-    const proposedGrants = body.reset ? undefined : sanitizeGrantsMap(body.grants);
-    if (body.reset && membership?.permissionOverrides?.consoleGrants === undefined) {
-      throw new AppError("Permissions are already at the role default", 400);
-    }
-    if (!body.reset && grantsEqual(currentGrants, proposedGrants)) {
-      throw new AppError("No permission changes to request", 400);
-    }
-
-    await supersedeAllPendingForTarget(account.id);
-    const changes = splitPermissionChanges({
-      reset: Boolean(body.reset),
-      currentGrants,
-      proposedGrants: body.reset ? roleGrants : proposedGrants,
-      targetName: pub.name || account.name,
-    });
-    for (const change of changes) {
-      await createAccessPermissionRequest({
-        kind: "permission",
-        requesterAccountId: req.auth.sub,
-        requesterName: actorDisplayName(req),
-        targetAccountId: account.id,
-        targetName: pub.name || account.name,
-        title: change.title,
-        reset: Boolean(change.reset),
-        featureId: change.featureId || null,
-        action: change.action || null,
-        changeType: change.changeType || null,
-        currentGrants,
-      });
-    }
-
-    return exports.getAccessMember(req, res);
-  }
 
   assertSuperAdmin(req);
   const memberships = applyConsoleGrantsToMembership(account, primaryAccountRole, {

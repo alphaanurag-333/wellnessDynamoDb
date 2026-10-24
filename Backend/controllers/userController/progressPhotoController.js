@@ -5,12 +5,13 @@ const {
   getUserById,
   updateUser,
   normalizePaidOnboardingStepStatus,
+  isProgressPhotosInAppEnabled,
 } = require("../../models/userModel");
 const { enrichUser } = require("./userProfileHelpers");
 const {
   markStepDone,
-  wizardStepAfterPhotosComplete,
-  computePaidOnboardingCompleted,
+  wizardStepAfterPhotosSaved,
+  buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
 const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 const {
@@ -38,6 +39,10 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
 
+  if (!isProgressPhotosInAppEnabled(user)) {
+    throw new AppError("Progress photo uploads are not available in your app", 403);
+  }
+
   const body = req.body || {};
   const folder = "users/progress-photos";
 
@@ -63,15 +68,11 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
   const nextStatus = markStepDone(currentStatus, "progressPhotos180");
   const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
-  const nextWizardStep = alreadyCompleted
-    ? user.paidOnboardingStep || "done"
-    : wizardStepAfterPhotosComplete(user.paidOnboardingStep);
+  const nextWizardStep = wizardStepAfterPhotosSaved(user.paidOnboardingStep, nextStatus);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted:
-      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   notifyOnboardingWhatsAppTransitions({

@@ -5,6 +5,7 @@ import {
   fetchUsers,
   mapUiStatusToApi,
   mapUiTierToApi,
+  mapUiTierToClientCategory,
 } from "../api/usersApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { TIER_OPTIONS, UNASSIGNED_COACH, tierLabel } from "../data/usersData.js";
@@ -125,10 +126,16 @@ export function ReportGenerationModal({ open, onClose, onToast }) {
       const base = {
         status: mapUiStatusToApi(statusFilter),
         userTier: mapUiTierToApi(tierFilter),
+        clientCategory: mapUiTierToClientCategory(tierFilter),
       };
       const fetchPage = (page, limit) =>
         useScopedUsers
-          ? fetchScopedUsers({ page, limit, userTier: base.userTier })
+          ? fetchScopedUsers({
+            page,
+            limit,
+            userTier: base.userTier,
+            clientCategory: base.clientCategory,
+          })
           : fetchUsers({ page, limit, ...base });
 
       const first = await fetchPage(1, PAGE_SIZE);

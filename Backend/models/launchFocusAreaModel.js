@@ -45,10 +45,12 @@ function sortFocusAreas(a, b) {
 function toPublicFocusArea(item) {
   const row = withLegacyId(item);
   if (!row) return null;
+  const domainId = String(row.domainId || "").trim();
   return {
     id: row.id,
     _id: row._id,
     title: row.title,
+    domainId: domainId || null,
     sortOrder: normalizeSortOrder(row.sortOrder),
     status: normalizeStatus(row.status),
     createdAt: row.createdAt,
@@ -56,11 +58,13 @@ function toPublicFocusArea(item) {
   };
 }
 
-async function createLaunchFocusArea({ title, sortOrder = 0, status = "active" }) {
+async function createLaunchFocusArea({ title, domainId, sortOrder = 0, status = "active" }) {
   const now = new Date().toISOString();
+  const normalizedDomainId = String(domainId || "").trim();
   const item = {
     id: uuidv4(),
     title: String(title || "").trim(),
+    domainId: normalizedDomainId,
     sortOrder: normalizeSortOrder(sortOrder),
     status: normalizeStatus(status),
     createdAt: now,
@@ -95,6 +99,7 @@ async function updateLaunchFocusArea(id, updates) {
       if (k === "status") return [k, normalizeStatus(v)];
       if (k === "sortOrder") return [k, normalizeSortOrder(v)];
       if (k === "title") return [k, String(v || "").trim()];
+      if (k === "domainId") return [k, String(v || "").trim()];
       return [k, v];
     });
   if (entries.length === 0) throw new Error("No valid fields provided for update");

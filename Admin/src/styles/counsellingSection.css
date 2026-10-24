@@ -44,6 +44,14 @@
   padding: 28px 18px;
 }
 
+.updated-admin .ua-cp-counselling__empty-text {
+  margin: 0;
+}
+
+.updated-admin .ua-cp-counselling__empty-cta {
+  margin-top: 14px;
+}
+
 .updated-admin .ua-cp-counselling__card-head {
   display: flex;
   align-items: flex-start;
@@ -105,6 +113,20 @@
 .updated-admin .ua-cp-counselling__card-head .ua-cp-counselling__muted {
   margin-left: auto;
   text-align: right;
+}
+
+.updated-admin .ua-cp-counselling__intake {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: none;
+}
+
+.updated-admin .ua-cp-counselling__intake-message {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: #1a2332;
 }
 
 .updated-admin .ua-cp-counselling__concern {
@@ -393,7 +415,7 @@
 
 .updated-admin .ua-cp-counselling__history-row {
   display: grid;
-  grid-template-columns: minmax(92px, 0.9fr) minmax(120px, 1.1fr) minmax(96px, 0.9fr) minmax(76px, auto);
+  grid-template-columns: minmax(92px, 0.85fr) minmax(132px, 1.15fr) minmax(132px, 1.15fr) minmax(132px, 1.15fr);
   gap: 8px 12px;
   align-items: center;
   min-height: 44px;
@@ -402,13 +424,44 @@
   font-size: 12.5px;
 }
 
+.updated-admin .ua-cp-counselling__history-row--head {
+  min-height: 0;
+  padding-top: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-counselling__history-row--head .ua-cp-counselling__history-date,
+.updated-admin .ua-cp-counselling__history-row--head .ua-cp-counselling__history-label {
+  font-weight: 800;
+  color: #8a97ac;
+}
+
+.updated-admin .ua-cp-counselling__history-col {
+  min-width: 0;
+  font-weight: 800;
+}
+
 .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-label {
   font-size: 13px;
+}
+
+.updated-admin .ua-cp-counselling__history-date--muted {
+  color: #8a97ac;
+  font-weight: 600;
 }
 
 .updated-admin .ua-cp-counselling__history-date {
   color: #16233f;
   font-weight: 600;
+  font-size: 11.5px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 .updated-admin .ua-cp-counselling__history-row:last-child {
@@ -430,7 +483,8 @@
 }
 
 .updated-admin .ua-cp-counselling__history-status--scheduled,
-.updated-admin .ua-cp-counselling__history-status--completed {
+.updated-admin .ua-cp-counselling__history-status--completed,
+.updated-admin .ua-cp-counselling__history-status--active {
   color: #15803d;
 }
 
@@ -482,14 +536,37 @@
   }
 
   .updated-admin .ua-cp-counselling__history-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
-      "label action"
-      "date date"
-      "status status";
+      "label label"
+      "sched sched"
+      "status status"
+      "by by";
     gap: 4px 10px;
     padding: 12px 0;
     min-height: 0;
+  }
+
+  .updated-admin .ua-cp-counselling__history-row--head {
+    display: none;
+  }
+
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(1)::before {
+    content: "Scheduled date · ";
+    color: #8a97ac;
+    font-weight: 600;
+  }
+
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-status::before {
+    content: "Status · ";
+    color: #8a97ac;
+    font-weight: 600;
+  }
+
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(2)::before {
+    content: "Schedule by · ";
+    color: #8a97ac;
+    font-weight: 600;
   }
 
   .updated-admin .ua-cp-counselling__history-label {
@@ -497,17 +574,16 @@
     font-size: 13px;
   }
 
-  .updated-admin .ua-cp-counselling__history-date {
-    grid-area: date;
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(1) {
+    grid-area: sched;
   }
 
-  .updated-admin .ua-cp-counselling__history-status {
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-status {
     grid-area: status;
   }
 
-  .updated-admin .ua-cp-counselling__history-action {
-    grid-area: action;
-    min-width: 0;
+  .updated-admin .ua-cp-counselling__history-row--review .ua-cp-counselling__history-date:nth-of-type(2) {
+    grid-area: by;
   }
 }
 

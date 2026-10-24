@@ -263,6 +263,11 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       err.name = "InvalidReferralCodeError";
       throw err;
     }
+    if (String(referer.status || "").toLowerCase() === "deleted") {
+      const err = new Error("Referring user is no longer active");
+      err.name = "InvalidReferralCodeError";
+      throw err;
+    }
 
     const referredBy = {
       referredByUserId: referer.id,

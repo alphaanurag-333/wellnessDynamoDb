@@ -565,10 +565,18 @@ function memberLocation(member) {
   return [member.city, member.state, member.country].filter(Boolean).join(", ") || "—";
 }
 
-function memberPhone(member) {
-  if (!member.phone) return "—";
-  const prefix = member.phoneCountryCode ? `+${String(member.phoneCountryCode).replace(/^\+/, "")} ` : "";
-  return `${prefix}${member.phone}`;
+function formatMemberNumber(countryCode, number) {
+  if (!number) return "—";
+  const prefix = countryCode ? `+${String(countryCode).replace(/^\+/, "")} ` : "";
+  return `${prefix}${number}`;
+}
+
+function memberWhatsapp(member) {
+  return formatMemberNumber(member.whatsappCountryCode || member.phoneCountryCode, member.whatsappPhone || member.phone);
+}
+
+function memberMobile(member) {
+  return formatMemberNumber(member.mobileCountryCode, member.mobilePhone);
 }
 
 function ToggleSwitch({ on, disabled, onClick }) {
@@ -688,6 +696,7 @@ export function TeamMemberPage() {
   const photoFileRef = useRef(null);
   const actorIsWc = viewAs === "wc" || sessionUi === "wc";
   const requestsApproval = !isSuperAdmin && actorIsWc;
+  const showPermissions = Boolean(isAdminView);
 
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -769,16 +778,9 @@ export function TeamMemberPage() {
   const roleMeta = roleChipMeta(activeRole, activeBaseUiKey);
   const granted = countMemberGranted(grants, catalogRows);
   const avatarColor = STAFF_AVATARS[(member?.name?.length || 0) % STAFF_AVATARS.length];
-  const targetIsAwc =
-    member?.primaryRoleKey === "awc" ||
-    member?.accountRoleKey === "assistant_wellness_coach" ||
-    activeBaseUiKey === "awc";
   const canEditPerms =
-    Boolean(member) &&
-    !member.isSuperAdmin &&
-    (isSuperAdmin || (requestsApproval && targetIsAwc));
-  const canChangeStatus =
-    Boolean(member) && !member.isSuperAdmin && (isAdminView || can("console.tm.edit"));
+    showPermissions && Boolean(member) && !member.isSuperAdmin && Boolean(isSuperAdmin);
+  const canChangeStatus = Boolean(member) && !member.isSuperAdmin && Boolean(isAdminView);
   const canChangePassword =
     Boolean(member) && !member.isSuperAdmin && (isAdminView || can("console.tm.edit"));
 
@@ -826,7 +828,7 @@ export function TeamMemberPage() {
   }
 
   async function handleSaveRole() {
-    if (!member) return;
+    if (!member || !isAdminView) return;
     const nextRole = roleOptions.find((role) => String(role.id || role.roleKey) === String(roleDraft));
     const currentRoleKey = String(member.consoleRoleId || member.primaryRoleKey || "");
     if (!nextRole || String(roleDraft) === currentRoleKey) return;
@@ -1193,13 +1195,12 @@ export function TeamMemberPage() {
           </button>
         </div>
 
+        {isAdminView ? (
         <div className="ua-tm-role-change">
           <div>
             <div className="ua-tm-role-change__label">Role change</div>
             <p className="ua-tm-role-change__hint">
-              {requestsApproval
-                ? "Role changes are applied by Admin. Permission grants for an AWC go to Access Control for approval."
-                : `Admin — applies at once. Current role: ${roleMeta.name}`}
+              {`Admin — applies at once. Current role: ${roleMeta.name}`}
             </p>
           </div>
           <div className="ua-tm-role-change__controls">
@@ -1216,7 +1217,7 @@ export function TeamMemberPage() {
                 };
               })}
               value={roleDraft}
-              disabled={member.isSuperAdmin || savingRole || requestsApproval}
+              disabled={member.isSuperAdmin || savingRole}
               onChange={setRoleDraft}
               ariaLabel="Assigned role"
               placeholder="Choose role"
@@ -1227,7 +1228,6 @@ export function TeamMemberPage() {
               disabled={
                 member.isSuperAdmin ||
                 savingRole ||
-                requestsApproval ||
                 String(roleDraft) === String(member.consoleRoleId || member.primaryRoleKey || "")
               }
               onClick={handleSaveRole}
@@ -1236,6 +1236,7 @@ export function TeamMemberPage() {
             </button>
           </div>
         </div>
+        ) : null}
 
         {canChangeStatus ? (
           <div className="ua-tm-role-change">
@@ -1273,7 +1274,9 @@ export function TeamMemberPage() {
             <div>
               <div className="ua-tm-role-change__label">Password</div>
               <p className="ua-tm-role-change__hint">
-                Admin — set a new password without the current one. Saved separately from profile edits.
+                {isAdminView
+                  ? "Set a new password without the current one. Saved separately from profile edits."
+                  : "Set a new password. Other profile details are managed by Admin."}
               </p>
             </div>
             <div className="ua-tm-role-change__controls">
@@ -1297,7 +1300,8 @@ export function TeamMemberPage() {
               <dl className="ua-tm-profile-panel__rows">
                 <div><dt>Full name:</dt><dd title={member.name || undefined}>{member.name || "—"}</dd></div>
                 <div><dt>Email:</dt><dd>{member.email || "—"}</dd></div>
-                <div><dt>Mobile:</dt><dd>{memberPhone(member)}</dd></div>
+                <div><dt>WhatsApp:</dt><dd>{memberWhatsapp(member)}</dd></div>
+                <div><dt>Mobile:</dt><dd>{memberMobile(member)}</dd></div>
                 <div><dt>Date of birth:</dt><dd>{formatMemberDob(member.dateOfBirth)}</dd></div>
                 <div><dt>Location:</dt><dd>{memberLocation(member)}</dd></div>
                 <div >
@@ -1518,6 +1522,7 @@ export function TeamMemberPage() {
         </section>
       ) : null}
 
+      {showPermissions ? (
       <section ref={permsRef} id="permissions" className="ua-tm-card ua-tm-perms">
         <div className="ua-tm-perms__head">
           <div>
@@ -1639,6 +1644,7 @@ export function TeamMemberPage() {
           </div>
         ) : null}
       </section>
+      ) : null}
 
       {canChangePassword ? (
         <AdminMemberPasswordModal

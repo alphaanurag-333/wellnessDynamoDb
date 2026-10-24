@@ -131,11 +131,9 @@ function buildReviewSummary(items) {
 
 function getReviewAt(assignment) {
   if (!assignment) return null;
-  const createdAt = assignment.createdAt || null;
-  const updatedAt = assignment.updatedAt || createdAt;
-  if (!createdAt) return updatedAt;
-  if (!updatedAt) return createdAt;
-  return updatedAt > createdAt ? updatedAt : createdAt;
+  const raw = String(assignment.date || "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
 }
 
 function getLatestActiveReviewAt(assignments) {

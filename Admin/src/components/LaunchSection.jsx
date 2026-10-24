@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   adminCreateLaunchDomain,
+  adminCreateLaunchFocusArea,
   adminCreateLaunchQuestion,
   adminCreateLaunchRating,
   adminDeleteLaunchDomain,
+  adminDeleteLaunchFocusArea,
   adminDeleteLaunchQuestion,
   adminDeleteLaunchRating,
   adminGetLaunchConfig,
+  adminListLaunchFocusAreas,
   adminUpdateLaunchDomain,
+  adminUpdateLaunchFocusArea,
   adminUpdateLaunchQuestion,
   adminUpdateLaunchRating,
 } from "../api/launchConfigApi.js";
@@ -21,6 +25,8 @@ import {
   launchScoringHint,
   launchTotalQuestionCount,
 } from "../data/launchConfigData.js";
+import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import { CfgSelect } from "./shared.jsx";
 
 function Panel({ title, subtitle, actions, children, className = "" }) {
   const hasHead = Boolean(title || subtitle || actions);
@@ -62,6 +68,19 @@ function parseWeight(value) {
   return Math.min(100, Math.max(0, amount));
 }
 
+const KNOWN_RATING_TONES = new Set(["excellent", "good", "average", "below", "poor"]);
+
+function inferRatingTone(rating) {
+  const label = `${rating?.badge || ""} ${rating?.name || ""}`.toLowerCase();
+  if (/\bbelow\b/.test(label)) return "below";
+  if (/\bpoor\b/.test(label)) return "poor";
+  if (/\bexcellent\b/.test(label)) return "excellent";
+  if (/\bgood\b/.test(label)) return "good";
+  if (/\b(fair|average)\b/.test(label)) return "average";
+  const stored = String(rating?.tone || "").toLowerCase();
+  return KNOWN_RATING_TONES.has(stored) ? stored : "default";
+}
+
 function ScoringInfoModal({ open, ratings, onClose }) {
   if (!open) return null;
   const maxRating = ratings.reduce((max, row) => Math.max(max, Number(row.points) || 0), 0) || 100;
@@ -80,7 +99,7 @@ function ScoringInfoModal({ open, ratings, onClose }) {
         <p className="ua-cfg-launch-info-modal__hint">{launchScoringHint(ratings)}</p>
         <ul className="ua-cfg-launch-info-modal__ratings">
           {ratings.map((rating) => (
-            <li key={rating.id} className={`is-${rating.tone}`}>
+            <li key={rating.id} className={`is-${inferRatingTone(rating)}`}>
               <strong>{rating.name}</strong>
               <span>{rating.points} / {maxRating} pts</span>
               <em>{rating.description}</em>
@@ -99,12 +118,17 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
-  const [domainDraft, setDomainDraft] = useState({ name: "", weight: "" });
+  const [domainDraft, setDomainDraft] = useState({ name: "", weight: "", minRequirement: "" });
   const [questionDrafts, setQuestionDrafts] = useState({});
   const [ratingDraft, setRatingDraft] = useState({ name: "", points: "", description: "" });
   const [infoOpen, setInfoOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [focusAreas, setFocusAreas] = useState([]);
+  const [focusDraft, setFocusDraft] = useState("");
+  const [focusDomainDraft, setFocusDomainDraft] = useState("");
   const ratingsRef = useRef(ratings);
   const domainsRef = useRef(domains);
+  const focusRef = useRef([]);
   const persistTimers = useRef({});
 
   useEffect(() => {
@@ -115,6 +139,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     domainsRef.current = domains;
   }, [domains]);
 
+  useEffect(() => {
+    focusRef.current = focusAreas;
+  }, [focusAreas]);
+
   useEffect(() => () => {
     Object.values(persistTimers.current).forEach((timer) => window.clearTimeout(timer));
   }, []);
@@ -123,13 +151,31 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   const liveQuestions = useMemo(() => launchLiveQuestionCount(domains), [domains]);
   const totalQuestions = useMemo(() => launchTotalQuestionCount(domains), [domains]);
   const remainingWeight = useMemo(() => launchRemainingWeight(domains), [domains]);
+  const focusDomainOptions = useMemo(
+    () => domains.map((domain) => ({ value: domain.id, label: domain.name || "Untitled domain" })),
+    [domains],
+  );
 
   const loadConfig = useCallback(async () => {
     setLoading(true);
     try {
       const data = await adminGetLaunchConfig(null);
-      setRatings(data.ratings);
+      const ratingsWithTone = (data.ratings || []).map((row) => {
+        const tone = inferRatingTone(row);
+        return tone === row.tone ? row : { ...row, tone };
+      });
+      setRatings(ratingsWithTone);
       setDomains(data.domains);
+      const staleTones = (data.ratings || []).filter((row) => inferRatingTone(row) !== row.tone);
+      if (staleTones.length) {
+        Promise.all(
+          staleTones.map((row) =>
+            adminUpdateLaunchRating(null, row.id, { tone: inferRatingTone(row) }),
+          ),
+        ).catch((error) => {
+          onToast(error?.message || "Failed to save rating colors");
+        });
+      }
       setExpanded(new Set(data.domains.map((entry) => entry.id)));
     } catch (error) {
       onToast(error?.message || "Failed to load LAUNCH config");
@@ -140,9 +186,26 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
   }, [onToast, setDomains, setRatings]);
 
+  const loadFocusAreas = useCallback(async () => {
+    try {
+      const rows = await adminListLaunchFocusAreas(null);
+      const withSaved = (rows || []).map((row) => ({
+        ...row,
+        savedTitle: row.title,
+        savedDomainId: row.domainId || "",
+      }));
+      focusRef.current = withSaved;
+      setFocusAreas(withSaved);
+    } catch (error) {
+      onToast(error?.message || "Failed to load areas to focus");
+      setFocusAreas([]);
+    }
+  }, [onToast]);
+
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadFocusAreas();
+  }, [loadConfig, loadFocusAreas]);
 
   function schedulePersist(key, fn) {
     window.clearTimeout(persistTimers.current[key]);
@@ -150,6 +213,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       fn().catch((error) => {
         onToast(error?.message || "Failed to save LAUNCH config");
         loadConfig();
+        loadFocusAreas();
       });
     }, 450);
   }
@@ -238,7 +302,12 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
     setBusy(true);
     try {
-      const created = await adminCreateLaunchRating(null, { name, points, description });
+      const created = await adminCreateLaunchRating(null, {
+        name,
+        points,
+        description,
+        tone: inferRatingTone({ name, badge: name }),
+      });
       setRatings((prev) => [...prev, created]);
       setRatingDraft({ name: "", points: "", description: "" });
       onToast(`${name} rating added`);
@@ -264,6 +333,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
   async function addDomain() {
     const name = domainDraft.name.trim();
     const weight = parseWeight(domainDraft.weight);
+    const minRequirement = parseWeight(domainDraft.minRequirement || "50");
     if (!name) {
       onToast("Domain name is required");
       return;
@@ -274,10 +344,10 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     }
     setBusy(true);
     try {
-      const created = await adminCreateLaunchDomain(null, { name, weight, live: true });
+      const created = await adminCreateLaunchDomain(null, { name, weight, minRequirement, live: true });
       setDomains((prev) => [...prev, { ...created, questions: created.questions || [] }]);
       setExpanded((prev) => new Set([...prev, created.id]));
-      setDomainDraft({ name: "", weight: "" });
+      setDomainDraft({ name: "", weight: "", minRequirement: "" });
       onToast(`${name} domain added`);
     } catch (error) {
       onToast(error?.message || "Failed to add domain");
@@ -293,6 +363,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       async () => {
         await adminDeleteLaunchDomain(null, domain.id);
         onToast(`${domain.name} removed`);
+      },
+      () => setDomains(previous),
+    );
+  }
+
+  async function moveDomain(index, direction) {
+    const target = index + direction;
+    const previous = domainsRef.current;
+    if (target < 0 || target >= previous.length) return;
+    const next = [...previous];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    const ranked = next.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    setDomains(ranked);
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = previous.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) => adminUpdateLaunchDomain(null, entry.id, { sortOrder: entry.sortOrder })),
+        );
       },
       () => setDomains(previous),
     );
@@ -384,6 +478,36 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     );
   }
 
+  async function moveQuestion(domainId, index, direction) {
+    const previous = domainsRef.current;
+    const domain = previous.find((entry) => entry.id === domainId);
+    const questions = domain?.questions || [];
+    const target = index + direction;
+    if (!domain || target < 0 || target >= questions.length) return;
+    const nextQuestions = [...questions];
+    const [moved] = nextQuestions.splice(index, 1);
+    nextQuestions.splice(target, 0, moved);
+    const ranked = nextQuestions.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    setDomains(
+      previous.map((entry) => (entry.id === domainId ? { ...entry, questions: ranked } : entry)),
+    );
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = questions.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) =>
+              adminUpdateLaunchQuestion(null, domainId, entry.id, { sortOrder: entry.sortOrder }),
+            ),
+        );
+      },
+      () => setDomains(previous),
+    );
+  }
+
   async function toggleQuestionEnabled(domainId, question) {
     const nextEnabled = !question.enabled;
     const domain = domains.find((entry) => entry.id === domainId);
@@ -420,6 +544,183 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
     );
   }
 
+  function editFocusTitle(id, title) {
+    setFocusAreas((prev) => {
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, title } : entry));
+      focusRef.current = next;
+      return next;
+    });
+  }
+
+  async function saveFocusTitle(id) {
+    const area = focusRef.current.find((entry) => entry.id === id);
+    const title = String(area?.title || "").trim();
+    if (!area) return;
+    if (!title) {
+      onToast("Focus point text is required");
+      return;
+    }
+    if (title === area.savedTitle) return;
+    setBusy(true);
+    try {
+      const updated = await adminUpdateLaunchFocusArea(null, id, { title });
+      setFocusAreas((prev) => {
+        const next = prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          const typed = String(entry.title || "").trim();
+          return {
+            ...entry,
+            ...updated,
+            title: typed === title ? updated.title : entry.title,
+            savedTitle: updated?.title || title,
+          };
+        });
+        focusRef.current = next;
+        return next;
+      });
+      onToast("Focus point updated");
+    } catch (error) {
+      onToast(error?.message || "Failed to update focus point");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveFocusDomain(id, domainId) {
+    const area = focusRef.current.find((entry) => entry.id === id);
+    const nextDomainId = String(domainId || "").trim();
+    if (!area || !nextDomainId) return;
+    if (nextDomainId === (area.savedDomainId || area.domainId || "")) return;
+    setBusy(true);
+    try {
+      const updated = await adminUpdateLaunchFocusArea(null, id, { domainId: nextDomainId });
+      setFocusAreas((prev) => {
+        const next = prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          return {
+            ...entry,
+            ...updated,
+            domainId: updated?.domainId || nextDomainId,
+            savedDomainId: updated?.domainId || nextDomainId,
+          };
+        });
+        focusRef.current = next;
+        return next;
+      });
+      onToast("LAUNCH domain updated");
+    } catch (error) {
+      onToast(error?.message || "Failed to update LAUNCH domain");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addFocusArea() {
+    const title = focusDraft.trim();
+    const domainId = String(focusDomainDraft || "").trim();
+    if (!title) {
+      onToast("Focus point text is required");
+      return;
+    }
+    if (!domainId) {
+      onToast("Select a LAUNCH assessment domain");
+      return;
+    }
+    const sortOrder = focusRef.current.reduce((max, row) => Math.max(max, Number(row.sortOrder) || 0), 0) + 1;
+    setBusy(true);
+    try {
+      const created = await adminCreateLaunchFocusArea(null, { title, domainId, sortOrder, status: "active" });
+      setFocusAreas((prev) => {
+        const next = [...prev, {
+          ...created,
+          savedTitle: created?.title || title,
+          savedDomainId: created?.domainId || domainId,
+        }].sort((a, b) => a.sortOrder - b.sortOrder);
+        focusRef.current = next;
+        return next;
+      });
+      setFocusDraft("");
+      setFocusDomainDraft("");
+      onToast("Focus point added");
+    } catch (error) {
+      onToast(error?.message || "Failed to add focus point");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeFocusArea(area) {
+    const previous = focusRef.current;
+    setFocusAreas((prev) => prev.filter((entry) => entry.id !== area.id));
+    await runImmediate(
+      async () => {
+        await adminDeleteLaunchFocusArea(null, area.id);
+        onToast("Focus point removed");
+      },
+      () => setFocusAreas(previous),
+    );
+  }
+
+  async function moveFocusArea(index, direction) {
+    const previous = focusRef.current;
+    const target = index + direction;
+    if (target < 0 || target >= previous.length) return;
+    const next = [...previous];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    const ranked = next.map((entry, order) => ({ ...entry, sortOrder: order + 1 }));
+    focusRef.current = ranked;
+    setFocusAreas(ranked);
+    await runImmediate(
+      async () => {
+        await Promise.all(
+          ranked
+            .filter((entry) => {
+              const before = previous.find((row) => row.id === entry.id);
+              return Number(before?.sortOrder) !== entry.sortOrder;
+            })
+            .map((entry) => adminUpdateLaunchFocusArea(null, entry.id, { sortOrder: entry.sortOrder })),
+        );
+      },
+      () => setFocusAreas(previous),
+    );
+  }
+
+  function patchFocus(id, patch) {
+    setFocusAreas((prev) => {
+      const next = prev.map((entry) => (entry.id === id ? { ...entry, ...patch } : entry));
+      focusRef.current = next;
+      return next;
+    });
+  }
+
+  function askRemove(payload) {
+    if (busy) return;
+    setPendingDelete(payload);
+  }
+
+  async function confirmPendingDelete() {
+    const pending = pendingDelete;
+    if (!pending || busy) return;
+    setPendingDelete(null);
+    if (pending.kind === "rating") await removeRating(pending.rating);
+    else if (pending.kind === "domain") await removeDomain(pending.domain);
+    else if (pending.kind === "question") await removeQuestion(pending.domainId, pending.question);
+    else if (pending.kind === "focus") await removeFocusArea(pending.area);
+  }
+
+  async function toggleFocusStatus(area) {
+    const nextStatus = area.status === "inactive" ? "active" : "inactive";
+    patchFocus(area.id, { status: nextStatus });
+    await runImmediate(
+      async () => {
+        const updated = await adminUpdateLaunchFocusArea(null, area.id, { status: nextStatus });
+        patchFocus(area.id, { status: updated?.status || nextStatus });
+      },
+      () => patchFocus(area.id, { status: area.status }),
+    );
+  }
+
   if (loading) {
     return (
       <Panel title="LAUNCH assessment" subtitle="Loading rating scale and domains…">
@@ -438,16 +739,21 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       >
         <div className="ua-cfg-launch-ratings__list">
           {ratings.map((rating) => (
-            <div key={rating.id} className={`ua-cfg-launch-rating is-${rating.tone}`}>
+            <div key={rating.id} className={`ua-cfg-launch-rating is-${inferRatingTone(rating)}`}>
               <span  className="ua-cfg-launch-rating__badge" style={{width: "85px"}}>{rating.badge}</span>
               <input
                 type="text"
                 className="ua-cfg-launch-rating__name"
                 value={rating.name}
                 disabled={busy}
-                onChange={(event) =>
-                  persistRating(rating.id, { name: event.target.value, badge: event.target.value })
-                }
+                onChange={(event) => {
+                  const name = event.target.value;
+                  persistRating(rating.id, {
+                    name,
+                    badge: name,
+                    tone: inferRatingTone({ name, badge: name }),
+                  });
+                }}
               />
               <div className="ua-cfg-launch-rating__points">
                 <input
@@ -475,7 +781,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                 className="ua-cfg-icon-btn ua-cfg-launch-rating__delete"
                 aria-label={`Remove ${rating.name}`}
                 disabled={busy}
-                onClick={() => removeRating(rating)}
+                onClick={() => askRemove({
+                  kind: "rating",
+                  label: rating.name || "this rating",
+                  rating,
+                })}
               >
                 ×
               </button>
@@ -536,7 +846,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
         )}
       >
         <div className="ua-cfg-drf-sections">
-          {domains.map((domain) => {
+          {domains.map((domain, index) => {
             const isOpen = expanded.has(domain.id);
             const questions = domain.questions ?? [];
             const pointsTotal = launchDomainPointsTotal({ ...domain, questions }, { enabledOnly: true });
@@ -567,6 +877,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
+                  <div className="ua-cfg-launch-domain__sort">
+                    <button
+                      type="button"
+                      aria-label={`Move ${domain.name} up`}
+                      title="Move up"
+                      disabled={busy || index === 0}
+                      onClick={() => moveDomain(index, -1)}
+                    >
+                      <svg viewBox="0 0 12 8" aria-hidden="true">
+                        <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move ${domain.name} down`}
+                      title="Move down"
+                      disabled={busy || index === domains.length - 1}
+                      onClick={() => moveDomain(index, 1)}
+                    >
+                      <svg viewBox="0 0 12 8" aria-hidden="true">
+                        <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     className="ua-cfg-drf-section__name"
@@ -584,6 +918,19 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                         disabled={domain.fixed || busy}
                         onChange={(event) =>
                           persistDomain(domain.id, { weight: parseWeight(event.target.value) })
+                        }
+                      />
+                      <span>%</span>
+                    </div>
+                    <div className="ua-cfg-drf-section__weight ua-cfg-launch-domain__min-req">
+                      <span>Min req</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={domain.minRequirement ?? 50}
+                        disabled={busy}
+                        onChange={(event) =>
+                          persistDomain(domain.id, { minRequirement: parseWeight(event.target.value) })
                         }
                       />
                       <span>%</span>
@@ -622,7 +969,11 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       className="ua-cfg-icon-btn ua-cfg-drf-section__delete"
                       aria-label={`Remove ${domain.name}`}
                       disabled={busy}
-                      onClick={() => removeDomain(domain)}
+                      onClick={() => askRemove({
+                        kind: "domain",
+                        label: domain.name || "this domain",
+                        domain,
+                      })}
                     >
                       ×
                     </button>
@@ -635,6 +986,30 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                       questions.map((question, index) => (
                         <div key={question.id} className="ua-cfg-drf-question ua-cfg-launch-question">
                           <span className="ua-cfg-drf-question__num">{index + 1}</span>
+                          <div className="ua-cfg-launch-question__sort">
+                            <button
+                              type="button"
+                              aria-label={`Move question ${index + 1} up`}
+                              title="Move up"
+                              disabled={busy || index === 0}
+                              onClick={() => moveQuestion(domain.id, index, -1)}
+                            >
+                              <svg viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Move question ${index + 1} down`}
+                              title="Move down"
+                              disabled={busy || index === questions.length - 1}
+                              onClick={() => moveQuestion(domain.id, index, 1)}
+                            >
+                              <svg viewBox="0 0 12 8" aria-hidden="true">
+                                <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
                           <input
                             type="text"
                             className="ua-cfg-drf-question__name"
@@ -689,7 +1064,12 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
                               className="ua-cfg-icon-btn ua-cfg-drf-question__delete"
                               aria-label={`Remove ${question.name}`}
                               disabled={busy}
-                              onClick={() => removeQuestion(domain.id, question)}
+                              onClick={() => askRemove({
+                                kind: "question",
+                                label: question.name || "this question",
+                                domainId: domain.id,
+                                question,
+                              })}
                             >
                               ×
                             </button>
@@ -751,7 +1131,7 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
       <Panel
         className="ua-cfg-drf"
         title="Add a domain"
-        subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like).`}
+        subtitle={`Scored domains share the 100% — a new one can only take the weight that is still free (${remainingWeight}% available). Leave the weight at 0 for a general, unscored section (name, age, occupation and the like). Minimum requirement is the domain score threshold (e.g. 45, 50, 80) used when flagging focus areas on a client profile.`}
       >
         <div className="ua-cfg-drf-add-section">
           <input
@@ -771,11 +1151,187 @@ export function LaunchSection({ ratings, setRatings, domains, setDomains, onToas
             disabled={busy}
             onChange={(event) => setDomainDraft({ ...domainDraft, weight: event.target.value })}
           />
+          <input
+            type="text"
+            inputMode="numeric"
+            className="ua-cfg-drf-add-section__min-req"
+            placeholder="Min requirement % · e.g. 50"
+            value={domainDraft.minRequirement}
+            disabled={busy}
+            onChange={(event) => setDomainDraft({ ...domainDraft, minRequirement: event.target.value })}
+          />
           <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addDomain}>
             + Add domain
           </button>
         </div>
       </Panel>
+
+      <Panel
+        className="ua-cfg-launch-focus"
+        title="Areas to focus"
+        subtitle="Link each point to a LAUNCH assessment domain. These suggestions appear on a client’s LAUNCH page; coaches can add or remove points per client without changing this list."
+        actions={<span className="ua-cfg-launch-ratings__count">{focusAreas.length} points</span>}
+      >
+        {focusAreas.length ? (
+          <div className="ua-cfg-launch-focus__list">
+            {focusAreas.map((area, index) => (
+              <div
+                key={area.id}
+                className={`ua-cfg-launch-focus__row${area.status === "inactive" ? " is-off" : ""}`}
+              >
+                <div className="ua-cfg-launch-domain__sort">
+                  <button
+                    type="button"
+                    aria-label={`Move focus point ${index + 1} up`}
+                    title="Move up"
+                    disabled={busy || index === 0}
+                    onClick={() => moveFocusArea(index, -1)}
+                  >
+                    <svg viewBox="0 0 12 8" aria-hidden="true">
+                      <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Move focus point ${index + 1} down`}
+                    title="Move down"
+                    disabled={busy || index === focusAreas.length - 1}
+                    onClick={() => moveFocusArea(index, 1)}
+                  >
+                    <svg viewBox="0 0 12 8" aria-hidden="true">
+                      <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="ua-cfg-launch-focus__title"
+                  value={area.title}
+                  onChange={(event) => editFocusTitle(area.id, event.target.value)}
+                  onBlur={() => saveFocusTitle(area.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      saveFocusTitle(area.id);
+                    }
+                  }}
+                />
+                <CfgSelect
+                  className="ua-cfg-launch-focus__domain ua-cfg-select--sm"
+                  ariaLabel="LAUNCH assessment domain"
+                  placeholder="Select option"
+                  value={area.domainId || ""}
+                  disabled={busy || !focusDomainOptions.length}
+                  options={focusDomainOptions}
+                  onChange={(next) => saveFocusDomain(area.id, next)}
+                />
+                <button
+                  type="button"
+                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-launch-focus__save"
+                  disabled={busy || String(area.title || "").trim() === area.savedTitle}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => saveFocusTitle(area.id)}
+                >
+                  Update
+                </button>
+                <span className={`ua-cfg-drf-status${area.status !== "inactive" ? " is-on" : ""}`}>
+                  {area.status === "inactive" ? "Off" : "On"}
+                </span>
+                <button
+                  type="button"
+                  className={`ua-toggle ua-toggle--sm${area.status !== "inactive" ? " ua-toggle--on" : ""}`}
+                  aria-pressed={area.status !== "inactive"}
+                  aria-label={area.status === "inactive" ? "Show this focus point" : "Hide this focus point"}
+                  disabled={busy}
+                  onClick={() => toggleFocusStatus(area)}
+                >
+                  <span className="ua-toggle__knob" />
+                </button>
+                <button
+                  type="button"
+                  className="ua-cfg-icon-btn ua-cfg-launch-focus__delete"
+                  aria-label={`Remove ${area.title || "focus point"}`}
+                  disabled={busy}
+                  onClick={() => askRemove({
+                    kind: "focus",
+                    label: area.title || "this focus point",
+                    area,
+                  })}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="ua-cfg-launch-empty">No focus points yet. Add the suggestions coaches can pick on a client profile.</p>
+        )}
+        <div className="ua-cfg-launch-focus__add">
+          <input
+            type="text"
+            placeholder="Add a focus point · e.g. Improve morning hydration"
+            value={focusDraft}
+            disabled={busy}
+            onChange={(event) => setFocusDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") addFocusArea();
+            }}
+          />
+          <CfgSelect
+            className="ua-cfg-launch-focus__domain ua-cfg-select--sm"
+            ariaLabel="LAUNCH assessment domain for new focus point"
+            placeholder="Select option"
+            value={focusDomainDraft}
+            disabled={busy || !focusDomainOptions.length}
+            options={focusDomainOptions}
+            onChange={setFocusDomainDraft}
+          />
+          <button
+            type="button"
+            className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
+            disabled={busy || !focusDomainOptions.length}
+            onClick={addFocusArea}
+          >
+            + Add point
+          </button>
+        </div>
+      </Panel>
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        tag={
+          pendingDelete?.kind === "rating"
+            ? "Delete rating"
+            : pendingDelete?.kind === "domain"
+              ? "Delete domain"
+              : pendingDelete?.kind === "question"
+                ? "Delete question"
+                : "Delete focus point"
+        }
+        title={pendingDelete ? `Are you sure you want to remove “${pendingDelete.label}”?` : ""}
+        body={
+          pendingDelete?.kind === "domain"
+            ? "This domain and its questions will be permanently removed. You can’t undo this."
+            : pendingDelete?.kind === "question"
+              ? "This question will be permanently removed from the domain. You can’t undo this."
+              : pendingDelete?.kind === "focus"
+                ? "This focus point will be removed from the suggestions list. You can’t undo this."
+                : "This rating will be removed from the LAUNCH scale. You can’t undo this."
+        }
+        cancelLabel={
+          pendingDelete?.kind === "rating"
+            ? "Keep rating"
+            : pendingDelete?.kind === "domain"
+              ? "Keep domain"
+              : pendingDelete?.kind === "question"
+                ? "Keep question"
+                : "Keep point"
+        }
+        confirmLabel="Remove"
+        confirmTone="danger"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmPendingDelete}
+      />
 
       <ScoringInfoModal open={infoOpen} ratings={ratings} onClose={() => setInfoOpen(false)} />
     </>

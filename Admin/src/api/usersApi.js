@@ -29,6 +29,44 @@ function mapApiStatusToUi(status) {
   return "Disabled";
 }
 
+/** Matches Backend/models/userModel isBodyMeasurementEnabled. */
+export function resolveBodyMeasurementClientEnabled(user) {
+  if (user?.bodyMeasurementEnabled === true) return true;
+  if (user?.bodyMeasurementEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
+  const status = String(user?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase();
+  return status === "done" || status === "skipped";
+}
+
+/** Matches Backend isProgressPhotosInAppEnabled. */
+export function resolveProgressPhotosInAppEnabled(user) {
+  if (user?.progressPhotosInAppEnabled === true) return true;
+  if (user?.progressPhotosInAppEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
+  const status = String(user?.paidOnboardingStepStatus?.progressPhotos180 || "").toLowerCase();
+  return status === "done" || status === "skipped";
+}
+
+/** Matches Backend isLabReportSubmissionLocked (no reports required). */
+export function resolveLabReportSubmissionLocked(user) {
+  if (user?.labReportSubmissionLocked === false) return false;
+  return true;
+}
+
+/** Matches Backend isMedicalConditionsInAppEnabled. */
+export function resolveMedicalConditionsInAppEnabled(user) {
+  if (user?.medicalConditionsInAppEnabled === true) return true;
+  if (user?.medicalConditionsInAppEnabled === false) return false;
+  const bodyAnalyticsDone =
+    String(user?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+  if (bodyAnalyticsDone) return false;
+  return true;
+}
+
 export function mapUiStatusToApi(statusFilter) {
   if (statusFilter === "Active") return "active";
   if (statusFilter === "Disabled") return "inactive";
@@ -40,6 +78,12 @@ export function mapUiTierToApi(tierFilter) {
   if (tierFilter === "Consultancy") return "consultancy_only";
   if (tierFilter === "Seek") return "seek";
   if (tierFilter === "Maintenance") return "maintenance";
+  return undefined;
+}
+
+/** Eagle is a client category on the Heal plan, not a userTier value. */
+export function mapUiTierToClientCategory(tierFilter) {
+  if (tierFilter === "Eagle") return "eagle";
   return undefined;
 }
 
@@ -116,6 +160,24 @@ function ageDaysFrom(iso) {
   const joined = new Date(`${calendarDayKey(d)}T00:00:00Z`);
   const today = new Date(`${calendarDayKey(new Date())}T00:00:00Z`);
   return Math.max(0, Math.round((today.getTime() - joined.getTime()) / 86400000));
+}
+
+/**
+ * Label for a Wellness Prescription review date.
+ * Date-only values are the prescription calendar day, not the save timestamp.
+ */
+export function formatPrescriptionReviewLabel(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const dayMatch = raw.match(/^(\d{4}-\d{2}-\d{2})$/);
+  if (!dayMatch) return formatRelativeDate(raw);
+
+  const day = dayMatch[1];
+  const today = calendarDayKey(new Date());
+  if (day === today) return "today";
+  const instant = `${day}T12:00:00+05:30`;
+  if (day > today) return formatLongDate(instant);
+  return formatRelativeDate(instant);
 }
 
 /** Relative date label suitable for profile activity badges. */
@@ -246,10 +308,19 @@ function resolveTermsIp(user) {
 
 function buildTags(user, goal) {
   const tags = [];
-  if (goal) tags.push(goal);
-  const tierUi = mapApiTierToUi(user?.userTier);
-  const label = tierLabel(tierUi);
-  if (label && !tags.includes(label)) tags.push(label);
+  const seen = new Set();
+  function push(label) {
+    const text = String(label || "").trim();
+    if (!text) return;
+    const key = text.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    tags.push(text);
+  }
+  push(goal);
+  for (const token of parseWellnessJourneyTokens(user?.wellnessJourneyFor)) {
+    push(formatWellnessJourneyDisplay(token));
+  }
   return tags;
 }
 
@@ -293,6 +364,11 @@ export const GENDER_UI_OPTIONS = [
   { value: "other", label: "Guess" },
 ];
 
+/** PCOD / PCOS is a girl-only primary health concern. */
+export function isGirlOnlyHealthConcern(title) {
+  return /\b(pcod|pcos|pmos)\b/i.test(String(title || ""));
+}
+
 function formatDietaryPreference(value) {
   return titleCaseToken(value);
 }
@@ -317,6 +393,58 @@ function formatWellnessJourney(value) {
     return value.map(wellnessJourneyLabel).filter(Boolean).join(", ");
   }
   return wellnessJourneyLabel(value);
+}
+
+function extractWellnessJourneyToken(entry) {
+  if (entry == null) return "";
+  if (typeof entry === "object") {
+    const candidate =
+      entry.title ??
+      entry.name ??
+      entry.label ??
+      entry.value ??
+      entry.id ??
+      entry._id;
+    return String(candidate ?? "").trim();
+  }
+  return String(entry).trim();
+}
+
+/** Raw journey tokens for editing. Accepts arrays, objects, or comma-separated display text. */
+export function parseWellnessJourneyTokens(value) {
+  if (value == null) return [];
+  let raw = value;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    try {
+      raw = JSON.parse(trimmed);
+    } catch {
+      raw = trimmed.split(",").map((part) => part.trim()).filter(Boolean);
+    }
+  } else if (typeof raw === "object" && !Array.isArray(raw)) {
+    const token = extractWellnessJourneyToken(raw);
+    return token ? [token] : [];
+  }
+  if (!Array.isArray(raw)) {
+    const token = extractWellnessJourneyToken(raw);
+    return token ? [token] : [];
+  }
+  const seen = new Set();
+  const out = [];
+  for (const entry of raw) {
+    const token = extractWellnessJourneyToken(entry);
+    if (!token) continue;
+    const key = token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(token);
+  }
+  return out;
+}
+
+export function formatWellnessJourneyDisplay(value) {
+  return formatWellnessJourney(value);
 }
 
 function formatOnboardingFieldDisplay(field) {
@@ -465,9 +593,7 @@ export function mapApiUserToRow(user, index = 0) {
   const createdAt = user?.createdAt || "";
   const updatedAt = user?.updatedAt || createdAt;
   const lastActiveAt = user?.lastActiveAt || "";
-  // Prefer a purpose-built review timestamp when the API provides one. Existing
-  // users still get a meaningful value from their latest persisted update.
-  const lastReviewedAt = user?.lastReviewedAt || updatedAt;
+  const lastReviewedAt = user?.lastReviewedAt || "";
   const tier = mapApiTierToUi(user?.userTier);
   const address = formatAddress(user);
   const stateRaw = String(user?.state || "").trim();
@@ -478,6 +604,7 @@ export function mapApiUserToRow(user, index = 0) {
   const onboardingDone = countOnboardingDone(paidOnboardingStepStatus);
   const onboardingTotal = PAID_ONBOARDING_STATUS_KEYS.length;
   const dietaryPreference = formatDietaryPreference(user?.dietaryPreference);
+  const wellnessJourneyForRaw = parseWellnessJourneyTokens(user?.wellnessJourneyFor);
   const wellnessJourneyFor = formatWellnessJourney(user?.wellnessJourneyFor);
   const gender = formatGender(user?.gender);
   const addressLine1 = String(user?.addressLine1 || "").trim();
@@ -514,6 +641,7 @@ export function mapApiUserToRow(user, index = 0) {
     healthConcernId: resolveHealthConcernId(user),
     dietaryPreference,
     wellnessJourneyFor,
+    wellnessJourneyForRaw,
     coach: coach || UNASSIGNED_COACH,
     awc: resolveAwcName(user),
     lastActive: formatLastActive(lastActiveAt),
@@ -525,7 +653,7 @@ export function mapApiUserToRow(user, index = 0) {
     joined: formatLongDate(createdAt),
     joinedAgo: formatJoinedAgo(createdAt),
     lastUpdated: formatShortDate(updatedAt),
-    lastReviewed: formatRelativeDate(lastReviewedAt),
+    lastReviewed: formatPrescriptionReviewLabel(lastReviewedAt),
     termsIp: resolveTermsIp(user),
     termsAccepted: termsAcceptedLabel,
     termsAcceptedBool: Boolean(user?.termsAccepted),
@@ -548,8 +676,18 @@ export function mapApiUserToRow(user, index = 0) {
     presentablePicHistory: Array.isArray(user?.presentablePicHistory) ? user.presentablePicHistory : [],
     presentablePicsEnabled: user?.presentablePicsEnabled !== false,
     dietPlanEnabled: user?.dietPlanEnabled !== false,
+    mealTrackingMode: user?.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro",
+    dailyMealGoal: (() => {
+      const n = Math.floor(Number(user?.dailyMealGoal));
+      return n === 1 || n === 2 || n === 3 ? n : 3;
+    })(),
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
+    bodyMeasurementEnabledRaw: user?.bodyMeasurementEnabled === true,
+    progressPhotosInAppEnabled: resolveProgressPhotosInAppEnabled(user),
+    progressPhotosInAppEnabledRaw: user?.progressPhotosInAppEnabled === true,
+    medicalConditionsInAppEnabled: resolveMedicalConditionsInAppEnabled(user),
     referralCode: String(user?.referralCode || "").trim(),
     referredByCode: String(user?.referredByCode || "").trim(),
     userTier: String(user?.userTier || "").toLowerCase(),
@@ -570,6 +708,7 @@ export function mapApiUserToRow(user, index = 0) {
     onboardingTotal,
     onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
+    labReportSubmissionLocked: resolveLabReportSubmissionLocked(user),
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
   };
@@ -764,7 +903,27 @@ export async function fetchUserMedicalConditions(id) {
       `/account/users/${encodeURIComponent(id)}/medical-conditions`,
       { headers: authHeader() },
     );
-    return data.medicalCondition || null;
+    return {
+      medicalCondition: data.medicalCondition || null,
+      medicalConditionsInAppEnabled: data.medicalConditionsInAppEnabled !== false,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserMedicalConditionsInAppSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/medical-conditions/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return {
+      enabled: data.medicalConditionsInAppEnabled ?? data.enabled,
+      message: data.message,
+      user: data.user,
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -776,10 +935,45 @@ export async function fetchUserBodyAnalytics(id) {
       `/account/users/${encodeURIComponent(id)}/body-analytics`,
       { headers: authHeader() },
     );
-    return data.bodyAnalytics || {
+    const analytics = data.bodyAnalytics || {
       measurements: [],
       metabolicMetrics: [],
       photos: [],
+    };
+    return {
+      ...analytics,
+      bodyMeasurementEnabled: data.bodyMeasurementEnabled,
+      progressPhotosInAppEnabled: data.progressPhotosInAppEnabled,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserBodyMeasurementSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/body-measurements/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserProgressPhotosInAppSettings(userId, { enabled } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/progress-photos/settings`,
+      { enabled },
+      { headers: authHeader() },
+    );
+    return {
+      enabled: data.progressPhotosInAppEnabled ?? data.enabled,
+      message: data.message,
+      user: data.user,
     };
   } catch (error) {
     normalizeApiError(error);

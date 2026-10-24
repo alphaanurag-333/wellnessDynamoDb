@@ -29,6 +29,7 @@ const HBA1C_DROP_POINTS = 2;
 const HBA1C_BELOW = 6.5;
 const HBA1C_MIN = 4;
 const HBA1C_MAX = 15;
+const HBA1C_LAB_REPORT_READING_LIMIT = 7;
 
 function toNumberOrNull(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -100,6 +101,29 @@ function onboardingState(user) {
   if (days === 1) return { state: "1 day idle", stateTone: "warn" };
   if (days >= 4) return { state: `${days} days idle`, stateTone: "danger" };
   return { state: `${days} days idle`, stateTone: "warn" };
+}
+
+/** Wellness-coach ids on a client: owning coach, then a direct wellness-coach assignee. */
+function wellnessCoachIdsForUser(user) {
+  const parentId = String(user?.parentCoachId || "").trim();
+  const assignedType = String(user?.assignedCoachType || "").trim().toLowerCase();
+  const assignedId = String(user?.assignedCoachId || "").trim();
+  const ids = [];
+  if (parentId) ids.push(parentId);
+  if (assignedType === "wellness_coach" && assignedId && assignedId !== parentId) {
+    ids.push(assignedId);
+  }
+  return ids;
+}
+
+/** Prefer the owning wellness coach name, then a directly assigned wellness coach. */
+function coachNameFromMap(user, coachNames) {
+  const names = coachNames instanceof Map ? coachNames : new Map();
+  for (const id of wellnessCoachIdsForUser(user)) {
+    const name = String(names.get(id) || "").trim();
+    if (name && name !== "Not assigned") return name;
+  }
+  return "Not assigned";
 }
 
 function buildOnboardingRow(user, coachName = "Not assigned") {
@@ -239,7 +263,18 @@ function parseMarkerNumericValue(raw) {
   return toNumberOrNull(match[0]);
 }
 
-function extractHba1cFromLabReport(report) {
+function calendarDateKey(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  const isoPrefix = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return isoPrefix ? isoPrefix[1] : "";
+}
+
+function extractHba1cReadingDetailFromLabReport(report) {
   if (!report || normalizeAiStatus(report.aiStatus) !== "analysed") return null;
   const panels = report?.aiAnalysis?.panels;
   if (!Array.isArray(panels) || !panels.length) return null;
@@ -247,16 +282,58 @@ function extractHba1cFromLabReport(report) {
   for (const panel of panels) {
     for (const row of panel?.rows || []) {
       if (!isHba1cMarker(row?.name)) continue;
-      const value = parseMarkerNumericValue(row?.value);
-      if (value == null || !looksLikeA1cSeries([value])) continue;
+      const parsed = parseMarkerNumericValue(row?.value);
+      if (parsed == null || !looksLikeA1cSeries([parsed])) continue;
       const recordedAt = String(
         report.reportDate || report.aiAnalysedAt || report.createdAt || "",
       ).trim();
       if (!recordedAt) continue;
-      return { value, recordedAt };
+      const updatedAt = new Date(
+        report.updatedAt || report.aiAnalysedAt || report.createdAt || 0,
+      ).getTime();
+      return {
+        value: Number(parsed.toFixed(1)),
+        recordedAt,
+        updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+        reportId: report.id || report._id || recordedAt,
+        tone: row.tone ? String(row.tone) : null,
+        note: row.note ? String(row.note) : null,
+        rr: row.rr ? String(row.rr) : null,
+        optimal: row.optimal ? String(row.optimal) : null,
+      };
     }
   }
   return null;
+}
+
+function extractHba1cFromLabReport(report) {
+  const detail = extractHba1cReadingDetailFromLabReport(report);
+  if (!detail) return null;
+  return { value: detail.value, recordedAt: detail.recordedAt };
+}
+
+function listHba1cReadingsFromLabReports(reports, { limit = HBA1C_LAB_REPORT_READING_LIMIT } = {}) {
+  const readings = [];
+  for (const report of reports || []) {
+    const reading = extractHba1cReadingDetailFromLabReport(report);
+    if (reading) readings.push(reading);
+  }
+
+  readings.sort((a, b) => {
+    const byDate = String(a.recordedAt).localeCompare(String(b.recordedAt));
+    if (byDate) return byDate;
+    return a.updatedAt - b.updatedAt;
+  });
+
+  const byDate = new Map();
+  for (const reading of readings) {
+    const key = calendarDateKey(reading.recordedAt) || reading.reportId;
+    byDate.set(key, reading);
+  }
+
+  const deduped = [...byDate.values()];
+  const capped = limit > 0 ? deduped.slice(-limit) : deduped;
+  return capped.map(({ updatedAt, ...rest }) => rest);
 }
 
 function normalizeAiStatus(value) {
@@ -298,6 +375,7 @@ module.exports = {
   DEFAULT_FAT_LOSS_GOAL_KG,
   HBA1C_DROP_POINTS,
   HBA1C_BELOW,
+  HBA1C_LAB_REPORT_READING_LIMIT,
   toNumberOrNull,
   toKg,
   stampOf,
@@ -309,6 +387,8 @@ module.exports = {
   formatChangePts,
   isHealClient,
   isHealClientInOnboarding,
+  wellnessCoachIdsForUser,
+  coachNameFromMap,
   buildOnboardingRow,
   idealWeightKg,
   resolveGoalWeightKg,
@@ -320,6 +400,8 @@ module.exports = {
   isHba1cMarker,
   parseMarkerNumericValue,
   extractHba1cFromLabReport,
+  extractHba1cReadingDetailFromLabReport,
+  listHba1cReadingsFromLabReports,
   labReportsToHba1cReadings,
   glucoseLogsToHba1cReadings,
   mergeHba1cReadings,

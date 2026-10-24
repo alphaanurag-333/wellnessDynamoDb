@@ -52,27 +52,26 @@ function EditableField({ label, value, onChange, hint, disabled, placeholder }) 
   );
 }
 
-function PhoneField({ countryCode, phone, onCountryCode, onPhone, hint, disabled }) {
+function PhoneField({ countryCode, phone, hint }) {
   return (
     <label className="ua-profile-modal__field">
       <span className="ua-profile-modal__label">WhatsApp number</span>
       <div className="ua-profile-modal__phone">
         <input
           type="text"
-          className="ua-profile-modal__input ua-profile-modal__input--edit ua-profile-modal__cc"
-          value={countryCode}
-          onChange={(event) => onCountryCode(event.target.value)}
-          disabled={disabled}
+          className="ua-profile-modal__input is-readonly ua-profile-modal__cc"
+          value={countryCode || "—"}
+          disabled
+          readOnly
           aria-label="Country code"
         />
         <input
           type="tel"
-          className="ua-profile-modal__input ua-profile-modal__input--edit"
-          value={phone}
-          onChange={(event) => onPhone(event.target.value.replace(/[^\d]/g, ""))}
-          disabled={disabled}
-          placeholder="9820011002"
-          inputMode="numeric"
+          className="ua-profile-modal__input is-readonly"
+          value={phone || "—"}
+          disabled
+          readOnly
+          aria-label="WhatsApp number"
         />
       </div>
       {hint ? <span className="ua-profile-modal__hint">{hint}</span> : null}
@@ -482,8 +481,7 @@ export function ProfileModal({ open, onClose, onToast }) {
   );
   const [bio, setBio] = useState(profile.bio);
   const [name, setName] = useState(profile.name === "—" ? "" : profile.name);
-  const [phone, setPhone] = useState(profile.phoneDigits || "");
-  const [phoneCountryCode, setPhoneCountryCode] = useState(profile.phoneCountryCode || "+91");
+  const [email, setEmail] = useState(profile.email === "—" ? "" : profile.email || "");
   const [dob, setDob] = useState(profile.dateOfBirth || "");
   const [country, setCountry] = useState(profile.country || "");
   const [state, setState] = useState(profile.state || "");
@@ -533,8 +531,7 @@ export function ProfileModal({ open, onClose, onToast }) {
     setBio(profile.bio);
     bioBaseline.current = profile.bio;
     setName(profile.name === "—" ? "" : profile.name);
-    setPhone(profile.phoneDigits || "");
-    setPhoneCountryCode(profile.phoneCountryCode || "+91");
+    setEmail(profile.email === "—" ? "" : profile.email || "");
     setDob(profile.dateOfBirth || "");
     setCountry(profile.country || "");
     setState(profile.state || "");
@@ -574,6 +571,15 @@ export function ProfileModal({ open, onClose, onToast }) {
       onToast?.("Name is required");
       return;
     }
+    const nextEmail = String(email || "").trim().toLowerCase();
+    if (!nextEmail) {
+      onToast?.("Email is required");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      onToast?.("Enter a valid email address");
+      return;
+    }
     const dobError = validateDateOfBirth(dob, { required: true });
     if (dobError) {
       onToast?.(dobError);
@@ -595,8 +601,7 @@ export function ProfileModal({ open, onClose, onToast }) {
     try {
       const updated = await accountUpdateMe({
         name: nextName,
-        phone: String(phone || "").trim(),
-        phoneCountryCode: String(phoneCountryCode || "").trim() || "+91",
+        email: nextEmail,
         dateOfBirth: String(dob || "").trim(),
         country: String(country || "").trim(),
         state: String(state || "").trim(),
@@ -762,14 +767,23 @@ export function ProfileModal({ open, onClose, onToast }) {
                 disabled={savingDetails}
               />
               <PhoneField
-                countryCode={phoneCountryCode}
-                phone={phone}
-                onCountryCode={setPhoneCountryCode}
-                onPhone={setPhone}
-                hint={profile.whatsappHint}
-                disabled={savingDetails}
+                countryCode={profile.phoneCountryCode || "+91"}
+                phone={profile.phoneDigits || ""}
+                hint="This number is used for WhatsApp and OTP sign-in and cannot be changed here."
               />
-              <ReadOnlyField label="Work email" value={profile.email} hint="Email is used to sign in and cannot be changed here." />
+              <label className="ua-profile-modal__field">
+                <span className="ua-profile-modal__label">Work email</span>
+                <input
+                  type="email"
+                  className="ua-profile-modal__input ua-profile-modal__input--edit"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={savingDetails}
+                  placeholder="name@company.com"
+                  autoComplete="email"
+                />
+                <span className="ua-profile-modal__hint">Email is used to sign in.</span>
+              </label>
               <ReadOnlyField label="Role" value={`${profile.role} · ${profile.roleNote}`} />
               <label className="ua-profile-modal__field">
                 <span className="ua-profile-modal__label">Date of birth *</span>
@@ -996,7 +1010,7 @@ export function ProfileModal({ open, onClose, onToast }) {
 
         <div className="ua-profile-modal__foot">
           <p className="ua-profile-modal__foot-note">
-            Email and role stay managed from Access. Save to update your name, mobile, DOB or location.
+            Mobile and role stay managed from Access. Save to update your name, email, DOB or location.
           </p>
           <div className="ua-profile-modal__foot-actions">
             <button

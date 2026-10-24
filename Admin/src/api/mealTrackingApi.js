@@ -18,11 +18,14 @@ export async function fetchUserMealTracking(userId, { date, days = 1 } = {}) {
     const { data } = await api.get(`${healUserPath(userId, "/meal-tracking")}?${q}`, {
       headers: authHeader(),
     });
+    const rawGoal = Number(data.dailyMealGoal);
+    const dailyMealGoal = rawGoal === 1 || rawGoal === 2 || rawGoal === 3 ? rawGoal : 3;
     return {
       logs: Array.isArray(data.logs) ? data.logs : [],
       macroSummary: Array.isArray(data.macroSummary) ? data.macroSummary : [],
       range: data.range || null,
       mealTrackingMode: data.mealTrackingMode === "detailed_macro" ? "detailed_macro" : "macro",
+      dailyMealGoal,
     };
   } catch (error) {
     normalizeApiError(error);
@@ -79,6 +82,20 @@ export async function reviewUserMealLog(logId, payload) {
       { headers: authHeader() },
     );
     return data.mealLog;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserDailyMealGoal(userId, dailyMealGoal) {
+  try {
+    const { data } = await api.patch(
+      healUserPath(userId, "/daily-meal-goal"),
+      { dailyMealGoal: Number(dailyMealGoal) },
+      { headers: authHeader() },
+    );
+    const raw = Number(data.dailyMealGoal);
+    return raw === 1 || raw === 2 || raw === 3 ? raw : 3;
   } catch (error) {
     normalizeApiError(error);
   }

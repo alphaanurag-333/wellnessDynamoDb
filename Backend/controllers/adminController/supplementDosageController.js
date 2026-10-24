@@ -5,14 +5,14 @@ const {
   createUserSupplementDosage,
   listUserSupplementDosagesByUserId,
   stopUserSupplementDosage,
+  publishDraftDosagesForUser,
   normalizeStartDate,
   normalizePeriods,
 } = require("../../models/userSupplementDosageModel");
 const { getSupplementById } = require("../../models/supplementModel");
 const {
-  queryLogsByDosageId,
   queryLogsByUserIdAndDate,
-  computeProgressPercent,
+  computeScheduleProgressPercent,
   buildTodayCompletionMap,
   normalizeLogDate,
 } = require("../../models/userSupplementDosageLogModel");
@@ -37,11 +37,10 @@ async function hydrateDosagesWithProgress(dosages, userId) {
   const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
   return Promise.all(
     (dosages || []).map(async (dosage) => {
-      const logs = await queryLogsByDosageId(dosage.id);
       const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
       return {
         ...dosage,
-        progressPercent: computeProgressPercent(dosage, logs),
+        progressPercent: computeScheduleProgressPercent(dosage, logDate),
         todayCompletion,
         periods: (dosage.periods || []).map((row) => ({
           ...row,
@@ -61,7 +60,7 @@ exports.listCoachUserSupplementDosagesController = asyncHandler(async (req, res)
   await assertStaffCanAccessUser(req, user);
   assertHealTierUser(user);
 
-  const dosages = await listUserSupplementDosagesByUserId(userId);
+  const dosages = await listUserSupplementDosagesByUserId(userId, { includeDraft: true });
   const hydrated = await hydrateDosagesWithProgress(dosages, userId);
 
   return res.status(200).json({
@@ -104,25 +103,66 @@ exports.createCoachUserSupplementDosageController = asyncHandler(async (req, res
       periods,
       createdByRole: req.auth?.role || "wellness_coach",
       createdById: actingCoachId,
+      status: "draft",
     });
   } catch (err) {
     handleValidationError(err);
   }
 
-  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
-  dispatchSupplementDosageAssignedNotification({
-    userId,
-    coachName: coach?.name || "Your coach",
-    dosageId: dosage?.id,
-    supplementName: supplement.name,
-  }).catch((err) => {
-    console.error("Supplement dosage notification failed:", err?.message || err);
-  });
-
   return res.status(201).json({
     status: true,
-    message: "Nutrition dosage created successfully",
-    dosage: { ...dosage, progressPercent: 0 },
+    message: "Nutrition dosage saved to schedule (not yet in client app)",
+    dosage: {
+      ...dosage,
+      progressPercent: computeScheduleProgressPercent(dosage),
+    },
+  });
+});
+
+exports.publishCoachUserSupplementDosagesController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+
+  const published = await publishDraftDosagesForUser(userId);
+  if (!published.length) {
+    return res.status(200).json({
+      status: true,
+      message: "No unpublished dosages to push",
+      publishedCount: 0,
+      dosages: await hydrateDosagesWithProgress(
+        await listUserSupplementDosagesByUserId(userId, { includeDraft: true }),
+        userId,
+      ),
+    });
+  }
+
+  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
+  for (const dosage of published) {
+    dispatchSupplementDosageAssignedNotification({
+      userId,
+      coachName: coach?.name || "Your coach",
+      dosageId: dosage?.id,
+      supplementName: dosage?.name || "Nutrition",
+    }).catch((err) => {
+      console.error("Supplement dosage notification failed:", err?.message || err);
+    });
+  }
+
+  const hydrated = await hydrateDosagesWithProgress(
+    await listUserSupplementDosagesByUserId(userId, { includeDraft: true }),
+    userId,
+  );
+
+  return res.status(200).json({
+    status: true,
+    message: `Pushed ${published.length} dosage${published.length === 1 ? "" : "s"} to client app`,
+    publishedCount: published.length,
+    dosages: hydrated,
   });
 });
 

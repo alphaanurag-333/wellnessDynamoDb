@@ -12,6 +12,7 @@ const {
   buildContainsFilter,
   sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
+const { normalizePrakrutiType } = require("../utils/prakrutiConstants");
 
 const TABLE = "PrakrutiThingToAvoid";
 const PRAKRUTI_THING_TO_AVOID_ALLOWED_STATUS = ["active", "inactive"];
@@ -48,6 +49,7 @@ function toPublicThingToAvoid(item) {
   return {
     id: row.id,
     _id: row._id,
+    prakrutiType: normalizePrakrutiType(row.prakrutiType) || "",
     title: row.title,
     sortOrder: normalizeSortOrder(row.sortOrder),
     status: normalizeStatus(row.status),
@@ -56,10 +58,18 @@ function toPublicThingToAvoid(item) {
   };
 }
 
-async function createPrakrutiThingToAvoid({ title, sortOrder = 0, status = "active" }) {
+async function createPrakrutiThingToAvoid({ prakrutiType, title, sortOrder = 0, status = "active" }) {
+  const type = normalizePrakrutiType(prakrutiType);
+  if (!type) {
+    const err = new Error("Invalid prakrutiType");
+    err.name = "ValidationError";
+    throw err;
+  }
+
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
+    prakrutiType: type,
     title: String(title || "").trim(),
     sortOrder: normalizeSortOrder(sortOrder),
     status: normalizeStatus(status),
@@ -95,6 +105,15 @@ async function updatePrakrutiThingToAvoid(id, updates) {
       if (k === "status") return [k, normalizeStatus(v)];
       if (k === "sortOrder") return [k, normalizeSortOrder(v)];
       if (k === "title") return [k, String(v || "").trim()];
+      if (k === "prakrutiType") {
+        const type = normalizePrakrutiType(v);
+        if (!type) {
+          const err = new Error("Invalid prakrutiType");
+          err.name = "ValidationError";
+          throw err;
+        }
+        return [k, type];
+      }
       return [k, v];
     });
   if (entries.length === 0) throw new Error("No valid fields provided for update");
@@ -146,16 +165,31 @@ async function listActivePrakrutiThingsToAvoid() {
   return items.map((row) => toPublicThingToAvoid(row)).filter(Boolean).sort(sortThingsToAvoid);
 }
 
-async function listPrakrutiThingsToAvoid({ page = 1, limit = 10, status, search } = {}) {
+async function listPrakrutiThingsToAvoid({ page = 1, limit = 10, status, search, prakrutiType } = {}) {
   const normalizedStatus = status ? normalizeStatus(status, "") : "";
   const searchFilter = buildContainsFilter(["title"], search);
+  let filterExpression = searchFilter.filterExpression;
+  const exprNames = { ...searchFilter.exprNames };
+  const exprValues = { ...searchFilter.exprValues };
+
+  const type = prakrutiType ? normalizePrakrutiType(prakrutiType) : null;
+  if (prakrutiType && !type) {
+    return { thingsToAvoid: [], pagination: { page: 1, pages: 1, total: 0, limit } };
+  }
+  if (type) {
+    const typeExpr = "#prakrutiType = :prakrutiTypeFilter";
+    exprNames["#prakrutiType"] = "prakrutiType";
+    exprValues[":prakrutiTypeFilter"] = type;
+    filterExpression = filterExpression ? `${filterExpression} AND ${typeExpr}` : typeExpr;
+  }
+
   const { items, pagination } = await listByPartitionKey({
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: normalizedStatus || undefined,
-    filterExpression: searchFilter.filterExpression,
-    exprNames: searchFilter.exprNames,
-    exprValues: searchFilter.exprValues,
+    filterExpression,
+    exprNames,
+    exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
     scanIndexForward: false,

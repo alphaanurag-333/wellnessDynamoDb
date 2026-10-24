@@ -43,6 +43,12 @@ function typeLabel(value) {
   return PRAKRUTI_TYPE_OPTIONS.find((opt) => opt.value === value)?.label || value || "—";
 }
 
+function avoidMatchesFilter(row, filter) {
+  const type = String(row.prakrutiType || "").trim().toLowerCase();
+  if (!type) return filter === "vata";
+  return type === filter;
+}
+
 export function PrakritiAssessmentSection({
   questions,
   setQuestions,
@@ -59,9 +65,9 @@ export function PrakritiAssessmentSection({
   const [pendingDelete, setPendingDelete] = useState(null);
   const [drafts, setDrafts] = useState({ Vata: "", Pitta: "", Kapha: "" });
   const [newRec, setNewRec] = useState("");
-  const [newRecType, setNewRecType] = useState("vata");
   const [recFilter, setRecFilter] = useState("vata");
   const [newAvoid, setNewAvoid] = useState("");
+  const [avoidFilter, setAvoidFilter] = useState("vata");
 
   const questionsRef = useRef(questions);
   const avoidRef = useRef(thingsToAvoid);
@@ -139,14 +145,15 @@ export function PrakritiAssessmentSection({
     [filteredRecs],
   );
 
-  const liveAvoid = useMemo(
-    () => thingsToAvoid.filter((row) => row.shown).length,
-    [thingsToAvoid],
-  );
+  const filteredAvoid = useMemo(() => {
+    return thingsToAvoid
+      .filter((row) => avoidMatchesFilter(row, avoidFilter))
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }, [thingsToAvoid, avoidFilter]);
 
-  const sortedAvoid = useMemo(
-    () => [...thingsToAvoid].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)),
-    [thingsToAvoid],
+  const liveAvoid = useMemo(
+    () => filteredAvoid.filter((row) => row.shown).length,
+    [filteredAvoid],
   );
 
   function cancelEdit() {
@@ -266,15 +273,14 @@ export function PrakritiAssessmentSection({
     setBusy(true);
     try {
       const created = await adminCreatePrakrutiRecommendation(null, {
-        prakrutiType: newRecType,
+        prakrutiType: recFilter,
         title,
         shown: true,
-        sortOrder: recommendations.filter((r) => r.prakrutiType === newRecType).length + 1,
+        sortOrder: recommendations.filter((r) => r.prakrutiType === recFilter).length + 1,
       });
       setRecommendations((prev) => [...prev, created]);
-      setRecFilter(newRecType);
       setNewRec("");
-      onToast(`Recommendation added for ${typeLabel(newRecType)}`);
+      onToast(`Recommendation added for ${typeLabel(recFilter)}`);
     } catch (error) {
       onToast(error?.message || "Failed to add recommendation");
     } finally {
@@ -393,13 +399,14 @@ export function PrakritiAssessmentSection({
     setBusy(true);
     try {
       const created = await adminCreatePrakrutiThingToAvoid(null, {
+        prakrutiType: avoidFilter,
         title,
         shown: true,
-        sortOrder: thingsToAvoid.length + 1,
+        sortOrder: thingsToAvoid.filter((row) => row.prakrutiType === avoidFilter).length + 1,
       });
       setThingsToAvoid((prev) => [...prev, created]);
       setNewAvoid("");
-      onToast("Thing to avoid added");
+      onToast(`Thing to avoid added for ${typeLabel(avoidFilter)}`);
     } catch (error) {
       onToast(error?.message || "Failed to add item");
     } finally {
@@ -454,20 +461,48 @@ export function PrakritiAssessmentSection({
     }
   }
 
+  async function changeAvoidType(item, prakrutiType) {
+    if (prakrutiType === item.prakrutiType) return;
+    setBusy(true);
+    setThingsToAvoid((prev) =>
+      prev.map((entry) => (entry.id === item.id ? { ...entry, prakrutiType } : entry)),
+    );
+    try {
+      const updated = await adminUpdatePrakrutiThingToAvoid(null, item.id, { prakrutiType });
+      setThingsToAvoid((prev) =>
+        prev.map((entry) => (entry.id === item.id ? { ...entry, ...updated } : entry)),
+      );
+      onToast("Prakriti type updated");
+    } catch (error) {
+      setThingsToAvoid((prev) =>
+        prev.map((entry) =>
+          entry.id === item.id ? { ...entry, prakrutiType: item.prakrutiType } : entry,
+        ),
+      );
+      onToast(error?.message || "Failed to update type");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function moveAvoid(item, dir) {
     const prev = avoidRef.current;
-    const group = [...prev].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const group = prev
+      .filter((row) => avoidMatchesFilter(row, avoidFilter))
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     const idx = group.findIndex((entry) => entry.id === item.id);
     const nextIdx = idx + dir;
     if (idx < 0 || nextIdx < 0 || nextIdx >= group.length) return;
     const reordered = [...group];
     [reordered[idx], reordered[nextIdx]] = [reordered[nextIdx], reordered[idx]];
-    const next = reordered.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
+    const withOrder = reordered.map((entry, index) => ({ ...entry, sortOrder: index + 1 }));
+    const byId = new Map(withOrder.map((entry) => [entry.id, entry]));
+    const next = prev.map((entry) => byId.get(entry.id) || entry);
     setThingsToAvoid(next);
     setBusy(true);
     try {
       await Promise.all(
-        next.map((entry) =>
+        withOrder.map((entry) =>
           adminUpdatePrakrutiThingToAvoid(null, entry.id, { sortOrder: entry.sortOrder }),
         ),
       );
@@ -712,7 +747,7 @@ export function PrakritiAssessmentSection({
           <div className="ua-cfg-prakriti-guide__head">
             <div>
               <strong>Recommendations</strong>
-              <span>Diet &amp; lifestyle guidance by Prakṛti type — shown on the client tab after scoring.</span>
+              <span>Diet &amp; lifestyle guidance by Prakriti type — shown on the client tab after scoring.</span>
             </div>
             <span className="ua-cfg-prakriti-guide__tag">For {typeLabel(recFilter)}</span>
           </div>
@@ -726,7 +761,6 @@ export function PrakritiAssessmentSection({
               options={PRAKRUTI_TYPE_OPTIONS}
               onChange={(value) => {
                 setRecFilter(value);
-                setNewRecType(value);
                 cancelEdit();
               }}
             />
@@ -736,14 +770,6 @@ export function PrakritiAssessmentSection({
           </div>
 
           <div className="ua-cfg-prakriti-guide__add">
-            <CfgSelect
-              className="ua-cfg-mq-row__type"
-              ariaLabel="Prakriti type for new recommendation"
-              value={newRecType}
-              disabled={busy || loading}
-              options={PRAKRUTI_TYPE_OPTIONS}
-              onChange={setNewRecType}
-            />
             <input
               type="text"
               className="ua-cfg-mq-add__input"
@@ -888,10 +914,25 @@ export function PrakritiAssessmentSection({
           <div className="ua-cfg-prakriti-guide__head">
             <div>
               <strong>Things to avoid</strong>
-              <span>Foods &amp; habits that aggravate Prakṛti — default list on the client tab.</span>
+              <span>Foods &amp; habits that aggravate Prakriti — shown on the client tab for this type.</span>
             </div>
+            <span className="ua-cfg-prakriti-guide__tag">For {typeLabel(avoidFilter)}</span>
+          </div>
+
+          <div className="ua-cfg-prakriti-guide__toolbar">
+            <CfgSelect
+              className="ua-cfg-mq-row__type"
+              ariaLabel="Filter things to avoid by type"
+              value={avoidFilter}
+              disabled={busy || loading}
+              options={PRAKRUTI_TYPE_OPTIONS}
+              onChange={(value) => {
+                setAvoidFilter(value);
+                cancelEdit();
+              }}
+            />
             <span className="ua-cfg-mq__count">
-              {liveAvoid} of {thingsToAvoid.length} live
+              {liveAvoid} of {filteredAvoid.length} live
             </span>
           </div>
 
@@ -921,10 +962,10 @@ export function PrakritiAssessmentSection({
           <div className="ua-cfg-prakriti-guide__list">
             {loading ? (
               <p className="ua-cfg-mq-empty">Loading items…</p>
-            ) : !sortedAvoid.length ? (
-              <p className="ua-cfg-mq-empty">No things-to-avoid items yet.</p>
+            ) : !filteredAvoid.length ? (
+              <p className="ua-cfg-mq-empty">No things to avoid for {typeLabel(avoidFilter)} yet.</p>
             ) : (
-              sortedAvoid.map((item, index) => {
+              filteredAvoid.map((item, index) => {
                 const isEditing = editingId === item.id;
                 return (
                   <article
@@ -980,6 +1021,15 @@ export function PrakritiAssessmentSection({
                         </>
                       ) : (
                         <>
+                          <CfgSelect
+                            className="ua-cfg-mq-row__type"
+                            value={item.prakrutiType || ""}
+                            disabled={busy}
+                            ariaLabel={`Type for ${item.title}`}
+                            placeholder="Select type"
+                            options={PRAKRUTI_TYPE_OPTIONS}
+                            onChange={(prakrutiType) => changeAvoidType(item, prakrutiType)}
+                          />
                           <button
                             type="button"
                             className={`ua-toggle ua-toggle--sm${item.shown ? " ua-toggle--on" : ""}`}
@@ -1002,7 +1052,7 @@ export function PrakritiAssessmentSection({
                             type="button"
                             className="ua-cfg-icon-btn"
                             aria-label="Move down"
-                            disabled={busy || index === sortedAvoid.length - 1}
+                            disabled={busy || index === filteredAvoid.length - 1}
                             onClick={() => moveAvoid(item, 1)}
                           >
                             ↓

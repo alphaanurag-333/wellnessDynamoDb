@@ -127,7 +127,7 @@ router.post(
 router.patch(
   "/accounts/:id/password",
   protectAccount,
-  requireActiveRole("admin"),
+  requireActiveRole("admin", "wellness_coach", "assistant_wellness_coach"),
   setAccountPasswordHandler
 );
 router.route("/accounts/:id")

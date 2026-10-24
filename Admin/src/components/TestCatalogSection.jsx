@@ -1,704 +1,691 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  TEST_CATALOG_PAGE_SIZE,
-  adminCreateTestCatalog,
-  adminDeleteTestCatalog,
-  adminListTestCatalog,
-  adminUpdateTestCatalog,
-  testCategoryOptions,
-} from "../api/testCatalogApi.js";
-import { CfgSelect, ListPagination } from "./shared.jsx";
+import { CfgSelect } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
+import {
+  adminDeleteTestCatalog,
+  adminListTestGoals,
+  adminSaveTestGoal,
+  fetchTestCategories,
+} from "../api/testCatalogApi.js";
 
-const TYPE_OPTIONS = [
-  { value: "SINGLE", label: "Single" },
-  { value: "PROFILE", label: "Profile" },
-];
-
-const STATUS_FILTER_OPTIONS = [
-  { value: "", label: "All statuses" },
-  { value: "active", label: "Live" },
-  { value: "inactive", label: "Hidden" },
-];
-
-function slugify(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+function newId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function emptyParam(sequence = 1) {
-  return { name: "", unit: "", refRange: "", sequence };
+function plural(count, word) {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
-function cleanParameters(parameters, type) {
-  const cleaned = (parameters || [])
-    .map((param, index) => ({
-      paramId: slugify(param.paramId || param.name) || `param-${index + 1}`,
-      name: String(param.name || "").trim(),
-      unit: String(param.unit || "").trim() || "—",
-      refRange: String(param.refRange || "").trim() || "—",
-      sequence: index + 1,
-    }))
-    .filter((param) => param.name);
-
-  if (type === "SINGLE") return cleaned.slice(0, 1);
-  return cleaned;
+function goalCounts(sections) {
+  const tests = (sections || []).reduce((sum, section) => sum + (section.tests || []).length, 0);
+  const selected = (sections || []).reduce(
+    (sum, section) => sum + (section.tests || []).filter((test) => test.selected).length,
+    0,
+  );
+  return { sections: (sections || []).length, tests, selected };
 }
 
-function paramPreview(parameters = []) {
-  const names = parameters.map((entry) => entry.name).filter(Boolean);
-  if (!names.length) return "No parameters yet";
-  if (names.length <= 3) return names.join(" · ");
-  return `${names.slice(0, 3).join(" · ")} +${names.length - 3} more`;
+function emptyTest() {
+  return { id: newId(), name: "", code: "", hours: 12, selected: true };
 }
 
-function Panel({ title, subtitle, actions, children, className = "" }) {
-  const hasHead = Boolean(title || subtitle || actions);
+function mergeSections(saved, dismissed, master) {
+  const hidden = new Set((dismissed || []).map((name) => String(name || "").trim().toLowerCase()).filter(Boolean));
+  const seen = new Set();
+  const sections = [];
+
+  (saved || []).forEach((section) => {
+    const category = String(section?.category || "").trim();
+    const key = category.toLowerCase();
+    if (!category || hidden.has(key) || seen.has(key)) return;
+    seen.add(key);
+    sections.push({
+      id: section.id || newId(),
+      category,
+      tests: (section.tests || []).map((test) => ({
+        id: test.id || newId(),
+        name: test.name || "",
+        code: test.code || "",
+        hours: Number.isFinite(Number(test.hours)) ? Number(test.hours) : 12,
+        selected: test.selected !== false,
+      })),
+    });
+  });
+
+  (master || []).forEach((category) => {
+    const name = String(category || "").trim();
+    const key = name.toLowerCase();
+    if (!name || hidden.has(key) || seen.has(key)) return;
+    seen.add(key);
+    sections.push({ id: newId(), category: name, tests: [] });
+  });
+
+  return sections;
+}
+
+function prepareGoal(draft) {
+  const name = String(draft.name || "").trim();
+  if (name.length < 2) return { error: "Goal name must be at least 2 characters" };
+
+  const sections = [];
+  for (const section of draft.sections || []) {
+    const tests = [];
+    for (const test of section.tests || []) {
+      const testName = String(test.name || "").trim();
+      if (!testName) continue;
+      if (testName.length < 2) return { error: `Test names need at least 2 characters (${section.category})` };
+      tests.push({
+        id: test.id,
+        name: testName,
+        code: String(test.code || "").trim(),
+        hours: Math.max(0, Math.min(168, Math.round(Number(test.hours) || 0))),
+        selected: test.selected !== false,
+      });
+    }
+    sections.push({ id: section.id, category: section.category, tests });
+  }
+
+  return {
+    payload: {
+      id: draft.id || undefined,
+      name,
+      status: draft.status === "inactive" ? "inactive" : "active",
+      sections,
+      dismissedCategories: draft.dismissedCategories || [],
+    },
+  };
+}
+
+function snapshotOf(draft) {
+  return JSON.stringify({
+    name: String(draft?.name || "").trim(),
+    status: draft?.status === "inactive" ? "inactive" : "active",
+    sections: draft?.sections || [],
+    dismissed: draft?.dismissedCategories || [],
+  });
+}
+
+function moveItem(list, from, to) {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
+function SortButtons({ label, disabled, isFirst, isLast, onMove }) {
   return (
-    <section className={`ua-cfg-panel${className ? ` ${className}` : ""}`}>
-      {hasHead ? (
-        <div className="ua-cfg-panel__head">
-          <div>
-            {title ? <h3 className="ua-cfg-panel__title">{title}</h3> : null}
-            {subtitle ? <p className="ua-cfg-panel__sub">{subtitle}</p> : null}
-          </div>
-          {actions ? <div className="ua-cfg-panel__actions">{actions}</div> : null}
-        </div>
-      ) : null}
-      {children}
-    </section>
+    <div className="ua-cfg-goals-sort">
+      <button
+        type="button"
+        aria-label={`Move ${label} up`}
+        title="Move up"
+        disabled={disabled || isFirst}
+        onClick={() => onMove(-1)}
+      >
+        <svg viewBox="0 0 12 8" aria-hidden="true">
+          <path d="M2 6.5 6 2l4 4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label={`Move ${label} down`}
+        title="Move down"
+        disabled={disabled || isLast}
+        onClick={() => onMove(1)}
+      >
+        <svg viewBox="0 0 12 8" aria-hidden="true">
+          <path d="M2 1.5 6 6l4-4.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
-function CategorySelect({
-  value,
-  extras = [],
-  disabled,
-  onChange,
-  allowEmpty = false,
-  emptyLabel = "Select category",
-  className = "ua-cfg-tc-select",
-  ariaLabel = "Category",
-}) {
-  const options = testCategoryOptions(extras);
-  const list = value && !options.includes(value) ? [value, ...options] : options;
-  const selectOptions = [
-    ...(allowEmpty ? [{ value: "", label: emptyLabel }] : []),
-    ...list.map((category) => ({ value: category, label: category })),
-  ];
+function TrashIcon() {
   return (
-    <CfgSelect
-      className={className}
-      options={selectOptions}
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7h16" />
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+      <path d="M7 7l1 13h8l1-13" />
+    </svg>
+  );
+}
+
+function CodeField({ value, disabled, onChange }) {
+  return (
+    <input
+      className="ua-cfg-goals-field ua-cfg-goals-field--code"
       value={value}
       disabled={disabled}
-      ariaLabel={ariaLabel}
-      placeholder={emptyLabel}
-      onChange={onChange}
+      placeholder="Code"
+      aria-label="Code"
+      onChange={(event) => onChange(event.target.value.toUpperCase())}
     />
   );
 }
 
-function ParameterRows({ parameters, disabled, onChange }) {
-  function updateRow(index, patch) {
-    onChange(parameters.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
-  }
-
-  return (
-    <div className="ua-cfg-tc-params">
-      <div className="ua-cfg-tc-params__labels">
-        <span>Parameter</span>
-        <span>Unit</span>
-        <span>Ref range</span>
-        <span />
-      </div>
-      {parameters.map((param, index) => (
-        <div key={`param-${index}`} className="ua-cfg-tc-params__row">
-          <input
-            type="text"
-            className="ua-cfg-tc-field"
-            placeholder="Parameter name · e.g. HbA1c"
-            value={param.name}
-            disabled={disabled}
-            onChange={(event) => updateRow(index, { name: event.target.value })}
-          />
-          <input
-            type="text"
-            className="ua-cfg-tc-field"
-            placeholder="Unit"
-            value={param.unit}
-            disabled={disabled}
-            onChange={(event) => updateRow(index, { unit: event.target.value })}
-          />
-          <input
-            type="text"
-            className="ua-cfg-tc-field"
-            placeholder="Ref range"
-            value={param.refRange}
-            disabled={disabled}
-            onChange={(event) => updateRow(index, { refRange: event.target.value })}
-          />
-          {parameters.length > 1 ? (
-            <button
-              type="button"
-              className="ua-cfg-icon-btn ua-cfg-icon-btn--danger"
-              disabled={disabled}
-              aria-label="Remove parameter"
-              onClick={() => onChange(parameters.filter((_, rowIndex) => rowIndex !== index))}
-            >
-              ×
-            </button>
-          ) : (
-            <span className="ua-cfg-tc-params__spacer" aria-hidden="true" />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function TestEditModal({ test, busy, extras = [], onClose, onChange, onDelete }) {
-  const [name, setName] = useState(test.name);
-  const [testId, setTestId] = useState(test.testId);
-  const [category, setCategory] = useState(test.category);
-  const [type, setType] = useState(test.type);
-  const [sequence, setSequence] = useState(String(test.sequence || 0));
-  const [parameters, setParameters] = useState(
-    test.parameters.length ? test.parameters : [emptyParam()],
-  );
-
-  useEffect(() => {
-    setName(test.name);
-    setTestId(test.testId);
-    setCategory(test.category);
-    setType(test.type);
-    setSequence(String(test.sequence || 0));
-    setParameters(test.parameters.length ? test.parameters : [emptyParam()]);
-  }, [test]);
-
-  function setTypeAndParams(nextType) {
-    setType(nextType);
-    if (nextType === "SINGLE") {
-      setParameters((prev) => (prev.length ? [prev[0]] : [emptyParam()]));
-      return;
-    }
-    setParameters((prev) => (prev.length >= 2 ? prev : [...prev, emptyParam(prev.length + 1)]));
-  }
-
-  async function save() {
-    const cleaned = cleanParameters(parameters, type);
-    if (!name.trim() || !category.trim()) {
-      return false;
-    }
-    if (type === "SINGLE" && cleaned.length !== 1) return false;
-    if (type === "PROFILE" && cleaned.length < 2) return false;
-    return onChange({
-      name: name.trim(),
-      testId: testId.trim() || slugify(name),
-      category: category.trim(),
-      type,
-      sequence: Number(sequence) || 0,
-      parameters: cleaned,
-    }, "Test saved");
-  }
-
-  return (
-    <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="ua-cfg-dp-modal ua-cfg-tc-modal" onClick={(event) => event.stopPropagation()} role="dialog">
-        <div className="ua-cfg-dp-modal__head">
-          <div>
-            <h3 className="ua-cfg-dp-modal__title">{test.name}</h3>
-            <p className="ua-cfg-dp-modal__sub">Blood test · master catalog</p>
-          </div>
-          <div className="ua-cfg-dp-modal__actions">
-            <span className="ua-cfg-dp-modal__live-label">Live</span>
-            <button
-              type="button"
-              className={`ua-toggle ua-toggle--sm${test.live ? " ua-toggle--on" : ""}`}
-              aria-pressed={test.live}
-              disabled={busy}
-              onClick={() => onChange({ live: !test.live }, test.live ? "Test hidden" : "Test is live")}
-            >
-              <span className="ua-toggle__knob" />
-            </button>
-            <button
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm ua-cfg-dp-modal__delete"
-              disabled={busy}
-              onClick={() => onDelete(test)}
-            >
-              Delete
-            </button>
-            <button type="button" className="ua-cfg-icon-btn" aria-label="Close" onClick={onClose}>×</button>
-          </div>
-        </div>
-
-        <div className="ua-cfg-tc-modal__body">
-          <div className="ua-cfg-tc-form">
-            <label>
-              <span>Name</span>
-              <input className="ua-cfg-tc-field" value={name} disabled={busy} onChange={(e) => setName(e.target.value)} />
-            </label>
-            <label>
-              <span>Slug</span>
-              <input className="ua-cfg-tc-field" value={testId} disabled={busy} onChange={(e) => setTestId(e.target.value)} />
-            </label>
-            <label>
-              <span>Category</span>
-              <CategorySelect value={category} extras={extras} disabled={busy} onChange={setCategory} />
-            </label>
-            <label>
-              <span>Type</span>
-              <CfgSelect
-                className="ua-cfg-tc-select"
-                options={TYPE_OPTIONS}
-                value={type}
-                disabled={busy}
-                ariaLabel="Test type"
-                onChange={setTypeAndParams}
-              />
-            </label>
-            <label>
-              <span>Sequence</span>
-              <input className="ua-cfg-tc-field" type="number" min="0" value={sequence} disabled={busy} onChange={(e) => setSequence(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="ua-cfg-tc-params-wrap">
-            <div className="ua-cfg-tc-params__head">
-              <strong>Parameters</strong>
-              {type === "PROFILE" ? (
-                <button
-                  type="button"
-                  className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                  disabled={busy}
-                  onClick={() => setParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
-                >
-                  + Parameter
-                </button>
-              ) : null}
-            </div>
-            <ParameterRows parameters={parameters} disabled={busy} onChange={setParameters} />
-          </div>
-        </div>
-
-        <div className="ua-cfg-tc-modal__foot">
-          <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={save}>
-            {busy ? "Saving…" : "Save test"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function TestCatalogSection({ tests, setTests, onToast }) {
-  const [selectedId, setSelectedId] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: TEST_CATALOG_PAGE_SIZE,
-    total: 0,
-    pages: 1,
-  });
+export function TestCatalogSection({ setTests, onToast }) {
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(null);
-  const testsRef = useRef(tests);
+  const [search, setSearch] = useState("");
+  const [masterCategories, setMasterCategories] = useState([]);
+  const [mode, setMode] = useState("list");
+  const [draft, setDraft] = useState(null);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const [pendingDeleteGoal, setPendingDeleteGoal] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState(() => new Set());
 
-  const [newName, setNewName] = useState("");
-  const [newTestId, setNewTestId] = useState("");
-  const [newCategory, setNewCategory] = useState("");
-  const [newType, setNewType] = useState("SINGLE");
-  const [newSequence, setNewSequence] = useState("0");
-  const [newParameters, setNewParameters] = useState([emptyParam()]);
-
-  const selectedTest = tests.find((entry) => entry.id === selectedId) ?? null;
-  const liveCount = tests.filter((entry) => entry.live).length;
-  const categories = useMemo(
-    () => [...new Set(tests.map((entry) => entry.category).filter(Boolean))].sort(),
-    [tests],
-  );
-
-  const loadTests = useCallback(async (pageOverride) => {
-    const nextPage = pageOverride ?? page;
+  const loadGoals = useCallback(async () => {
     setLoading(true);
     try {
-      const { tests: rows, pagination: nextPagination } = await adminListTestCatalog(null, {
-        page: nextPage,
-        limit: TEST_CATALOG_PAGE_SIZE,
-        status: statusFilter || undefined,
-        search: search.trim() || undefined,
-        category: categoryFilter || undefined,
-      });
+      const rows = await adminListTestGoals(null);
       const next = rows || [];
+      setGoals(next);
       setTests(next);
-      testsRef.current = next;
-      setPagination({
-        page: Number(nextPagination?.page) || nextPage,
-        limit: Number(nextPagination?.limit) || TEST_CATALOG_PAGE_SIZE,
-        total: Number(nextPagination?.total) || next.length,
-        pages: Number(nextPagination?.pages) || 1,
-      });
     } catch (error) {
-      onToast(error?.message || "Failed to load test catalog");
+      onToast(error?.message || "Failed to load goals");
+      setGoals([]);
       setTests([]);
-      testsRef.current = [];
-      setPagination({ page: 1, limit: TEST_CATALOG_PAGE_SIZE, total: 0, pages: 1 });
     } finally {
       setLoading(false);
     }
-  }, [onToast, page, search, setTests, statusFilter, categoryFilter]);
+  }, [onToast, setTests]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      setSearch(searchInput.trim());
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
+    loadGoals();
+  }, [loadGoals]);
 
   useEffect(() => {
-    loadTests();
-  }, [loadTests]);
+    let cancelled = false;
+    fetchTestCategories()
+      .then((labels) => {
+        if (!cancelled && labels.length) setMasterCategories(labels);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const draftRef = useRef(draft);
+  const snapshotRef = useRef(savedSnapshot);
+  draftRef.current = draft;
+  snapshotRef.current = savedSnapshot;
 
   useEffect(() => {
-    if (!loading && page > pagination.pages) setPage(pagination.pages);
-  }, [loading, page, pagination.pages]);
+    if (mode !== "edit" || !masterCategories.length) return;
+    const current = draftRef.current;
+    if (!current) return;
+    const merged = mergeSections(current.sections, current.dismissedCategories, masterCategories);
+    const same = merged.length === current.sections.length
+      && merged.every((section, index) => (
+        section.id === current.sections[index]?.id && section.category === current.sections[index]?.category
+      ));
+    if (same) return;
+    const next = { ...current, sections: merged };
+    if (snapshotRef.current === snapshotOf(current)) setSavedSnapshot(snapshotOf(next));
+    setDraft(next);
+  }, [masterCategories, mode]);
 
-  useEffect(() => {
-    testsRef.current = tests;
-  }, [tests]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return goals;
+    return goals.filter((goal) => goal.name.toLowerCase().includes(query));
+  }, [goals, search]);
 
-  function resetAddForm() {
-    setNewName("");
-    setNewTestId("");
-    setNewCategory("");
-    setNewType("SINGLE");
-    setNewSequence("0");
-    setNewParameters([emptyParam()]);
-    setShowAddForm(false);
+  const counts = goalCounts(draft?.sections);
+  const unusedCategories = useMemo(() => {
+    const used = new Set((draft?.sections || []).map((section) => section.category.toLowerCase()));
+    return masterCategories.filter((category) => !used.has(String(category).trim().toLowerCase()));
+  }, [draft, masterCategories]);
+
+  const dirty = mode === "edit" && draft ? snapshotOf(draft) !== savedSnapshot : false;
+
+  function openNew() {
+    const sections = mergeSections([], [], masterCategories);
+    const next = { id: null, name: "", status: "active", sections, dismissedCategories: [] };
+    setDraft(next);
+    setSavedSnapshot(snapshotOf(next));
+    setCollapsedSections(new Set());
+    setMode("edit");
   }
 
-  async function persistTest(id, fields, successMessage) {
+  function openEdit(goal) {
+    const next = {
+      id: goal.id,
+      name: goal.name,
+      status: goal.status,
+      sections: mergeSections(goal.sections, goal.dismissedCategories, masterCategories),
+      dismissedCategories: [...(goal.dismissedCategories || [])],
+    };
+    setDraft(next);
+    setSavedSnapshot(snapshotOf(next));
+    setCollapsedSections(new Set());
+    setMode("edit");
+  }
+
+  function leaveEditor() {
+    if (dirty && !window.confirm("Leave without saving this goal?")) return;
+    setMode("list");
+    setDraft(null);
+  }
+
+  function updateSectionTests(sectionId, tests) {
+    setDraft((current) => ({
+      ...current,
+      sections: current.sections.map((section) => (section.id === sectionId ? { ...section, tests } : section)),
+    }));
+  }
+
+  function toggleSection(sectionId) {
+    setCollapsedSections((current) => {
+      const next = new Set(current);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  }
+
+  function addTest(sectionId) {
+    setCollapsedSections((current) => {
+      if (!current.has(sectionId)) return current;
+      const next = new Set(current);
+      next.delete(sectionId);
+      return next;
+    });
+    setDraft((current) => ({
+      ...current,
+      sections: current.sections.map((section) => (
+        section.id === sectionId ? { ...section, tests: [...section.tests, emptyTest()] } : section
+      )),
+    }));
+  }
+
+  function addCategory(category) {
+    if (!category) return;
+    setDraft((current) => ({
+      ...current,
+      dismissedCategories: (current.dismissedCategories || []).filter(
+        (name) => name.toLowerCase() !== category.toLowerCase(),
+      ),
+      sections: [...current.sections, { id: newId(), category, tests: [] }],
+    }));
+  }
+
+  function removeSection(section) {
+    if (!section || busy) return;
+    setDraft((current) => ({
+      ...current,
+      sections: current.sections.filter((entry) => entry.id !== section.id),
+      dismissedCategories: [...new Set([...(current.dismissedCategories || []), section.category])],
+    }));
+    onToast(`${section.category} removed from this goal. It is still in the admin master.`);
+  }
+
+  async function saveGoal() {
+    if (!draft || busy) return;
+    const { error, payload } = prepareGoal(draft);
+    if (error) {
+      onToast(error);
+      return;
+    }
     setBusy(true);
     try {
-      const updated = await adminUpdateTestCatalog(null, id, fields);
-      if (!updated) throw new Error("Failed to save test");
-      setTests((prev) => prev.map((entry) => (entry.id === id ? { ...entry, ...updated } : entry)));
-      if (successMessage) onToast(successMessage);
-      return true;
+      const saved = await adminSaveTestGoal(null, payload);
+      if (!saved) throw new Error("Failed to save goal");
+      setMode("list");
+      setDraft(null);
+      setSearch("");
+      onToast(`${saved.name} saved`);
+      await loadGoals();
     } catch (error) {
-      onToast(error?.message || "Failed to save test");
-      return false;
+      onToast(error?.message || "Failed to save goal");
     } finally {
       setBusy(false);
     }
   }
 
-  async function addTest() {
-    const name = newName.trim();
-    const category = newCategory.trim();
-    const cleaned = cleanParameters(newParameters, newType);
-    if (!name || !category) {
-      onToast("Name and category are required");
-      return;
-    }
-    if (newType === "SINGLE" && cleaned.length !== 1) {
-      onToast("A single test needs one named parameter");
-      return;
-    }
-    if (newType === "PROFILE" && cleaned.length < 2) {
-      onToast("A profile needs at least two named parameters");
-      return;
-    }
+  async function confirmDeleteGoal() {
+    if (!draft?.id || busy) return;
+    const id = draft.id;
+    setPendingDeleteGoal(false);
     setBusy(true);
     try {
-      const created = await adminCreateTestCatalog(null, {
-        name,
-        testId: newTestId.trim() || slugify(name),
-        category,
-        type: newType,
-        sequence: Number(newSequence) || 0,
-        parameters: cleaned,
-        live: true,
-      });
-      if (!created) throw new Error("Failed to add test");
-      resetAddForm();
-      onToast(`${name} added to the catalog`);
-      const lastPage = Math.max(1, Math.ceil((pagination.total + 1) / TEST_CATALOG_PAGE_SIZE));
-      setPage(lastPage);
-      await loadTests(lastPage);
+      await adminDeleteTestCatalog(null, id);
+      const list = goals.filter((goal) => goal.id !== id);
+      setGoals(list);
+      setTests(list);
+      setMode("list");
+      setDraft(null);
+      onToast("Goal removed");
     } catch (error) {
-      onToast(error?.message || "Failed to add test");
+      onToast(error?.message || "Failed to delete goal");
     } finally {
       setBusy(false);
     }
   }
 
-  async function confirmDelete() {
-    if (!pendingDelete || busy) return;
-    const test = pendingDelete;
-    setPendingDelete(null);
-    if (selectedId === test.id) setSelectedId(null);
-    setBusy(true);
-    try {
-      await adminDeleteTestCatalog(null, test.id);
-      onToast("Test removed");
-      const remaining = testsRef.current.filter((entry) => entry.id !== test.id).length;
-      if (remaining === 0 && page > 1) {
-        const nextPage = page - 1;
-        setPage(nextPage);
-        await loadTests(nextPage);
-      } else {
-        await loadTests(page);
-      }
-    } catch (error) {
-      onToast(error?.message || "Failed to delete test. If it is assigned to a client, deactivate it instead.");
-    } finally {
-      setBusy(false);
-    }
+  function moveSection(index, delta) {
+    setDraft((current) => ({
+      ...current,
+      sections: moveItem(current.sections, index, index + delta),
+    }));
+  }
+
+  function moveTest(sectionId, index, delta) {
+    setDraft((current) => ({
+      ...current,
+      sections: current.sections.map((section) => (
+        section.id === sectionId
+          ? { ...section, tests: moveItem(section.tests, index, index + delta) }
+          : section
+      )),
+    }));
   }
 
   return (
-    <>
-      <Panel
-        className="ua-cfg-tc"
-        title="Blood test catalog"
-        subtitle={
-          loading
-            ? "Loading tests…"
-            : "Admin maintains the master list. Coaches pick live tests on a client’s Internal Parameters page."
-        }
-        actions={
-          loading ? null : (
-            <span className="ua-cfg-dp__count">
-              {liveCount} live of {pagination.total}
-            </span>
-          )
-        }
-      >
-        <div className="ua-cfg-tc-filters">
-          <input
-            type="search"
-            className="ua-cfg-tc-field"
-            placeholder="Search name, slug or category"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-          />
-          <CategorySelect
-            value={categoryFilter}
-            extras={categories}
-            allowEmpty
-            emptyLabel="All categories"
-            ariaLabel="Filter by category"
-            onChange={(value) => {
-              setPage(1);
-              setCategoryFilter(value);
-            }}
-          />
-          <CfgSelect
-            className="ua-cfg-tc-select"
-            options={STATUS_FILTER_OPTIONS}
-            value={statusFilter}
-            ariaLabel="Filter by status"
-            onChange={(value) => {
-              setPage(1);
-              setStatusFilter(value);
-            }}
-          />
-        </div>
-
-        {loading ? (
-          <p className="ua-cfg-panel__sub">Fetching tests from the server…</p>
-        ) : tests.length ? (
-          <div className="ua-cfg-tc-grid">
-            {tests.map((test) => (
-              <button
-                key={test.id}
-                type="button"
-                className={`ua-cfg-tc-card${selectedId === test.id ? " is-selected" : ""}${test.live ? "" : " is-hidden"}`}
-                onClick={() => setSelectedId(test.id)}
-              >
-                <div className="ua-cfg-tc-card__top">
-                  <div className="ua-cfg-tc-card__title-wrap">
-                    <strong>{test.name}</strong>
-                    <span className="ua-cfg-tc-card__slug">{test.testId}</span>
-                  </div>
-                  {test.live ? <span className="ua-cfg-tc-card__live">Live</span> : <span className="ua-cfg-tc-card__hidden">Hidden</span>}
-                </div>
-                <div className="ua-cfg-tc-card__meta">
-                  <span>{test.category || "Uncategorized"}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{test.type === "PROFILE" ? "Profile" : "Single"}</span>
-                </div>
-                <p className="ua-cfg-tc-card__excerpt">{paramPreview(test.parameters)}</p>
-                <span className="ua-cfg-tc-card__count">
-                  {test.parameters.length} parameter{test.parameters.length === 1 ? "" : "s"}
-                </span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="ua-cfg-panel__sub">No tests in the catalog yet. Add one below.</p>
-        )}
-
-        {!loading && pagination.total > 0 ? (
-          <ListPagination
-            page={pagination.page}
-            pages={pagination.pages}
-            total={pagination.total}
-            pageSize={TEST_CATALOG_PAGE_SIZE}
-            onPageChange={setPage}
-            label="Test catalog pagination"
-          />
-        ) : null}
-      </Panel>
-
-      <Panel
-        title="Add a test"
-        subtitle="Name it, set the category, and add reference parameters. Coaches can then assign it to a client."
-        actions={
-          !showAddForm ? (
-            <button style={{borderRadius: "9px",
-              border: "1px dashed rgb(203, 213, 230)",
-              background: "rgb(255, 255, 255)",
-              color: "rgb(94, 106, 210)"}}
-              type="button"
-              className="ua-cfg-btn ua-cfg-btn--outline"
-              disabled={busy || loading}
-              onClick={() => setShowAddForm(true)}
-            >
-              + New test
+    <div className="ua-cfg-goals">
+      {mode === "list" ? (
+        <>
+          <header className="ua-cfg-goals__head">
+            <div>
+              <h1 className="ua-cfg-goals__title">Goals &amp; Tests</h1>
+              <p className="ua-cfg-goals__sub">Each goal has its own set of test sections, with fasting or prep time per test.</p>
+            </div>
+            <button type="button" className="ua-cfg-goals__new" disabled={loading} onClick={openNew}>
+              + New goal
             </button>
-          ) : null
-        }
-      >
-        {showAddForm ? (
-          <div className="ua-cfg-tc-add">
-            <div className="ua-cfg-tc-form">
-              <label>
-                <span>Test name</span>
-                <input
-                  type="text"
-                  className="ua-cfg-tc-field"
-                  placeholder="e.g. HbA1c"
-                  value={newName}
-                  disabled={busy}
-                  onChange={(event) => setNewName(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Slug</span>
-                <input
-                  type="text"
-                  className="ua-cfg-tc-field"
-                  placeholder="Optional · auto from name"
-                  value={newTestId}
-                  disabled={busy}
-                  onChange={(event) => setNewTestId(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Category</span>
-                <CategorySelect
-                  value={newCategory}
-                  extras={categories}
-                  allowEmpty
-                  disabled={busy}
-                  onChange={setNewCategory}
-                />
-              </label>
-              <label>
-                <span>Type</span>
-                <CfgSelect
-                  className="ua-cfg-tc-select"
-                  options={TYPE_OPTIONS}
-                  value={newType}
-                  disabled={busy}
-                  ariaLabel="Test type"
-                  onChange={(nextType) => {
-                    setNewType(nextType);
-                    if (nextType === "SINGLE") {
-                      setNewParameters((prev) => (prev.length ? [prev[0]] : [emptyParam()]));
-                    } else {
-                      setNewParameters((prev) => (prev.length >= 2 ? prev : [...prev, emptyParam(prev.length + 1)]));
-                    }
-                  }}
-                />
-              </label>
-              <label>
-                <span>Sequence</span>
-                <input
-                  type="number"
-                  min="0"
-                  className="ua-cfg-tc-field"
-                  value={newSequence}
-                  disabled={busy}
-                  onChange={(event) => setNewSequence(event.target.value)}
-                />
-              </label>
-            </div>
+          </header>
 
-            <div className="ua-cfg-tc-params-wrap">
-              <div className="ua-cfg-tc-params__head">
-                <strong>Parameters</strong>
-                {newType === "PROFILE" ? (
-                  <button
-                    type="button"
-                    className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
-                    disabled={busy}
-                    onClick={() => setNewParameters((prev) => [...prev, emptyParam(prev.length + 1)])}
-                  >
-                    + Parameter
-                  </button>
-                ) : null}
+          <section className="ua-cfg-goals-card">
+            <div className="ua-cfg-goals-card__search">
+              <input
+                type="search"
+                className="ua-cfg-goals-field"
+                placeholder="Search goals"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+            <div className="ua-cfg-goals-table-wrap">
+              <table className="ua-cfg-goals-table">
+                <thead>
+                  <tr>
+                    <th>Goal</th>
+                    <th>Sections</th>
+                    <th>Tests</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="ua-cfg-goals-table__empty">Loading goals…</td>
+                    </tr>
+                  ) : filtered.length ? (
+                    filtered.map((goal) => {
+                      const rowCounts = goalCounts(goal.sections);
+                      const active = goal.status !== "inactive";
+                      return (
+                        <tr key={goal.id}>
+                          <td className="ua-cfg-goals-table__goal">{goal.name}</td>
+                          <td>{rowCounts.sections}</td>
+                          <td>{rowCounts.tests}</td>
+                          <td>
+                            <span className={`ua-cfg-goals-status${active ? "" : " is-inactive"}`}>
+                              {active ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td>
+                            <button type="button" className="ua-cfg-goals-edit" onClick={() => openEdit(goal)}>
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="ua-cfg-goals-table__empty">
+                        {goals.length ? "No goals match that search." : "No goals yet. Create one to attach tests from the admin categories."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      ) : draft ? (
+        <>
+          <p className="ua-cfg-goals-crumb-row">
+            <button type="button" className="ua-cfg-goals-crumb" onClick={leaveEditor}>
+              Goals &amp; Tests
+            </button>
+            <span className="ua-cfg-goals-crumb__sep">/</span>
+            <span className="ua-cfg-goals-crumb__current">{draft.name.trim() || "New goal"}</span>
+          </p>
+
+          <header className="ua-cfg-goals__head ua-cfg-goals__head--edit">
+            <div>
+              <h1 className="ua-cfg-goals__title">{draft.id ? "Edit goal" : "New goal"}</h1>
+              <p className="ua-cfg-goals__sub">Choose which tests belong to this goal and how long the user should prepare before each one.</p>
+            </div>
+          </header>
+
+          <section className="ua-cfg-goals-card ua-cfg-goals-meta">
+            <label className="ua-cfg-goals-meta__name">
+              <span>Goal name</span>
+              <input
+                className="ua-cfg-goals-field"
+                value={draft.name}
+                disabled={busy}
+                placeholder="Fat loss"
+                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+              />
+            </label>
+            <div className="ua-cfg-goals-meta__side">
+              <button
+                type="button"
+                className={`ua-toggle${draft.status !== "inactive" ? " ua-toggle--on" : ""}`}
+                aria-pressed={draft.status !== "inactive"}
+                aria-label="Active"
+                disabled={busy}
+                onClick={() => setDraft((current) => ({
+                  ...current,
+                  status: current.status === "inactive" ? "active" : "inactive",
+                }))}
+              >
+                <span className="ua-toggle__knob" />
+              </button>
+              <span className="ua-cfg-goals-meta__active">{draft.status === "inactive" ? "Inactive" : "Active"}</span>
+              <span className="ua-cfg-goals-meta__counts">
+                {plural(counts.sections, "section")} · {plural(counts.tests, "test")} · {counts.selected} selected
+              </span>
+              <button type="button" className="ua-cfg-goals__new" disabled={busy} onClick={saveGoal}>
+                {busy ? "Saving…" : "Save goal"}
+              </button>
+            </div>
+          </section>
+
+          {!masterCategories.length && !draft.sections.length ? (
+            <p className="ua-cfg-goals__hint">
+              Categories come from Configs → Dropdowns → Blood test categories. Add some there, then they show up here as sections.
+            </p>
+          ) : null}
+
+          {draft.sections.map((section, sectionIndex) => {
+            const isOpen = !collapsedSections.has(section.id);
+            return (
+            <section key={section.id} className={`ua-cfg-goals-section${isOpen ? " is-open" : ""}`}>
+              <div className="ua-cfg-goals-section__head">
+                <button
+                  type="button"
+                  className="ua-cfg-goals-section__toggle"
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? `Collapse ${section.category}` : `Expand ${section.category}`}
+                  disabled={busy}
+                  onClick={() => toggleSection(section.id)}
+                >
+                  <svg viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M3 4.5 6 8l3-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <SortButtons
+                  label={section.category}
+                  disabled={busy}
+                  isFirst={sectionIndex === 0}
+                  isLast={sectionIndex === draft.sections.length - 1}
+                  onMove={(delta) => moveSection(sectionIndex, delta)}
+                />
+                <span className="ua-cfg-goals-section__name">{section.category}</span>
+                <span className="ua-cfg-goals-section__count">{plural(section.tests.length, "test")}</span>
+                <button
+                  type="button"
+                  className="ua-cfg-goals-icon"
+                  aria-label={`Remove ${section.category}`}
+                  disabled={busy}
+                  onClick={() => removeSection(section)}
+                >
+                  <TrashIcon />
+                </button>
               </div>
-              <ParameterRows parameters={newParameters} disabled={busy} onChange={setNewParameters} />
-            </div>
 
-            <div className="ua-cfg-dp-add__actions">
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy} onClick={addTest}>
-                {busy ? "Adding…" : "Add to catalog"}
+              {isOpen ? (
+              <>
+              <div className="ua-cfg-goals-lines">
+                <div className="ua-cfg-goals-lines__head" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span>Test</span>
+                  <span>BM/PM</span>
+                  <span>Duration</span>
+                  <span />
+                </div>
+                {section.tests.map((test, testIndex) => (
+                  <div key={test.id} className="ua-cfg-goals-lines__row">
+                    <SortButtons
+                      label={test.name || "test"}
+                      disabled={busy}
+                      isFirst={testIndex === 0}
+                      isLast={testIndex === section.tests.length - 1}
+                      onMove={(delta) => moveTest(section.id, testIndex, delta)}
+                    />
+                    <input
+                      type="checkbox"
+                      className="ua-cfg-goals-check"
+                      checked={test.selected}
+                      disabled={busy}
+                      aria-label={`Include ${test.name || "test"}`}
+                      onChange={(event) => {
+                        const selected = event.target.checked;
+                        updateSectionTests(section.id, section.tests.map((row) => (
+                          row.id === test.id ? { ...row, selected } : row
+                        )));
+                      }}
+                    />
+                    <input
+                      className="ua-cfg-goals-field"
+                      value={test.name}
+                      disabled={busy}
+                      placeholder="Test name"
+                      aria-label="Test name"
+                      onChange={(event) => {
+                        const name = event.target.value;
+                        updateSectionTests(section.id, section.tests.map((row) => (
+                          row.id === test.id ? { ...row, name } : row
+                        )));
+                      }}
+                    />
+                    <CodeField
+                      value={test.code}
+                      disabled={busy}
+                      onChange={(code) => {
+                        updateSectionTests(section.id, section.tests.map((row) => (
+                          row.id === test.id ? { ...row, code } : row
+                        )));
+                      }}
+                    />
+                    <label className="ua-cfg-goals-hours">
+                      <input
+                        type="number"
+                        min="0"
+                        max="168"
+                        className="ua-cfg-goals-field ua-cfg-goals-field--hours"
+                        value={test.hours}
+                        disabled={busy}
+                        aria-label="Fasting or prep hours"
+                        onChange={(event) => {
+                          const hours = event.target.value === "" ? "" : Number(event.target.value);
+                          updateSectionTests(section.id, section.tests.map((row) => (
+                            row.id === test.id ? { ...row, hours } : row
+                          )));
+                        }}
+                      />
+                      <span>hrs</span>
+                    </label>
+                    <button
+                      type="button"
+                      className="ua-cfg-goals-icon"
+                      aria-label="Remove test"
+                      disabled={busy}
+                      onClick={() => updateSectionTests(section.id, section.tests.filter((row) => row.id !== test.id))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button" className="ua-cfg-goals-add" disabled={busy} onClick={() => addTest(section.id)}>
+                + Add test
               </button>
-              <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" disabled={busy} onClick={resetAddForm}>
-                Cancel
+              </>
+              ) : null}
+            </section>
+            );
+          })}
+
+          {unusedCategories.length ? (
+            <label className="ua-cfg-goals-add-cat">
+              <span>Add a category from the admin master</span>
+              <CfgSelect
+                className="ua-cfg-goals-select ua-cfg-goals-select--add"
+                options={unusedCategories.map((category) => ({ value: category, label: category }))}
+                value=""
+                disabled={busy}
+                ariaLabel="Add category"
+                placeholder="Add category"
+                onChange={addCategory}
+              />
+            </label>
+          ) : null}
+
+          {draft.id ? (
+            <div className="ua-cfg-goals-footer">
+              <button type="button" className="ua-cfg-goals-delete" disabled={busy} onClick={() => setPendingDeleteGoal(true)}>
+                Delete goal
               </button>
             </div>
-          </div>
-        ) : null}
-      </Panel>
-
-      {selectedTest ? (
-        <TestEditModal
-          test={selectedTest}
-          busy={busy}
-          extras={categories}
-          onClose={() => setSelectedId(null)}
-          onChange={(fields, message) => persistTest(selectedTest.id, fields, message)}
-          onDelete={(test) => setPendingDelete(test)}
-        />
+          ) : null}
+        </>
       ) : null}
 
       <ConfirmDialog
-        open={!!pendingDelete}
-        tag="Delete test"
-        title={pendingDelete ? `Remove “${pendingDelete.name}”?` : ""}
-        body="If this test is already assigned to a client, delete will fail — hide it instead."
-        cancelLabel="Keep test"
+        open={pendingDeleteGoal}
+        tag="Delete goal"
+        title={draft?.name ? `Delete “${draft.name.trim()}”?` : "Delete this goal?"}
+        body="This removes the goal and the tests saved on it."
+        cancelLabel="Keep goal"
         confirmLabel="Delete"
         confirmTone="danger"
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={confirmDelete}
+        onCancel={() => setPendingDeleteGoal(false)}
+        onConfirm={confirmDeleteGoal}
       />
-    </>
+    </div>
   );
 }

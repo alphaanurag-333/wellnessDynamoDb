@@ -2,6 +2,7 @@ const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { listScopedUsers } = require("./pendingTasksService");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
+const { getWellnessCoachByIdResolved } = require("./accountResolver");
 const { listOnboardingMeetingsByCoachId } = require("../models/onboardingMeetingModel");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const {
@@ -17,6 +18,8 @@ const {
   firstAndLastNumeric,
   isHealClientInOnboarding,
   buildOnboardingRow,
+  coachNameFromMap,
+  wellnessCoachIdsForUser,
   classifyFatLoss,
   classifyHba1c,
   looksLikeA1cSeries,
@@ -125,20 +128,19 @@ function groupByUserId(rows) {
 
 async function loadCoachNames(users) {
   const ids = [
-    ...new Set(
-      (users || [])
-        .map((user) => String(user.parentCoachId || "").trim())
-        .filter(Boolean)
-    ),
+    ...new Set((users || []).flatMap((user) => wellnessCoachIdsForUser(user))),
   ];
   const names = new Map();
   await Promise.all(
     ids.map(async (id) => {
       try {
-        const coach = await getWellnessCoachById(id);
-        names.set(id, String(coach?.name || "").trim() || "Not assigned");
+        const coach =
+          (await getWellnessCoachByIdResolved(id)) ||
+          (await getWellnessCoachById(id));
+        const name = String(coach?.name || "").trim();
+        if (name) names.set(id, name);
       } catch {
-        names.set(id, "Not assigned");
+        /* missing coach record */
       }
     })
   );
@@ -146,9 +148,7 @@ async function loadCoachNames(users) {
 }
 
 function coachNameFor(user, coachNames) {
-  const id = String(user?.parentCoachId || "").trim();
-  if (!id) return "Not assigned";
-  return coachNames.get(id) || "Not assigned";
+  return coachNameFromMap(user, coachNames);
 }
 
 function emptyBucket() {

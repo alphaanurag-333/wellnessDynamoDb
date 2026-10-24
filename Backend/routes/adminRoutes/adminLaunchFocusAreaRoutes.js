@@ -23,7 +23,7 @@ router.patch(
 router.delete(
   "/:id",
   protectAccount,
-  authorizeStaff("console.cf.delete", { admin: "launch-focus-areas.delete" }),
+  authorizeStaff(["console.cf.delete", "console.cf.edit"], { admin: "launch-focus-areas.delete" }),
   deleteLaunchFocusAreaController
 );
 

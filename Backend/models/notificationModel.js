@@ -39,19 +39,27 @@ const KIND = new Set([
   "mental_wellbeing_assigned",
   "yoga_assigned",
   "meal_log_reviewed",
+  "meal_log_submitted",
   "monthly_champion",
   "monthly_champion_comment",
   "diet_plan_assignment",
   "wellness_prescription_assignment",
+  "supplement_recommended",
+  "supplement_dosage_assigned",
+  "supplement_order_logged",
+  "supplement_delivery_requested",
+  "supplement_bill_uploaded",
   "onboarding_slots_offered",
   "onboarding_reminder",
   "onboarding_meeting_confirmed",
+  "onboarding_time_requested",
   "counselling_requested",
   "counselling_periods_offered",
   "counselling_period_selected",
   "counselling_time_requested",
   "counselling_scheduled",
   "counselling_cancelled",
+  "counselling_request_declined",
   "program_checkout_triggered",
   "program_assigned",
   "presentable_pic_request",
@@ -89,6 +97,12 @@ function isBroadcastNotification(item) {
 
 /** User inbox (list + unread count) only includes notifications from this window. */
 const USER_INBOX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Hidden from GET /user/notifications when delivered as an OS push (see pushOnly on record). */
+function isUserInboxNotification(item) {
+  if (!item) return false;
+  return item.pushOnly !== true;
+}
 
 function isSentOnOrAfterUserJoined(notification, userCreatedAt) {
   const joinedAt = String(userCreatedAt || "").trim();
@@ -202,6 +216,7 @@ async function createTargetedNotification({
   title = null,
   image = "",
   comment = null,
+  pushOnly = false,
 }) {
   const uid = String(userId || "").trim();
   if (!uid) throw new Error("userId is required");
@@ -224,6 +239,7 @@ async function createTargetedNotification({
   if (referenceType) item.referenceType = String(referenceType).trim();
   if (actorUserId) item.actorUserId = String(actorUserId).trim();
   if (comment) item.comment = String(comment).trim();
+  if (pushOnly === true) item.pushOnly = true;
 
   await docClient.send(
     new PutCommand({
@@ -460,8 +476,8 @@ async function listApplicableNotificationsForUser(userId) {
     isSentOnOrAfterUserJoined(item, userCreatedAt)
   );
 
-  const merged = [...applicableBroadcasts, ...targeted].filter((item) =>
-    isWithinUserInboxWindow(item)
+  const merged = [...applicableBroadcasts, ...targeted].filter(
+    (item) => isWithinUserInboxWindow(item) && isUserInboxNotification(item)
   );
   merged.sort(sortBySentAtDesc);
   return merged;
@@ -540,4 +556,5 @@ module.exports = {
   normalizeKind,
   isSupportedAudience,
   isNotificationVisibleToUser,
+  isUserInboxNotification,
 };

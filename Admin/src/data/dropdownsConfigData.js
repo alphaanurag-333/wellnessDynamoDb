@@ -75,6 +75,23 @@ export const DROPDOWN_LISTS = [
     ],
   },
   {
+    id: "blood-test-category",
+    title: "Blood test categories",
+    options: [
+      option("btc-1", "Hematology"),
+      option("btc-2", "Diabetes"),
+      option("btc-3", "Cardiac"),
+      option("btc-4", "Thyroid"),
+      option("btc-5", "Vitamins"),
+      option("btc-6", "Liver"),
+      option("btc-7", "Kidney"),
+      option("btc-8", "Inflammation"),
+      option("btc-9", "Hormones"),
+      option("btc-10", "Metabolic"),
+      option("btc-11", "Other"),
+    ],
+  },
+  {
     id: "banner-placement",
     title: "Banner placement",
     options: [
@@ -119,6 +136,7 @@ export const DROPDOWN_PAGE_ORDER = [
   "discount-slab",
   "yoga-category",
   "recipe-category",
+  "blood-test-category",
   "medical-questions",
   "banner-placement",
   "leadership-title",

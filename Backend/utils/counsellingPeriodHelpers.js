@@ -90,7 +90,63 @@ function normalizePeriodKey(value) {
   return PERIOD_KEYS.has(key) ? key : null;
 }
 
+function istParts(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type) => parts.find((row) => row.type === type)?.value || "";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    hour: Number(hour),
+    minute: Number(get("minute")),
+    hm: `${hour}:${get("minute")}`,
+  };
+}
+
+function periodFromIstHour(hour) {
+  const h = Number(hour);
+  if (h >= 8 && h < 12) return "morning";
+  if (h >= 12 && h < 16) return "afternoon";
+  if (h >= 16 && h < 18) return "early_evening";
+  if (h >= 18 && h < 20) return "evening";
+  if (h < 8) return "morning";
+  if (h < 16) return "afternoon";
+  if (h < 18) return "early_evening";
+  return "evening";
+}
+
 function enrichOffer(offer) {
+  if (String(offer?.kind || "").toLowerCase() === "slot" && offer?.startAt && offer?.endAt) {
+    const start = new Date(offer.startAt);
+    const end = new Date(offer.endAt);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      const startParts = istParts(start);
+      const endParts = istParts(end);
+      const period = normalizePeriodKey(offer.period) || periodFromIstHour(startParts.hour);
+      const meta = periodMeta(period);
+      return {
+        id: String(offer?.id || ""),
+        date: offer.date || startParts.date,
+        period,
+        kind: "slot",
+        label: offer.label || `${startParts.hm}–${endParts.hm}`,
+        startLocal: offer.startLocal || startParts.hm,
+        endLocal: offer.endLocal || endParts.hm,
+        timezone: TIMEZONE,
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
+        periodLabel: meta?.label || period,
+      };
+    }
+  }
+
   const date = offer?.date;
   const period = offer?.period;
   const window = periodWindow(date, period);
@@ -99,6 +155,7 @@ function enrichOffer(offer) {
     id: String(offer?.id || ""),
     date,
     period,
+    kind: offer?.kind ? String(offer.kind) : "period",
     label: meta?.label || period,
     startLocal: meta ? formatHm(meta.startHour, meta.startMinute) : null,
     endLocal: meta ? formatHm(meta.endHour, meta.endMinute) : null,
@@ -106,6 +163,57 @@ function enrichOffer(offer) {
     startAt: window?.startAt?.toISOString() || null,
     endAt: window?.endAt?.toISOString() || null,
   };
+}
+
+function normalizeSlotOffers(rawSlots) {
+  if (!Array.isArray(rawSlots) || !rawSlots.length) {
+    const err = new Error("At least one slot is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const seen = new Set();
+  return rawSlots.map((raw, index) => {
+    const start = new Date(raw?.startAt || raw?.start_at || "");
+    const end = new Date(raw?.endAt || raw?.end_at || "");
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      const err = new Error(`slots[${index}] requires valid startAt and endAt`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    if (end.getTime() <= start.getTime()) {
+      const err = new Error(`slots[${index}] endAt must be after startAt`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    if (start.getTime() <= Date.now()) {
+      const err = new Error(`slots[${index}].startAt must be in the future`);
+      err.name = "ValidationError";
+      throw err;
+    }
+
+    const startParts = istParts(start);
+    const endParts = istParts(end);
+    const key = `${start.toISOString()}#${end.toISOString()}`;
+    if (seen.has(key)) {
+      const err = new Error(`Duplicate slot at index ${index}`);
+      err.name = "ValidationError";
+      throw err;
+    }
+    seen.add(key);
+
+    return enrichOffer({
+      id: String(raw?.id || uuidv4()),
+      kind: "slot",
+      date: startParts.date,
+      period: periodFromIstHour(startParts.hour),
+      label: `${startParts.hm}–${endParts.hm}`,
+      startLocal: startParts.hm,
+      endLocal: endParts.hm,
+      startAt: start.toISOString(),
+      endAt: end.toISOString(),
+    });
+  });
 }
 
 function todayYmdIst() {
@@ -156,13 +264,21 @@ function normalizePeriodOffers(rawOffers) {
   return offers;
 }
 
-function isScheduledAtInWindow(scheduledAt, dateYmd, period, durationMinutes = DEFAULT_DURATION_MINUTES) {
-  const window = periodWindow(dateYmd, period);
-  if (!window) return false;
+function isScheduledAtInWindow(scheduledAt, dateYmd, period, durationMinutes = DEFAULT_DURATION_MINUTES, offer = null) {
   const start = new Date(scheduledAt);
   if (Number.isNaN(start.getTime())) return false;
   const durationMs = Math.max(15, Number(durationMinutes) || DEFAULT_DURATION_MINUTES) * 60 * 1000;
   const end = new Date(start.getTime() + durationMs);
+
+  if (offer && String(offer.kind || "").toLowerCase() === "slot" && offer.startAt && offer.endAt) {
+    const windowStart = new Date(offer.startAt).getTime();
+    const windowEnd = new Date(offer.endAt).getTime();
+    if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) return false;
+    return start.getTime() >= windowStart && end.getTime() <= windowEnd;
+  }
+
+  const window = periodWindow(dateYmd, period);
+  if (!window) return false;
   return start.getTime() >= window.startAt.getTime() && end.getTime() <= window.endAt.getTime();
 }
 
@@ -178,6 +294,7 @@ module.exports = {
   normalizeDateYmd,
   normalizePeriodKey,
   normalizePeriodOffers,
+  normalizeSlotOffers,
   enrichOffer,
   isScheduledAtInWindow,
 };

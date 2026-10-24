@@ -11,9 +11,10 @@ const {
 } = require("../../utils/registrationOtpStore");
 const config = require("../../config");
 const { assertPasswordPolicy } = require("../../utils/passwordPolicy");
-const { getHealthConcernById } = require("../../models/healthConcernModel");
 const {
-  resolveHealthConcernForConsultancy,
+  resolveHealthConcernList,
+  parseHealthConcernTokens,
+  readHealthConcernListBody,
   parseHealthConcernOtherFromBody,
   isOtherHealthConcernTitle,
 } = require("../../services/consultancyHealthConcern");
@@ -79,7 +80,7 @@ async function sendAuthResponse(res, statusCode, user, message = "Authentication
     message,
     accessToken,
     refreshToken,
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 }
 
@@ -238,7 +239,9 @@ exports.sendRegisterOtp = asyncHandler(async (req, res) => {
 exports.registerUser = asyncHandler(async (req, res) => {
   const otp = req.body.otp;
   const { fields, password } = parseUserFields(req.body, { requirePassword: false });
-  if (!fields.primaryHealthConcern) {
+  const healthConcernInput = readHealthConcernListBody(req.body);
+  const healthConcernTokens = parseHealthConcernTokens(healthConcernInput);
+  if (!fields.primaryHealthConcern && healthConcernTokens.length === 0) {
     throw new AppError("primaryHealthConcern is required", 400);
   }
 
@@ -286,25 +289,29 @@ exports.registerUser = asyncHandler(async (req, res) => {
   }
 
   let healthConcernTitle = "";
-  if (fields.primaryHealthConcern) {
+  if (healthConcernTokens.length > 0) {
     try {
       const healthConcernOther =
         fields.primaryHealthConcernOther ||
         parseHealthConcernOtherFromBody(req.body);
-      const resolved = await resolveHealthConcernForConsultancy(
-        fields.primaryHealthConcern,
-        { healthConcernOther }
-      );
-      fields.primaryHealthConcern = resolved.healthConcernId;
-      const concern = await getHealthConcernById(resolved.healthConcernId);
-      fields.primaryHealthConcernOther = isOtherHealthConcernTitle(concern?.title)
-        ? String(healthConcernOther || "").trim() || null
-        : null;
-      healthConcernTitle =
-        fields.primaryHealthConcernOther ||
-        resolved.healthConcernSnapshot?.title ||
-        concern?.title ||
-        "";
+      const resolved = await resolveHealthConcernList(healthConcernInput, {
+        healthConcernOther,
+      });
+      if (!resolved.primaryHealthConcern) {
+        throw new AppError("primaryHealthConcern is required", 400);
+      }
+      fields.healthConcerns = resolved.healthConcernIds;
+      fields.primaryHealthConcern = resolved.primaryHealthConcern;
+      fields.primaryHealthConcernOther = resolved.primaryHealthConcernOther;
+      const titles = resolved.concerns
+        .map((concern) => {
+          if (isOtherHealthConcernTitle(concern.title) && resolved.primaryHealthConcernOther) {
+            return resolved.primaryHealthConcernOther;
+          }
+          return concern.title || "";
+        })
+        .filter(Boolean);
+      healthConcernTitle = titles.join(", ");
     } catch (err) {
       if (err?.name === "ValidationError") {
         throw new AppError(err.message, 400);
@@ -524,7 +531,7 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Profile fetched successfully",
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 });
 
@@ -570,7 +577,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Profile updated successfully",
-    user: await enrichUser(user),
+    user: await enrichUser(user, { includeCoachMeetings: true }),
   });
 });
 
@@ -662,7 +669,7 @@ exports.verifyProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "Phone number updated successfully",
-    user: await enrichUser(updated),
+    user: await enrichUser(updated, { includeCoachMeetings: true }),
   });
 });
 
@@ -704,7 +711,7 @@ exports.verifyProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "WhatsApp number updated successfully",
-    user: await enrichUser(updated),
+    user: await enrichUser(updated, { includeCoachMeetings: true }),
   });
 });
 

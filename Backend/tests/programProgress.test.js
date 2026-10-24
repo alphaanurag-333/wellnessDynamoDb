@@ -6,10 +6,13 @@ const {
   looksLikeA1cSeries,
   isHealClientInOnboarding,
   buildOnboardingRow,
+  coachNameFromMap,
+  wellnessCoachIdsForUser,
   formatChangeKg,
   formatChangePts,
   resolveGoalWeightKg,
   extractHba1cFromLabReport,
+  listHba1cReadingsFromLabReports,
   labReportsToHba1cReadings,
   mergeHba1cReadings,
 } = require("../utils/programProgressCalculations");
@@ -95,6 +98,35 @@ describe("lab report HbA1c extraction", () => {
     assert.equal(extractHba1cFromLabReport({ aiStatus: "pending" }), null);
     assert.equal(labReportsToHba1cReadings([{ aiStatus: "failed" }]).length, 0);
   });
+
+  it("returns the latest seven deduped HbA1c readings from blood reports", () => {
+    const mk = (id, reportDate, value) => ({
+      id,
+      aiStatus: "analysed",
+      reportDate,
+      updatedAt: `${reportDate}T12:00:00.000Z`,
+      aiAnalysis: {
+        panels: [{
+          title: "GLUCOSE",
+          rows: [{ name: "HbA1c", value: String(value), tone: "bad", note: "Note", rr: "< 5.7%" }],
+        }],
+      },
+    });
+
+    const reports = [];
+    for (let i = 0; i < 10; i += 1) {
+      const month = String(i + 1).padStart(2, "0");
+      reports.push(mk(`r${i}`, `2026-${month}-15`, 5 + i * 0.1));
+    }
+    reports.push(mk("dup", "2026-10-15", 9.9));
+
+    const readings = listHba1cReadingsFromLabReports(reports);
+    assert.equal(readings.length, 7);
+    assert.equal(readings[0].value, 5.3);
+    assert.equal(readings[6].value, 9.9);
+    assert.equal(readings[6].reportId, "dup");
+    assert.equal(readings[6].rr, "< 5.7%");
+  });
 });
 
 describe("onboarding journey", () => {
@@ -113,6 +145,34 @@ describe("onboarding journey", () => {
     const row = buildOnboardingRow(user, "Anita Rao");
     assert.match(row.step, /Step 2 of 10/);
     assert.equal(row.coach, "Anita Rao");
+  });
+
+  it("resolves the wellness coach from the account id, including a direct assignee", () => {
+    const user = {
+      parentCoachId: "coach-account-1",
+      assignedCoachId: "coach-account-1",
+      assignedCoachType: "wellness_coach",
+    };
+    assert.deepEqual(wellnessCoachIdsForUser(user), ["coach-account-1"]);
+    const names = new Map([["coach-account-1", "Rahul Mehta"]]);
+    assert.equal(coachNameFromMap(user, names), "Rahul Mehta");
+  });
+
+  it("uses a directly assigned wellness coach when the parent id has no name", () => {
+    const user = {
+      parentCoachId: "",
+      assignedCoachId: "coach-2",
+      assignedCoachType: "wellness_coach",
+    };
+    const names = new Map([["coach-2", "Anita Rao"]]);
+    assert.equal(coachNameFromMap(user, names), "Anita Rao");
+  });
+
+  it("stays unassigned when neither coach id resolves", () => {
+    assert.equal(
+      coachNameFromMap({ parentCoachId: "missing", assignedCoachType: "assistant_wellness_coach", assignedCoachId: "awc-1" }, new Map()),
+      "Not assigned",
+    );
   });
 
   it("excludes completed heal clients", () => {

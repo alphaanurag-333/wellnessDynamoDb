@@ -11,6 +11,7 @@ const {
   getUserLaunchAssessmentByUserAndDate,
   listUserLaunchAssessmentsByUserId,
   updateUserLaunchAssessment,
+  pushUserLaunchAssessmentFocusPoints,
   deleteUserLaunchAssessment,
   SCORE_MIN,
   SCORE_MAX,
@@ -83,6 +84,22 @@ function parseFocusPoints(body) {
     throw new AppError("focusPoints must be an array", 400);
   }
   return body.focusPoints;
+}
+
+function parseHiddenFocusTitles(body) {
+  if (body?.hiddenFocusTitles === undefined) return undefined;
+  if (!Array.isArray(body.hiddenFocusTitles)) {
+    throw new AppError("hiddenFocusTitles must be an array", 400);
+  }
+  return body.hiddenFocusTitles;
+}
+
+function parsePointsToNote(body) {
+  if (body?.pointsToNote === undefined) return undefined;
+  if (body.pointsToNote !== null && typeof body.pointsToNote !== "string") {
+    throw new AppError("pointsToNote must be a string", 400);
+  }
+  return body.pointsToNote == null ? "" : String(body.pointsToNote);
 }
 
 function parseAnswers(body) {
@@ -302,6 +319,8 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
           totalScore: parseTotalScore(req.body),
           focusAreaIds: parseFocusAreaIds(req.body) ?? [],
           focusPoints: parseFocusPoints(req.body) ?? [],
+          hiddenFocusTitles: parseHiddenFocusTitles(req.body) ?? [],
+          pointsToNote: parsePointsToNote(req.body) ?? "",
           answers: parseAnswers(req.body) ?? [],
           createdByRole: req.auth?.role || createdByRole,
           createdById: actingId,
@@ -345,6 +364,14 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       if (focusPoints !== undefined) {
         updates.focusPoints = focusPoints;
       }
+      const hiddenFocusTitles = parseHiddenFocusTitles(req.body);
+      if (hiddenFocusTitles !== undefined) {
+        updates.hiddenFocusTitles = hiddenFocusTitles;
+      }
+      const pointsToNote = parsePointsToNote(req.body);
+      if (pointsToNote !== undefined) {
+        updates.pointsToNote = pointsToNote;
+      }
       const answers = parseAnswers(req.body);
       if (answers !== undefined) {
         updates.answers = answers;
@@ -367,6 +394,35 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       return res.status(200).json({
         status: true,
         message: "LAUNCH score updated successfully",
+        assessment,
+      });
+    }),
+
+    pushFocusPointsController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentId = String(req.params.assessmentId || "").trim();
+      if (!assessmentId) throw new AppError("assessmentId is required", 400);
+
+      const current = await getUserLaunchAssessmentById(assessmentId);
+      if (!current || String(current.userId) !== String(userId)) {
+        throw new AppError("LAUNCH assessment not found", 404);
+      }
+
+      let assessment;
+      try {
+        assessment = await pushUserLaunchAssessmentFocusPoints(assessmentId);
+      } catch (err) {
+        handleLaunchValidationError(err);
+      }
+
+      const count = Array.isArray(assessment?.pushedFocusPoints) ? assessment.pushedFocusPoints.length : 0;
+
+      return res.status(200).json({
+        status: true,
+        message: count
+          ? `Pushed ${count} focus area${count === 1 ? "" : "s"} to client app`
+          : "Cleared focus areas in client app",
+        publishedCount: count,
         assessment,
       });
     }),

@@ -362,13 +362,54 @@ export async function createUserTestRecommendation(userId, payload) {
   }
 }
 
+export async function deleteUserTestRecommendation(userId, recommendationId) {
+  try {
+    const { data } = await api.delete(
+      `/account/heal-users/${encodeURIComponent(userId)}/test-recommendations/${encodeURIComponent(recommendationId)}`,
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function deleteUserLabReport(userId, reportId) {
+  try {
+    const { data } = await api.delete(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-reports/${encodeURIComponent(reportId)}`,
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserLabReports(userId) {
   try {
     const { data } = await api.get(
       `/account/heal-users/${encodeURIComponent(userId)}/lab-reports`,
       { headers: authHeader() },
     );
-    return data.reports || [];
+    return {
+      reports: data.reports || [],
+      submissionLocked: typeof data.submissionLocked === "boolean" ? data.submissionLocked : undefined,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function updateUserLabReportSubmission(userId, enabled) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/lab-report-submission`,
+      { enabled: Boolean(enabled) },
+      { headers: authHeader() },
+    );
+    if (typeof data.submissionLocked === "boolean") return data.submissionLocked;
+    return !Boolean(enabled);
   } catch (error) {
     normalizeApiError(error);
   }
@@ -427,9 +468,17 @@ export async function fetchUserLaunchAssessments(userId) {
 
 export async function fetchLaunchAssessmentConfig(userId) {
   function mapConfig(data) {
+    const domains = (Array.isArray(data?.domains) ? data.domains : []).map((row) => {
+      if (!row || typeof row !== "object") return row;
+      const minRequirementRaw = Number(row.minRequirement);
+      return {
+        ...row,
+        minRequirement: Number.isFinite(minRequirementRaw) ? minRequirementRaw : 50,
+      };
+    });
     return {
       ratings: Array.isArray(data?.ratings) ? data.ratings : [],
-      domains: Array.isArray(data?.domains) ? data.domains : [],
+      domains,
       scoring: data?.scoring || null,
     };
   }
@@ -480,7 +529,7 @@ export async function fetchLaunchFocusAreas(userId) {
   try {
     const { data } = await api.get(
       `/account/heal-users/${encodeURIComponent(userId)}/launch-assessment/focus-areas`,
-      { params: { limit: 50 }, headers: authHeader() },
+      { params: { limit: 200 }, headers: authHeader() },
     );
     return data.focusAreas || data;
   } catch (error) {
@@ -509,6 +558,19 @@ export async function updateUserLaunchAssessment(userId, assessmentId, payload) 
       { headers: authHeader() },
     );
     return data.assessment;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserLaunchFocusPoints(userId, assessmentId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/launch-assessment/${encodeURIComponent(assessmentId)}/focus-points/publish`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
   } catch (error) {
     normalizeApiError(error);
   }
@@ -583,10 +645,17 @@ function liveCatalogRows(rows) {
       name: row.name,
       type: row.type,
       category: row.category || "Other",
+      fastingType: row.fastingType || "",
+      duration: row.duration || "",
       status: row.status === "inactive" ? "inactive" : "active",
+      kind: row.kind === "goal" ? "goal" : "test",
+      lines: Array.isArray(row.lines) ? row.lines : [],
+      sections: Array.isArray(row.sections) ? row.sections : [],
+      dismissedCategories: Array.isArray(row.dismissedCategories) ? row.dismissedCategories : [],
       parameters: Array.isArray(row.parameters) ? row.parameters : [],
     }))
-    .filter((row) => row.id && row.status !== "inactive");
+    .filter((row) => row.id && row.status !== "inactive")
+    .filter((row) => row.kind !== "goal" || row.lines.some((line) => line?.name));
 }
 
 async function listConfigsTestCatalog() {
@@ -601,6 +670,19 @@ async function listConfigsTestCatalog() {
     ),
   );
   return tests.concat(...rest.map((page) => liveCatalogRows(page?.tests)));
+}
+
+export async function appendUserGoalTests(userId, goalId, tests) {
+  try {
+    const { data } = await api.patch(
+      `/account/heal-users/${encodeURIComponent(userId)}/test-catalog/${encodeURIComponent(goalId)}`,
+      { tests },
+      { headers: authHeader() },
+    );
+    return data.test || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
 }
 
 export async function fetchTestCatalog(userId) {

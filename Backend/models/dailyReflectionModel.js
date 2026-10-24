@@ -1,4 +1,4 @@
-const { GetCommand, PutCommand, UpdateCommand, QueryCommand } = require("@aws-sdk/lib-dynamodb");
+const { GetCommand, PutCommand, UpdateCommand, QueryCommand, ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
 const { isValidDateOnly } = require("../utils/dateOnly");
 
@@ -16,7 +16,7 @@ const ACTIVITY_CATALOG = [
   { key: "meditation", unit: "mins", name: "Meditation", section: "Mindfulness & Breath", defaultGoal: 10 },
   { key: "nadiSuddhi", unit: "mins", name: "Nadi Suddhi", section: "Mindfulness & Breath", defaultGoal: 10 },
   { key: "lnb", unit: "times", name: "LNB", section: "Mindfulness & Breath", defaultGoal: 21 },
-  { key: "pranayam", unit: "times", name: "Pranayam", section: "Mindfulness & Breath", defaultGoal: 21 },
+  { key: "pranayam", unit: "mins", name: "Pranayam", section: "Mindfulness & Breath", defaultGoal: 21 },
   { key: "gratitudeJournal", unit: "boolean", name: "Gratitude Journal", section: "Mindfulness & Breath", defaultGoal: 1 },
 ];
 
@@ -178,6 +178,36 @@ async function getSettings(userId) {
   return formatSettings(Item);
 }
 
+async function hasSettingsRecord(userId) {
+  const { Item } = await docClient.send(
+    new GetCommand({
+      TableName: TABLE,
+      Key: { userId, recordKey: SETTINGS_KEY },
+      ProjectionExpression: "userId",
+    })
+  );
+  return Boolean(Item?.userId);
+}
+
+/** Ensures DailyReflection settings exist so the bedtime cron can find this user. */
+async function ensureBedtimeSettingsPersisted(userId, bedtime = "22:30") {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  const normalizedBedtime = normalizeBedtime(bedtime) || "22:30";
+  const exists = await hasSettingsRecord(uid);
+  if (exists) {
+    const current = await getSettings(uid);
+    if (current.bedtime) return current;
+    return upsertSettingsFields(uid, { bedtime: normalizedBedtime });
+  }
+
+  return upsertSettingsFields(uid, {
+    bedtime: normalizedBedtime,
+    activities: defaultActivitySettings(),
+  });
+}
+
 async function upsertSettings(userId, activities) {
   return upsertSettingsFields(userId, { activities });
 }
@@ -320,6 +350,34 @@ async function listDayLogsForMonth(userId, monthYear) {
   return listDayLogsBetween(userId, range.startDate, range.endDate);
 }
 
+async function listAllDailyReflectionSettings() {
+  const items = [];
+  let lastKey;
+
+  do {
+    const params = {
+      TableName: TABLE,
+      FilterExpression: "recordKey = :settingsKey",
+      ExpressionAttributeValues: {
+        ":settingsKey": SETTINGS_KEY,
+      },
+    };
+    if (lastKey) params.ExclusiveStartKey = lastKey;
+
+    const { Items = [], LastEvaluatedKey } = await docClient.send(new ScanCommand(params));
+    for (const item of Items) {
+      if (!item?.userId) continue;
+      items.push({
+        userId: String(item.userId),
+        ...formatSettings(item),
+      });
+    }
+    lastKey = LastEvaluatedKey;
+  } while (lastKey);
+
+  return items;
+}
+
 async function listDayLogsBetween(userId, startDate, endDate) {
   if (!isValidDateOnly(startDate) || !isValidDateOnly(endDate) || startDate > endDate) {
     return [];
@@ -354,6 +412,8 @@ module.exports = {
   listEnabledActivities,
   listCatalogWithSettings,
   getSettings,
+  listAllDailyReflectionSettings,
+  ensureBedtimeSettingsPersisted,
   upsertSettings,
   upsertSettingsFields,
   getDayLog,

@@ -12,6 +12,8 @@ function healUserPath(userId, suffix = "") {
   return `/account/heal-users/${encodeURIComponent(userId)}${suffix}`;
 }
 
+const CLIENT_UPLOAD_KEYS = ["weightPic", "glucose", "bloodPressure", "conditionComparison"];
+
 function emptySettings() {
   return {
     weightPic: false,
@@ -20,6 +22,12 @@ function emptySettings() {
     menstrualCycle: false,
     conditionComparison: false,
   };
+}
+
+function emptyClientUpload() {
+  const out = {};
+  for (const key of CLIENT_UPLOAD_KEYS) out[key] = { open: false, source: null };
+  return out;
 }
 
 function pickBooleans(source) {
@@ -31,11 +39,23 @@ function pickBooleans(source) {
   return out;
 }
 
+function pickClientUpload(source) {
+  const out = emptyClientUpload();
+  if (!source || typeof source !== "object") return out;
+  for (const key of CLIENT_UPLOAD_KEYS) {
+    const row = source[key];
+    const sourceName = row?.source === "saturday" || row?.source === "coach" ? row.source : null;
+    out[key] = { open: Boolean(row?.open), source: sourceName };
+  }
+  return out;
+}
+
 export function mapHealthProgressSettings(data = {}) {
   const settings = pickBooleans(data.settings);
   return {
     settings,
     storedSettings: pickBooleans(data.storedSettings || data.settings),
+    clientUpload: pickClientUpload(data.clientUpload),
     gender: String(data.gender || ""),
     isFemale: Boolean(data.isFemale),
   };
@@ -48,6 +68,41 @@ export async function fetchHealthProgressSettings(userId) {
   } catch (error) {
     normalizeApiError(error);
   }
+}
+
+function buildClientUploadPatch(updates) {
+  const clientUpload = {};
+  if (typeof updates === "string") {
+    clientUpload[updates] = true;
+    return clientUpload;
+  }
+  for (const [key, value] of Object.entries(updates || {})) {
+    if (CLIENT_UPLOAD_KEYS.includes(key) && typeof value === "boolean") {
+      clientUpload[key] = value;
+    }
+  }
+  return clientUpload;
+}
+
+export async function patchHealthProgressClientUpload(userId, updates) {
+  const clientUpload = buildClientUploadPatch(updates);
+  if (!Object.keys(clientUpload).length) return null;
+  try {
+    const { data } = await api.patch(healUserPath(userId, "/health-progress-settings"), {
+      clientUpload,
+    });
+    return mapHealthProgressSettings(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function openHealthProgressClientUpload(userId, featureKey) {
+  return patchHealthProgressClientUpload(userId, { [featureKey]: true });
+}
+
+export async function closeHealthProgressClientUpload(userId, featureKey) {
+  return patchHealthProgressClientUpload(userId, { [featureKey]: false });
 }
 
 export async function updateHealthProgressSettings(userId, features = {}) {
@@ -100,6 +155,62 @@ export async function createCoachWeightLog(userId, payload = {}) {
       ...rest,
     });
     return data?.log || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+function mapPhotoReviewResponse(data) {
+  if (!data || typeof data !== "object") return { log: null, clientUpload: null };
+  return {
+    log: data.log || null,
+    clientUpload: pickClientUpload(data.clientUpload),
+  };
+}
+
+export async function reviewCoachWeightPhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/weight")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachGlucosePhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/glucose")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachBloodPressurePhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/blood-pressure")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function reviewCoachConditionPhoto(userId, logId, { action, rejectionReason } = {}) {
+  try {
+    const { data } = await api.patch(
+      `${healUserPath(userId, "/health-progress/condition-comparison")}/${encodeURIComponent(logId)}/photo-review`,
+      { action, rejectionReason: rejectionReason || "" },
+    );
+    return mapPhotoReviewResponse(data);
   } catch (error) {
     normalizeApiError(error);
   }

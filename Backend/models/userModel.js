@@ -100,6 +100,7 @@ const {
 const {
   defaultHealthProgressFeatures,
   normalizeHealthProgressFeatures,
+  normalizeHealthProgressClientUpload,
 } = require("../utils/healthProgressHelpers");
 
 const STATUS = new Set(USER_ALLOWED_STATUS);
@@ -138,6 +139,39 @@ function isSleepTrackingEnabled(user) {
   return user?.sleepTrackingEnabled !== false;
 }
 
+/** Client body-measurement form: coach must enable; legacy access until Body Analytics is done. */
+function isBodyMeasurementEnabled(user) {
+  if (user?.bodyMeasurementEnabled === true) return true;
+  if (user?.bodyMeasurementEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
+  if (status.bodyMeasurement === "done" || status.bodyMeasurement === "skipped") {
+    return true;
+  }
+  return false;
+}
+
+/** Medical questionnaire in the client app — locked after Body Analytics unless coach enables. */
+function isMedicalConditionsInAppEnabled(user) {
+  if (user?.medicalConditionsInAppEnabled === true) return true;
+  if (user?.medicalConditionsInAppEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
+  return true;
+}
+
+/** Client 180° progress photos: coach must enable; legacy access until Body Analytics is done. */
+function isProgressPhotosInAppEnabled(user) {
+  if (user?.progressPhotosInAppEnabled === true) return true;
+  if (user?.progressPhotosInAppEnabled === false) return false;
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") return false;
+  if (status.progressPhotos180 === "done" || status.progressPhotos180 === "skipped") {
+    return true;
+  }
+  return false;
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -147,6 +181,23 @@ function normalizeDietaryPreference(value) {
 function normalizeMealTrackingMode(value, fallback = "macro") {
   const next = String(value || fallback).toLowerCase().trim();
   return MEAL_TRACKING_MODES.has(next) ? next : fallback;
+}
+
+const DAILY_MEAL_GOAL_DEFAULT = 3;
+const DAILY_MEAL_GOALS = new Set([1, 2, 3]);
+
+function normalizeDailyMealGoal(value, fallback = DAILY_MEAL_GOAL_DEFAULT) {
+  if (value == null || value === "") {
+    return fallback;
+  }
+  const n = Math.floor(Number(value));
+  if (DAILY_MEAL_GOALS.has(n)) return n;
+  return fallback;
+}
+
+/** Missing field on existing users defaults to three meals per day. */
+function getDailyMealGoal(user) {
+  return normalizeDailyMealGoal(user?.dailyMealGoal, DAILY_MEAL_GOAL_DEFAULT);
 }
 
 function extractWellnessJourneyToken(entry) {
@@ -412,7 +463,11 @@ function sanitizeUpdateField(key, value) {
     key === "presentablePicsEnabled" ||
     key === "dietPlanEnabled" ||
     key === "heartRateEnabled" ||
-    key === "sleepTrackingEnabled"
+    key === "sleepTrackingEnabled" ||
+    key === "bodyMeasurementEnabled" ||
+    key === "medicalConditionsInAppEnabled" ||
+    key === "progressPhotosInAppEnabled" ||
+    key === "labReportSubmissionLocked"
   ) {
     return Boolean(value);
   }
@@ -421,8 +476,22 @@ function sanitizeUpdateField(key, value) {
   if (key === "paidOnboardingStepStatus") return normalizePaidOnboardingStepStatus(value);
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
+  if (key === "dailyMealGoal") return normalizeDailyMealGoal(value);
   if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
+  if (key === "healthProgressClientUpload") return normalizeHealthProgressClientUpload(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
+  if (key === "healthConcerns") {
+    if (!Array.isArray(value)) return null;
+    const seen = new Set();
+    const ids = [];
+    for (const entry of value) {
+      const id = String(entry || "").trim();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    return ids.length ? ids : null;
+  }
   if (
     [
       "name",
@@ -504,6 +573,11 @@ function buildUserItem(input, { id, now } = {}) {
     city: input.city != null ? String(input.city).trim() || null : null,
     primaryHealthConcern:
       input.primaryHealthConcern != null ? String(input.primaryHealthConcern).trim() || null : null,
+    healthConcerns: Array.isArray(input.healthConcerns)
+      ? input.healthConcerns.map((id) => String(id || "").trim()).filter(Boolean)
+      : input.primaryHealthConcern
+        ? [String(input.primaryHealthConcern).trim()].filter(Boolean)
+        : null,
     primaryHealthConcernOther:
       input.primaryHealthConcernOther != null
         ? String(input.primaryHealthConcernOther).trim() || null
@@ -528,6 +602,10 @@ function buildUserItem(input, { id, now } = {}) {
     dietPlanEnabled: input.dietPlanEnabled !== false,
     heartRateEnabled: input.heartRateEnabled !== false,
     sleepTrackingEnabled: input.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: input.bodyMeasurementEnabled !== false,
+    medicalConditionsInAppEnabled: input.medicalConditionsInAppEnabled !== false,
+    progressPhotosInAppEnabled: input.progressPhotosInAppEnabled !== false,
+    labReportSubmissionLocked: input.labReportSubmissionLocked !== false,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -573,6 +651,7 @@ function buildUserItem(input, { id, now } = {}) {
     pincode: input.pincode != null ? String(input.pincode).trim() || null : null,
     dietaryPreference: normalizeDietaryPreference(input.dietaryPreference),
     mealTrackingMode: normalizeMealTrackingMode(input.mealTrackingMode),
+    dailyMealGoal: normalizeDailyMealGoal(input.dailyMealGoal),
     healthProgressFeatures: normalizeHealthProgressFeatures(
       input.healthProgressFeatures,
       defaultHealthProgressFeatures()
@@ -624,54 +703,75 @@ async function getUserById(id) {
   return withLegacyId(Item || null);
 }
 
+function isDeletedUser(user) {
+  return String(user?.status || "").toLowerCase() === "deleted";
+}
+
+/**
+ * When a deleted account and a new signup share an email or phone, use the live account.
+ * Fall back to the deleted row only when no live account exists (login can still say it was deleted).
+ */
+function pickIdentityUser(users) {
+  const rows = (Array.isArray(users) ? users : []).filter(Boolean);
+  return rows.find((user) => !isDeletedUser(user)) || rows[0] || null;
+}
+
+async function queryIdentityIndex(indexName, keyName, keyValue) {
+  const value = String(keyValue || "").trim();
+  if (!value) return [];
+
+  const rows = [];
+  let lastKey;
+  do {
+    const { Items = [], LastEvaluatedKey } = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE,
+        IndexName: indexName,
+        KeyConditionExpression: "#key = :key",
+        ExpressionAttributeNames: { "#key": keyName },
+        ExpressionAttributeValues: { ":key": value },
+        ExclusiveStartKey: lastKey,
+        Limit: 25,
+      })
+    );
+    for (const item of Items) {
+      const row = withLegacyId(item);
+      if (row) rows.push(row);
+    }
+    if (rows.some((row) => !isDeletedUser(row))) break;
+    lastKey = LastEvaluatedKey;
+  } while (lastKey && rows.length < 100);
+
+  return rows;
+}
+
 async function getUserByEmail(email) {
   const normalized = normalizeEmail(email);
   if (!normalized) return null;
-  const { Items } = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE,
-      IndexName: "EmailIndex",
-      KeyConditionExpression: "email = :email",
-      ExpressionAttributeValues: { ":email": normalized },
-      Limit: 1,
-    })
-  );
-  return withLegacyId(Items?.[0] || null);
+  const rows = await queryIdentityIndex("EmailIndex", "email", normalized);
+  return pickIdentityUser(rows);
 }
 
 async function getUserByPhone(phoneCountryCode, phone) {
   const phoneKey = buildPhoneKey(phoneCountryCode, phone);
   if (!phoneKey) return null;
-  const { Items } = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE,
-      IndexName: "PhoneKeyIndex",
-      KeyConditionExpression: "phoneKey = :phoneKey",
-      ExpressionAttributeValues: { ":phoneKey": phoneKey },
-      Limit: 1,
-    })
-  );
-  return withLegacyId(Items?.[0] || null);
+  const rows = await queryIdentityIndex("PhoneKeyIndex", "phoneKey", phoneKey);
+  return pickIdentityUser(rows);
 }
 
 async function getUserByWhatsapp(whatsappCountryCode, whatsappPhone) {
-  const users = await listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit: 1 });
-  return users[0] || null;
+  const users = await listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit: 25 });
+  return pickIdentityUser(users);
 }
 
 async function listUsersByWhatsapp(whatsappCountryCode, whatsappPhone, { limit = 25 } = {}) {
   const whatsappKey = buildPhoneKey(whatsappCountryCode, whatsappPhone);
   if (!whatsappKey) return [];
-  const { Items } = await docClient.send(
-    new QueryCommand({
-      TableName: TABLE,
-      IndexName: "WhatsappKeyIndex",
-      KeyConditionExpression: "whatsappKey = :whatsappKey",
-      ExpressionAttributeValues: { ":whatsappKey": whatsappKey },
-      Limit: Math.max(1, Math.min(100, Number(limit) || 25)),
-    })
-  );
-  return (Items || []).map((item) => withLegacyId(item));
+  const rows = await queryIdentityIndex("WhatsappKeyIndex", "whatsappKey", whatsappKey);
+  const cap = Math.max(1, Math.min(100, Number(limit) || 25));
+  const live = rows.filter((row) => !isDeletedUser(row));
+  const deleted = rows.filter((row) => isDeletedUser(row));
+  return [...live, ...deleted].slice(0, cap);
 }
 
 function resolveEffectiveWhatsappKey(user) {
@@ -768,6 +868,15 @@ async function updateUser(id, updates) {
   );
   const setKeys = uniquePatch.filter((key) => !removeKeys.includes(key));
 
+  // A deleted account must stay off email/phone/coach indexes so a later signup is a new user.
+  if (isDeletedUser(current) && isDeletedUser(merged)) {
+    for (const key of ["email", "phoneKey", "whatsappKey", "parentCoachId", "assignedCoachId", "assignedCoachType"]) {
+      const index = setKeys.indexOf(key);
+      if (index >= 0) setKeys.splice(index, 1);
+      if (!removeKeys.includes(key)) removeKeys.push(key);
+    }
+  }
+
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
   let updateExpr = "SET updatedAt = :updatedAt";
@@ -815,7 +924,8 @@ async function deleteUser(id) {
         "deletedEmail = if_not_exists(email, :empty), " +
         "deletedPhoneKey = if_not_exists(phoneKey, :empty), " +
         "deletedWhatsappKey = if_not_exists(whatsappKey, :empty) " +
-        "REMOVE email, phoneKey, whatsappKey, passwordHash, otp, otpExpire, otpSendCount, otpCooldownUntil, " +
+        "REMOVE email, phoneKey, whatsappKey, parentCoachId, assignedCoachId, assignedCoachType, " +
+        "assignmentStatus, assignmentSource, assignedAt, passwordHash, otp, otpExpire, otpSendCount, otpCooldownUntil, " +
         "sessionVersion, resetPasswordToken, " +
         "resetPasswordExpire, fcm_id, profileImage, presentablePic",
       ExpressionAttributeNames: { "#status": "status" },
@@ -938,6 +1048,7 @@ function toReferralTreeNode(user, depth = 0, extras = {}) {
     email: user.email || null,
     referralCode: user.referralCode || null,
     userTier: user.userTier || null,
+    clientCategory: user.clientCategory || null,
     status: user.status || null,
     referredByUserId: user.referredByUserId || null,
     referredByCode: user.referredByCode || null,
@@ -1271,6 +1382,7 @@ async function buildReferralOverview({
         email: user?.email || null,
         referralCode: user?.referralCode || null,
         userTier: user?.userTier || null,
+        clientCategory: user?.clientCategory || null,
         status: user?.status || null,
         directCount,
         missing: !user,
@@ -1297,6 +1409,7 @@ async function buildReferralOverview({
       name: user.name || null,
       referralCode: user.referralCode || null,
       userTier: user.userTier || null,
+      clientCategory: user.clientCategory || null,
       status: user.status || null,
       referredByUserId: referrerId || null,
       referredByEntityId: user.referredByEntityId || null,
@@ -1665,6 +1778,8 @@ module.exports = {
   USER_ALLOWED_ASSIGNED_COACH_TYPES,
   USER_ALLOWED_DIETARY_PREFERENCES,
   USER_ALLOWED_PAID_ONBOARDING_STEPS,
+  isDeletedUser,
+  pickIdentityUser,
   normalizeEmail,
   normalizePhone,
   normalizeCountryCode,
@@ -1676,6 +1791,9 @@ module.exports = {
   normalizeAssignedCoachType,
   normalizeDietaryPreference,
   normalizeMealTrackingMode,
+  normalizeDailyMealGoal,
+  getDailyMealGoal,
+  DAILY_MEAL_GOAL_DEFAULT,
   normalizeHealthProgressFeatures,
   defaultHealthProgressFeatures,
   normalizePaidOnboardingStep,
@@ -1688,6 +1806,9 @@ module.exports = {
   isDietPlanEnabled,
   isHeartRateEnabled,
   isSleepTrackingEnabled,
+  isBodyMeasurementEnabled,
+  isMedicalConditionsInAppEnabled,
+  isProgressPhotosInAppEnabled,
   buildUserItem,
   toPublicUser,
   createUser,

@@ -277,6 +277,8 @@ export function computeLaunchAssessment({ domains = [], ratings = [], ratingByQu
     if (!general) {
       overall += earned * ((Number(domain.weight) || 0) / 100);
     }
+    const minRequirementRaw = Number(domain.minRequirement);
+    const minRequirement = Number.isFinite(minRequirementRaw) ? minRequirementRaw : 50;
     return {
       id: domain.id,
       num: index + 1,
@@ -285,6 +287,7 @@ export function computeLaunchAssessment({ domains = [], ratings = [], ratingByQu
       score: Math.round(earned * 100) / 100,
       max: 100,
       weight: Number(domain.weight) || 0,
+      minRequirement,
       general,
       items,
     };
@@ -297,5 +300,73 @@ export function computeLaunchAssessment({ domains = [], ratings = [], ratingByQu
     domainRows,
     maxRating,
   };
+}
+
+export function launchDomainScorePercent(domainRow) {
+  const max = Number(domainRow?.max) || 100;
+  const score = Number(domainRow?.score) || 0;
+  if (!max) return 0;
+  return (score / max) * 100;
+}
+
+/** True when a scored domain has at least one coach rating and % score is under minRequirement. */
+export function launchDomainBelowMinRequirement(domainRow, { requireRating = true } = {}) {
+  if (!domainRow || domainRow.general) return false;
+  const max = Number(domainRow.max) || 0;
+  if (!max) return false;
+  const items = domainRow.items || [];
+  if (requireRating && !items.some((item) => item.ratingId)) return false;
+  const minPct = Number.isFinite(Number(domainRow.minRequirement))
+    ? Number(domainRow.minRequirement)
+    : 50;
+  return launchDomainScorePercent(domainRow) < minPct;
+}
+
+export function flaggedLaunchDomainIds(domainRows, options) {
+  return (domainRows || [])
+    .filter((row) => launchDomainBelowMinRequirement(row, options))
+    .map((row) => String(row.id || "").trim())
+    .filter(Boolean);
+}
+
+function sortLaunchFocusAreas(a, b) {
+  const orderA = Number.isFinite(Number(a?.sortOrder)) ? Number(a.sortOrder) : 9999;
+  const orderB = Number.isFinite(Number(b?.sortOrder)) ? Number(b.sortOrder) : 9999;
+  if (orderA !== orderB) return orderA - orderB;
+  return String(a?.title || a?.name || "").localeCompare(String(b?.title || b?.name || ""));
+}
+
+function isActiveLaunchFocusArea(area) {
+  return area && String(area.status || "active").toLowerCase() !== "inactive";
+}
+
+/** Config “Areas to focus” rows linked to domains that scored under minRequirement. */
+export function buildLaunchAutoFocusFromCatalog(domainRows, focusAreas, options) {
+  const flaggedIds = new Set(flaggedLaunchDomainIds(domainRows, options));
+  if (!flaggedIds.size) return { titles: [], ids: [] };
+
+  const matched = (focusAreas || [])
+    .filter((area) => {
+      if (!isActiveLaunchFocusArea(area)) return false;
+      const domainId = String(area.domainId || "").trim();
+      return domainId && flaggedIds.has(domainId);
+    })
+    .sort(sortLaunchFocusAreas);
+
+  const titles = [];
+  const ids = [];
+  const seenTitles = new Set();
+  matched.forEach((area) => {
+    const title = String(area.title || area.name || "").trim();
+    const id = area.id || area._id;
+    if (!title) return;
+    const key = title.toLowerCase();
+    if (seenTitles.has(key)) return;
+    seenTitles.add(key);
+    titles.push(title);
+    if (id) ids.push(id);
+  });
+
+  return { titles, ids };
 }
 

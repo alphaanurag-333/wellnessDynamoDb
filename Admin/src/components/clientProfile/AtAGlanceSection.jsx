@@ -20,6 +20,7 @@ import {
   patchOnboardingStep,
   pushOnboardingReminder,
   rejectOnboardingMeetingRequest,
+  fetchUserRca,
   submitUserRca,
 } from "../../api/onboardingApi.js";
 import { ClientRemindModal } from "./ClientRemindModal.jsx";
@@ -30,8 +31,19 @@ import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { fetchHealConsultancyTracks } from "../../api/counsellingApi.js";
+import {
+  assignmentsFromPrescriptionPayload,
+  coachMeetingsFromAssignments,
+  listUserWellnessPrescriptions,
+} from "../../api/wellnessPrescriptionAssignmentApi.js";
+import {
+  latestCounsellingLabel,
+  mergeMeetingsWithOrphanTracks,
+} from "../../utils/counsellingReviewHistory.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 const EMPTY_SNAPSHOT = [
   { label: "Age", value: "—", tone: "default" },
@@ -173,7 +185,7 @@ function DosageBadge({ label, tone }) {
   return <span className={`ua-cp-dosage ua-cp-dosage--${tone}`}>{label}</span>;
 }
 
-function GlanceHeader({ user, onOpenReview }) {
+function GlanceHeader({ user, lastCounselling, onOpenReview }) {
   const joinedLabel = user.joinedAgo || (user.ageDays === 0 ? "today" : user.ageDays > 0 ? `${user.ageDays} days ago` : "");
   const name = String(user.name || "").trim() || "Client";
   return (
@@ -186,8 +198,8 @@ function GlanceHeader({ user, onOpenReview }) {
         </p>
       </div>
       <div className="ua-cp-glance-head__badges">
-        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View review history">
-          ⏱️ Last reviewed {user.lastReviewed || "—"} ›
+        <button type="button" className="ua-cp-glance-badge ua-cp-glance-badge--review" onClick={onOpenReview} title="View counselling history">
+          ⏱️ Last Counselling {lastCounselling || "—"} ›
         </button>
         <span className="ua-cp-glance-badge ua-cp-glance-badge--updated">
           ⚑ Updated {user.lastUpdated || "—"}
@@ -444,7 +456,7 @@ function resolveCoachMessageDuration(hours) {
   return match?.hours || DEFAULT_COACH_MESSAGE_DURATION;
 }
 
-function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true }) {
+function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true, canDelete = false }) {
   const userId = String(user?.id || "").trim();
   const isMock = isMockNumericId(userId);
   const [message, setMessage] = useState("");
@@ -605,7 +617,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
             </option>
           ))}
         </select>
-        {liveInsight?.message ? (
+        {liveInsight?.message && canDelete ? (
           <button
             type="button"
             className="ua-cp-btn ua-cp-btn--outline ua-cp-comms__action ua-cp-comms__action--delete"
@@ -810,8 +822,33 @@ function formatOnboardingStamp(date = new Date()) {
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-function buildRcaSubmittedNote(by = "Admin desk") {
-  return `RCA submitted by ${by} · ${formatOnboardingStamp()}`;
+function buildRcaSubmittedNote(by = "Admin desk", date = new Date()) {
+  return `RCA submitted by ${by} · ${formatOnboardingStamp(date)}`;
+}
+
+function formatRcaMetaLine(rca) {
+  if (!rca) return "";
+  const by = String(rca.submittedByName || "Admin desk").trim() || "Admin desk";
+  const stamp = rca.createdAt ? formatOnboardingStamp(new Date(rca.createdAt)) : formatOnboardingStamp();
+  return `Submitted by ${by} · ${stamp}`;
+}
+
+function RcaViewIcon({ onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      className="ua-cp-onboard-step__rca-view"
+      title="View RCA"
+      aria-label="View RCA notes"
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+      </svg>
+    </button>
+  );
 }
 
 function StepToggle({ done, current, onClick }) {
@@ -879,6 +916,9 @@ function OnboardingStatusCard({
   const [scheduleModal, setScheduleModal] = useState(null);
   const [reviewRequestModal, setReviewRequestModal] = useState(null);
   const [rcaOpen, setRcaOpen] = useState(false);
+  const [rcaViewOpen, setRcaViewOpen] = useState(false);
+  const [rcaViewLoading, setRcaViewLoading] = useState(false);
+  const [rcaLatest, setRcaLatest] = useState(null);
   const [rcaNotes, setRcaNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [remindOpen, setRemindOpen] = useState(false);
@@ -896,6 +936,31 @@ function OnboardingStatusCard({
   useEffect(() => {
     loadMeetings();
   }, [user?.id]);
+
+  useEffect(() => {
+    setRcaLatest(null);
+    setRcaViewOpen(false);
+    setRcaOpen(false);
+    setRcaNotes("");
+  }, [user?.id]);
+
+  const openRcaView = async () => {
+    if (!user?.id || String(user.id).match(/^\d+$/)) {
+      onToast?.("RCA is not available for this profile");
+      return;
+    }
+    setRcaViewOpen(true);
+    setRcaViewLoading(true);
+    try {
+      const data = await fetchUserRca(user.id);
+      setRcaLatest(data?.rca || null);
+    } catch (err) {
+      onToast?.(err?.message || "Failed to load RCA");
+      setRcaViewOpen(false);
+    } finally {
+      setRcaViewLoading(false);
+    }
+  };
 
   useEffect(() => {
     const next = buildInitialDone(user);
@@ -1135,8 +1200,13 @@ function OnboardingStatusCard({
                   } : undefined}
                 />
                 <div className="ua-cp-onboard-step__copy">
-                  <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
-                    {step.n}. {step.label}
+                  <span className="ua-cp-onboard-step__label-row">
+                    <span className={`ua-cp-onboard-step__label${step.done ? " ua-cp-onboard-step__label--done" : ""}`}>
+                      {step.n}. {step.label}
+                    </span>
+                    {step.key === "rca" && step.done ? (
+                      <RcaViewIcon onClick={openRcaView} disabled={busy || rcaViewLoading} />
+                    ) : null}
                   </span>
                   {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
                   {meetingNote ? <div className="ua-cp-onboard-step__note">{meetingNote}</div> : null}
@@ -1220,6 +1290,7 @@ function OnboardingStatusCard({
           user={user}
           title={scheduleModal.title}
           defaultNote={scheduleModal.defaultNote}
+          showClientNote={false}
           existingMeeting={
             meetings.find((row) => (
               row.stepKey === scheduleModal.stepKey
@@ -1323,8 +1394,11 @@ function OnboardingStatusCard({
               onClick={async () => {
                 try {
                   setBusy(true);
-                  await submitUserRca(user.id, { notes: rcaNotes.trim() });
-                  setStepNotes((prev) => ({ ...prev, 5: buildRcaSubmittedNote() }));
+                  const saved = await submitUserRca(user.id, { notes: rcaNotes.trim() });
+                  setRcaLatest(saved || null);
+                  const submittedBy = saved?.submittedByName || "Admin desk";
+                  const submittedAt = saved?.createdAt ? new Date(saved.createdAt) : new Date();
+                  setStepNotes((prev) => ({ ...prev, 5: buildRcaSubmittedNote(submittedBy, submittedAt) }));
                   onToast(`RCA submitted for ${user.name}`);
                   setRcaOpen(false);
                   setRcaNotes("");
@@ -1344,6 +1418,41 @@ function OnboardingStatusCard({
             >
               Submit RCA
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {rcaViewOpen ? (
+        <div className="ua-cp-modal-backdrop" onClick={() => setRcaViewOpen(false)} role="presentation">
+          <div className="ua-cp-modal ua-cp-rca-view-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="rca-view-title">
+            <div className="ua-cp-modal__head">
+              <div>
+                <div id="rca-view-title" className="ua-cp-modal__title">RCA</div>
+                {rcaLatest ? (
+                  <div className="ua-cp-modal__sub">{formatRcaMetaLine(rcaLatest)}</div>
+                ) : null}
+              </div>
+              <button type="button" className="ua-cp-modal__close" onClick={() => setRcaViewOpen(false)}>×</button>
+            </div>
+            <div className="ua-cp-modal__body">
+              {rcaViewLoading ? (
+                <p className="ua-cp-rca-view-modal__loading">Loading…</p>
+              ) : rcaLatest?.notes ? (
+                <div className="ua-cp-rca-view-modal__notes">{rcaLatest.notes}</div>
+              ) : (
+                <p className="ua-cp-rca-view-modal__empty">No RCA notes saved for this client yet.</p>
+              )}
+              {rcaLatest?.fileUrl ? (
+                <a
+                  className="ua-cp-rca-view-modal__file"
+                  href={rcaLatest.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Open attachment
+                </a>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
@@ -1403,7 +1512,7 @@ function OnboardingStatusCard({
   );
 }
 
-function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
+function RemindersModal({ user, reminders, deletingId, onClose, onDelete, canDelete = false }) {
   return (
     <div className="ua-cp-modal-backdrop" onClick={onClose} role="presentation">
       <div className="ua-cp-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="reminders-title">
@@ -1427,15 +1536,17 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
                 </div>
               </div>
               <span className="ua-cp-reminder-item__time">{formatReminderTime(r.time)}</span>
-              <button
-                type="button"
-                className="ua-cp-reminder-item__del"
-                disabled={deletingId === r.id}
-                onClick={() => onDelete(r.id)}
-                aria-label="Delete"
-              >
-                ×
-              </button>
+              {canDelete ? (
+                <button
+                  type="button"
+                  className="ua-cp-reminder-item__del"
+                  disabled={deletingId === r.id}
+                  onClick={() => onDelete(r.id)}
+                  aria-label="Delete"
+                >
+                  ×
+                </button>
+              ) : null}
             </div>
           )) : (
             <p className="ua-cp-reminder-empty">No reminders yet. Set one above and it will appear in their app.</p>
@@ -1450,6 +1561,7 @@ function RemindersModal({ user, reminders, deletingId, onClose, onDelete }) {
 export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const { can, isAdminView } = useViewAs();
   const archived = useClientProfileArchived();
+  const { canDelete: canDeleteClientData } = useClientSectionPermissions("glance");
   const canEditClient = !archived && (isAdminView || can("console.cl.edit"));
   const canCalEdit = !archived && (isAdminView || can("console.cal.edit") || can("console.cal.create"));
   const canRemindClient = !archived && (canEditClient || canCalEdit || can("console.diet.edit"));
@@ -1470,9 +1582,47 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const [onboardingProgress, setOnboardingProgress] = useState(null);
   const [glance, setGlance] = useState(null);
   const [glanceLoading, setGlanceLoading] = useState(false);
+  const [lastCounselling, setLastCounselling] = useState("");
+  const [counsellingMeetings, setCounsellingMeetings] = useState([]);
+  const [counsellingAssignments, setCounsellingAssignments] = useState([]);
+  const [counsellingHistoryLoading, setCounsellingHistoryLoading] = useState(false);
 
   useEffect(() => {
     setOnboardingProgress(null);
+    setLastCounselling("");
+    setCounsellingMeetings([]);
+    setCounsellingAssignments([]);
+  }, [user?.id]);
+
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId || isMockNumericId(userId)) return undefined;
+
+    let cancelled = false;
+    setCounsellingHistoryLoading(true);
+    Promise.all([
+      fetchHealConsultancyTracks(userId, { page: 1, limit: 50 }).catch(() => null),
+      listUserWellnessPrescriptions(userId).catch(() => null),
+    ]).then(([tracksData, prescriptionData]) => {
+      if (cancelled) return;
+      const tracks = tracksData?.tracks || [];
+      const assignments = assignmentsFromPrescriptionPayload(prescriptionData);
+      const prescriptionMeetings = Array.isArray(prescriptionData?.meetings) && prescriptionData.meetings.length
+        ? prescriptionData.meetings
+        : coachMeetingsFromAssignments(assignments);
+      const meetings = Array.isArray(tracksData?.coachMeetings)
+        ? mergeMeetingsWithOrphanTracks(tracksData.coachMeetings, tracks)
+        : mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracks);
+      setCounsellingMeetings(meetings);
+      setCounsellingAssignments(assignments);
+      setLastCounselling(latestCounsellingLabel(tracks, meetings));
+    }).finally(() => {
+      if (!cancelled) setCounsellingHistoryLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -1536,7 +1686,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       {rainActive && rainTip ? (
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
-      <GlanceHeader user={user} onOpenReview={() => setReviewOpen(true)} />
+      <GlanceHeader user={user} lastCounselling={lastCounselling} onOpenReview={() => setReviewOpen(true)} />
       <PreviewToggle mode={viewMode} onChange={setViewMode} />
 
       {viewMode === "onboarded" ? (
@@ -1564,6 +1714,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             setReminders={setReminders}
             onOpenList={() => setRemindersOpen(true)}
             canEdit={canEditClient}
+            canDelete={canDeleteClientData}
           />
         </>
       ) : (
@@ -1589,6 +1740,9 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       {reviewOpen ? (
         <ReviewHistoryModal
           user={user}
+          meetings={counsellingMeetings}
+          assignments={counsellingAssignments}
+          loading={counsellingHistoryLoading}
           onClose={() => setReviewOpen(false)}
           onNavigate={onNavigate}
         />
@@ -1599,6 +1753,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
           user={user}
           reminders={reminders}
           deletingId={deletingReminderId}
+          canDelete={canDeleteClientData}
           onClose={() => setRemindersOpen(false)}
           onDelete={async (id) => {
             if (isMockNumericId(user?.id)) {

@@ -8,6 +8,15 @@ const HEALTH_PROGRESS_FEATURE_KEYS = [
   "conditionComparison",
 ];
 
+const HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS = [
+  "weightPic",
+  "glucose",
+  "bloodPressure",
+  "conditionComparison",
+];
+
+const HEALTH_PROGRESS_TIME_ZONE = "Asia/Kolkata";
+
 const HEALTH_PROGRESS_BODY_PARTS = [
   "face",
   "skin",
@@ -76,6 +85,131 @@ function resolveHealthProgressSettings(user) {
   };
 }
 
+function programLookupText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function trackerFeatureKeysForProgramLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return [];
+
+  const keys = [];
+  if (/\b(fat loss|weight loss|fatloss)\b/.test(text)) keys.push("weightPic");
+  if (/\bdiabetes\b/.test(text)) keys.push("glucose");
+  if (/\b(pcod|pcos|pmos)\b/.test(text)) keys.push("menstrualCycle");
+  if (/\b(hypertension|blood pressure|heart)\b/.test(text)) keys.push("bloodPressure");
+  return keys;
+}
+
+function applyPurchasedProgramTrackers(settings, labels, user) {
+  const next = normalizeHealthProgressFeatures(settings);
+  const female = isFemaleUser(user);
+  for (const label of labels || []) {
+    for (const key of trackerFeatureKeysForProgramLabel(label)) {
+      if (key === "menstrualCycle" && !female) continue;
+      next[key] = true;
+    }
+  }
+  if (!female) next.menstrualCycle = false;
+  return next;
+}
+
+function emptyHealthProgressClientUpload() {
+  return {
+    weightPic: { open: false, closedAt: null, source: null },
+    glucose: { open: false, closedAt: null, source: null },
+    bloodPressure: { open: false, closedAt: null, source: null },
+    conditionComparison: { open: false, closedAt: null, source: null },
+  };
+}
+
+function normalizeHealthProgressClientUpload(value) {
+  const base = emptyHealthProgressClientUpload();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+  for (const key of HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS) {
+    const row = value[key];
+    if (!row || typeof row !== "object") continue;
+    const source = row.source === "saturday" || row.source === "coach" ? row.source : null;
+    base[key] = {
+      open: row.open === true,
+      closedAt: row.closedAt ? String(row.closedAt) : null,
+      source: row.open === true ? source : null,
+    };
+  }
+  return base;
+}
+
+function isHealthProgressSaturday(now = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    weekday: "short",
+  }).format(now) === "Sat";
+}
+
+function healthProgressSaturdayStartIso(now = new Date()) {
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  return new Date(`${date}T00:00:00.000+05:30`).toISOString();
+}
+
+function resolveHealthProgressClientUpload(value, now = new Date()) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  const saturday = isHealthProgressSaturday(now);
+  const saturdayStart = saturday ? new Date(healthProgressSaturdayStartIso(now)).getTime() : 0;
+  const next = emptyHealthProgressClientUpload();
+  let changed = false;
+
+  for (const key of HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS) {
+    const row = stored[key];
+    let open = row.open === true;
+    let source = open ? (row.source || "coach") : null;
+    if (!open && saturday) {
+      const closedAt = row.closedAt ? new Date(row.closedAt).getTime() : 0;
+      if (!row.closedAt || !Number.isFinite(closedAt) || closedAt < saturdayStart) {
+        open = true;
+        source = "saturday";
+      }
+    }
+    next[key] = {
+      open,
+      closedAt: row.closedAt,
+      source,
+    };
+    if (open !== row.open || source !== row.source) changed = true;
+  }
+
+  return { windows: next, changed, stored: next };
+}
+
+function closeHealthProgressClientUpload(value, featureKey, now = new Date()) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  if (!HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) return stored;
+  stored[featureKey] = {
+    open: false,
+    closedAt: now.toISOString(),
+    source: null,
+  };
+  return stored;
+}
+
+function openHealthProgressClientUpload(value, featureKey) {
+  const stored = normalizeHealthProgressClientUpload(value);
+  if (!HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS.includes(featureKey)) return stored;
+  stored[featureKey] = {
+    open: true,
+    closedAt: stored[featureKey].closedAt,
+    source: "coach",
+  };
+  return stored;
+}
+
 function hasAnyHealthProgressFeature(settings) {
   if (!settings) return false;
   return HEALTH_PROGRESS_FEATURE_KEYS.some((key) => Boolean(settings[key]));
@@ -134,11 +268,46 @@ function toNumberOrNull(value) {
 
 function healthProgressToday() {
   return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function healthProgressDateKey(value) {
+  if (value === undefined || value === null || value === "") return "";
+  const str = String(value).trim();
+  if (!str) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str) && isValidDateOnly(str)) return str;
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: HEALTH_PROGRESS_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function alignWeightLogDates(item) {
+  const recordedAt = item?.recordedAt || null;
+  const date = healthProgressDateKey(recordedAt) || null;
+  return {
+    date,
+    recordedAt,
+    createdAt: recordedAt,
+    updatedAt: recordedAt,
+  };
+}
+
+function healthProgressDayBounds(dateOnly) {
+  const key = healthProgressDateKey(dateOnly);
+  if (!key) return null;
+  const start = new Date(`${key}T00:00:00.000+05:30`);
+  const end = new Date(`${key}T23:59:59.999+05:30`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 function extractDateOnlyInput(value) {
@@ -254,12 +423,20 @@ function formatSummaryDate(iso) {
 
 module.exports = {
   HEALTH_PROGRESS_FEATURE_KEYS,
+  HEALTH_PROGRESS_CLIENT_UPLOAD_KEYS,
   HEALTH_PROGRESS_BODY_PARTS,
   GLUCOSE_TYPES,
   defaultHealthProgressFeatures,
   normalizeHealthProgressFeatures,
+  normalizeHealthProgressClientUpload,
+  resolveHealthProgressClientUpload,
+  closeHealthProgressClientUpload,
+  openHealthProgressClientUpload,
+  isHealthProgressSaturday,
   isFemaleUser,
   resolveHealthProgressSettings,
+  trackerFeatureKeysForProgramLabel,
+  applyPurchasedProgramTrackers,
   hasAnyHealthProgressFeature,
   normalizeGlucoseType,
   normalizeBodyPart,
@@ -279,6 +456,9 @@ module.exports = {
   parseMenstrualDates,
   parseConditionBodyPart,
   healthProgressToday,
+  healthProgressDateKey,
+  alignWeightLogDates,
+  healthProgressDayBounds,
   formatChartDate,
   formatSummaryDate,
 };

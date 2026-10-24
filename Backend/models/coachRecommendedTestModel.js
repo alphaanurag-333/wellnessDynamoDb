@@ -43,13 +43,23 @@ function normalizeTests(tests) {
     err.name = "ValidationError";
     throw err;
   }
-  return tests.map((test) => ({
-    testId: String(test.testId || "").trim(),
-    name: String(test.name || "").trim(),
-    type: String(test.type || "SINGLE").toUpperCase(),
-    category: String(test.category || "").trim(),
-    parameters: Array.isArray(test.parameters) ? test.parameters : [],
-  }));
+  return tests.map((test) => {
+    const row = {
+      testId: String(test.testId || "").trim(),
+      name: String(test.name || "").trim(),
+      type: String(test.type || "SINGLE").toUpperCase(),
+      category: String(test.category || "").trim(),
+      parameters: Array.isArray(test.parameters) ? test.parameters : [],
+    };
+    ["itemId", "catalogId", "panelName", "fastingType", "duration", "code"].forEach((key) => {
+      const value = String(test[key] || "").trim();
+      if (value) row[key] = value;
+    });
+    if (test.custom === true) row.custom = true;
+    const hours = Number(test.hours);
+    if (Number.isFinite(hours)) row.hours = Math.max(0, Math.min(168, Math.round(hours)));
+    return row;
+  });
 }
 
 function toCoachRecommendedTestPublic(item) {

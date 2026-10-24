@@ -3,18 +3,28 @@
  * Slugs mirror PERM_CATALOG in data/accessData.js.
  */
 export const CLIENT_PROFILE_SECTIONS = {
-  glance: { view: "console.cl.view" },
+  glance: {
+    view: "console.cl.view",
+    edit: "console.diet.edit",
+    delete: "console.diet.delete",
+  },
   personal: { view: "console.pii.view", edit: "console.pii.edit" },
   body: { view: "console.body.view", edit: "console.body.edit", upload: "console.body.upload" },
-  medical: { view: "console.pii.view" },
+  medical: { view: "console.pii.view", edit: "console.cl.edit" },
   internal: {
     view: "console.rep.view",
     edit: "console.rep.edit",
     upload: "console.rep.upload",
     export: "console.rep.export",
-    create: "console.rep.upload",
+    create: "console.rep.create",
+    delete: "console.rep.delete",
   },
-  launch: { view: "console.cl.view", edit: "console.cl.edit", create: "console.diet.create" },
+  launch: {
+    view: "console.cl.view",
+    edit: "console.cl.edit",
+    create: "console.diet.create",
+    delete: "console.body.edit",
+  },
   food: {
     view: "console.diet.view",
     create: "console.diet.create",
@@ -33,7 +43,13 @@ export const CLIENT_PROFILE_SECTIONS = {
     edit: "console.diet.edit",
     delete: "console.diet.delete",
   },
-  "health-progress": { view: "console.body.view", export: "console.body.view" },
+  "health-progress": {
+    view: "console.body.view",
+    edit: "console.body.edit",
+    upload: "console.body.upload",
+    export: "console.body.view",
+    delete: "console.body.edit",
+  },
   reflection: { view: "console.diet.view", edit: "console.diet.edit" },
   prescription: {
     view: "console.diet.view",
@@ -54,7 +70,12 @@ export const CLIENT_PROFILE_SECTIONS = {
     edit: "console.cal.edit",
     delete: "console.cal.delete",
   },
-  protocol: { view: "console.diet.view", edit: "console.diet.edit", create: "console.diet.create" },
+  protocol: {
+    view: "console.diet.view",
+    edit: "console.diet.edit",
+    create: "console.diet.create",
+    delete: "console.diet.edit",
+  },
   gut: { view: "console.diet.view", create: "console.diet.create", edit: "console.diet.edit" },
   consultation: { view: "console.cal.view" },
 };
@@ -76,7 +97,7 @@ const SECTION_LABELS = {
   exchange: "Energy Exchange",
   counselling: "Counselling Sessions",
   protocol: "Protocol Settings",
-  gut: "Load Preset",
+  gut: "Gut Reset",
   consultation: "Consultation",
 };
 
@@ -94,13 +115,14 @@ export function filterClientProfileMenu(menu, can) {
   return (menu || []).filter((item) => clientSectionCanView(can, item.id));
 }
 
-export function resolveClientSectionPermissions(can, sectionId) {
+export function resolveClientSectionPermissions(can, sectionId, { isAdminView = false } = {}) {
   const spec = CLIENT_PROFILE_SECTIONS[sectionId] || { view: "console.cl.view" };
   const canAction = (slug) => (slug ? can(slug) : false);
   const canView = canAction(spec.view);
   const canCreate = canAction(spec.create);
   const canEdit = canAction(spec.edit);
-  const canDelete = canAction(spec.delete);
+  // Removing client records (lab reports, meals, assignments, etc.) is admin-only.
+  const canDelete = Boolean(isAdminView) && canAction(spec.delete);
   const canUpload = canAction(spec.upload);
   const canExport = canAction(spec.export);
   const canToggle = canAction(spec.toggle);

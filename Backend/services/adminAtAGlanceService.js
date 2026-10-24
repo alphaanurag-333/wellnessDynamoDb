@@ -9,7 +9,11 @@ const {
 const {
   listAllMetabolicMetricLogsByUser,
 } = require("../models/healthProgressMetabolicMetricModel");
-const { buildDashboardFromLogs, ageFromDob } = require("../utils/metabolicMetricsCalculations");
+const {
+  buildDashboardFromLogs,
+  ageFromDob,
+  deriveMetricsFromBodyMeasurement,
+} = require("../utils/metabolicMetricsCalculations");
 const { formatChartDate } = require("../utils/healthProgressHelpers");
 const { getUserWaterHistory } = require("../models/waterTrackingModel");
 const { getUserStepsHistory } = require("../models/stepsTrackingModel");
@@ -26,6 +30,7 @@ const {
 const { listUserLaunchAssessmentsByUserId } = require("../models/userLaunchAssessmentModel");
 const {
   listUserSupplementDosagesByUserId,
+  parseCompositePeriod,
 } = require("../models/userSupplementDosageModel");
 const {
   listWeightLogsByUser,
@@ -127,18 +132,19 @@ function latestLogWithField(logs, field) {
 
 function buildMetabolicSnapshot({ user, bodyMeasurement, dashboard, metabolicLogs }) {
   const age = ageFromDob(user?.dob);
+  const derived = deriveMetricsFromBodyMeasurement(bodyMeasurement, user);
   const heightResolved =
+    derived?.heightCm ??
     bodyMeasurement?.heightCm ??
     latestLogWithField(metabolicLogs, "heightCm");
   const weightResolved =
-    bodyMeasurement?.weightKg ??
+    derived?.weightKg ??
     latestLogWithField(metabolicLogs, "weightKg");
-
-  const bmr = dashboard?.bmr?.current?.value ?? null;
-  const tdee = dashboard?.tdee?.current?.value ?? null;
-  const bodyFat = dashboard?.bodyFat?.current?.bodyFatPercent ?? null;
-  const leanMass = dashboard?.bodyFat?.current?.leanMuscleMassPercent ?? null;
-  const visceral = dashboard?.visceralFat?.current?.visceralFatPercent ?? null;
+  const bmr = derived?.bmr ?? dashboard?.bmr?.current?.value ?? null;
+  const tdee = derived?.tdee ?? dashboard?.tdee?.current?.value ?? null;
+  const bodyFat = derived?.bodyFatPercent ?? dashboard?.bodyFat?.current?.bodyFatPercent ?? null;
+  const leanMass = derived?.leanMuscleMassPercent ?? dashboard?.bodyFat?.current?.leanMuscleMassPercent ?? null;
+  const visceral = derived?.estimatedVisceralFat ?? null;
 
   return [
     {
@@ -178,7 +184,7 @@ function buildMetabolicSnapshot({ user, bodyMeasurement, dashboard, metabolicLog
     },
     {
       label: "Visceral",
-      value: visceral != null ? `${formatNumber(visceral, 1)}%` : EMPTY,
+      value: visceral != null ? `${formatNumber(visceral, 2)} cm²` : EMPTY,
       tone: "default",
     },
   ];
@@ -405,6 +411,32 @@ const PERIOD_LABEL = {
   before_evening_snacks: "Before Evening Snacks",
 };
 
+function resolvePeriodLabel(period) {
+  const key = String(period || "").trim();
+  if (PERIOD_LABEL[key]) return PERIOD_LABEL[key];
+  const composite = parseCompositePeriod(key);
+  if (composite) {
+    const day = PERIOD_LABEL[composite.dayPart] || composite.dayPart;
+    const meal = PERIOD_LABEL[composite.mealTiming] || composite.mealTiming;
+    return `${day} · ${meal}`;
+  }
+  return key;
+}
+
+function resolvePeriodTone(period) {
+  const key = String(period || "").trim();
+  if (PERIOD_TONE[key]) return PERIOD_TONE[key];
+  const composite = parseCompositePeriod(key);
+  if (composite) {
+    return (
+      PERIOD_TONE[composite.dayPart]
+      || PERIOD_TONE[composite.mealTiming]
+      || "morning"
+    );
+  }
+  return "morning";
+}
+
 function buildSupplements(dosages, today) {
   const active = (dosages || []).filter(
     (row) => String(row.status || "").toLowerCase() === "active"
@@ -415,8 +447,13 @@ function buildSupplements(dosages, today) {
     const periods = Array.isArray(row.periods) ? row.periods : [];
     const first = periods[0];
     const noteParts = [];
-    if (first?.period && PERIOD_LABEL[first.period]) {
-      noteParts.push(PERIOD_LABEL[first.period]);
+    if (first?.period) {
+      const periodLabel = resolvePeriodLabel(first.period);
+      if (periodLabel && periodLabel !== first.period) {
+        noteParts.push(periodLabel);
+      } else if (PERIOD_LABEL[first.period]) {
+        noteParts.push(PERIOD_LABEL[first.period]);
+      }
     } else if (first?.mealRelation) {
       noteParts.push(first.mealRelation === "before" ? "Before meal" : "After meal");
     }
@@ -424,8 +461,8 @@ function buildSupplements(dosages, today) {
       name: row.name || "Nutrition",
       note: noteParts.join(" · ") || row.unit || "",
       dosages: periods.map((p) => ({
-        label: `${PERIOD_LABEL[p.period] || p.period} · ${p.quantity}`,
-        tone: PERIOD_TONE[p.period] || "morning",
+        label: `${resolvePeriodLabel(p.period)} · ${p.quantity}`,
+        tone: resolvePeriodTone(p.period),
       })),
       date: endDate ? shortDateLabel(endDate) : EMPTY,
       daysLeft: daysLeft != null ? daysLeft : null,
@@ -529,7 +566,7 @@ async function buildAtAGlanceForUser(userId) {
       )
     ),
     safe(listUserLaunchAssessmentsByUserId(userId)),
-    safe(listUserSupplementDosagesByUserId(userId, { includeStopped: false })),
+    safe(listUserSupplementDosagesByUserId(userId, { includeStopped: false, includeDraft: false })),
     safe(listWeightLogsByUser(userId, { page: 1, limit: 20 })),
   ]);
 

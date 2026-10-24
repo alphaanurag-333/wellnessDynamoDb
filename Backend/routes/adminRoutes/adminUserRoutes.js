@@ -32,6 +32,7 @@ const {
 } = require("../../controllers/adminController/userEnergyExchangeController");
 const {
   getUserMedicalConditionsAdminController,
+  patchMedicalConditionsInAppSettingsController,
 } = require("../../controllers/adminController/userMedicalConditionController");
 const {
   getUserAtAGlanceController,
@@ -49,6 +50,8 @@ const {
 } = require("../../controllers/adminController/onboardingMeetingController");
 const {
   getUserBodyAnalyticsController,
+  patchBodyMeasurementSettingsController,
+  patchProgressPhotosInAppSettingsController,
   downloadUserProgressPhotoController,
   reviewUserProgressPhotoController,
 } = require("../../controllers/adminController/bodyAnalyticsController");
@@ -78,6 +81,18 @@ router.get(
   protectAccount,
   clientView,
   getUserBodyAnalyticsController
+);
+router.patch(
+  "/:id/body-measurements/settings",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  patchBodyMeasurementSettingsController
+);
+router.patch(
+  "/:id/progress-photos/settings",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  patchProgressPhotosInAppSettingsController
 );
 router.get(
   "/:id/body-analytics/photos/:photoId/:angle/download",
@@ -116,6 +131,12 @@ router.get(
   protectAccount,
   clientView,
   getUserMedicalConditionsAdminController
+);
+router.patch(
+  "/:id/medical-conditions/settings",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  patchMedicalConditionsInAppSettingsController
 );
 router.patch(
   "/:id/onboarding-steps/:stepKey",
@@ -170,13 +191,13 @@ router.post(
 router.post(
   "/:id/convert-to-heal",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  requireAdmin,
   convertUserToHealController
 );
 router.post(
   "/:id/convert-to-eagle",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  requireAdmin,
   convertUserToEagleController
 );
 router.post("/:id/undo-eagle", protectAccount, requireAdmin, undoEagleConversionController);
@@ -186,7 +207,13 @@ router.post("/:id/maintenance-to-heal", protectAccount, requireAdmin, convertMai
 router.post("/:id/assign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), assignHealUserController);
 router.post("/:id/reassign-coach", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), reassignHealUserController);
 router.post("/:id/unassign-coach", protectAccount, requireAdmin, unassignUserCoachController);
-router.patch("/:id", protectAccount, authorizeStaff("console.cl.edit", { admin: "users.edit" }), optionalUserFile, updateUserController);
-router.delete("/:id", protectAccount, authorizeStaff("console.cl.delete", { admin: "users.delete" }), deleteUserController);
+router.patch(
+  "/:id",
+  protectAccount,
+  authorizeStaff(["console.cl.edit", "console.pii.edit"], { admin: "users.edit" }),
+  optionalUserFile,
+  updateUserController
+);
+router.delete("/:id", protectAccount, requireAdmin, deleteUserController);
 
 module.exports = router;

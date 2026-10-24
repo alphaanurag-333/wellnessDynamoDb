@@ -1,16 +1,17 @@
-const { getUserById } = require("../models/userModel");
+const { getUserById, updateUser } = require("../models/userModel");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
 const { getAssistantWellnessCoachById } = require("../models/assistantWellnessCoachModel");
 const {
   createNotification,
   createTargetedNotification,
   findTargetedNotificationForUser,
+  updateNotification,
 } = require("../models/notificationModel");
 const { collectFcmTokensForAudience } = require("../utils/fcmAudience");
 const { sendPushToTokens } = require("../utils/pushNotification");
 const { readFcmToken } = require("../utils/parseFcmId");
 const { resolvePublicUrl } = require("../utils/s3");
-const { sendWhatsAppText } = require("../utils/whatsapp");
+const { sendWhatsAppText, sendNamedWhatsAppTemplate, firstName } = require("../utils/whatsapp");
 const { resolveWhatsappNumber } = require("./meetingAssigneeService");
 const { notifyLabReportUpdatedToCoachesAsync, notifyOnboardingSlotsOfferedAsync } = require("./whatsappJourneyService");
 const {
@@ -35,7 +36,7 @@ const FCM_TYPE_BY_KIND = {
   diet_plan_assignment: "diet_plan_assignment_notification",
   coach_reminder: "reminder_notification",
   reminder_due: "reminder_due_notification",
-  daily_reflection_reminder: "reminder_notification",
+  daily_reflection_reminder: "daily_reflection_reminder_notification",
   physical_exercise_assigned: "physical_exercise_notification",
   mental_wellbeing_assigned: "mental_wellbeing_notification",
   yoga_assigned: "yoga_assigned_notification",
@@ -58,6 +59,7 @@ const FCM_TYPE_BY_KIND = {
   counselling_time_requested: "counselling_time_requested_notification",
   counselling_scheduled: "counselling_scheduled_notification",
   counselling_cancelled: "counselling_cancelled_notification",
+  counselling_request_declined: "counselling_request_declined_notification",
   program_checkout_triggered: "program_checkout_triggered_notification",
   program_assigned: "program_assigned_notification",
   presentable_pic_request: "presentable_pic_request_notification",
@@ -69,7 +71,7 @@ const FCM_TYPE_BY_KIND = {
 
 function buildPushData(notification) {
   const kind = notification.kind || "admin_broadcast";
-  return {
+  const data = {
     notificationId: notification.id || notification._id || "",
     type: FCM_TYPE_BY_KIND[kind] || "admin_notification",
     kind,
@@ -79,6 +81,46 @@ function buildPushData(notification) {
     comment: notification.comment || "",
     audienceType: notification.audienceType || "",
   };
+  if (kind === "daily_reflection_reminder") {
+    data.targetScreen = "daily_reflection";
+    data.displayAsSystemPush = "true";
+    data.showSystemNotification = "true";
+    data.skipInAppInbox = "true";
+    data.title = String(notification.title || "Bedtime reminder").trim();
+    data.body = String(notification.message || "").trim();
+  }
+  return data;
+}
+
+const DAILY_REFLECTION_PUSH_TITLE = "Bedtime reminder";
+
+function buildDailyReflectionBedtimePushStub({
+  userId,
+  message,
+  referenceId = null,
+  referenceType = "daily_reflection_bedtime",
+  actorUserId = null,
+  id = null,
+}) {
+  return {
+    id: id || "",
+    _id: id || "",
+    userId,
+    kind: "daily_reflection_reminder",
+    message,
+    title: DAILY_REFLECTION_PUSH_TITLE,
+    referenceId,
+    referenceType,
+    actorUserId,
+  };
+}
+
+function pushDelivered(push) {
+  return Boolean(push && !push.skipped && Number(push.successCount) > 0);
+}
+
+async function sendDailyReflectionBedtimePush(userId, stub, options = {}) {
+  return deliverTargetedPush(userId, stub, options);
 }
 
 async function deliverBroadcastPush(notification) {
@@ -100,20 +142,42 @@ async function deliverBroadcastPush(notification) {
   });
 }
 
-async function deliverTargetedPush(userId, notification) {
+const FCM_TOKEN_INVALID_CODES = new Set([
+  "messaging/registration-token-not-registered",
+  "messaging/invalid-registration-token",
+]);
+
+async function deliverTargetedPush(userId, notification, options = {}) {
+  const overrideToken = String(options.fcmToken || "").trim();
   const user = await getUserById(userId);
-  const token = user ? readFcmToken(user) : null;
+  const token = overrideToken || (user ? readFcmToken(user) : null);
   if (!token) {
     return { successCount: 0, failureCount: 0, skipped: true, reason: "no_token" };
   }
 
   const imageUrl = notification.image ? resolvePublicUrl(notification.image) : null;
-  return sendPushToTokens([token], {
+  const result = await sendPushToTokens([token], {
     title: notification.title || PUSH_TITLE_DEFAULT,
     body: notification.message,
     imageUrl,
     data: buildPushData(notification),
   });
+
+  const invalidCode = result?.primaryError?.code;
+  if (
+    !overrideToken &&
+    user &&
+    invalidCode &&
+    FCM_TOKEN_INVALID_CODES.has(invalidCode)
+  ) {
+    try {
+      await updateUser(userId, { fcm_id: null });
+    } catch (err) {
+      console.error("Failed to clear invalid FCM token:", err?.message || err);
+    }
+  }
+
+  return result;
 }
 
 function runPushSafely(promise) {
@@ -260,15 +324,16 @@ async function dispatchInternalParametersRecommendationNotification({
   let whatsapp = null;
   try {
     const user = await getUserById(userId);
-    const wa = resolveWhatsappNumber(user);
-    if (wa) {
-      whatsapp = await sendWhatsAppText({
-        toPhoneCountryCode: wa.phoneCountryCode,
-        toPhone: wa.phone,
-        message,
-      });
-    } else {
+    if (!user) {
+      whatsapp = { sent: false, reason: "missing_user" };
+    } else if (!resolveWhatsappNumber(user)) {
       whatsapp = { sent: false, reason: "missing_phone" };
+    } else {
+      whatsapp = await sendNamedWhatsAppTemplate({
+        templateKey: "uobInternalParaTestListUser",
+        person: user,
+        params: [firstName(user.name)],
+      });
     }
   } catch (err) {
     console.error(
@@ -336,27 +401,133 @@ function formatBedtimeLabel(value) {
   return `${display}:${m || "00"} ${suffix}`;
 }
 
+/** Shown in bedtime reminder copy, e.g. 18:01 → "6:01". */
+function formatBedtimeAroundLabel(value) {
+  const raw = String(value || "22:30");
+  const [h, m] = raw.split(":");
+  const hour = Number(h);
+  if (!Number.isFinite(hour)) return raw;
+  const display = hour % 12 || 12;
+  const minute = String(m ?? "00").padStart(2, "0");
+  return `${display}:${minute}`;
+}
+
+function buildDailyReflectionBedtimeMessage(bedtime) {
+  const timeLabel = formatBedtimeAroundLabel(bedtime);
+  return `Your daily reflection form is ready. Log tonight's check-in around ${timeLabel}.`;
+}
+
 async function dispatchDailyReflectionBedtimeNotification({
   userId,
   bedtime,
   coachName,
   actorUserId = null,
+  fcmToken = null,
 }) {
-  const name = String(coachName || "Your coach").trim() || "Your coach";
-  const timeLabel = formatBedtimeLabel(bedtime);
-  const message = `${name} sent a bedtime reminder. Your daily reflection form is ready — log tonight’s check-in around ${timeLabel}.`;
-
-  const notification = await createTargetedNotification({
+  void coachName;
+  const message = buildDailyReflectionBedtimeMessage(bedtime);
+  const stub = buildDailyReflectionBedtimePushStub({
     userId,
-    kind: "daily_reflection_reminder",
     message,
-    referenceType: "daily_reflection_bedtime",
     actorUserId,
-    title: "Bedtime reminder",
   });
 
-  runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
+  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
+  try {
+    push = await sendDailyReflectionBedtimePush(userId, stub, { fcmToken });
+  } catch (err) {
+    console.error("FCM push failed:", err?.message || err);
+  }
+
+  let notification = null;
+  if (!pushDelivered(push)) {
+    notification = await createTargetedNotification({
+      userId,
+      kind: "daily_reflection_reminder",
+      message,
+      referenceType: "daily_reflection_bedtime",
+      actorUserId,
+      title: DAILY_REFLECTION_PUSH_TITLE,
+    });
+  }
+
+  return { notification, push };
+}
+
+/**
+ * Nightly automatic reminder (30 min before bedtime). Dedupes once per user per calendar day.
+ */
+async function ensureDailyReflectionBedtimeReminderNotification({
+  userId,
+  bedtime,
+  occurrenceDate = null,
+}) {
+  const uid = String(userId || "").trim();
+  if (!uid) return null;
+
+  const dateKey = String(
+    occurrenceDate || new Date().toISOString().slice(0, 10)
+  ).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return null;
+
+  const referenceId = `auto:${dateKey}`;
+  const existing = await findTargetedNotificationForUser(uid, {
+    kind: "daily_reflection_reminder",
+    referenceId,
+  });
+  if (existing?.pushOnly === true) {
+    return {
+      notification: existing,
+      push: { successCount: 0, failureCount: 0, skipped: true, reason: "deduped" },
+    };
+  }
+
+  const message = buildDailyReflectionBedtimeMessage(bedtime);
+  const stub = buildDailyReflectionBedtimePushStub({
+    userId: uid,
+    message,
+    referenceId,
+    id: existing?.id || existing?._id || null,
+  });
+
+  let push = { successCount: 0, failureCount: 0, skipped: true, reason: "send_error" };
+  try {
+    push = await sendDailyReflectionBedtimePush(uid, stub);
+  } catch (err) {
+    console.error("FCM push failed:", err?.message || err);
+  }
+
+  let notification = existing || null;
+  const notificationId = existing?.id || existing?._id || null;
+
+  if (pushDelivered(push)) {
+    if (notificationId) {
+      notification = await updateNotification(notificationId, { message, pushOnly: true });
+    } else {
+      notification = await createTargetedNotification({
+        userId: uid,
+        kind: "daily_reflection_reminder",
+        message,
+        referenceId,
+        referenceType: "daily_reflection_bedtime",
+        title: DAILY_REFLECTION_PUSH_TITLE,
+        pushOnly: true,
+      });
+    }
+  } else if (!notification) {
+    notification = await createTargetedNotification({
+      userId: uid,
+      kind: "daily_reflection_reminder",
+      message,
+      referenceId,
+      referenceType: "daily_reflection_bedtime",
+      title: DAILY_REFLECTION_PUSH_TITLE,
+    });
+  } else if (notification.message !== message && notificationId) {
+    notification = await updateNotification(notificationId, { message });
+  }
+
+  return { notification, push };
 }
 
 async function dispatchCoachReminderNotification({
@@ -879,6 +1050,7 @@ async function dispatchProgressPhotoReviewedNotification({
   angle,
   status,
   rejectionReason = "",
+  rejectDay = false,
   coachName,
   actorUserId = null,
 }) {
@@ -886,14 +1058,19 @@ async function dispatchProgressPhotoReviewedNotification({
   const label = PROGRESS_PHOTO_ANGLE_LABELS[String(angle || "").trim().toLowerCase()] || "progress";
   const approved = String(status || "").trim().toLowerCase() === "approved";
   const reason = String(rejectionReason || "").trim();
+  const rejectedMessage = rejectDay
+    ? (reason
+      ? `${name} rejected your progress photos from this day. ${reason} Open the 180° page and submit them again.`
+      : `${name} rejected your progress photos from this day. Open the 180° page and submit them again.`)
+    : (reason
+      ? `${name} rejected your ${label} progress photo. ${reason}`
+      : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`);
   const notification = await createTargetedNotification({
     userId,
     kind: "progress_photo_reviewed",
     message: approved
       ? `${name} accepted your ${label} progress photo.`
-      : reason
-        ? `${name} rejected your ${label} progress photo. ${reason}`
-        : `${name} rejected your ${label} progress photo. Please upload a clearer photo.`,
+      : rejectedMessage,
     referenceId: photoId ? String(photoId) : null,
     referenceType: "progress_photo",
     actorUserId,
@@ -1081,6 +1258,19 @@ async function dispatchCounsellingCancelledNotification({ userId, trackId }) {
   return notification;
 }
 
+async function dispatchCounsellingRequestDeclinedNotification({ userId, trackId }) {
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "counselling_request_declined",
+    message: "Your wellness coach is unable to take your counselling request at this time.",
+    referenceId: trackId ? String(trackId) : null,
+    referenceType: "heal_consultancy_track",
+    title: "Counselling request update",
+  });
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 function dispatchCounsellingRequestedCoachNotificationAsync(payload) {
   runPushSafely(dispatchCounsellingRequestedCoachNotification(payload));
 }
@@ -1111,6 +1301,12 @@ function dispatchCounsellingCancelledNotificationAsync(payload) {
   });
 }
 
+function dispatchCounsellingRequestDeclinedNotificationAsync(payload) {
+  dispatchCounsellingRequestDeclinedNotification(payload).catch((err) => {
+    console.error("Counselling request declined notification failed:", err?.message || err);
+  });
+}
+
 module.exports = {
   dispatchBroadcastNotification,
   dispatchBirthdayWishNotification,
@@ -1123,6 +1319,7 @@ module.exports = {
   dispatchCoachReminderNotification,
   ensureReminderDueInbox,
   dispatchDailyReflectionBedtimeNotification,
+  ensureDailyReflectionBedtimeReminderNotification,
   dispatchPhysicalExerciseAssignedNotification,
   dispatchCoachAssignmentChangeNotification,
   dispatchMentalWellbeingAssignedNotification,
@@ -1165,7 +1362,10 @@ module.exports = {
   dispatchCounsellingScheduledNotificationAsync,
   dispatchCounsellingCancelledNotification,
   dispatchCounsellingCancelledNotificationAsync,
+  dispatchCounsellingRequestDeclinedNotification,
+  dispatchCounsellingRequestDeclinedNotificationAsync,
   deliverBroadcastPush,
   deliverTargetedPush,
+  buildDailyReflectionBedtimeMessage,
   FCM_TYPE_BY_KIND,
 };

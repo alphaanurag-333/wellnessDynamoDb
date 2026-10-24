@@ -3,20 +3,30 @@ import { useSearchParams } from "react-router-dom";
 import {
   createCoachWeightLog,
   deleteCoachWeightPhoto,
+  reviewCoachWeightPhoto,
+  reviewCoachGlucosePhoto,
+  reviewCoachBloodPressurePhoto,
+  reviewCoachConditionPhoto,
   fetchBloodPressureLogs,
   fetchConditionLogs,
   fetchGlucoseLogs,
   fetchHealthProgressSettings,
   fetchMenstrualCycleLogs,
   fetchWeightLogs,
+  patchHealthProgressClientUpload,
   updateHealthProgressSettings,
 } from "../../api/healthProgressApi.js";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import {
   CLIENT_HEALTH_TRACKERS,
   CLIENT_TRACKING_FILTER_OPTIONS,
 } from "../../data/healthProgressData.js";
+import { fetchUserLabReports } from "../../api/onboardingApi.js";
 import { todayIsoDate } from "../../utils/adminDateLimits.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+
+const CLIENT_UPLOAD_FEATURE_KEYS = ["weightPic", "glucose", "bloodPressure", "conditionComparison"];
 
 const BODY_PART_LABELS = {
   face: "Face",
@@ -36,7 +46,33 @@ function formatDisplayDate(value) {
   const isoDate = String(value).length <= 10 ? `${value}T12:00:00` : value;
   const d = new Date(isoDate);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+}
+
+function formatDisplayDateTime(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  const isoDate = raw.length <= 10 ? `${raw}T12:00:00` : raw;
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return raw;
+  const date = d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+  if (raw.length <= 10) return date;
+  const time = d.toLocaleTimeString("en-GB", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  }).toLowerCase();
+  return `${date}, ${time}`;
+}
+
+function imageStamp(row) {
+  return row?.photoTakenAt || row?.updatedAt || row?.createdAt || row?.recordedAt || "";
 }
 
 function formatChartDate(value) {
@@ -60,6 +96,86 @@ function sortByDateAsc(items, key = "recordedAt") {
   return [...items].sort((a, b) => new Date(a[key] || 0).getTime() - new Date(b[key] || 0).getTime());
 }
 
+function calendarDateKey(value) {
+  if (!value) return "";
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function weightLogRecency(row) {
+  const time = new Date(row?.updatedAt || row?.createdAt || row?.recordedAt || 0).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function photoKeyFor(photoField) {
+  if (photoField === "glucosePicUrl") return "glucosePicKey";
+  if (photoField === "weightPicUrl") return "weightPicKey";
+  if (photoField === "bpPicUrl") return "bpPicKey";
+  if (photoField === "picUrl") return "picKey";
+  return "";
+}
+
+const REVIEW_FIELDS_BY_PHOTO = {
+  weightPicUrl: { status: "weightPicReviewStatus", reason: "weightPicRejectionReason" },
+  glucosePicUrl: { status: "glucosePicReviewStatus", reason: "glucosePicRejectionReason" },
+  bpPicUrl: { status: "bpPicReviewStatus", reason: "bpPicRejectionReason" },
+  picUrl: { status: "picReviewStatus", reason: "picRejectionReason" },
+};
+
+function collapseLogsByDate(logs, typeField, photoField = "weightPicUrl") {
+  const groups = new Map();
+  for (const row of logs || []) {
+    const date = calendarDateKey(row?.recordedAt) || String(row?.id || row?._id || "");
+    if (!date) continue;
+    const type = typeField ? String(row?.[typeField] || "").toLowerCase() : "";
+    const key = type ? `${date}:${type}` : date;
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(row);
+    else groups.set(key, [row]);
+  }
+
+  const photoKey = photoKeyFor(photoField);
+  const collapsed = [];
+  for (const rows of groups.values()) {
+    rows.sort((a, b) => weightLogRecency(b) - weightLogRecency(a));
+    const latest = rows[0];
+    const withPhoto = rows.find((row) => row?.[photoField]);
+    const photoSource = withPhoto || (latest?.[photoField] ? latest : null);
+    const stamped = photoSource
+      ? { ...latest, photoTakenAt: photoSource.updatedAt || photoSource.createdAt || photoSource.recordedAt }
+      : latest;
+    const reviewMeta = REVIEW_FIELDS_BY_PHOTO[photoField];
+    const review = reviewMeta && withPhoto
+      ? {
+          [reviewMeta.status]: withPhoto[reviewMeta.status] || "pending",
+          [reviewMeta.reason]: withPhoto[reviewMeta.reason] || "",
+        }
+      : {};
+    if (!withPhoto || latest?.[photoField] || withPhoto === latest) {
+      collapsed.push({ ...stamped, ...review });
+      continue;
+    }
+    collapsed.push({
+      ...stamped,
+      ...review,
+      [photoField]: withPhoto[photoField],
+      ...(photoKey ? { [photoKey]: withPhoto[photoKey] } : {}),
+      photoLogId: withPhoto.id || withPhoto._id,
+    });
+  }
+  return collapsed;
+}
+
+function collapseWeightLogsByDate(logs) {
+  return collapseLogsByDate(logs);
+}
+
 function sortByDateDesc(items, key = "recordedAt") {
   return [...items].sort((a, b) => new Date(b[key] || 0).getTime() - new Date(a[key] || 0).getTime());
 }
@@ -71,10 +187,72 @@ function applyRange(logs, range, key = "recordedAt") {
   return logs.filter((row) => new Date(row[key] || 0).getTime() >= cutoff);
 }
 
-function estimateHbA1cFromFbs(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  return Number(((n + 46.7) / 28.7).toFixed(1));
+function isHba1cMarker(name) {
+  const normalized = String(name || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return (
+    normalized === "hba1c"
+    || normalized.includes("hba1c")
+    || normalized.includes("glycated hemoglobin")
+    || normalized.includes("glycated haemoglobin")
+    || /\ba1c\b/.test(normalized)
+  );
+}
+
+function parseMarkerNumericValue(raw) {
+  if (raw == null || raw === "" || raw === "—") return null;
+  const match = String(raw).replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function hba1cReadingsFromReports(reports) {
+  const readings = [];
+  for (const report of reports || []) {
+    if (String(report?.aiStatus || "").trim().toLowerCase() !== "analysed") continue;
+    const panels = report?.aiAnalysis?.panels;
+    if (!Array.isArray(panels) || !panels.length) continue;
+
+    let value = null;
+    for (const panel of panels) {
+      for (const row of panel?.rows || []) {
+        if (!isHba1cMarker(row?.name)) continue;
+        const parsed = parseMarkerNumericValue(row?.value);
+        if (parsed == null || parsed < 4 || parsed > 15) continue;
+        value = Number(parsed.toFixed(1));
+        break;
+      }
+      if (value != null) break;
+    }
+    if (value == null) continue;
+
+    const recordedAt = String(report.reportDate || report.aiAnalysedAt || report.createdAt || "").trim();
+    if (!recordedAt) continue;
+    const updatedAt = new Date(report.updatedAt || report.aiAnalysedAt || report.createdAt || 0).getTime();
+    readings.push({
+      value,
+      recordedAt,
+      updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
+      reportId: report.id || report._id || recordedAt,
+    });
+  }
+
+  readings.sort((a, b) => {
+    const byDate = String(a.recordedAt).localeCompare(String(b.recordedAt));
+    if (byDate) return byDate;
+    return a.updatedAt - b.updatedAt;
+  });
+
+  const byDate = new Map();
+  for (const reading of readings) {
+    byDate.set(calendarDateKey(reading.recordedAt) || reading.reportId, reading);
+  }
+  return [...byDate.values()];
+}
+
+function glucosePhotoUrl(row) {
+  const url = String(row?.glucosePicUrl || row?.imageUrl || row?.photoUrl || "").trim();
+  return url;
 }
 
 function deltaLabel(current, previous, unit = "") {
@@ -347,28 +525,108 @@ function GroupedBarChart({ dates, series, colors }) {
   );
 }
 
+function StatPhoto({ url, label, caption }) {
+  const [failed, setFailed] = useState(false);
+  if (!url) return null;
+  if (failed) {
+    return (
+      <a className="ua-cp-hptrack-stat__photo ua-cp-hptrack-stat__photo--empty" href={url} target="_blank" rel="noreferrer">
+        Open photo
+      </a>
+    );
+  }
+  return (
+    <div className="ua-cp-hptrack-stat__photo-wrap">
+      <button
+        type="button"
+        className="ua-cp-hptrack-stat__photo"
+        aria-label={caption ? `Open ${label} photo from ${caption}` : `Open ${label} photo`}
+        onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+      >
+        <img src={url} alt={`${label} reading submitted in the app`} onError={() => setFailed(true)} />
+      </button>
+      {caption ? <span className="ua-cp-hptrack-stat__photo-time">{caption}</span> : null}
+    </div>
+  );
+}
+
 function StatCards({ stats, tone = "default", variant = "full" }) {
   if (!stats?.length) return null;
   return (
     <div className="ua-cp-hptrack-stats">
       {stats.map((stat) => (
-        <div key={stat.label} className={`ua-cp-hptrack-stat ua-cp-hptrack-stat--${tone}`}>
-          <span className="ua-cp-hptrack-stat__label">{stat.label}</span>
-          <strong className="ua-cp-hptrack-stat__value">{stat.value}</strong>
-          {stat.delta ? (
-            <span
-              className={`ua-cp-hptrack-stat__delta${
-                stat.delta.includes("↓") ? " ua-cp-hptrack-stat__delta--down" : stat.delta.includes("↑") ? " ua-cp-hptrack-stat__delta--up" : ""
-              }`}
-            >
-              {stat.delta}
-            </span>
-          ) : null}
-          {variant === "full" && stat.latest ? (
-            <span className="ua-cp-hptrack-stat__latest">Latest · {stat.latest}</span>
-          ) : null}
+        <div
+          key={stat.label}
+          className={`ua-cp-hptrack-stat ua-cp-hptrack-stat--${tone}${stat.photoUrl ? " ua-cp-hptrack-stat--with-photo" : ""}`}
+        >
+          <div className="ua-cp-hptrack-stat__copy">
+            <span className="ua-cp-hptrack-stat__label">{stat.label}</span>
+            <strong className="ua-cp-hptrack-stat__value">{stat.value}</strong>
+            {stat.delta ? (
+              <span
+                className={`ua-cp-hptrack-stat__delta${
+                  stat.delta.includes("↓") ? " ua-cp-hptrack-stat__delta--down" : stat.delta.includes("↑") ? " ua-cp-hptrack-stat__delta--up" : ""
+                }`}
+              >
+                {stat.delta}
+              </span>
+            ) : null}
+            {variant === "full" && stat.latest ? (
+              <span className="ua-cp-hptrack-stat__latest">Latest · {stat.latest}</span>
+            ) : null}
+            {stat.note ? (
+              <span className="ua-cp-hptrack-stat__latest">{stat.note}</span>
+            ) : null}
+          </div>
+          <StatPhoto url={stat.photoUrl} label={stat.label} caption={stat.photoCaption} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function clientUploadHint(window) {
+  if (window?.open && window.source === "saturday") {
+    return "Open for Saturday. Closes after the client saves.";
+  }
+  if (window?.open) {
+    return "Opened by a coach. Closes after the client saves.";
+  }
+  return "Opens again on Saturday, or a wellness coach can open it now.";
+}
+
+function ClientUploadControl({
+  featureKey,
+  window,
+  canEnable,
+  trackerEnabled,
+  busy,
+  onOpen,
+  onClose,
+  compact = false,
+}) {
+  if (!CLIENT_UPLOAD_FEATURE_KEYS.includes(featureKey)) return null;
+  const open = Boolean(window?.open);
+  const canChange = canEnable && trackerEnabled;
+  return (
+    <div className={`ua-cp-hptrack-upload${compact ? " ua-cp-hptrack-upload--inline" : ""}`}>
+      <span className={open ? "is-open" : ""}>{open ? "Client can update" : "Client update closed"}</span>
+      {compact ? null : <span className="ua-cp-hptrack-upload__hint">{clientUploadHint(window)}</span>}
+      {canChange && !open ? (
+        <button type="button" disabled={busy} onClick={() => onOpen(featureKey)}>
+          {busy ? "Opening…" : compact ? "Open" : "Open client update"}
+        </button>
+      ) : null}
+      {canChange && open ? (
+        <button
+          type="button"
+          className="ua-cp-hptrack-upload__close"
+          disabled={busy}
+          onClick={() => onClose(featureKey)}
+        >
+          {busy ? "Closing…" : compact ? "Close" : "Close client update"}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -382,7 +640,7 @@ function TrackerSectionHeader({ tracker }) {
   );
 }
 
-function ConfirmModal({ open, title, body, confirmLabel, busy, onClose, onConfirm }) {
+function ConfirmModal({ open, title, body, confirmLabel, busy, tone = "danger", onClose, onConfirm, children }) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape" && !busy) onClose();
@@ -396,14 +654,17 @@ function ConfirmModal({ open, title, body, confirmLabel, busy, onClose, onConfir
   return (
     <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={busy ? undefined : onClose} role="presentation">
       <div className="ua-cp-modal ua-cp-reflect-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="hp-photo-delete-title">
-        <p className="ua-cp-reflect-modal__eyebrow ua-cp-reflect-modal__eyebrow--danger">Permanent</p>
+        <p className={`ua-cp-reflect-modal__eyebrow${tone === "danger" ? " ua-cp-reflect-modal__eyebrow--danger" : ""}`}>
+          {tone === "danger" ? "Permanent" : "Review"}
+        </p>
         <h3 id="hp-photo-delete-title" className="ua-cp-reflect-modal__title">{title}</h3>
         {body ? <p className="ua-cp-reflect-modal__body">{body}</p> : null}
+        {children}
         <div className="ua-cp-reflect-modal__foot">
           <button type="button" className="ua-cp-btn ua-cp-btn--outline" disabled={busy} onClick={onClose}>Cancel</button>
           <button
             type="button"
-            className="ua-cp-btn ua-cp-reflect-modal__confirm--danger"
+            className={`ua-cp-btn${tone === "danger" ? " ua-cp-reflect-modal__confirm--danger" : " ua-cp-btn--primary"}`}
             disabled={busy}
             onClick={onConfirm}
           >
@@ -415,18 +676,31 @@ function ConfirmModal({ open, title, body, confirmLabel, busy, onClose, onConfir
   );
 }
 
-function WeightPhotoCard({ photo, canDelete, deleting, onDelete }) {
+function uploadPhotoReviewTone(status) {
+  if (status === "approved" || status === "rejected") return status;
+  return "pending";
+}
+
+function uploadPhotoReviewLabel(status) {
+  if (status === "approved") return "Accepted";
+  if (status === "rejected") return "Rejected";
+  return "Pending";
+}
+
+function WeightPhotoCard({ photo, canDelete, canReview = true, deleting, reviewing, onDelete, onReview }) {
   const openPhoto = () => {
     if (photo.url && photo.url !== "mock") window.open(photo.url, "_blank", "noopener,noreferrer");
   };
+  const tone = uploadPhotoReviewTone(photo.reviewStatus);
+  const hasPhoto = Boolean(photo.url && photo.url !== "mock");
 
   return (
     <div className="ua-cp-hptrack-weight-photo-card">
-      {canDelete && photo.url && photo.url !== "mock" ? (
+      {canDelete && hasPhoto ? (
         <button
           type="button"
           className="ua-cp-hptrack-weight-photo-card__remove"
-          disabled={deleting}
+          disabled={deleting || reviewing}
           aria-label={`Delete photo from ${photo.date}`}
           onClick={() => onDelete?.(photo)}
         >
@@ -435,10 +709,10 @@ function WeightPhotoCard({ photo, canDelete, deleting, onDelete }) {
       ) : null}
       <div
         className={`ua-cp-hptrack-weight-photo-card__media${
-          photo.url && photo.url !== "mock" ? " ua-cp-hptrack-weight-photo-card__media--photo" : ""
+          hasPhoto ? " ua-cp-hptrack-weight-photo-card__media--photo" : ""
         }`}
       >
-        {photo.url && photo.url !== "mock" ? (
+        {hasPhoto ? (
           <img className="ua-cp-hptrack-weight-photo-card__img" src={photo.url} alt={`${photo.weight} kg`} />
         ) : (
           <span className="ua-cp-hptrack-weight-photo-card__camera" aria-hidden="true">
@@ -448,21 +722,61 @@ function WeightPhotoCard({ photo, canDelete, deleting, onDelete }) {
             </svg>
           </span>
         )}
+        {hasPhoto ? (
+          <span className={`ua-cp-hptrack-weight-photo-card__badge ua-cp-hptrack-weight-photo-card__badge--${tone}`}>
+            {uploadPhotoReviewLabel(photo.reviewStatus)}
+          </span>
+        ) : null}
         <strong>{photo.weight} {photo.unit}</strong>
       </div>
       <div className="ua-cp-hptrack-weight-photo-card__meta">
         <span>{photo.date}</span>
-        {photo.url && photo.url !== "mock" ? (
+        {hasPhoto ? (
           <button type="button" className="ua-cp-hptrack-weight-photo-card__save" onClick={openPhoto}>
             Open
           </button>
         ) : null}
       </div>
+      {hasPhoto && canReview && tone === "pending" ? (
+        <div className="ua-cp-hptrack-weight-photo-card__actions">
+          <button
+            type="button"
+            className="ua-cp-hptrack-weight-photo-card__approve"
+            disabled={reviewing || deleting}
+            onClick={() => onReview?.(photo, "approved")}
+          >
+            {reviewing ? "Saving…" : "Accept"}
+          </button>
+          <button
+            type="button"
+            className="ua-cp-hptrack-weight-photo-card__reject"
+            disabled={reviewing || deleting}
+            onClick={() => onReview?.(photo, "rejected")}
+          >
+            Reject
+          </button>
+        </div>
+      ) : null}
+      {photo.rejectionReason ? (
+        <p className="ua-cp-hptrack-weight-photo-card__reason">{photo.rejectionReason}</p>
+      ) : null}
     </div>
   );
 }
 
-function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, onDelete, onClose }) {
+function WeightPhotoHistoryModal({
+  open,
+  photos,
+  canDelete,
+  canReview = true,
+  deletingId,
+  reviewingId,
+  onDelete,
+  onReview,
+  onClose,
+  title = "Weight photo history",
+  subtitle = "Every weigh-in photo the client uploaded, newest first. Accept or reject each image.",
+}) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -478,8 +792,8 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, onDelete
       <div className="ua-cp-modal ua-cp-hptrack-weight-history-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="weight-history-title">
         <div className="ua-cp-hptrack-weight-history-modal__head">
           <div>
-            <h3 id="weight-history-title">Weight photo history</h3>
-            <p>Every weigh-in photo the client uploaded, newest first.</p>
+            <h3 id="weight-history-title">{title}</h3>
+            <p>{subtitle}</p>
           </div>
           <button type="button" className="ua-cp-hptrack-weight-history-modal__close" onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -490,13 +804,136 @@ function WeightPhotoHistoryModal({ open, photos, canDelete, deletingId, onDelete
               key={photo.id}
               photo={photo}
               canDelete={canDelete}
+              canReview={canReview}
               deleting={deletingId === photo.id}
+              reviewing={reviewingId === photo.id}
               onDelete={onDelete}
+              onReview={onReview}
             />
           )) : <EmptyLogs label="weight photos" />}
         </div>
       </div>
     </div>
+  );
+}
+
+function UploadPhotoReviewSection({
+  title,
+  subtitle,
+  photos,
+  userId,
+  isMock,
+  canReview,
+  onToast,
+  reviewPhoto,
+  onReviewed,
+}) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [reviewingPhotoId, setReviewingPhotoId] = useState("");
+  const [pendingReview, setPendingReview] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const pendingCount = photos.filter((p) => (p.reviewStatus || "pending") === "pending").length;
+
+  function requestReview(photo, action) {
+    if (!canReview || !photo?.id || reviewingPhotoId) return;
+    setRejectReason("");
+    setPendingReview({ photo, action });
+  }
+
+  async function confirmReview() {
+    const photo = pendingReview?.photo;
+    const action = pendingReview?.action;
+    if (!canReview || !photo?.id || !action || isMock) return;
+    setReviewingPhotoId(photo.id);
+    try {
+      const result = await reviewPhoto(userId, photo.id, {
+        action,
+        rejectionReason: action === "rejected" ? rejectReason.trim() : "",
+      });
+      onToast?.(action === "approved" ? "Upload accepted" : "Upload rejected");
+      setPendingReview(null);
+      setRejectReason("");
+      await onReviewed?.(result);
+    } catch (err) {
+      onToast?.(err.message || "Could not update the photo review");
+    } finally {
+      setReviewingPhotoId("");
+    }
+  }
+
+  return (
+    <>
+      <div className="ua-cp-hptrack-upload-review-bar">
+        <div>
+          <strong>{title}</strong>
+          {subtitle ? <p>{subtitle}</p> : null}
+          {!canReview ? (
+            <p className="ua-cp-hptrack-upload-review-bar__readonly">View only — wellness coach edit access is required to approve or reject.</p>
+          ) : null}
+        </div>
+        {photos.length ? (
+          <button type="button" className="ua-cp-hptrack-view-history" onClick={() => setHistoryOpen(true)}>
+            {canReview
+              ? `Approve / reject (${pendingCount} pending${pendingCount === 1 ? "" : ""})`
+              : `View uploads (${photos.length})`}
+          </button>
+        ) : (
+          <span className="ua-cp-hptrack-upload-review-bar__empty">No client uploads yet</span>
+        )}
+      </div>
+
+      <WeightPhotoHistoryModal
+        open={historyOpen}
+        photos={photos}
+        canDelete={false}
+        canReview={canReview}
+        deletingId=""
+        reviewingId={reviewingPhotoId}
+        onDelete={() => {}}
+        onReview={requestReview}
+        onClose={() => {
+          if (reviewingPhotoId) return;
+          setHistoryOpen(false);
+        }}
+        title="Client uploads — approve or reject"
+        subtitle="Every photo the client uploaded, newest first. Accept locks re-upload; reject opens client update again."
+      />
+
+      <ConfirmModal
+        open={Boolean(pendingReview)}
+        tone={pendingReview?.action === "rejected" ? "danger" : "primary"}
+        title={pendingReview?.action === "rejected"
+          ? `Reject the upload from ${pendingReview?.photo?.date}?`
+          : `Accept the upload from ${pendingReview?.photo?.date || "this date"}?`}
+        body={pendingReview?.action === "rejected"
+          ? "The photo stays on the entry and is marked rejected. The client can upload again after you reject it."
+          : "The photo stays on the entry and is marked accepted. Client re-upload stays locked until the next window opens."}
+        confirmLabel={reviewingPhotoId
+          ? "Saving…"
+          : pendingReview?.action === "rejected" ? "Yes, reject it" : "Yes, accept it"}
+        busy={Boolean(reviewingPhotoId)}
+        onClose={() => {
+          if (reviewingPhotoId) return;
+          setPendingReview(null);
+          setRejectReason("");
+        }}
+        onConfirm={confirmReview}
+      >
+        {pendingReview?.action === "rejected" ? (
+          <label className="ua-cp-hptrack-weight-review-reason">
+            Rejection reason
+            <textarea
+              rows={3}
+              value={rejectReason}
+              maxLength={500}
+              placeholder="Optional"
+              onChange={(event) => setRejectReason(event.target.value)}
+            />
+          </label>
+        ) : null}
+      </ConfirmModal>
+    </>
   );
 }
 
@@ -558,7 +995,7 @@ function ConditionEmptySlot({ label }) {
   );
 }
 
-function ConditionHistoryModal({ open, condition, photos, onClose }) {
+function ConditionHistoryModal({ open, condition, photos, onClose, title, subtitle }) {
   useEffect(() => {
     function onKeyDown(event) {
       if (event.key === "Escape") onClose();
@@ -574,8 +1011,8 @@ function ConditionHistoryModal({ open, condition, photos, onClose }) {
       <div className="ua-cp-modal ua-cp-hptrack-history-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="condition-history-title">
         <div className="ua-cp-hptrack-history-modal__head">
           <div>
-            <h3 id="condition-history-title">Condition photo history</h3>
-            <p>{condition} · every uploaded date, newest first</p>
+            <h3 id="condition-history-title">{title || "Condition photo history"}</h3>
+            <p>{subtitle || `${condition} · every uploaded date, newest first`}</p>
           </div>
           <button type="button" className="ua-cp-hptrack-history-modal__close" onClick={onClose} aria-label="Close">×</button>
         </div>
@@ -589,11 +1026,15 @@ function ConditionHistoryModal({ open, condition, photos, onClose }) {
   );
 }
 
-function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
+function FatLossPanel({ logs, userId, isMock, canReview, canDeletePhoto, onToast, onWeightAdded, onClientUploadChange }) {
   const [range, setRange] = useState("all");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingPhotoDelete, setPendingPhotoDelete] = useState(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState("");
+  const [reviewingPhotoId, setReviewingPhotoId] = useState("");
+  const [pendingReview, setPendingReview] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [latestPhotoFailed, setLatestPhotoFailed] = useState(false);
   const [recordedDate, setRecordedDate] = useState(todayIsoDate);
   const [weightValue, setWeightValue] = useState("");
   const [weightUnit, setWeightUnit] = useState("lbs");
@@ -611,22 +1052,30 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
     if (weightPhotoPreview) URL.revokeObjectURL(weightPhotoPreview);
   }, [weightPhotoPreview]);
 
+  const dailyLogs = useMemo(() => collapseWeightLogsByDate(logs), [logs]);
+
   const photos = useMemo(() => (
-    sortByDateDesc(logs)
+    sortByDateDesc(dailyLogs)
       .filter((row) => row.weightPicUrl)
       .map((row) => ({
-        id: row.id || row._id,
-        date: formatDisplayDate(row.recordedAt),
+        id: row.photoLogId || row.id || row._id,
+        date: formatDisplayDateTime(imageStamp(row)),
         weight: Number.isFinite(Number(row.weightKg)) ? Number(row.weightKg) : "—",
         unit: "kg",
         url: row.weightPicUrl,
+        reviewStatus: row.weightPicReviewStatus || "pending",
+        rejectionReason: row.weightPicRejectionReason || "",
       }))
-  ), [logs]);
+  ), [dailyLogs]);
 
   const latestPhoto = photos[0] || null;
 
+  useEffect(() => {
+    setLatestPhotoFailed(false);
+  }, [latestPhoto?.url]);
+
   const series = useMemo(() => {
-    const filtered = applyRange(sortByDateAsc(logs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
+    const filtered = applyRange(sortByDateAsc(dailyLogs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
     const dates = filtered.map((row) => formatChartDate(row.recordedAt));
     const values = filtered.map((row) => Number(Number(row.weightKg).toFixed(1)));
     const first = filtered[0];
@@ -647,7 +1096,7 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
         change,
       } : null,
     };
-  }, [logs, range]);
+  }, [dailyLogs, range]);
 
   function openDatePicker() {
     const input = dateInputRef.current;
@@ -712,6 +1161,34 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
     }
   }
 
+  function requestReview(photo, action) {
+    if (!canReview || !photo?.id || reviewingPhotoId || deletingPhotoId) return;
+    setRejectReason("");
+    setPendingReview({ photo, action });
+  }
+
+  async function confirmReview() {
+    const photo = pendingReview?.photo;
+    const action = pendingReview?.action;
+    if (!canReview || !photo?.id || !action || isMock) return;
+    setReviewingPhotoId(photo.id);
+    try {
+      const result = await reviewCoachWeightPhoto(userId, photo.id, {
+        action,
+        rejectionReason: action === "rejected" ? rejectReason.trim() : "",
+      });
+      onToast?.(action === "approved" ? "Weight photo accepted" : "Weight photo rejected");
+      if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+      setPendingReview(null);
+      setRejectReason("");
+      await onWeightAdded?.();
+    } catch (err) {
+      onToast?.(err.message || "Could not update the photo review");
+    } finally {
+      setReviewingPhotoId("");
+    }
+  }
+
   async function submitWeight(event) {
     event.preventDefault();
     const error = weightFieldError(weightValue, weightUnit);
@@ -749,40 +1226,45 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
 
   return (
     <>
+      <UploadPhotoReviewSection
+        title="Client fat loss uploads"
+        subtitle="Approve or reject each weigh-in photo from the client."
+        photos={photos}
+        userId={userId}
+        isMock={isMock}
+        canReview={canReview}
+        onToast={onToast}
+        reviewPhoto={reviewCoachWeightPhoto}
+        onReviewed={async (result) => {
+          if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+          await onWeightAdded?.();
+        }}
+      />
       <form className="ua-cp-hptrack-weight-form" onSubmit={submitWeight}>
         <button
           type="button"
-          className={`ua-cp-hptrack-weight-form__pics${latestPhoto ? " ua-cp-hptrack-weight-form__pics--has-photo" : ""}`}
+          className={`ua-cp-hptrack-weight-form__pics${latestPhoto && !latestPhotoFailed ? " ua-cp-hptrack-weight-form__pics--has-photo" : ""}`}
           onClick={() => setHistoryOpen(true)}
         >
-          {latestPhoto ? (
-             <>
-             <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
-               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                 <circle cx="12" cy="13" r="4" />
-               </svg>
-             </span>
-             <strong>View weight pics</strong>
-             <span>{photos.length ? `${photos.length} photo${photos.length === 1 ? "" : "s"}` : "Tap to view history"}</span>
-           </>
-            // <>
-            // <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
-            //     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            //       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-            //       <circle cx="12" cy="13" r="4" />
-            //     </svg>
-            //   </span>
-            //   <img
-            //     className="ua-cp-hptrack-weight-form__pics-img"
-            //     src={latestPhoto.url}
-            //     alt={`Weight photo from ${latestPhoto.date}`}
-            //   />
-            //   <span className="ua-cp-hptrack-weight-form__pics-overlay">
-            //     <strong>View weight pics</strong>
-            //     <span>Tap to view history</span>
-            //   </span>
-            // </>
+          {latestPhoto && !latestPhotoFailed ? (
+            <>
+              <img
+                className="ua-cp-hptrack-weight-form__pics-img"
+                src={latestPhoto.url}
+                alt={`Latest weight photo from ${latestPhoto.date}`}
+                onError={() => setLatestPhotoFailed(true)}
+              />
+              <span className="ua-cp-hptrack-weight-form__pics-overlay">
+                <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </span>
+                <strong>View weight pics</strong>
+                <span>{photos.length} photo{photos.length === 1 ? "" : "s"}</span>
+              </span>
+            </>
           ) : (
             <>
               <span className="ua-cp-hptrack-weight-form__pics-icon" aria-hidden="true">
@@ -914,11 +1396,14 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
       <WeightPhotoHistoryModal
         open={historyOpen}
         photos={photos}
-        canDelete={!isMock}
+        canDelete={!isMock && canDeletePhoto}
+        canReview={canReview}
         deletingId={deletingPhotoId}
+        reviewingId={reviewingPhotoId}
         onDelete={setPendingPhotoDelete}
+        onReview={requestReview}
         onClose={() => {
-          if (deletingPhotoId) return;
+          if (deletingPhotoId || reviewingPhotoId) return;
           setHistoryOpen(false);
         }}
       />
@@ -932,6 +1417,40 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
         onClose={() => !deletingPhotoId && setPendingPhotoDelete(null)}
         onConfirm={confirmDeletePhoto}
       />
+
+      <ConfirmModal
+        open={Boolean(pendingReview)}
+        tone={pendingReview?.action === "rejected" ? "danger" : "primary"}
+        title={pendingReview?.action === "rejected"
+          ? `Reject the photo from ${pendingReview.photo.date}?`
+          : `Accept the photo from ${pendingReview?.photo?.date || "this date"}?`}
+        body={pendingReview?.action === "rejected"
+          ? "The photo stays on the entry and is marked rejected. Add a reason if the client should see why."
+          : "The photo stays on the entry and is marked accepted."}
+        confirmLabel={reviewingPhotoId
+          ? "Saving…"
+          : pendingReview?.action === "rejected" ? "Yes, reject it" : "Yes, accept it"}
+        busy={Boolean(reviewingPhotoId)}
+        onClose={() => {
+          if (reviewingPhotoId) return;
+          setPendingReview(null);
+          setRejectReason("");
+        }}
+        onConfirm={confirmReview}
+      >
+        {pendingReview?.action === "rejected" ? (
+          <label className="ua-cp-hptrack-weight-review-reason">
+            Rejection reason
+            <textarea
+              rows={3}
+              value={rejectReason}
+              maxLength={500}
+              placeholder="Optional"
+              onChange={(event) => setRejectReason(event.target.value)}
+            />
+          </label>
+        ) : null}
+      </ConfirmModal>
 
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--orange">
         <div className="ua-cp-hptrack-chart-card__head ua-cp-hptrack-chart-card__head--blue">
@@ -973,25 +1492,59 @@ function FatLossPanel({ logs, userId, isMock, onToast, onWeightAdded }) {
   );
 }
 
-function GlucosePanel({ logs }) {
+function glucoseStatPhoto(latest, rows) {
+  const ownUrl = glucosePhotoUrl(latest);
+  if (ownUrl) return { url: ownUrl, caption: formatDisplayDateTime(imageStamp(latest)) };
+  const older = [...rows].reverse().find((row) => glucosePhotoUrl(row));
+  if (!older) return { url: "", caption: "" };
+  return { url: glucosePhotoUrl(older), caption: formatDisplayDateTime(imageStamp(older)) };
+}
+
+function GlucosePanel({
+  logs,
+  hba1cReadings = [],
+  userId,
+  isMock,
+  canReview,
+  onToast,
+  onLogsRefresh,
+  onClientUploadChange,
+}) {
   const [range, setRange] = useState("all");
 
+  const uploadPhotos = useMemo(() => (
+    collapseLogsByDate(sortByDateDesc(logs), "type", "glucosePicUrl")
+      .filter((row) => row.glucosePicUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: `${formatDisplayDateTime(imageStamp(row))}${row.type ? ` · ${String(row.type).toUpperCase()}` : ""}`,
+        url: row.glucosePicUrl,
+        reviewStatus: row.glucosePicReviewStatus || "pending",
+        rejectionReason: row.glucosePicRejectionReason || "",
+      }))
+  ), [logs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
+
   const view = useMemo(() => {
-    const filtered = applyRange(sortByDateAsc(logs), range);
-    const fbs = filtered.filter((row) => row.type === "fbs" && Number.isFinite(Number(row.value)));
-    const ppbs = filtered.filter((row) => row.type === "ppbs" && Number.isFinite(Number(row.value)));
+    const daily = collapseLogsByDate(sortByDateAsc(logs), "type", "glucosePicUrl");
+    const ranged = applyRange(daily, range);
+    const fbs = daily.filter((row) => row.type === "fbs" && Number.isFinite(Number(row.value)));
+    const ppbs = daily.filter((row) => row.type === "ppbs" && Number.isFinite(Number(row.value)));
     const latestFbs = fbs[fbs.length - 1];
     const firstFbs = fbs[0];
     const latestPpbs = ppbs[ppbs.length - 1];
     const firstPpbs = ppbs[0];
-    const hba1cValues = fbs.map((row) => estimateHbA1cFromFbs(row.value)).filter((v) => v != null);
-    const hba1cDates = fbs.map((row) => formatChartDate(row.recordedAt));
-    const latestHba1c = hba1cValues[hba1cValues.length - 1];
-    const firstHba1c = hba1cValues[0];
+    const hba1c = applyRange(hba1cReadings, range);
+    const latestHba1c = hba1cReadings[hba1cReadings.length - 1];
+    const firstHba1c = hba1cReadings[0];
 
     const byDate = new Map();
-    for (const row of filtered) {
-      const key = String(row.recordedAt || "").slice(0, 10);
+    for (const row of ranged) {
+      const key = calendarDateKey(row.recordedAt);
       if (!key) continue;
       const entry = byDate.get(key) || { date: formatChartDate(row.recordedAt), fbs: null, ppbs: null };
       if (row.type === "fbs") entry.fbs = Number(row.value);
@@ -999,56 +1552,82 @@ function GlucosePanel({ logs }) {
       byDate.set(key, entry);
     }
     const weekly = [...byDate.values()].slice(-8);
+    const fbsPhoto = glucoseStatPhoto(latestFbs, fbs);
+    const ppbsPhoto = glucoseStatPhoto(latestPpbs, ppbs);
 
-    const stats = [];
-    if (latestHba1c != null) {
-      stats.push({
-        label: "HbA1c",
-        value: `${latestHba1c} %`,
-        delta: deltaLabel(latestHba1c, firstHba1c, ""),
-        latest: latestFbs ? formatDisplayDate(latestFbs.recordedAt) : "",
-      });
-    }
+    const stats = [{
+      label: "HbA1c",
+      value: latestHba1c ? `${latestHba1c.value} %` : "—",
+      delta: hba1cReadings.length >= 2 ? deltaLabel(latestHba1c.value, firstHba1c.value, "") : "",
+      latest: latestHba1c ? formatDisplayDate(latestHba1c.recordedAt) : "",
+      note: latestHba1c ? "" : "No HbA1c on a blood report yet",
+    }];
     if (latestFbs) {
       stats.push({
         label: "FBS",
         value: `${latestFbs.value} mg/dL`,
-        delta: deltaLabel(Number(latestFbs.value), firstFbs ? Number(firstFbs.value) : null, ""),
+        delta: fbs.length >= 2 ? deltaLabel(Number(latestFbs.value), Number(firstFbs.value), "") : "",
         latest: formatDisplayDate(latestFbs.recordedAt),
+        photoUrl: fbsPhoto.url,
+        photoCaption: fbsPhoto.caption,
       });
     }
     if (latestPpbs) {
       stats.push({
         label: "PPBS",
         value: `${latestPpbs.value} mg/dL`,
-        delta: deltaLabel(Number(latestPpbs.value), firstPpbs ? Number(firstPpbs.value) : null, ""),
+        delta: ppbs.length >= 2 ? deltaLabel(Number(latestPpbs.value), Number(firstPpbs.value), "") : "",
         latest: formatDisplayDate(latestPpbs.recordedAt),
+        photoUrl: ppbsPhoto.url,
+        photoCaption: ppbsPhoto.caption,
       });
     }
 
     return {
       stats,
-      hba1cDates: hba1cDates.slice(-8),
-      hba1cValues: hba1cValues.slice(-8),
+      hba1cDates: hba1c.map((row) => formatChartDate(row.recordedAt)).slice(-8),
+      hba1cValues: hba1c.map((row) => row.value).slice(-8),
       weekly,
     };
-  }, [logs, range]);
+  }, [logs, range, hba1cReadings]);
 
-  if (!logs.length) return <EmptyLogs label="glucose readings" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client glucose uploads"
+      subtitle="Approve or reject each glucose panel photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachGlucosePhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length && !hba1cReadings.length) {
+    return (
+      <div className="ua-cp-hptrack-glucose">
+        {reviewBlock}
+        <EmptyLogs label="glucose readings" />
+      </div>
+    );
+  }
 
   return (
     <div className="ua-cp-hptrack-glucose">
+      {reviewBlock}
       <StatCards stats={view.stats} tone="red" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--red ua-cp-hptrack-glucose__charts">
         <div className="ua-cp-hptrack-glucose__section">
           <div className="ua-cp-hptrack-chart-card__head">
             <strong>HbA1c trend</strong>
-            <span className="ua-cp-hptrack-chart-card__target">Estimated from FBS · target &lt; 5.7 %</span>
+            <span className="ua-cp-hptrack-chart-card__target">From blood reports · target &lt; 5.7 %</span>
           </div>
           {view.hba1cValues.length ? (
             <TrendLineChart dates={view.hba1cDates} values={view.hba1cValues} color="#d64545" />
           ) : (
-            <EmptyLogs label="FBS readings" />
+            <p className="ua-cp-hptrack-empty">No HbA1c on a blood report yet.</p>
           )}
         </div>
         <div className="ua-cp-hptrack-glucose__divider" aria-hidden="true" />
@@ -1144,14 +1723,32 @@ function MenstrualPanel({ logs }) {
   );
 }
 
-function BpPanel({ logs }) {
+function BpPanel({ logs, userId, isMock, canReview, onToast, onLogsRefresh, onClientUploadChange }) {
   const [range, setRange] = useState("all");
+
+  const uploadPhotos = useMemo(() => (
+    collapseLogsByDate(sortByDateDesc(logs), "", "bpPicUrl")
+      .filter((row) => row.bpPicUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: formatDisplayDateTime(imageStamp(row)),
+        url: row.bpPicUrl,
+        reviewStatus: row.bpPicReviewStatus || "pending",
+        rejectionReason: row.bpPicRejectionReason || "",
+      }))
+  ), [logs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
   const view = useMemo(() => {
-    const filtered = applyRange(sortByDateAsc(logs), range).filter((row) => (
+    const filtered = collapseLogsByDate(applyRange(sortByDateAsc(logs), range), "", "bpPicUrl").filter((row) => (
       Number.isFinite(Number(row.sys)) && Number.isFinite(Number(row.dia))
     ));
     const latest = filtered[filtered.length - 1];
     const first = filtered[0];
+    const photoRow = [...filtered].reverse().find((row) => row.bpPicUrl);
     const stats = latest ? [
       {
         label: "Systolic",
@@ -1170,10 +1767,12 @@ function BpPanel({ logs }) {
         value: `${latest.sys}/${latest.dia}`,
         delta: "",
         latest: formatDisplayDate(latest.recordedAt),
+        photoUrl: photoRow?.bpPicUrl || "",
+        photoCaption: photoRow ? formatDisplayDateTime(imageStamp(photoRow)) : "",
       },
       {
         label: "Readings logged",
-        value: String(logs.length),
+        value: String(filtered.length),
         delta: "",
         latest: formatDisplayDate(latest.recordedAt),
       },
@@ -1186,10 +1785,32 @@ function BpPanel({ logs }) {
     };
   }, [logs, range]);
 
-  if (!logs.length) return <EmptyLogs label="blood pressure readings" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client blood pressure uploads"
+      subtitle="Approve or reject each BP photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachBloodPressurePhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length) {
+    return (
+      <>
+        {reviewBlock}
+        <EmptyLogs label="blood pressure readings" />
+      </>
+    );
+  }
 
   return (
     <>
+      {reviewBlock}
       <StatCards stats={view.stats} tone="amber" />
       <div className="ua-cp-hptrack-chart-card ua-cp-hptrack-chart-card--amber">
         <div className="ua-cp-hptrack-chart-card__head">
@@ -1220,22 +1841,46 @@ function BpPanel({ logs }) {
   );
 }
 
-function ConditionPanel({ logs }) {
+function ConditionPanel({ logs, userId, isMock, canReview, onToast, onLogsRefresh, onClientUploadChange }) {
+  const dailyLogs = useMemo(
+    () => collapseLogsByDate(sortByDateDesc(logs), "", "picUrl"),
+    [logs],
+  );
+
+  const uploadPhotos = useMemo(() => (
+    dailyLogs
+      .filter((row) => row.picUrl)
+      .map((row) => ({
+        id: row.photoLogId || row.id || row._id,
+        date: `${formatDisplayDateTime(imageStamp(row))}${row.bodyPart ? ` · ${bodyPartLabel(row)}` : ""}`,
+        url: row.picUrl,
+        reviewStatus: row.picReviewStatus || "pending",
+        rejectionReason: row.picRejectionReason || "",
+      }))
+  ), [dailyLogs]);
+
+  async function handleReviewed(result) {
+    if (result?.clientUpload) onClientUploadChange?.(result.clientUpload);
+    await onLogsRefresh?.();
+  }
+
   const groups = useMemo(() => {
     const map = new Map();
-    for (const row of sortByDateDesc(logs)) {
+    for (const row of dailyLogs) {
       const key = String(row.bodyPart || "other").toLowerCase();
       const label = bodyPartLabel(row);
       const group = map.get(key) || { id: key, name: label, photos: [] };
       group.photos.push({
         id: row.id || row._id,
-        date: formatDisplayDate(row.recordedAt),
+        date: formatDisplayDateTime(imageStamp(row)),
         url: row.picUrl || null,
+        reviewStatus: row.picReviewStatus || "pending",
+        rejectionReason: row.picRejectionReason || "",
       });
       map.set(key, group);
     }
     return [...map.values()];
-  }, [logs]);
+  }, [dailyLogs]);
 
   const [condition, setCondition] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -1254,10 +1899,32 @@ function ConditionPanel({ logs }) {
   const photos = selected?.photos || [];
   const latest = photos.slice(0, 2);
 
-  if (!logs.length) return <EmptyLogs label="condition photos" />;
+  const reviewBlock = (
+    <UploadPhotoReviewSection
+      title="Client condition uploads"
+      subtitle="Approve or reject each condition comparison photo from the client."
+      photos={uploadPhotos}
+      userId={userId}
+      isMock={isMock}
+      canReview={canReview}
+      onToast={onToast}
+      reviewPhoto={reviewCoachConditionPhoto}
+      onReviewed={handleReviewed}
+    />
+  );
+
+  if (!logs.length) {
+    return (
+      <div className="ua-cp-hptrack-condition">
+        {reviewBlock}
+        <EmptyLogs label="condition photos" />
+      </div>
+    );
+  }
 
   return (
     <div className="ua-cp-hptrack-condition">
+      {reviewBlock}
       <div className="ua-cp-hptrack-condition-bar">
         <div className="ua-cp-hptrack-condition-bar__left">
           <select className="ua-cp-hptrack-condition-bar__select" value={selected?.id || ""} onChange={(e) => setCondition(e.target.value)}>
@@ -1303,21 +1970,67 @@ function ConditionPanel({ logs }) {
   );
 }
 
-function TrackerDetail({ tracker, logs, userId, isMock, onToast, onWeightAdded }) {
+function TrackerDetail({
+  tracker,
+  logs,
+  hba1cReadings,
+  userId,
+  isMock,
+  canReview,
+  canDeletePhoto,
+  onToast,
+  onWeightAdded,
+  onLogsRefresh,
+  onClientUploadChange,
+}) {
   switch (tracker.id) {
     case "fatloss": return (
       <FatLossPanel
         logs={logs.weight}
         userId={userId}
         isMock={isMock}
+        canReview={canReview}
+        canDeletePhoto={canDeletePhoto}
         onToast={onToast}
         onWeightAdded={onWeightAdded}
+        onClientUploadChange={onClientUploadChange}
       />
     );
-    case "glucose": return <GlucosePanel logs={logs.glucose} />;
+    case "glucose": return (
+      <GlucosePanel
+        logs={logs.glucose}
+        hba1cReadings={hba1cReadings}
+        userId={userId}
+        isMock={isMock}
+        canReview={canReview}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("glucose")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
     case "menstrual": return <MenstrualPanel logs={logs.menstrual} />;
-    case "bp": return <BpPanel logs={logs.bp} />;
-    case "condition": return <ConditionPanel logs={logs.condition} />;
+    case "bp": return (
+      <BpPanel
+        logs={logs.bp}
+        userId={userId}
+        isMock={isMock}
+        canReview={canReview}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("bloodPressure")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
+    case "condition": return (
+      <ConditionPanel
+        logs={logs.condition}
+        userId={userId}
+        isMock={isMock}
+        canReview={canReview}
+        onToast={onToast}
+        onLogsRefresh={() => onLogsRefresh?.("conditionComparison")}
+        onClientUploadChange={onClientUploadChange}
+      />
+    );
     default: return null;
   }
 }
@@ -1333,31 +2046,39 @@ export function HealthProgressSection({ user, onToast }) {
 
   const [trackers, setTrackers] = useState(() => CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
   const [isFemale, setIsFemale] = useState(true);
-  const [search, setSearch] = useState("");
   const [trackingFilter, setTrackingFilter] = useState("all");
   const [loading, setLoading] = useState(() => Boolean(userId) && !isMock);
   const [logsLoading, setLogsLoading] = useState(false);
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState("");
   const [logs, setLogs] = useState(EMPTY_LOGS);
+  const [hba1cReadings, setHba1cReadings] = useState([]);
+  const [clientUpload, setClientUpload] = useState({});
+  const [clientUploadBusyKey, setClientUploadBusyKey] = useState("");
+  const [bulkClientUploadBusy, setBulkClientUploadBusy] = useState("");
   const loadedLogKeysRef = useRef(new Set());
+  const { canEdit: canReviewUploads, canDelete: canDeleteClientPhoto } = useClientSectionPermissions("health-progress");
+  const canOpenClientUpload = canReviewUploads;
 
   const liveCount = trackers.filter((t) => t.enabled).length;
   const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).filter(Boolean).sort().join(",");
 
   const filteredTrackers = useMemo(() => {
-    let list = trackers;
-    if (trackingFilter !== "all") list = list.filter((t) => t.id === trackingFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((t) => `${t.name} ${t.category}`.toLowerCase().includes(q));
-    }
-    return list;
-  }, [trackers, trackingFilter, search]);
+    if (trackingFilter === "all") return trackers;
+    return trackers.filter((t) => t.id === trackingFilter);
+  }, [trackers, trackingFilter]);
 
   const enabledTrackers = useMemo(
     () => trackers.filter((t) => t.enabled),
     [trackers],
+  );
+  const clientUploadEligibleTrackers = useMemo(
+    () => enabledTrackers.filter((t) => CLIENT_UPLOAD_FEATURE_KEYS.includes(t.featureKey)),
+    [enabledTrackers],
+  );
+  const openClientUploadCount = useMemo(
+    () => clientUploadEligibleTrackers.filter((t) => clientUpload[t.featureKey]?.open).length,
+    [clientUploadEligibleTrackers, clientUpload],
   );
   const visibleDetailTrackers = useMemo(() => {
     if (trackingFilter === "all") return enabledTrackers;
@@ -1370,6 +2091,7 @@ export function HealthProgressSection({ user, onToast }) {
       setError(isMock ? "Demo profile ids cannot load health progress." : "");
       setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
       setLogs(EMPTY_LOGS);
+      setHba1cReadings([]);
       loadedLogKeysRef.current = new Set();
       return undefined;
     }
@@ -1379,10 +2101,12 @@ export function HealthProgressSection({ user, onToast }) {
     setError("");
     loadedLogKeysRef.current = new Set();
     setLogs(EMPTY_LOGS);
+    setHba1cReadings([]);
     fetchHealthProgressSettings(userId)
       .then((result) => {
         if (cancelled || !result) return;
         setIsFemale(result.isFemale);
+        setClientUpload(result.clientUpload || {});
         setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({
           ...row,
           enabled: Boolean(result.settings[row.featureKey]),
@@ -1415,6 +2139,7 @@ export function HealthProgressSection({ user, onToast }) {
     const toClear = fetchers.filter((row) => !row.enabled && loadedLogKeysRef.current.has(row.key));
     if (toClear.length) {
       toClear.forEach((row) => loadedLogKeysRef.current.delete(row.key));
+      if (toClear.some((row) => row.logKey === "glucose")) setHba1cReadings([]);
       setLogs((prev) => {
         const next = { ...prev };
         toClear.forEach((row) => {
@@ -1433,12 +2158,29 @@ export function HealthProgressSection({ user, onToast }) {
     toLoad.forEach((row) => loadedLogKeysRef.current.add(row.key));
     if (isInitialLoad) setLogsLoading(true);
 
-    Promise.all(toLoad.map((row) => row.load().then((rows) => ({ logKey: row.logKey, key: row.key, rows: rows || [] }))))
+    Promise.all(toLoad.map((row) => {
+      const requests = [row.load().then((rows) => rows || [])];
+      if (row.logKey === "glucose") {
+        requests.push(
+          fetchUserLabReports(userId)
+            .then((result) => hba1cReadingsFromReports(result?.reports))
+            .catch(() => []),
+        );
+      }
+      return Promise.all(requests).then(([rows, readings]) => ({
+        logKey: row.logKey,
+        key: row.key,
+        rows,
+        hba1cReadings: readings || null,
+      }));
+    }))
       .then((results) => {
         if (cancelled) {
           toLoad.forEach((row) => loadedLogKeysRef.current.delete(row.key));
           return;
         }
+        const glucose = results.find((row) => row.logKey === "glucose" && row.hba1cReadings);
+        if (glucose) setHba1cReadings(glucose.hba1cReadings);
         setLogs((prev) => {
           const next = { ...prev };
           results.forEach((row) => {
@@ -1508,6 +2250,7 @@ export function HealthProgressSection({ user, onToast }) {
       const result = await updateHealthProgressSettings(userId, { [tracker.featureKey]: nextEnabled });
       if (result?.settings) {
         setIsFemale(result.isFemale);
+        if (result.clientUpload) setClientUpload(result.clientUpload);
         setTrackers((list) => list.map((row) => ({
           ...row,
           enabled: Boolean(result.settings[row.featureKey]),
@@ -1525,6 +2268,93 @@ export function HealthProgressSection({ user, onToast }) {
     }
   }
 
+  async function applyClientUploadPatch(updates, { successMessage, failureMessage }) {
+    if (!canOpenClientUpload || isMock) {
+      onToast?.("Only an admin, wellness coach, or assistant wellness coach can change client updates.");
+      return;
+    }
+    const result = await patchHealthProgressClientUpload(userId, updates);
+    if (result?.clientUpload) {
+      setClientUpload(result.clientUpload);
+      onToast?.(successMessage);
+    } else {
+      onToast?.(failureMessage);
+    }
+    return result;
+  }
+
+  async function openClientUpdate(featureKey) {
+    setClientUploadBusyKey(featureKey);
+    try {
+      await applyClientUploadPatch(
+        { [featureKey]: true },
+        {
+          successMessage: "Client update opened. It closes after the client saves or you close it.",
+          failureMessage: "Client update could not be opened.",
+        },
+      );
+    } catch (err) {
+      onToast?.(err.message || "Could not open client update");
+    } finally {
+      setClientUploadBusyKey("");
+    }
+  }
+
+  async function closeClientUpdate(featureKey) {
+    setClientUploadBusyKey(featureKey);
+    try {
+      await applyClientUploadPatch(
+        { [featureKey]: false },
+        {
+          successMessage: "Client update closed.",
+          failureMessage: "Client update could not be closed.",
+        },
+      );
+    } catch (err) {
+      onToast?.(err.message || "Could not close client update");
+    } finally {
+      setClientUploadBusyKey("");
+    }
+  }
+
+  async function openAllClientUpdates() {
+    const updates = Object.fromEntries(
+      clientUploadEligibleTrackers.map((tracker) => [tracker.featureKey, true]),
+    );
+    if (!Object.keys(updates).length) return;
+    setBulkClientUploadBusy("open");
+    try {
+      await applyClientUploadPatch(updates, {
+        successMessage: "Client update opened for all enabled trackers.",
+        failureMessage: "Could not open client updates.",
+      });
+    } catch (err) {
+      onToast?.(err.message || "Could not open client updates");
+    } finally {
+      setBulkClientUploadBusy("");
+    }
+  }
+
+  async function closeAllClientUpdates() {
+    const updates = Object.fromEntries(
+      clientUploadEligibleTrackers
+        .filter((tracker) => clientUpload[tracker.featureKey]?.open)
+        .map((tracker) => [tracker.featureKey, false]),
+    );
+    if (!Object.keys(updates).length) return;
+    setBulkClientUploadBusy("close");
+    try {
+      await applyClientUploadPatch(updates, {
+        successMessage: "Client update closed for all open trackers.",
+        failureMessage: "Could not close client updates.",
+      });
+    } catch (err) {
+      onToast?.(err.message || "Could not close client updates");
+    } finally {
+      setBulkClientUploadBusy("");
+    }
+  }
+
   async function refreshWeightLogs() {
     if (!userId || isMock) return;
     try {
@@ -1532,6 +2362,29 @@ export function HealthProgressSection({ user, onToast }) {
       setLogs((prev) => ({ ...prev, weight: rows || [] }));
     } catch (err) {
       onToast?.(err.message || "Could not refresh weight logs");
+    }
+  }
+
+  async function refreshTrackerLogs(featureKey) {
+    if (!userId || isMock) return;
+    const loaders = {
+      glucose: () => fetchGlucoseLogs(userId).then((rows) => ({ logKey: "glucose", rows: rows || [] })),
+      bloodPressure: () => fetchBloodPressureLogs(userId).then((rows) => ({ logKey: "bp", rows: rows || [] })),
+      conditionComparison: () => fetchConditionLogs(userId).then((rows) => ({ logKey: "condition", rows: rows || [] })),
+    };
+    const load = loaders[featureKey];
+    if (!load) return;
+    try {
+      const { logKey, rows } = await load();
+      setLogs((prev) => ({ ...prev, [logKey]: rows }));
+    } catch (err) {
+      onToast?.(err.message || "Could not refresh health progress logs");
+    }
+  }
+
+  function applyClientUploadFromReview(nextUpload) {
+    if (nextUpload && typeof nextUpload === "object") {
+      setClientUpload(nextUpload);
     }
   }
 
@@ -1563,13 +2416,41 @@ export function HealthProgressSection({ user, onToast }) {
       </div>
 
       <div className="ua-cp-hptrack-manager">
-        <input
-          type="search"
-          className="ua-cp-hptrack-search"
-          placeholder="Search trackers…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        {canOpenClientUpload && clientUploadEligibleTrackers.length ? (
+          <div className="ua-cp-hptrack-upload-bulk">
+            <span className="ua-cp-hptrack-upload-bulk__label">
+              Client updates · {openClientUploadCount} of {clientUploadEligibleTrackers.length} open
+            </span>
+            <div className="ua-cp-hptrack-upload-bulk__actions">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                disabled={
+                  loading
+                  || Boolean(bulkClientUploadBusy)
+                  || Boolean(clientUploadBusyKey)
+                  || openClientUploadCount === clientUploadEligibleTrackers.length
+                }
+                onClick={openAllClientUpdates}
+              >
+                {bulkClientUploadBusy === "open" ? "Opening…" : "Open all enabled"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                disabled={
+                  loading
+                  || Boolean(bulkClientUploadBusy)
+                  || Boolean(clientUploadBusyKey)
+                  || openClientUploadCount === 0
+                }
+                onClick={closeAllClientUpdates}
+              >
+                {bulkClientUploadBusy === "close" ? "Closing…" : "Close all open"}
+              </button>
+            </div>
+          </div>
+        ) : null}
         <div className="ua-cp-hptrack-list">
           {filteredTrackers.map((tracker) => {
             const menstrualLocked = tracker.featureKey === "menstrualCycle" && !isFemale && !isMock;
@@ -1579,6 +2460,16 @@ export function HealthProgressSection({ user, onToast }) {
                 <div className="ua-cp-hptrack-list__copy">
                   <strong>{tracker.name}</strong>
                   <span> · {menstrualLocked ? "Girl clients only" : tracker.category}</span>
+                  <ClientUploadControl
+                    compact
+                    featureKey={tracker.featureKey}
+                    window={clientUpload[tracker.featureKey]}
+                    canEnable={canOpenClientUpload}
+                    trackerEnabled={tracker.enabled}
+                    busy={clientUploadBusyKey === tracker.featureKey || Boolean(bulkClientUploadBusy)}
+                    onOpen={openClientUpdate}
+                    onClose={closeClientUpdate}
+                  />
                 </div>
                 <span className={`ua-cp-hptrack-list__status${tracker.enabled ? "" : " is-off"}`}>
                   Live in app
@@ -1605,13 +2496,27 @@ export function HealthProgressSection({ user, onToast }) {
         {visibleDetailTrackers.map((tracker) => (
           <section key={tracker.id} className="ua-cp-hptrack-detail">
             <TrackerSectionHeader tracker={tracker} />
+            <ClientUploadControl
+              featureKey={tracker.featureKey}
+              window={clientUpload[tracker.featureKey]}
+              canEnable={canOpenClientUpload}
+              trackerEnabled={tracker.enabled}
+              busy={clientUploadBusyKey === tracker.featureKey || Boolean(bulkClientUploadBusy)}
+              onOpen={openClientUpdate}
+              onClose={closeClientUpdate}
+            />
             <TrackerDetail
               tracker={tracker}
               logs={logs}
+              hba1cReadings={hba1cReadings}
               userId={userId}
               isMock={isMock}
+              canReview={canReviewUploads}
+              canDeletePhoto={canDeleteClientPhoto}
               onToast={onToast}
               onWeightAdded={refreshWeightLogs}
+              onLogsRefresh={refreshTrackerLogs}
+              onClientUploadChange={applyClientUploadFromReview}
             />
           </section>
         ))}

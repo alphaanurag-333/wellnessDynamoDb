@@ -95,7 +95,8 @@ function formatDateRange(startDate, endDate) {
 }
 
 function isDosageActiveOnDate(dosage, logDate) {
-  if (String(dosage.status || "").toLowerCase() === "stopped") return false;
+  const status = String(dosage.status || "active").toLowerCase();
+  if (status === "stopped" || status === "draft") return false;
   const date = normalizeLogDate(logDate);
   return date >= dosage.startDate && date <= dosage.endDate;
 }
@@ -127,7 +128,7 @@ exports.getUserSupplementDosagesController = asyncHandler(async (req, res) => {
 
   const logDate = normalizeLogDate(req.query?.date);
   const todayLogs = await queryLogsByUserIdAndDate(userId, logDate);
-  const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false });
+  const dosages = await listUserSupplementDosagesByUserId(userId, { includeStopped: false, includeDraft: false });
   const activeDosages = dosages.filter((row) => isDosageActiveOnDate(row, logDate));
 
   const hydrated = await Promise.all(

@@ -2,9 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { suggestRating } from "../../data/launchData.js";
-import { computeLaunchAssessment } from "../../data/launchConfigData.js";
+import {
+  buildLaunchAutoFocusFromCatalog,
+  computeLaunchAssessment,
+  launchDomainBelowMinRequirement,
+} from "../../data/launchConfigData.js";
 import { ScheduleMeetingModal, slotsFromMeeting } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
@@ -22,6 +27,7 @@ import {
   saveUserLaunchAssessment,
   saveUserPrakrutiAssessment,
   updateUserLaunchAssessment,
+  publishUserLaunchFocusPoints,
 } from "../../api/onboardingApi.js";
 
 const DOSHA_KEYS = ["vata", "pitta", "kapha"];
@@ -115,7 +121,7 @@ function PrakritiCard({ prakriti }) {
     <div className="ua-cp-launch-prakriti-card">
       <div className="ua-cp-launch-prakriti-card__top">
         <div>
-          <span className="ua-cp-launch-prakriti-card__label">Your prakṛti</span>
+          <span className="ua-cp-launch-prakriti-card__label">Your Prakriti</span>
           <strong>{prakriti.dominant || "—"}</strong>
         </div>
         <span className="ua-cp-launch-prakriti-card__elements">{prakriti.elements || ""}</span>
@@ -308,13 +314,27 @@ function DomainAccordion({
   canWrite = true,
 }) {
   const pct = domain.max ? Math.round((domain.score / domain.max) * 100) : 0;
+  const minReq = Number.isFinite(Number(domain.minRequirement)) ? Number(domain.minRequirement) : 50;
+  const belowMin = launchDomainBelowMinRequirement(domain);
   return (
-    <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}`}>
+    <div className={`ua-cp-launch-domain${open ? " ua-cp-launch-domain--open" : ""}${belowMin ? " ua-cp-launch-domain--below-min" : ""}`}>
       <button type="button" className="ua-cp-launch-domain__head" onClick={onToggle}>
         <div className="ua-cp-launch-domain__subhead">
           <span className="ua-cp-launch-domain__chev" aria-hidden="true" />
           <span className="ua-cp-launch-domain__num">{domain.num}</span>
           <strong className="ua-cp-launch-domain__title">{domain.title}</strong>
+          {!domain.general ? (
+            <div className="ua-cp-launch-domain__cfg-stats" aria-label="Domain weight and minimum requirement">
+              <span className="ua-cp-launch-domain__cfg-stat">
+                <span className="ua-cp-launch-domain__cfg-stat-label">Weight</span>
+                <span className="ua-cp-launch-domain__cfg-stat-val">{domain.weight}%</span>
+              </span>
+              <span className="ua-cp-launch-domain__cfg-stat ua-cp-launch-domain__cfg-stat--min">
+                <span className="ua-cp-launch-domain__cfg-stat-label">Min req</span>
+                <span className="ua-cp-launch-domain__cfg-stat-val">{minReq}%</span>
+              </span>
+            </div>
+          ) : null}
         </div>
         <div className="ua-cp-launch-domain__subhead">
           <span className="ua-cp-launch-domain__meta">
@@ -434,16 +454,129 @@ function DomainAccordion({
   );
 }
 
-function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPoints, onAddPoint, onRemovePoint, onToast, canWrite = true }) {
+function autoPointTitle(text) {
+  const match = String(text || "").match(/^(.*) is below \d+% \(\d+(?:\.\d+)? \/ \d+\)$/);
+  return match ? match[1].trim() : "";
+}
+
+function isAutoFocusPoint(text) {
+  return / is below \d+% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
+}
+
+function focusPointKey(text) {
+  const legacy = autoPointTitle(text);
+  return String(legacy || text || "").trim().toLowerCase();
+}
+
+function normalizeFocusList(list) {
+  return [...(list || [])]
+    .map((row) => String(row || "").trim().toLowerCase())
+    .filter(Boolean)
+    .sort();
+}
+
+function sameFocusList(a, b) {
+  const left = normalizeFocusList(a);
+  const right = normalizeFocusList(b);
+  return left.length === right.length && left.every((row, index) => row === right[index]);
+}
+
+function buildVisibleFocusPoints({ autoPoints, hiddenFocusTitles, autoEdits, extraPoints }) {
+  const hidden = new Set(
+    hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean),
+  );
+  const visibleAuto = [];
+  autoPoints.forEach((text) => {
+    const key = focusPointKey(text);
+    const edited = key ? String(autoEdits[key] || "").trim() : "";
+    if (edited) {
+      visibleAuto.push(edited);
+      return;
+    }
+    if (key && hidden.has(key)) return;
+    visibleAuto.push(text);
+  });
+  return [...visibleAuto, ...extraPoints];
+}
+
+function FocusAreas({
+  autoPoints,
+  hiddenTitles = [],
+  autoEdits = {},
+  extraPoints,
+  onAddPoint,
+  onRemovePoint,
+  onEditPoint,
+  onEditAuto,
+  onHideAuto,
+  onSave,
+  onPush,
+  saving = false,
+  pushing = false,
+  pushPending = false,
+  pushHint = "",
+  onToast,
+  canWrite = true,
+}) {
   const [point, setPoint] = useState("");
-  const merged = [...autoPoints, ...extraPoints];
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [draft, setDraft] = useState("");
+  const hidden = new Set(hiddenTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean));
+  const visibleAuto = autoPoints.filter((text) => {
+    const key = focusPointKey(text);
+    if (key && autoEdits[key]) return true;
+    return !key || !hidden.has(key);
+  });
+  const merged = [...visibleAuto, ...extraPoints];
+
+  function shownText(item, index) {
+    if (index >= visibleAuto.length) return item;
+    const key = focusPointKey(item);
+    return (key && autoEdits[key]) || item;
+  }
 
   function addPoint() {
     const trimmed = point.trim();
     if (!trimmed) return;
     onAddPoint(trimmed);
     setPoint("");
-    onToast("Focus point added — save assessment to sync to the app");
+    onToast("Focus point added — save, then push to app when ready");
+  }
+
+  function startEdit(index) {
+    setEditingIndex(index);
+    setDraft(shownText(merged[index], index));
+  }
+
+  function cancelEdit() {
+    setEditingIndex(null);
+    setDraft("");
+  }
+
+  function commitEdit(index) {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      onToast("Enter a focus point, or remove it");
+      return;
+    }
+    const current = shownText(merged[index], index);
+    if (trimmed === current) {
+      cancelEdit();
+      return;
+    }
+    const duplicate = merged.some((item, itemIndex) => itemIndex !== index && shownText(item, itemIndex).toLowerCase() === trimmed.toLowerCase());
+    if (duplicate) {
+      onToast("That focus point is already in the list");
+      return;
+    }
+    if (index < visibleAuto.length) {
+      const title = visibleAuto[index];
+      onEditAuto(title, trimmed, visibleAuto[index]);
+    } else {
+      onEditPoint(index - visibleAuto.length, trimmed);
+    }
+    cancelEdit();
+    onToast("Focus point updated — save, then push to app when ready");
   }
 
   return (
@@ -453,41 +586,86 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
           <span className="ua-cp-launch-focus__icon" aria-hidden="true">◎</span>
           <span className="ua-cp-launch-focus__title">Areas to focus</span>
         </div>
-        <span className="ua-cp-launch-focus__sub">Domains scoring under 50% are flagged automatically. Add or remove points as needed.</span>
+        <span className="ua-cp-launch-focus__sub">When a domain scores under its minimum requirement, config focus points linked to that domain appear here. Add, edit, or remove points for this client, save your changes, then use Push to app when ready for the client.</span>
       </div>
       {merged.length ? (
         <div className="ua-cp-launch-focus__list">
-          {merged.map((item, index) => (
-            <div key={`${item}-${index}`} className="ua-cp-launch-focus__item">
+          {merged.map((item, index) => {
+            const text = shownText(item, index);
+            const editing = editingIndex === index;
+            return (
+            <div key={`${item}-${index}`} className={`ua-cp-launch-focus__item${editing ? " ua-cp-launch-focus__item--editing" : ""}`}>
               <span className="ua-cp-launch-focus__bullet" aria-hidden="true" />
-              <span className="ua-cp-launch-focus__text">{item}</span>
-              {canWrite && index >= autoPoints.length ? (
-                <button type="button" className="ua-cp-launch-focus__remove" onClick={() => onRemovePoint(index - autoPoints.length)} aria-label="Remove focus point">×</button>
+              {editing ? (
+                <input
+                  className="ua-cp-launch-focus__input"
+                  value={draft}
+                  autoFocus
+                  aria-label="Edit focus point"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitEdit(index);
+                    if (e.key === "Escape") cancelEdit();
+                  }}
+                />
+              ) : (
+                <span className="ua-cp-launch-focus__text">{text}</span>
+              )}
+              {canWrite ? (
+                <div className="ua-cp-launch-focus__tools">
+                  {editing ? (
+                    <button
+                      type="button"
+                      className="ua-cp-launch-focus__edit"
+                      onClick={() => commitEdit(index)}
+                      aria-label="Save focus point"
+                      title="Save"
+                    >
+                      ✓
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ua-cp-launch-focus__edit"
+                      onClick={() => startEdit(index)}
+                      aria-label={`Edit focus point: ${text}`}
+                      title="Edit"
+                    >
+                      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                        <path d="M11.1 1.9a1.35 1.35 0 0 1 1.9 1.9L5.4 11.4 2.7 12.1l.7-2.7 7.7-7.5Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                        <path d="M9.5 3.5 12.4 6.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ua-cp-launch-focus__remove"
+                    onClick={() => {
+                      if (editing) {
+                        cancelEdit();
+                        return;
+                      }
+                      if (index < visibleAuto.length) onHideAuto(visibleAuto[index]);
+                      else onRemovePoint(index - visibleAuto.length);
+                    }}
+                    aria-label={editing ? "Cancel edit" : "Remove focus point"}
+                    title={editing ? "Cancel" : "Remove"}
+                  >
+                    ×
+                  </button>
+                </div>
               ) : null}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="ua-cp-launch-focus__empty">No focus areas — all domains are above 50%.</div>
-      )}
-      {canWrite && catalog.length ? (
-        <div className="ua-cp-launch-focus__catalog">
-          {catalog.map((area) => {
-            const id = area.id || area._id;
-            const active = selectedFocus.includes(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`ua-cp-launch-focus__chip${active ? " ua-cp-launch-focus__chip--on" : ""}`}
-                onClick={() => onToggleFocus(id)}
-              >
-                {area.title || area.name || id}
-              </button>
             );
           })}
         </div>
-      ) : null}
+      ) : (
+        <div className="ua-cp-launch-focus__empty">
+          {autoPoints.length && hidden.size
+            ? "Flagged points were removed for this client."
+            : "No focus areas — all domains meet their minimum requirement."}
+        </div>
+      )}
       {canWrite ? (
       <div className="ua-cp-launch-focus__add">
         <input
@@ -499,6 +677,31 @@ function FocusAreas({ autoPoints, catalog, selectedFocus, onToggleFocus, extraPo
         />
         <button type="button" className="ua-cp-launch-focus__add-btn" onClick={addPoint}>Add point</button>
       </div>
+      ) : null}
+      {canWrite ? (
+        <>
+          {pushPending && pushHint ? (
+            <p className="ua-cp-launch-focus__push-hint">{pushHint}</p>
+          ) : null}
+          <div className="ua-cp-launch-focus__actions">
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+              disabled={saving || pushing}
+              onClick={onSave}
+            >
+              {saving ? "Saving…" : "Save focus areas"}
+            </button>
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+              disabled={saving || pushing || !onPush}
+              onClick={onPush}
+            >
+              {pushing ? "Pushing…" : "Push to app"}
+            </button>
+          </div>
+        </>
       ) : null}
     </div>
   );
@@ -559,7 +762,7 @@ function typeFromDoshaScores(scores) {
   const top = ranked[0];
   const second = ranked[1];
   if (!top || top.score <= 0) return { type: "", label: "", elements: "" };
-  // Figma: within 1 point of the runner-up → dual prakṛti (higher score named first)
+  // Figma: within 1 point of the runner-up → dual Prakriti (higher score named first)
   if (second && top.score - second.score <= 1) {
     const pair = [top.key, second.key].sort().join("_");
     let type = "";
@@ -598,8 +801,15 @@ function LifestyleTab({
   const [scoringRef, setScoringRef] = useState(null);
   const [selectedFocus, setSelectedFocus] = useState([]);
   const [extraPoints, setExtraPoints] = useState([]);
+  const [autoEdits, setAutoEdits] = useState({});
+  const [hiddenFocusTitles, setHiddenFocusTitles] = useState([]);
+  const [pointsToNote, setPointsToNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingFocus, setSavingFocus] = useState(false);
+  const [pushingFocus, setPushingFocus] = useState(false);
+  const [focusPushOpen, setFocusPushOpen] = useState(false);
   const hydratedFocusRef = useRef(null);
+  const hydratedNotesRef = useRef(null);
 
   const ratingOptions = config.ratings || [];
   const totals = useMemo(
@@ -631,20 +841,68 @@ function LifestyleTab({
     });
     setRatings(nextRatings);
     setReplies(nextReplies);
-    if (Array.isArray(latest?.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
   }, [latest]);
 
-  const autoPoints = totals.domainRows
-    .filter((d) => !d.general && d.max && (d.score / d.max) < 0.5)
-    .map((d) => `${d.title} is below 50% (${d.score} / ${d.max})`);
+  const autoFocus = useMemo(
+    () => buildLaunchAutoFocusFromCatalog(totals.domainRows, focusAreas),
+    [totals.domainRows, focusAreas],
+  );
+  const autoPoints = autoFocus.titles;
+
+  useEffect(() => {
+    const autoIds = autoFocus.ids || [];
+    const autoSet = new Set(autoIds);
+    const catalogIds = new Set(
+      (focusAreas || []).map((area) => area.id || area._id).filter(Boolean),
+    );
+    setSelectedFocus((prev) => {
+      const kept = prev.filter((id) => !catalogIds.has(id) || autoSet.has(id));
+      const next = new Set(kept);
+      let changed = kept.length !== prev.length;
+      autoIds.forEach((id) => {
+        if (!next.has(id)) {
+          next.add(id);
+          changed = true;
+        }
+      });
+      return changed ? [...next] : prev;
+    });
+  }, [autoFocus, focusAreas]);
 
   useEffect(() => {
     if (!latest?.id) return;
     if (hydratedFocusRef.current === latest.id) return;
     const saved = Array.isArray(latest.focusPoints) ? latest.focusPoints : [];
-    const isAutoPoint = (text) => / is below 50% \(\d+(?:\.\d+)? \/ \d+\)$/.test(String(text || ""));
-    setExtraPoints(saved.filter((point) => !isAutoPoint(point)));
+    const isAutoPoint = isAutoFocusPoint;
+    const hiddenSet = new Set(
+      (Array.isArray(latest.hiddenFocusTitles) ? latest.hiddenFocusTitles : [])
+        .map((title) => String(title || "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const catalogTitleKeys = new Set(
+      (focusAreas || [])
+        .map((area) => String(area.title || area.name || "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    setExtraPoints(saved.filter((point) => {
+      const key = String(point || "").trim().toLowerCase();
+      if (isAutoPoint(point)) {
+        return hiddenSet.has(autoPointTitle(point).toLowerCase());
+      }
+      if (catalogTitleKeys.has(key)) return false;
+      return true;
+    }));
+    setAutoEdits({});
+    setHiddenFocusTitles(Array.isArray(latest.hiddenFocusTitles) ? latest.hiddenFocusTitles : []);
+    if (Array.isArray(latest.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
     hydratedFocusRef.current = latest.id;
+  }, [latest, focusAreas]);
+
+  useEffect(() => {
+    if (!latest?.id) return;
+    if (hydratedNotesRef.current === latest.id) return;
+    setPointsToNote(String(latest.pointsToNote || ""));
+    hydratedNotesRef.current = latest.id;
   }, [latest]);
 
   function handleRate(questionId, ratingId) {
@@ -678,11 +936,19 @@ function LifestyleTab({
     const userId = user?.id;
     if (!userId) return;
     const today = new Date().toISOString().slice(0, 10);
+    const focusPoints = buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    });
     const payload = {
       assessmentDate: today,
       totalScore: Math.round(totals.overall),
+      pointsToNote,
       focusAreaIds: selectedFocus,
-      focusPoints: [...autoPoints, ...extraPoints],
+      focusPoints,
+      hiddenFocusTitles,
       answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
         questionId,
         ratingId: ratings[questionId] || "",
@@ -700,7 +966,11 @@ function LifestyleTab({
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
-      if (saved?.id) hydratedFocusRef.current = saved.id;
+      if (saved?.id) {
+        hydratedFocusRef.current = saved.id;
+        hydratedNotesRef.current = saved.id;
+        setPointsToNote(String(saved.pointsToNote || ""));
+      }
 
       const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
       const shouldCompleteLaunch =
@@ -735,6 +1005,140 @@ function LifestyleTab({
       setSaving(false);
     }
   }
+
+  function buildFocusAreasPayload() {
+    const hidden = new Set(hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()));
+    const editedTitles = [];
+    autoPoints.forEach((text) => {
+      const key = focusPointKey(text);
+      const edited = key ? String(autoEdits[key] || "").trim() : "";
+      if (edited) editedTitles.push(String(text || "").trim());
+    });
+    const nextHidden = [...hiddenFocusTitles];
+    editedTitles.forEach((title) => {
+      if (!nextHidden.some((row) => row.toLowerCase() === title.toLowerCase())) nextHidden.push(title);
+    });
+    const focusPoints = buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    });
+    return { focusPoints, nextHidden };
+  }
+
+  async function saveFocusAreas() {
+    const userId = user?.id;
+    if (!userId) return;
+    const target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then save areas to focus");
+      return;
+    }
+    try {
+      setSavingFocus(true);
+      const { focusPoints, nextHidden } = buildFocusAreasPayload();
+      const saved = await updateUserLaunchAssessment(userId, target.id, {
+        focusAreaIds: selectedFocus,
+        focusPoints,
+        hiddenFocusTitles: nextHidden,
+      });
+      setHiddenFocusTitles(nextHidden);
+      const next = [
+        saved,
+        ...(assessments || []).filter((row) => row.id !== saved.id),
+      ];
+      hydratedFocusRef.current = saved.id;
+      onAssessmentsChange(next);
+      onToast("Areas to focus saved — push to app when ready");
+    } catch (err) {
+      onToast(err?.message || "Failed to save areas to focus");
+    } finally {
+      setSavingFocus(false);
+    }
+  }
+
+  function requestPushFocusAreas() {
+    const target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then push areas to focus");
+      return;
+    }
+    setFocusPushOpen(true);
+  }
+
+  async function pushFocusAreasToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    let target = (assessments || [])[0];
+    if (!target?.id) {
+      onToast("Save the assessment first, then push areas to focus");
+      setFocusPushOpen(false);
+      return;
+    }
+    try {
+      setPushingFocus(true);
+      const { focusPoints, nextHidden } = buildFocusAreasPayload();
+      const savedDraft = Array.isArray(target.focusPoints) ? target.focusPoints : [];
+      if (!sameFocusList(focusPoints, savedDraft)) {
+        target = await updateUserLaunchAssessment(userId, target.id, {
+          focusAreaIds: selectedFocus,
+          focusPoints,
+          hiddenFocusTitles: nextHidden,
+        });
+        setHiddenFocusTitles(nextHidden);
+        const nextAfterSave = [
+          target,
+          ...(assessments || []).filter((row) => row.id !== target.id),
+        ];
+        hydratedFocusRef.current = target.id;
+        onAssessmentsChange(nextAfterSave);
+      }
+      const pushed = Array.isArray(target.pushedFocusPoints) ? target.pushedFocusPoints : [];
+      if (target.focusPointsPushedAt && sameFocusList(focusPoints, pushed)) {
+        onToast("Focus areas already match what's in the client app");
+        return;
+      }
+      const result = await publishUserLaunchFocusPoints(userId, target.id);
+      const saved = result?.assessment || target;
+      const next = [
+        saved,
+        ...(assessments || []).filter((row) => row.id !== saved.id),
+      ];
+      hydratedFocusRef.current = saved.id;
+      onAssessmentsChange(next);
+      onToast(result?.message || "Pushed focus areas to client app");
+    } catch (err) {
+      onToast(err?.message || "Failed to push focus areas to app");
+    } finally {
+      setPushingFocus(false);
+      setFocusPushOpen(false);
+    }
+  }
+
+  const clientFirstName = String(user?.name || "client").split(" ")[0];
+
+  const currentFocusDraft = useMemo(
+    () => buildVisibleFocusPoints({
+      autoPoints,
+      hiddenFocusTitles,
+      autoEdits,
+      extraPoints,
+    }),
+    [autoPoints, hiddenFocusTitles, autoEdits, extraPoints],
+  );
+  const savedFocusDraft = Array.isArray(latest?.focusPoints) ? latest.focusPoints : [];
+  const pushedFocusDraft = Array.isArray(latest?.pushedFocusPoints) ? latest.pushedFocusPoints : [];
+  const hasUnsavedFocus = !sameFocusList(currentFocusDraft, savedFocusDraft);
+  const hasUnpushedFocus = latest?.focusPointsPushedAt
+    ? !sameFocusList(savedFocusDraft, pushedFocusDraft)
+    : savedFocusDraft.length > 0 || currentFocusDraft.length > 0;
+  const focusPushPending = hasUnsavedFocus || hasUnpushedFocus;
+  const focusPushHint = hasUnsavedFocus
+    ? "You have unsaved focus area changes — save first, then push to the client app."
+    : hasUnpushedFocus
+      ? "Saved focus areas are not in the client app yet — push when ready."
+      : "";
 
   if (loading) {
     return (
@@ -812,6 +1216,21 @@ function LifestyleTab({
         />
       ))}
       </div>
+      {canWrite || pointsToNote ? (
+      <div className="ua-cp-launch-notes">
+        <label className="ua-cp-launch-notes__label" htmlFor="launch-points-to-note">Points to Note</label>
+        <textarea
+          id="launch-points-to-note"
+          className="ua-cp-launch-notes__input"
+          rows={4}
+          value={pointsToNote}
+          readOnly={!canWrite}
+          maxLength={2000}
+          placeholder="Write points to note for this assessment"
+          onChange={(e) => setPointsToNote(e.target.value)}
+        />
+      </div>
+      ) : null}
       {canWrite ? (
       <div className="ua-cp-launch-savebar">
         <div className="ua-cp-launch-savebar__copy">
@@ -830,16 +1249,61 @@ function LifestyleTab({
       ) : null}
       <FocusAreas
         autoPoints={autoPoints}
-        catalog={focusAreas}
-        selectedFocus={selectedFocus}
-        onToggleFocus={(id) => setSelectedFocus((prev) => (
-          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-        ))}
+        hiddenTitles={hiddenFocusTitles}
         extraPoints={extraPoints}
+        autoEdits={autoEdits}
         onAddPoint={(item) => setExtraPoints((list) => [...list, item])}
+        onEditPoint={(index, text) => setExtraPoints((list) => list.map((row, i) => (i === index ? text : row)))}
+        onEditAuto={(title, text, original) => {
+          const key = String(title || "").trim().toLowerCase();
+          if (!key) return;
+          setAutoEdits((prev) => {
+            const next = { ...prev };
+            if (!text || text === original) delete next[key];
+            else next[key] = text;
+            return next;
+          });
+        }}
         onRemovePoint={(index) => setExtraPoints((list) => list.filter((_, i) => i !== index))}
+        onHideAuto={(title) => {
+          const trimmed = String(title || "").trim();
+          if (!trimmed) return;
+          setHiddenFocusTitles((list) => (
+            list.some((row) => row.toLowerCase() === trimmed.toLowerCase()) ? list : [...list, trimmed]
+          ));
+          setAutoEdits((prev) => {
+            const key = trimmed.toLowerCase();
+            if (!prev[key]) return prev;
+            const next = { ...prev };
+            delete next[key];
+            return next;
+          });
+          onToast("Focus point removed — save, then push to app when ready");
+        }}
+        onSave={saveFocusAreas}
+        onPush={requestPushFocusAreas}
+        saving={savingFocus}
+        pushing={pushingFocus}
+        pushPending={focusPushPending}
+        pushHint={focusPushHint}
         onToast={onToast}
         canWrite={canWrite}
+      />
+      <ConfirmDialog
+        open={focusPushOpen}
+        tag="Areas to focus"
+        title={`Push focus areas to ${clientFirstName}'s app?`}
+        body={
+          currentFocusDraft.length
+            ? `This updates what ${clientFirstName} sees in the LAUNCH section (${currentFocusDraft.length} focus area${currentFocusDraft.length === 1 ? "" : "s"}). Unsaved edits are saved first.`
+            : `This clears focus areas in ${clientFirstName}'s LAUNCH section in the app. Unsaved edits are saved first.`
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pushingFocus ? "Pushing…" : "Push to app"}
+        onCancel={() => {
+          if (!pushingFocus) setFocusPushOpen(false);
+        }}
+        onConfirm={pushFocusAreasToApp}
       />
       {scoringRef ? (
         <ScoringReferenceModal
@@ -855,15 +1319,49 @@ function LifestyleTab({
   );
 }
 
+/** Config rows for one Prakriti result. Untyped legacy rows stay on Vata, matching Configs. */
+function catalogTitlesForType(rows, type) {
+  const wanted = String(type || "").trim().toLowerCase();
+  if (!wanted) return [];
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row) => row && row.title && row.status !== "inactive")
+    .filter((row) => {
+      const rowType = String(row.prakrutiType || "").trim().toLowerCase();
+      if (!rowType) return wanted === "vata";
+      return rowType === wanted;
+    })
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((row) => row.title)
+    .filter(Boolean);
+}
+
+function GuideTextField({ value, onChange, ariaLabel }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className="ua-cp-launch-guide__input"
+      value={value}
+      onChange={onChange}
+      aria-label={ariaLabel}
+    />
+  );
+}
+
 function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
   const [types, setTypes] = useState([]);
   const [thingsToAvoid, setThingsToAvoid] = useState([]);
-  const [catalogRecommendations, setCatalogRecommendations] = useState([]);
   const [assessment, setAssessment] = useState(null);
   const [historyRows, setHistoryRows] = useState([]);
-  const [selectedType, setSelectedType] = useState("");
   const [recItems, setRecItems] = useState([]);
   const [avoidItems, setAvoidItems] = useState([]);
   const [checked, setChecked] = useState({});
@@ -871,7 +1369,9 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [saving, setSaving] = useState(false);
   const [savingAvoid, setSavingAvoid] = useState(false);
   const [forceNew, setForceNew] = useState(false);
-  const [listsTouched, setListsTouched] = useState(false);
+  const listsTouchedRef = useRef(false);
+  const listsTypeRef = useRef("");
+  const catalogRequestRef = useRef(0);
 
   useEffect(() => {
     const userId = user?.id;
@@ -893,23 +1393,9 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         setTypes(data?.prakrutiTypes || []);
         setAssessment(data?.assessment || null);
         setHistoryRows(Array.isArray(data?.history) ? data.history : []);
-        const type = data?.assessment?.prakrutiType || "";
-        setSelectedType(type);
-        const savedRec = data?.assessment?.recommendationTexts
-          || data?.assessment?.recommendationTitles
-          || [];
-        const savedAvoid = data?.assessment?.avoidTexts
-          || data?.assessment?.thingsToAvoidTitles
-          || [];
-        setRecItems(Array.isArray(savedRec) ? savedRec : []);
-        setAvoidItems(Array.isArray(savedAvoid) && savedAvoid.length
-          ? savedAvoid
-          : (Array.isArray(avoid) ? avoid.map((a) => a.title).filter(Boolean) : []));
-        setListsTouched(Boolean(
-          (Array.isArray(data?.assessment?.recommendationTexts) && data.assessment.recommendationTexts.length)
-          || (Array.isArray(data?.assessment?.avoidTexts) && data.assessment.avoidTexts.length)
-          || (Array.isArray(savedRec) && savedRec.length)
-        ));
+        listsTouchedRef.current = false;
+        listsTypeRef.current = "";
+        catalogRequestRef.current += 1;
         const selectedIds = data?.assessment?.selectedQuestionIds || [];
         if (Array.isArray(selectedIds) && selectedIds.length) {
           const nextChecked = {};
@@ -928,26 +1414,6 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       });
     return () => { cancelled = true; };
   }, [user?.id]);
-
-  useEffect(() => {
-    const userId = user?.id;
-    if (!userId || !selectedType) {
-      setCatalogRecommendations([]);
-      return undefined;
-    }
-    let cancelled = false;
-    fetchPrakrutiRecommendations(userId, selectedType)
-      .then((rows) => {
-        if (cancelled) return;
-        const titles = (rows || []).map((r) => r.title).filter(Boolean);
-        setCatalogRecommendations(titles);
-        if (!listsTouched) setRecItems(titles);
-      })
-      .catch(() => {
-        if (!cancelled) setCatalogRecommendations([]);
-      });
-    return () => { cancelled = true; };
-  }, [user?.id, selectedType, listsTouched]);
 
   const doshas = useMemo(() => {
     return DOSHA_KEYS.map((id) => {
@@ -976,16 +1442,55 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   };
 
   const inferred = typeFromDoshaScores(scores);
+  const resultType = inferred.type;
   const typeLabel = inferred.label
-    || types.find((t) => t.value === (selectedType || inferred.type))?.label
-    || DOSHA_META[selectedType || inferred.type]?.name
-    || selectedType
-    || inferred.type
+    || types.find((t) => t.value === resultType)?.label
+    || DOSHA_META[resultType]?.name
+    || resultType
     || "—";
   const typeElements = inferred.elements
-    || PRAKRITI_ELEMENTS[selectedType || inferred.type]
-    || DOSHA_META[selectedType || inferred.type]?.elements
+    || PRAKRITI_ELEMENTS[resultType]
+    || DOSHA_META[resultType]?.elements
     || "";
+
+  function markListsEdited() {
+    listsTouchedRef.current = true;
+    listsTypeRef.current = resultType;
+  }
+
+  useEffect(() => {
+    if (loading) return undefined;
+    const userId = user?.id;
+    if (!userId || !resultType) {
+      if (!listsTouchedRef.current) {
+        setRecItems([]);
+        setAvoidItems([]);
+      }
+      listsTypeRef.current = "";
+      return undefined;
+    }
+    if (listsTouchedRef.current && listsTypeRef.current === resultType) return undefined;
+
+    const avoidTitles = catalogTitlesForType(thingsToAvoid, resultType);
+    const requestId = catalogRequestRef.current + 1;
+    catalogRequestRef.current = requestId;
+    listsTypeRef.current = resultType;
+    listsTouchedRef.current = false;
+    setAvoidItems(avoidTitles);
+    setRecItems([]);
+
+    let cancelled = false;
+    fetchPrakrutiRecommendations(userId, resultType)
+      .then((rows) => {
+        if (cancelled || requestId !== catalogRequestRef.current || listsTouchedRef.current) return;
+        setRecItems((rows || []).map((row) => row.title).filter(Boolean));
+      })
+      .catch(() => {
+        if (cancelled || requestId !== catalogRequestRef.current || listsTouchedRef.current) return;
+        setRecItems([]);
+      });
+    return () => { cancelled = true; };
+  }, [loading, user?.id, resultType, thingsToAvoid]);
 
   const history = [...historyRows]
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
@@ -1008,18 +1513,10 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     setChecked((prev) => ({ ...prev, [statementId]: !prev[statementId] }));
   }
 
-  useEffect(() => {
-    const next = typeFromDoshaScores(scores);
-    if (next.type !== selectedType) {
-      setSelectedType(next.type || "");
-      if (!listsTouched) setRecItems([]);
-    }
-  }, [scores.vata, scores.pitta, scores.kapha, selectedType, listsTouched]);
-
   async function savePrakriti() {
     const userId = user?.id;
     if (!userId) return;
-    const prakrutiType = selectedType || inferred.type;
+    const prakrutiType = resultType;
     if (!prakrutiType) {
       onToast("Tick statements to determine Prakriti type first");
       return;
@@ -1039,7 +1536,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
       setForceNew(false);
-      setListsTouched(true);
+      markListsEdited();
       onToast("Prakriti assessment saved");
     } catch (err) {
       onToast(err?.message || "Failed to save Prakriti assessment");
@@ -1051,7 +1548,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   async function saveAvoidSection() {
     const userId = user?.id;
     if (!userId) return;
-    const prakrutiType = assessment?.prakrutiType || selectedType || inferred.type;
+    const prakrutiType = resultType;
     if (!prakrutiType) {
       onToast("Save the Prakriti assessment first");
       return;
@@ -1072,7 +1569,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       });
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      setListsTouched(true);
+      markListsEdited();
       onToast("Things to avoid saved");
     } catch (err) {
       onToast(err?.message || "Failed to save things to avoid");
@@ -1091,10 +1588,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   }
 
   const hasStatements = doshas.some((d) => d.statements.length > 0);
-  // Show guidance only after a saved assessment (hide during a fresh re-run until save).
-  const assessmentComplete = Boolean(
-    assessment?.prakrutiType || assessment?.prakrutiTypeLabel || assessment?.id,
-  ) && !forceNew;
+  const showGuidance = Boolean(resultType);
 
   return (
     <div className="ua-cp-launch-prakriti-body">
@@ -1117,10 +1611,11 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
           onToggleHistory={() => setHistoryOpen((o) => !o)}
           onRerun={canWrite ? () => {
             setChecked({});
-            setSelectedType("");
-            setRecItems(catalogRecommendations.length ? catalogRecommendations : []);
-            setAvoidItems(thingsToAvoid.map((a) => a.title).filter(Boolean));
-            setListsTouched(false);
+            listsTouchedRef.current = false;
+            listsTypeRef.current = "";
+            catalogRequestRef.current += 1;
+            setRecItems([]);
+            setAvoidItems([]);
             setForceNew(true);
             setHistoryOpen(true);
             onToast("New Prakriti attempt started · previous result stays in history");
@@ -1166,7 +1661,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
           <button
             type="button"
             className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-            disabled={saving || !(selectedType || inferred.type)}
+            disabled={saving || !resultType}
             onClick={savePrakriti}
           >
             {saving ? "Saving…" : "Save Prakriti"}
@@ -1174,13 +1669,13 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         </div>
       ) : null}
 
-      {assessmentComplete ? (
+      {showGuidance ? (
       <div className="ua-cp-launch-guide-grid">
         <div className="ua-cp-launch-guide ua-cp-launch-guide--rec">
           <div className="ua-cp-launch-guide__head">
             <div>
               <strong>Recommendations</strong>
-              <span>Diet &amp; lifestyle guidance suited to this Prakṛti.</span>
+              <span>Diet &amp; lifestyle guidance suited to this Prakriti.</span>
             </div>
             {typeLabel && typeLabel !== "—" ? (
               <span className="ua-cp-launch-guide__tag">For {typeLabel}</span>
@@ -1191,15 +1686,14 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
               <div key={`rec-${index}`} className="ua-cp-launch-guide__item">
                 <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--rec" />
                 {canWrite ? (
-                  <input
-                    className="ua-cp-launch-guide__input"
+                  <GuideTextField
                     value={text}
                     onChange={(e) => {
-                      setListsTouched(true);
+                      markListsEdited();
                       const value = e.target.value;
                       setRecItems((prev) => prev.map((row, i) => (i === index ? value : row)));
                     }}
-                    aria-label={`Recommendation ${index + 1}`}
+                    ariaLabel={`Recommendation ${index + 1}`}
                   />
                 ) : (
                   <span className="ua-cp-launch-guide__text">{text}</span>
@@ -1210,7 +1704,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
                     className="ua-cp-launch-guide__remove"
                     title="Remove"
                     onClick={() => {
-                      setListsTouched(true);
+                      markListsEdited();
                       setRecItems((prev) => prev.filter((_, i) => i !== index));
                     }}
                   >
@@ -1219,7 +1713,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
                 ) : null}
               </div>
             )) : (
-              <p className="ua-cp-launch-history__foot">No recommendations for this type yet.</p>
+              <p className="ua-cp-launch-history__foot">No recommendations for this Prakriti in Configs yet.</p>
             )}
           </div>
           {canWrite ? (
@@ -1227,7 +1721,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
               type="button"
               className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
               onClick={() => {
-                setListsTouched(true);
+                markListsEdited();
                 setRecItems((prev) => [...prev, ""]);
               }}
             >
@@ -1240,23 +1734,25 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
           <div className="ua-cp-launch-guide__head">
             <div>
               <strong>Things to avoid</strong>
-              <span>Foods &amp; habits that aggravate this Prakṛti.</span>
+              <span>Foods &amp; habits that aggravate this Prakriti.</span>
             </div>
+            {typeLabel && typeLabel !== "—" ? (
+              <span className="ua-cp-launch-guide__tag ua-cp-launch-guide__tag--avoid">For {typeLabel}</span>
+            ) : null}
           </div>
           <div className="ua-cp-launch-guide__list">
             {avoidItems.length ? avoidItems.map((text, index) => (
               <div key={`avoid-${index}`} className="ua-cp-launch-guide__item">
                 <span className="ua-cp-launch-guide__bullet ua-cp-launch-guide__bullet--avoid" />
                 {canWrite ? (
-                  <input
-                    className="ua-cp-launch-guide__input"
+                  <GuideTextField
                     value={text}
                     onChange={(e) => {
-                      setListsTouched(true);
+                      markListsEdited();
                       const value = e.target.value;
                       setAvoidItems((prev) => prev.map((row, i) => (i === index ? value : row)));
                     }}
-                    aria-label={`Thing to avoid ${index + 1}`}
+                    ariaLabel={`Thing to avoid ${index + 1}`}
                   />
                 ) : (
                   <span className="ua-cp-launch-guide__text">{text}</span>
@@ -1267,7 +1763,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
                     className="ua-cp-launch-guide__remove"
                     title="Remove"
                     onClick={() => {
-                      setListsTouched(true);
+                      markListsEdited();
                       setAvoidItems((prev) => prev.filter((_, i) => i !== index));
                     }}
                   >
@@ -1276,7 +1772,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
                 ) : null}
               </div>
             )) : (
-              <p className="ua-cp-launch-history__foot">No things-to-avoid items yet.</p>
+              <p className="ua-cp-launch-history__foot">No things to avoid for this Prakriti in Configs yet.</p>
             )}
           </div>
           {canWrite ? (
@@ -1285,7 +1781,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
                 type="button"
                 className="ua-cp-launch-guide__add ua-cp-launch-guide__add--avoid"
                 onClick={() => {
-                  setListsTouched(true);
+                  markListsEdited();
                   setAvoidItems((prev) => [...prev, ""]);
                 }}
               >
@@ -1554,6 +2050,7 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
           user={user}
           title="Schedule LAUNCH meeting"
           defaultNote="We will walk through your LAUNCH results together."
+          showClientNote={false}
           defaultDuration={60}
           existingMeeting={launchMeeting}
           onClose={() => setScheduleOpen(false)}

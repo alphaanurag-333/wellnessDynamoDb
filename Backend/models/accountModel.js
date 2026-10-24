@@ -33,6 +33,7 @@ const PARENT_MEMBERSHIP_ROLE_KEYS = new Set(["assistant_wellness_coach", "traine
 
 /** Top-level attrs that must never be stored as null on a GSI key (sparse REMOVE). */
 const SPARSE_GSI_ATTRS = new Set([
+  "email",
   "specializationId",
   "parentAccountId",
   "approvalStatus",
@@ -122,6 +123,16 @@ function stripNullGsiKeys(item) {
   return item;
 }
 
+function normalizeOptionalPhone(value) {
+  if (value == null || value === "") return null;
+  return normalizePhone(value) || null;
+}
+
+function normalizeOptionalCountryCode(value) {
+  if (value == null || value === "") return null;
+  return normalizeCountryCode(value);
+}
+
 function normalizeAccountDateOfBirth(value) {
   if (value === undefined || value === null || value === "") return null;
   const d = value instanceof Date ? value : new Date(value);
@@ -199,6 +210,8 @@ function buildAccountItem(input, { id, now } = {}) {
     phoneCountryCode,
     phone: phone || null,
     phoneKey: phoneKey || null,
+    mobileCountryCode: normalizeOptionalCountryCode(input.mobileCountryCode),
+    mobilePhone: normalizeOptionalPhone(input.mobilePhone),
     profileImage:
       input.profileImage != null
         ? normalizeNullableMediaField(input.profileImage, "profileImage")
@@ -269,6 +282,11 @@ function toPublicAccount(account) {
       .map((m) => normalizeRoleKey(m?.roleKey))
       .filter(Boolean);
   }
+  // `phone` is the primary number: staff log in with it and receive OTPs on WhatsApp.
+  pub.whatsappPhone = account.phone || null;
+  pub.whatsappCountryCode = account.phone ? account.phoneCountryCode || null : null;
+  pub.mobilePhone = account.mobilePhone || null;
+  pub.mobileCountryCode = account.mobilePhone ? account.mobileCountryCode || null : null;
   pub.aiEnabled = normalizeVisibleFlag(account.aiEnabled, true);
   pub.totpRequired = Boolean(account.totpRequired);
   pub.totpConfigured = Boolean(account.totpSecret);
@@ -293,6 +311,8 @@ function sanitizeUpdateField(key, value) {
   if (key === "email") return normalizeEmail(value);
   if (key === "phone") return normalizePhone(value);
   if (key === "phoneCountryCode") return normalizeCountryCode(value);
+  if (key === "mobilePhone") return normalizeOptionalPhone(value);
+  if (key === "mobileCountryCode") return normalizeOptionalCountryCode(value);
   if (key === "status") return normalizeStatus(value);
   if (key === "approvalStatus") {
     if (value == null || value === "") return null;
@@ -383,7 +403,7 @@ async function createAccount(input) {
   }
 
   if (!item.name) throw new Error("name is required");
-  if (!item.email) throw new Error("email is required");
+  if (!item.email && !item.phoneKey) throw new Error("email or phone is required");
 
   await docClient.send(
     new PutCommand({

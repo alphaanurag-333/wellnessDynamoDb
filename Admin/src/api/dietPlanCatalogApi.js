@@ -129,20 +129,50 @@ export function mapCatalogPlan(row) {
   };
 }
 
+export function mapDietSectionRow(row, index = 0) {
+  if (!row) return null;
+  return {
+    id: String(row.id || `row-${index}`),
+    label: String(row.label || row.title || "").trim() || `Option ${index + 1}`,
+    description: String(row.description || row.foods || "").trim() || "—",
+    quantity: String(row.quantity || row.notes || "").trim() || "—",
+  };
+}
+
+export function mapPersonalisedSections(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((section, sIdx) => ({
+    id: String(section.id || `section-${sIdx}`),
+    title: String(section.title || "").trim() || "New section",
+    rows: (Array.isArray(section.rows) ? section.rows : [])
+      .map(mapDietSectionRow)
+      .filter(Boolean),
+  }));
+}
+
 export function mapDietAssignment(row) {
   if (!row) return null;
   const id = row.id || row._id;
   if (!id) return null;
+  const personalisedSections = mapPersonalisedSections(row.personalisedSections);
   return {
     id: String(id),
     userId: String(row.userId || ""),
     startDate: String(row.startDate || "").trim(),
     note: String(row.note || "").trim(),
     plans: (Array.isArray(row.plans) ? row.plans : []).map(mapCatalogPlan).filter(Boolean),
+    personalisedSections,
     pdfUrl: row.pdfUrl || "",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function todayIsoDate() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
 export async function listDietPlanCatalog({ page = 1, limit = 100, status = "active", search } = {}) {
@@ -171,11 +201,51 @@ export async function listUserDietPlanAssignments(userId) {
       headers: authHeader(tokenOrStored()),
     });
     const assignments = (Array.isArray(data.assignments) ? data.assignments : []).map(mapDietAssignment).filter(Boolean);
+    const recommended = mapDietAssignment(data.recommended) || assignments[0] || null;
+    const personalisedSections = mapPersonalisedSections(
+      Array.isArray(data.personalisedSections) && data.personalisedSections.length
+        ? data.personalisedSections
+        : recommended?.personalisedSections,
+    );
     return {
       assignments,
-      recommended: mapDietAssignment(data.recommended) || assignments[0] || null,
+      recommended,
       history: (Array.isArray(data.history) ? data.history : assignments.slice(1)).map(mapDietAssignment).filter(Boolean),
+      personalisedSections,
     };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function saveUserPersonalisedDietPlan(userId, { sections, assignmentId, startDate, note } = {}) {
+  const payload = {
+    personalised: true,
+    sections: mapPersonalisedSections(sections),
+    startDate: startDate || todayIsoDate(),
+    note: note || undefined,
+  };
+  try {
+    if (assignmentId) {
+      const { data } = await api.patch(
+        `${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}`,
+        payload,
+        { headers: authHeader(tokenOrStored()) },
+      );
+      const assignment = mapDietAssignment(data.assignment);
+      if (assignment && data.personalisedSections) {
+        assignment.personalisedSections = mapPersonalisedSections(data.personalisedSections);
+      }
+      return assignment;
+    }
+    const { data } = await api.post(assignmentsBase(userId), payload, {
+      headers: authHeader(tokenOrStored()),
+    });
+    const assignment = mapDietAssignment(data.assignment);
+    if (assignment && data.personalisedSections) {
+      assignment.personalisedSections = mapPersonalisedSections(data.personalisedSections);
+    }
+    return assignment;
   } catch (error) {
     normalizeApiError(error);
   }

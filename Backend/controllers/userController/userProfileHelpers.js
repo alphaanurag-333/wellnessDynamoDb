@@ -21,7 +21,8 @@ const {
 } = require("../../models/userProgramModel");
 const {
   parseHealthConcernOtherFromBody,
-  resolveHealthConcernForConsultancy,
+  readHealthConcernListBody,
+  resolveHealthConcernList,
   isOtherHealthConcernTitle,
   MAX_HEALTH_CONCERN_OTHER_LENGTH,
 } = require("../../services/consultancyHealthConcern");
@@ -36,6 +37,9 @@ const { toPublicIntroVideo } = require("../../utils/coachContent");
 const {
   listSubscriptionsByUserId,
 } = require("../../models/energyExchangeSubscriptionModel");
+const { labReportSubmissionState } = require("../../utils/labReportSubmission");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
+const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
 const {
   getUserById,
   getUserByEmail,
@@ -55,6 +59,7 @@ const {
   isPresentablePicsEnabled,
   USER_ALLOWED_STATUS,
   USER_ALLOWED_GENDERS,
+  normalizeWellnessJourneyFor,
 } = require("../../models/userModel");
 const { ensureEntityReferralCode } = require("../../models/referralCodeModel");
 
@@ -225,7 +230,7 @@ function parseUserFields(body, { requirePassword = false, requireDob = false } =
   return { fields, password };
 }
 
-async function enrichUser(user, { ensureReferral = true } = {}) {
+async function enrichUser(user, { ensureReferral = true, includeCoachMeetings = false } = {}) {
   if (!user) return null;
 
   let source = user;
@@ -248,28 +253,35 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
   }
 
   const pub = toPublicUser(source);
-  const concernId = pub.primaryHealthConcern;
-  if (concernId && typeof concernId === "string") {
+  const storedConcernIds = Array.isArray(pub.healthConcerns)
+    ? pub.healthConcerns.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const primaryConcernId =
+    typeof pub.primaryHealthConcern === "string" ? pub.primaryHealthConcern.trim() : "";
+  const concernIds = storedConcernIds.length
+    ? storedConcernIds
+    : primaryConcernId
+      ? [primaryConcernId]
+      : [];
+  const customTitle = String(pub.primaryHealthConcernOther || "").trim();
+  const expandedConcerns = [];
+  for (const concernId of concernIds) {
     const concern = await getHealthConcernById(concernId);
-    if (concern) {
-      const isOther =
-        String(concern.title || "")
-          .trim()
-          .toLowerCase() === "other";
-      const customTitle =
-        isOther && pub.primaryHealthConcernOther
-          ? String(pub.primaryHealthConcernOther).trim()
-          : "";
-      pub.primaryHealthConcern = {
-        _id: concern._id || concern.id,
-        id: concern.id,
-        title: customTitle || concern.title || "",
-        description: concern.description || "",
-        icon: concern.icon || "",
-        status: concern.status || "",
-        recommendedCatalogProgramId: concern.recommendedCatalogProgramId || null,
-      };
-    }
+    if (!concern) continue;
+    const isOther = isOtherHealthConcernTitle(concern.title);
+    expandedConcerns.push({
+      _id: concern._id || concern.id,
+      id: concern.id,
+      title: isOther && customTitle ? customTitle : concern.title || "",
+      description: concern.description || "",
+      icon: concern.icon || "",
+      status: concern.status || "",
+      recommendedCatalogProgramId: concern.recommendedCatalogProgramId || null,
+    });
+  }
+  pub.healthConcerns = expandedConcerns;
+  if (expandedConcerns.length) {
+    pub.primaryHealthConcern = expandedConcerns[0];
   }
 
   if (pub.assignedProgramId) {
@@ -361,6 +373,38 @@ async function enrichUser(user, { ensureReferral = true } = {}) {
     pub.subscriptionDaysLeft = maxDaysLeft > 0 ? maxDaysLeft : 0;
   } catch (err) {
     pub.subscriptionDaysLeft = 0;
+  }
+
+  let submissionUser = source;
+  if (source.labReportSubmissionLocked !== true && source.id) {
+    try {
+      const reports = await listUserLabReportsByUserId(source.id);
+      const hasReports = reports.length > 0;
+      if (hasReports && source.labReportSubmissionLocked !== false) {
+        try {
+          submissionUser = await updateUser(source.id, { labReportSubmissionLocked: true });
+        } catch {
+          submissionUser = { ...source, labReportSubmissionLocked: true };
+        }
+        Object.assign(pub, labReportSubmissionState(submissionUser, { hasReports: true }));
+      } else {
+        Object.assign(pub, labReportSubmissionState(source, { hasReports }));
+      }
+    } catch {
+      Object.assign(pub, labReportSubmissionState(source));
+    }
+  } else {
+    Object.assign(pub, labReportSubmissionState(source));
+  }
+
+  if (includeCoachMeetings && pub.id) {
+    try {
+      const snapshot = await loadCoachMeetingSnapshot(pub.id, source);
+      pub.lastReviewedAt = snapshot.lastReviewedAt;
+      pub.coachMeetings = snapshot.meetings;
+    } catch (err) {
+      console.error("[enrichUser] coach meetings failed", err.message);
+    }
   }
 
   return pub;
@@ -520,30 +564,36 @@ async function buildUserUpdatesFromBody(body, current, { allowStatus = true, req
   if (body.pincode !== undefined) {
     updates.pincode = String(body.pincode || "").trim() || null;
   }
-  if (body.primaryHealthConcern !== undefined) {
-    const phc = String(body.primaryHealthConcern || "").trim() || null;
-    if (phc) {
-      try {
-        const healthConcernOther = parseHealthConcernOtherFromBody(body);
-        const resolved = await resolveHealthConcernForConsultancy(phc, {
-          healthConcernOther,
-        });
-        updates.primaryHealthConcern = resolved.healthConcernId;
-        const concern = await getHealthConcernById(resolved.healthConcernId);
-        updates.primaryHealthConcernOther = isOtherHealthConcernTitle(
-          concern?.title,
-        )
-          ? String(healthConcernOther || "").trim() || null
-          : null;
-      } catch (err) {
-        if (err?.name === "ValidationError") {
-          throw new AppError(err.message, 400);
-        }
-        throw err;
+  if (
+    body.wellnessJourneyFor !== undefined ||
+    body.wellness_journey_for !== undefined ||
+    body.wellnessJourney !== undefined ||
+    body.wellness_journey !== undefined
+  ) {
+    updates.wellnessJourneyFor = normalizeWellnessJourneyFor(
+      body.wellnessJourneyFor ??
+        body.wellness_journey_for ??
+        body.wellnessJourney ??
+        body.wellness_journey
+    );
+  }
+  const healthConcernInput = readHealthConcernListBody(body);
+  if (healthConcernInput !== undefined) {
+    try {
+      const healthConcernOther = parseHealthConcernOtherFromBody(body);
+      const resolved = await resolveHealthConcernList(healthConcernInput, {
+        healthConcernOther,
+      });
+      updates.healthConcerns = resolved.healthConcernIds.length
+        ? resolved.healthConcernIds
+        : null;
+      updates.primaryHealthConcern = resolved.primaryHealthConcern;
+      updates.primaryHealthConcernOther = resolved.primaryHealthConcernOther;
+    } catch (err) {
+      if (err?.name === "ValidationError") {
+        throw new AppError(err.message, 400);
       }
-    } else {
-      updates.primaryHealthConcern = null;
-      updates.primaryHealthConcernOther = null;
+      throw err;
     }
   } else if (
     body.primaryHealthConcernOther !== undefined ||

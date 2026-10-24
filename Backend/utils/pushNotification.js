@@ -12,11 +12,14 @@ function chunkArray(items, size) {
 }
 
 function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
+  const pushTitle = String(title || "IR Wellness").trim() || "IR Wellness";
+  const pushBody = String(body || "").trim();
+
   const message = {
     tokens,
     notification: {
-      title: String(title || "IR Wellness").trim() || "IR Wellness",
-      body: String(body || "").trim(),
+      title: pushTitle,
+      body: pushBody,
     },
     android: {
       priority: "high",
@@ -24,11 +27,19 @@ function buildMulticastMessage({ tokens, title, body, imageUrl, data }) {
         channelId: DEFAULT_ANDROID_CHANNEL_ID,
         sound: "default",
         defaultSound: true,
+        priority: "HIGH",
       },
     },
     apns: {
+      headers: {
+        "apns-priority": "10",
+      },
       payload: {
         aps: {
+          alert: {
+            title: pushTitle,
+            body: pushBody,
+          },
           sound: "default",
         },
       },
@@ -61,15 +72,32 @@ async function sendPushToTokens(tokens, payload) {
   let successCount = 0;
   let failureCount = 0;
 
+  const errors = [];
+
   for (const batch of chunkArray(uniqueTokens, FCM_BATCH_SIZE)) {
     const response = await messaging.sendEachForMulticast(
       buildMulticastMessage({ tokens: batch, ...payload })
     );
     successCount += response.successCount;
     failureCount += response.failureCount;
+    for (const row of response.responses || []) {
+      if (row.success || !row.error) continue;
+      errors.push({
+        code: row.error.code || "unknown",
+        message: row.error.message || "FCM send failed",
+      });
+    }
   }
 
-  return { successCount, failureCount, skipped: false, total: uniqueTokens.length };
+  const primaryError = errors[0] || null;
+  return {
+    successCount,
+    failureCount,
+    skipped: false,
+    total: uniqueTokens.length,
+    errors,
+    primaryError,
+  };
 }
 
 module.exports = {

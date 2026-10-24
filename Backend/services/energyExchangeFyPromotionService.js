@@ -1,7 +1,11 @@
 const subscriptionModel = require("../models/energyExchangeSubscriptionModel");
 const userModel = require("../models/userModel");
 const userConversionModel = require("../models/userConversionModel");
-const { isMaintenanceTier } = require("../models/userAssignmentLogic");
+const {
+  isEagleClientCategory,
+  isHealTier,
+  isMaintenanceTier,
+} = require("../models/userAssignmentLogic");
 
 /**
  * Promote energy-exchange subscriptions across the FY boundary.
@@ -11,8 +15,8 @@ const { isMaintenanceTier } = require("../models/userAssignmentLogic");
  *    it to `active` with `activatedAt=now`. (We don't shift `startsAt`/`endsAt`
  *    on the queued row — those were precomputed at purchase to follow the next
  *    FY boundaries.)
- *  - If a Maintenance user still has no active/queued coverage after that,
- *    convert them to Seek (free) — subscription expiry ends paid membership.
+ *  - If a Heal, Maintenance, or Eagle user still has no active/queued coverage
+ *    after that, convert them to Seek (free). Subscription expiry ends paid membership.
  */
 async function runEnergyExchangeFyPromotion(now = new Date()) {
   const nowIso = (now instanceof Date ? now : new Date(now)).toISOString();
@@ -72,6 +76,7 @@ async function runEnergyExchangeFyPromotion(now = new Date()) {
     } catch (err) {
       console.error("[fy-promotion] failed Seek conversion for user", userId, err.message);
       result.errors += 1;
+
     }
   }
 
@@ -90,22 +95,28 @@ function subscriptionStillCovers(sub, nowMs) {
   return true;
 }
 
+function isPaidMembership(user) {
+  if (!user) return false;
+  if (isEagleClientCategory(user.clientCategory)) return true;
+  return isHealTier(user.userTier) || isMaintenanceTier(user.userTier);
+}
+
 /**
- * After expiry (+ optional queued activation), Maintenance users with no remaining
+ * After expiry (+ optional queued activation), paid members with no remaining
  * FY coverage drop to Seek.
  */
 async function maybeConvertExpiredUserToSeek(userId, nowMs = Date.now()) {
   const user = await userModel.getUserById(userId);
-  if (!user || !isMaintenanceTier(user.userTier)) return false;
+  if (!isPaidMembership(user)) return false;
 
   const { items = [] } = await subscriptionModel.listSubscriptionsByUserId(userId, {
     page: 1,
-    limit: 50,
+    limit: 200,
   });
   const hasCoverage = items.some((sub) => subscriptionStillCovers(sub, nowMs));
   if (hasCoverage) return false;
 
-  await userConversionModel.convertMaintenanceToSeek(userId);
+  await userConversionModel.convertToSeek(userId);
   return true;
 }
 

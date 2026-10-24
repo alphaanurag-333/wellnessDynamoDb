@@ -69,7 +69,7 @@ export function PillTabs({ tabs, active, onChange, size = "sm" }) {
   return (
     <div  className={`ua-pill-tabs ua-pill-tabs--${size}`} role="tablist">
       {tabs.map((tab) => (
-        <button style={{height:"28px"}}
+        <button
           key={tab.id}
           type="button"
           role="tab"

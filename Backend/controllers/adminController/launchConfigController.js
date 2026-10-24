@@ -27,8 +27,11 @@ const {
   listAllDomainsUnpaged,
   normalizeStatus: normalizeDomainStatus,
   normalizeWeight,
+  normalizeMinRequirement,
   normalizeBool,
   WEIGHT_MAX,
+  MIN_REQUIREMENT_MIN,
+  MIN_REQUIREMENT_MAX,
 } = require("../../models/launchDomainModel");
 const {
   createLaunchDomainQuestion,
@@ -106,6 +109,21 @@ function validateWeight(value, { required = false } = {}) {
     throw new AppError(`weight must be between 0 and ${WEIGHT_MAX}`, 400);
   }
   return normalizeWeight(n);
+}
+
+function validateMinRequirement(value, { required = false } = {}) {
+  if (value === undefined || value === null || value === "") {
+    if (required) throw new AppError("minRequirement is required", 400);
+    return undefined;
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < MIN_REQUIREMENT_MIN || n > MIN_REQUIREMENT_MAX) {
+    throw new AppError(
+      `minRequirement must be between ${MIN_REQUIREMENT_MIN} and ${MIN_REQUIREMENT_MAX}`,
+      400,
+    );
+  }
+  return normalizeMinRequirement(n);
 }
 
 function parseBool(value) {
@@ -213,7 +231,7 @@ exports.createLaunchRatingController = asyncHandler(async (req, res) => {
     throw new AppError(`description cannot exceed ${DESCRIPTION_MAX} characters`, 400);
   }
   if (req.body.tone && !ALLOWED_TONES.has(tone)) {
-    throw new AppError("tone must be excellent, good, average, poor, or default", 400);
+    throw new AppError("tone must be excellent, good, average, below, poor, or default", 400);
   }
 
   const rating = await createLaunchRating({
@@ -261,7 +279,7 @@ exports.updateLaunchRatingController = asyncHandler(async (req, res) => {
   if (req.body.tone !== undefined) {
     const tone = normalizeTone(req.body.tone);
     if (!ALLOWED_TONES.has(String(req.body.tone || "").toLowerCase().trim()) && String(req.body.tone || "").trim()) {
-      throw new AppError("tone must be excellent, good, average, poor, or default", 400);
+      throw new AppError("tone must be excellent, good, average, below, poor, or default", 400);
     }
     updates.tone = tone;
   }
@@ -332,6 +350,7 @@ exports.createLaunchDomainController = asyncHandler(async (req, res) => {
   if (name.length > NAME_MAX) throw new AppError(`name cannot exceed ${NAME_MAX} characters`, 400);
 
   const weight = validateWeight(req.body.weight) ?? 0;
+  const minRequirement = validateMinRequirement(req.body.minRequirement) ?? normalizeMinRequirement();
   const live = parseBool(req.body.live);
   const fixed = parseBool(req.body.fixed) ?? false;
   const sortOrder = validateSortOrder(req.body.sortOrder);
@@ -347,6 +366,7 @@ exports.createLaunchDomainController = asyncHandler(async (req, res) => {
   const domain = await createLaunchDomain({
     name,
     weight,
+    minRequirement,
     live: live !== false,
     fixed,
     sortOrder,
@@ -376,6 +396,9 @@ exports.updateLaunchDomainController = asyncHandler(async (req, res) => {
       throw new AppError("Fixed domain weight cannot be changed", 400);
     }
     updates.weight = validateWeight(req.body.weight, { required: true });
+  }
+  if (req.body.minRequirement !== undefined) {
+    updates.minRequirement = validateMinRequirement(req.body.minRequirement, { required: true });
   }
   if (req.body.live !== undefined) {
     updates.live = parseBool(req.body.live);

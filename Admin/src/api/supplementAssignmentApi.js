@@ -126,7 +126,12 @@ export function mapDosage(row) {
     durationDays: Number(row.durationDays) || 0,
     startDate: String(row.startDate || "").trim(),
     endDate: String(row.endDate || "").trim(),
-    status: String(row.status || "active").toLowerCase() === "stopped" ? "stopped" : "active",
+    status: (() => {
+      const s = String(row.status || "active").toLowerCase();
+      if (s === "stopped") return "stopped";
+      if (s === "draft") return "draft";
+      return "active";
+    })(),
     progressPercent: Math.max(0, Math.min(100, Math.round(Number(row.progressPercent) || 0))),
     todayCompletion,
     createdAt: row.createdAt,
@@ -293,6 +298,24 @@ export async function stopUserSupplementDosage(userId, dosageId) {
     await api.delete(`${dosageBase(userId)}/${encodeURIComponent(dosageId)}`, {
       headers: authHeader(tokenOrStored()),
     });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserSupplementDosages(userId) {
+  try {
+    const { data } = await api.post(
+      `${dosageBase(userId)}/publish`,
+      {},
+      { headers: authHeader(tokenOrStored()) },
+    );
+    const dosages = (Array.isArray(data.dosages) ? data.dosages : []).map(mapDosage).filter(Boolean);
+    return {
+      publishedCount: Number(data.publishedCount) || 0,
+      dosages,
+      message: String(data.message || "").trim(),
+    };
   } catch (error) {
     normalizeApiError(error);
   }

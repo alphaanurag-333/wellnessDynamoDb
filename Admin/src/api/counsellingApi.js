@@ -15,7 +15,25 @@ export async function fetchHealConsultancyTracks(userId, { page = 1, limit = 20 
       ...headers(),
       params: { page, limit },
     });
-    return data.data || { tracks: [], activeTrack: null, pagination: {} };
+    return (
+      data.data || {
+        tracks: [],
+        activeTrack: null,
+        scheduledTrack: null,
+        coachMeetings: [],
+        lastReviewedAt: null,
+        pagination: {},
+      }
+    );
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function createHealConsultancyTrack(userId, payload) {
+  try {
+    const { data } = await api.post(tracksPath(userId), payload, headers());
+    return data.data?.track;
   } catch (error) {
     normalizeApiError(error);
   }
@@ -65,6 +83,19 @@ export async function rejectHealConsultancyRequest(userId, trackId, payload = {}
     const { data } = await api.post(
       tracksPath(userId, `/${encodeURIComponent(trackId)}/reject-request`),
       payload,
+      headers(),
+    );
+    return data.data?.track;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function rejectHealConsultancyIntake(userId, trackId) {
+  try {
+    const { data } = await api.post(
+      tracksPath(userId, `/${encodeURIComponent(trackId)}/reject-intake`),
+      {},
       headers(),
     );
     return data.data?.track;

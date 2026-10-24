@@ -7,6 +7,9 @@ const {
   normalizeDietaryPreference,
   normalizeWellnessJourneyFor,
   normalizePaidOnboardingStepStatus,
+  isBodyMeasurementEnabled,
+  isMedicalConditionsInAppEnabled,
+  isProgressPhotosInAppEnabled,
   USER_ALLOWED_DIETARY_PREFERENCES,
 } = require("../../models/userModel");
 const {
@@ -33,7 +36,7 @@ const {
   wizardStepAfterSkip,
   wizardStepAfterBodyComplete,
   wizardStepAfterMedicalComplete,
-  computePaidOnboardingCompleted,
+  buildOnboardingPersistUpdates,
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
@@ -183,8 +186,12 @@ function normalizeAnswerForQuestion(question, raw) {
 
 function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsByStep = {}) {
   const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const paidOnboardingCompleted = Boolean(user.paidOnboardingCompleted);
   return {
-    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    paidOnboardingCompleted,
+    ...(paidOnboardingCompleted
+      ? { programInitiationCompletedAt: new Date().toISOString() }
+      : {}),
     paidOnboardingStep:
       user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
     paidOnboardingStepStatus: stepStatus,
@@ -192,6 +199,9 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
     totalStepsCount: PAID_ONBOARDING_STATUS_KEYS.length,
     nextIncompleteStep: getNextIncompleteStep(stepStatus),
     energyExchangeEnabled: Boolean(user.energyExchangeEnabled),
+    bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
+    medicalConditionsInAppEnabled: isMedicalConditionsInAppEnabled(user),
+    progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
     healPaidAt: user.healPaidAt || null,
     meetingsByStep,
     prefill: {
@@ -268,9 +278,8 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
   const updates = {
     ...standardUpdates,
     ...extraUpdates,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: "body",
-    paidOnboardingStepStatus: nextStatus,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   };
 
   const updated = await updateUser(userId, updates);
@@ -291,6 +300,13 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
+
+  if (!isBodyMeasurementEnabled(user)) {
+    throw new AppError(
+      "Body measurements are not enabled for your account yet. Please contact your wellness coach.",
+      403
+    );
+  }
 
   const body = req.body || {};
   const weightPicKey = await uploadFileFromRequest(req, "users/body-measurements");
@@ -321,10 +337,8 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
     : wizardStepAfterBodyComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted:
-      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   notifyOnboardingWhatsAppTransitions({
@@ -348,15 +362,31 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
 });
 
 exports.getMedicalQuestionsController = asyncHandler(async (req, res) => {
-  const questions = await listActiveMedicalConditionQuestions();
   const userId = authedUserId(req);
+  const user = req.currentUser || (userId ? await getUserById(userId) : null);
+  const inAppEnabled = user ? isMedicalConditionsInAppEnabled(user) : true;
+
+  if (!inAppEnabled) {
+    const latest = userId ? await getLatestMedicalConditionForUser(userId) : null;
+    return res.status(200).json({
+      status: true,
+      message: "Medical conditions are disabled in your app",
+      data: {
+        questions: [],
+        answers: latest?.answers || [],
+        medicalConditionsInAppEnabled: false,
+      },
+    });
+  }
+
+  const questions = await listActiveMedicalConditionQuestions();
   const latest = userId ? await getLatestMedicalConditionForUser(userId) : null;
   const answers = latest?.answers || [];
 
   return res.status(200).json({
     status: true,
     message: "Medical condition questions fetched",
-    data: { questions, answers },
+    data: { questions, answers, medicalConditionsInAppEnabled: true },
   });
 });
 
@@ -364,6 +394,10 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const user = req.currentUser || (await getUserById(userId));
   if (!user) throw new AppError("User not found", 404);
+
+  if (!isMedicalConditionsInAppEnabled(user)) {
+    throw new AppError("Medical conditions are not available in your app", 403);
+  }
 
   const body = req.body || {};
   const questions = await listActiveMedicalConditionQuestions();
@@ -396,10 +430,8 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     : wizardStepAfterMedicalComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted:
-      alreadyCompleted || computePaidOnboardingCompleted(nextStatus),
   });
 
   notifyOnboardingWhatsAppTransitions({
@@ -441,9 +473,8 @@ exports.skipOnboardingStepController = asyncHandler(async (req, res) => {
   const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, step);
 
   const updated = await updateUser(userId, {
-    paidOnboardingStepStatus: nextStatus,
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
-    paidOnboardingCompleted: computePaidOnboardingCompleted(nextStatus),
   });
 
   return res.status(200).json({

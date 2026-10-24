@@ -26,6 +26,7 @@ const {
   handleValidationError,
 } = require("../helpers/healConsultancyTrackControllerHelpers");
 const { isScheduledAtInWindow } = require("../../utils/counsellingPeriodHelpers");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
 const {
   pickRequestedSlot,
   durationFromRange,
@@ -35,6 +36,7 @@ const {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotificationAsync,
   dispatchCounsellingCancelledNotificationAsync,
+  dispatchCounsellingRequestDeclinedNotificationAsync,
 } = require("../../services/notificationDispatchService");
 
 function shouldNotifyCounsellingCancellation(previousStatus) {
@@ -55,6 +57,15 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
   const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  let coachMeetings = [];
+  let lastReviewedAt = null;
+  try {
+    const snapshot = await loadCoachMeetingSnapshot(userId, user);
+    coachMeetings = snapshot.meetings;
+    lastReviewedAt = snapshot.lastReviewedAt;
+  } catch (err) {
+    console.error("[heal consultancy] coach meetings failed", err?.message || err);
+  }
 
   return res.status(200).json({
     status: true,
@@ -64,6 +75,8 @@ exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res)
       activeTrack: toPublicHealConsultancyTrack(active),
       scheduledTrack: toPublicHealConsultancyTrack(scheduled),
       pagination: result.pagination,
+      coachMeetings,
+      lastReviewedAt,
     },
   });
 });
@@ -76,31 +89,87 @@ exports.createCoachHealConsultancyTrackController = asyncHandler(async (req, res
   const user = await loadHealUser(userId);
   await assertStaffCanAccessUser(req, user);
 
+  const active = await findActiveHealConsultancyTrackByUserId(userId);
+  if (active) {
+    throw new AppError("Client already has an open counselling request", 409);
+  }
+  const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  if (scheduled) {
+    throw new AppError("Client already has a scheduled counselling session", 409);
+  }
+
   const body = parseCoachCreateBody(req.body || {});
   const hierarchy = resolveCoachHierarchy(user);
 
+  const createPayload = {
+    userId,
+    parentCoachId: hierarchy.parentCoachId,
+    assignedCoachId: hierarchy.assignedCoachId,
+    assignedCoachType: hierarchy.assignedCoachType,
+    concern: body.concern,
+    status: body.status,
+    scheduledAt: body.scheduledAt,
+    meetingLink: body.meetingLink,
+    coachNotes: body.coachNotes,
+    durationMinutes: body.durationMinutes,
+    periodOffers: Array.isArray(body.periodOffers) ? body.periodOffers : [],
+    statusUpdatedByRole: req.auth?.role || "wellness_coach",
+    statusUpdatedById: coachId,
+    initiatedByRole: "coach",
+  };
+
+  const offeringSlots = body.status === "periods_offered" && createPayload.periodOffers.length > 0;
+
+  if (body.status === "scheduled") {
+    if (new Date(body.scheduledAt).getTime() <= Date.now()) {
+      throw new AppError("scheduledAt must be in the future", 400);
+    }
+
+    let zoom;
+    try {
+      zoom = await createZoomForMeeting({
+        stepKey: "counselling",
+        userName: user?.name,
+        startAt: body.scheduledAt,
+        durationMinutes: body.durationMinutes,
+      });
+    } catch (err) {
+      throw new AppError(err.message || "Failed to create Zoom meeting", 502);
+    }
+
+    createPayload.meetingLink = zoom.zoomJoinUrl;
+    createPayload.zoomMeetingId = zoom.zoomMeetingId;
+    createPayload.zoomJoinUrl = zoom.zoomJoinUrl;
+    createPayload.zoomStartUrl = zoom.zoomStartUrl;
+    createPayload.confirmedAt = new Date().toISOString();
+  }
+
   let track;
   try {
-    track = await createHealConsultancyTrack({
-      userId,
-      parentCoachId: hierarchy.parentCoachId,
-      assignedCoachId: hierarchy.assignedCoachId,
-      assignedCoachType: hierarchy.assignedCoachType,
-      concern: body.concern,
-      status: body.status,
-      scheduledAt: body.scheduledAt,
-      meetingLink: body.meetingLink,
-      coachNotes: body.coachNotes,
-      statusUpdatedByRole: "wellness_coach",
-      statusUpdatedById: coachId,
-    });
+    track = await createHealConsultancyTrack(createPayload);
   } catch (err) {
     handleValidationError(err);
   }
 
+  if (body.status === "scheduled") {
+    dispatchCounsellingScheduledNotificationAsync({
+      userId,
+      trackId: track.id,
+    });
+  } else if (offeringSlots) {
+    dispatchCounsellingPeriodsOfferedNotificationAsync({
+      userId,
+      trackId: track.id,
+    });
+  }
+
   return res.status(201).json({
     status: true,
-    message: "Consultancy track created",
+    message: offeringSlots
+      ? "Availability shared with client"
+      : body.status === "scheduled"
+        ? "Counselling session scheduled"
+        : "Consultancy track created",
     data: { track: toPublicHealConsultancyTrack(track) },
   });
 });
@@ -194,7 +263,7 @@ exports.offerCoachHealConsultancyPeriodsController = asyncHandler(async (req, re
     throw new AppError("Availability can only be offered on an open request", 400);
   }
 
-  const { offers, coachNotes } = parseOfferPeriodsBody(req.body || {});
+  const { offers, coachNotes, durationMinutes } = parseOfferPeriodsBody(req.body || {});
   const updates = {
     status: "periods_offered",
     periodOffers: offers,
@@ -206,6 +275,7 @@ exports.offerCoachHealConsultancyPeriodsController = asyncHandler(async (req, re
     statusUpdatedById: coachId,
   };
   if (coachNotes !== undefined) updates.coachNotes = coachNotes;
+  if (durationMinutes != null) updates.durationMinutes = durationMinutes;
 
   let updated;
   try {
@@ -247,7 +317,9 @@ exports.confirmCoachHealConsultancyTimeController = asyncHandler(async (req, res
   if (new Date(scheduledAt).getTime() <= Date.now()) {
     throw new AppError("scheduledAt must be in the future", 400);
   }
-  if (!isScheduledAtInWindow(scheduledAt, track.selectedDate, track.selectedPeriod, durationMinutes)) {
+  const selectedOffer =
+    (track.periodOffers || []).find((row) => String(row.id) === String(track.selectedOfferId)) || null;
+  if (!isScheduledAtInWindow(scheduledAt, track.selectedDate, track.selectedPeriod, durationMinutes, selectedOffer)) {
     throw new AppError("scheduledAt must fall within the selected time period", 400);
   }
 
@@ -408,6 +480,43 @@ exports.rejectCoachHealConsultancyRequestController = asyncHandler(async (req, r
   return res.status(200).json({
     status: true,
     message: "Time request rejected. Existing periods remain available.",
+    data: { track: toPublicHealConsultancyTrack(updated) },
+  });
+});
+
+exports.rejectCoachHealConsultancyIntakeController = asyncHandler(async (req, res) => {
+  const coachId = req.auth?.sub || req.user?.id;
+  if (!coachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const trackId = String(req.params.trackId || "").trim();
+  const user = await loadHealUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  const track = await loadTrackForUser(trackId, userId);
+
+  if (track.status !== "requested") {
+    throw new AppError("This request is not a pending client counselling request", 400);
+  }
+
+  let updated;
+  try {
+    updated = await updateHealConsultancyTrack(trackId, {
+      status: "cancelled",
+      statusUpdatedByRole: req.auth?.role || "wellness_coach",
+      statusUpdatedById: coachId,
+    });
+  } catch (err) {
+    handleValidationError(err);
+  }
+
+  dispatchCounsellingRequestDeclinedNotificationAsync({
+    userId,
+    trackId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Counselling request declined",
     data: { track: toPublicHealConsultancyTrack(updated) },
   });
 });

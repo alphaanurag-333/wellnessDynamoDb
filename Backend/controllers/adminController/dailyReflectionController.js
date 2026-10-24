@@ -8,6 +8,7 @@ const {
 } = require("../helpers/healthProgressControllerHelpers");
 const {
   getSettings,
+  ensureBedtimeSettingsPersisted,
   upsertSettings,
   upsertSettingsFields,
   listCatalogWithSettings,
@@ -24,18 +25,62 @@ const {
   buildDailyReflectionSnapshot,
   computeDailyReflectionScore,
 } = require("../../services/dailyReflectionScoreService");
-const { todayDateOnly } = require("../../utils/dateOnly");
+const { isValidDateOnly, todayDateOnly } = require("../../utils/dateOnly");
 const { resolveStaffActor } = require("../staffAccess");
 const {
   dispatchDailyReflectionBedtimeNotification,
 } = require("../../services/notificationDispatchService");
+const { runDailyReflectionBedtimeJob } = require("../../services/dailyReflectionBedtimeJobService");
+const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
 
 const DEFAULT_BEDTIME = "22:30";
+
+function formatBedtimePushResult(push) {
+  const delivered = Boolean(push && !push.skipped && Number(push.successCount) > 0);
+  const noDevice = Boolean(push?.skipped && push?.reason === "no_token");
+  const fcmError = push?.primaryError || push?.errors?.[0] || null;
+
+  let message;
+  if (delivered) {
+    message = "Bedtime push notification sent (phone tray, not in-app inbox)";
+  } else if (noDevice) {
+    message = "No FCM token — reminder saved in the app inbox as fallback only";
+  } else if (fcmError?.code === "messaging/mismatched-credential") {
+    message =
+      "Reminder saved in the app inbox, but FCM rejected the device token (Firebase project / SenderId mismatch)";
+  } else if (fcmError?.message) {
+    message = `Reminder saved in the app inbox, but push delivery failed (${fcmError.message})`;
+  } else {
+    message = "Reminder saved in the app inbox, but push delivery failed";
+  }
+
+  return {
+    delivered,
+    noDevice,
+    message,
+    push: {
+      delivered,
+      skipped: Boolean(push?.skipped),
+      reason: push?.reason || fcmError?.code || null,
+      errorMessage: fcmError?.message || null,
+      successCount: Number(push?.successCount) || 0,
+      failureCount: Number(push?.failureCount) || 0,
+    },
+  };
+}
 
 function resolveTargetMonth(query) {
   const candidate = String(query?.month || "").trim() || todayDateOnly().slice(0, 7);
   if (!/^\d{4}-\d{2}$/.test(candidate)) {
     throw new AppError("month must be YYYY-MM", 400);
+  }
+  return candidate;
+}
+
+function resolveTargetDate(query, body) {
+  const candidate = body?.date ?? query?.date ?? todayDateOnly();
+  if (!isValidDateOnly(candidate)) {
+    throw new AppError("date must be YYYY-MM-DD", 400);
   }
   return candidate;
 }
@@ -85,8 +130,7 @@ async function loadDrfBundle() {
   }
 }
 
-async function buildUserDrfForm(userId, settings) {
-  const date = todayDateOnly();
+async function buildUserDrfForm(userId, settings, date = todayDateOnly()) {
   const [bundle, snapshot, todayLog] = await Promise.all([
     loadDrfBundle(),
     buildDailyReflectionSnapshot(userId, date),
@@ -118,8 +162,9 @@ async function buildUserDrfForm(userId, settings) {
 
 exports.getCoachUserDailyReflectionSettingsController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
+  const date = resolveTargetDate(req.query, req.body);
   const settings = await getSettings(userId);
-  const form = await buildUserDrfForm(userId, settings);
+  const form = await buildUserDrfForm(userId, settings, date);
 
   return res.status(200).json({
     status: true,
@@ -209,7 +254,12 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
     mapSettingsError(err);
   }
 
-  const form = await buildUserDrfForm(userId, updated);
+  if (bedtime !== undefined) {
+    await ensureBedtimeSettingsPersisted(userId, bedtime);
+  }
+
+  const date = resolveTargetDate(req.query, req.body);
+  const form = await buildUserDrfForm(userId, updated, date);
 
   return res.status(200).json({
     status: true,
@@ -247,7 +297,7 @@ exports.submitCoachUserDailyReflectionController = asyncHandler(async (req, res)
   });
 
   const settings = await getSettings(userId);
-  const form = await buildUserDrfForm(userId, settings);
+  const form = await buildUserDrfForm(userId, settings, date);
 
   return res.status(200).json({
     status: true,
@@ -265,20 +315,51 @@ exports.pushCoachUserDailyReflectionBedtimeController = asyncHandler(async (req,
   const { userId, user } = await coachContext(req);
   const settings = await getSettings(userId);
   const bedtime = settings.bedtime || DEFAULT_BEDTIME;
+  await ensureBedtimeSettingsPersisted(userId, bedtime);
   const actor = resolveStaffActor(req);
+  const fcmToken = parseFcmIdFromBody(req.body);
 
-  const notification = await dispatchDailyReflectionBedtimeNotification({
+  const { notification, push } = await dispatchDailyReflectionBedtimeNotification({
     userId,
     bedtime,
-    clientName: user?.name,
     coachName: actor.displayName,
     actorUserId: actor.id,
+    fcmToken: fcmToken || null,
   });
+
+  const formatted = formatBedtimePushResult(push);
 
   return res.status(200).json({
     status: true,
-    message: "Bedtime reminder pushed to the app",
+    message: formatted.message,
     bedtime,
     notificationId: notification?.id || null,
+    push: formatted.push,
+  });
+});
+
+exports.runDailyReflectionBedtimeJobController = asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const query = req.query || {};
+  const nowClock = body.nowClock ?? query.nowClock;
+  const dateOnly = body.dateOnly ?? query.dateOnly;
+  const timezone = body.timezone ?? query.timezone;
+
+  const options = {};
+  if (nowClock != null && String(nowClock).trim() !== "") {
+    options.nowClock = String(nowClock).trim();
+  }
+  if (dateOnly != null && String(dateOnly).trim() !== "") {
+    options.dateOnly = String(dateOnly).trim();
+  }
+  if (timezone != null && String(timezone).trim() !== "") {
+    options.timezone = String(timezone).trim();
+  }
+
+  const result = await runDailyReflectionBedtimeJob(options);
+  return res.status(200).json({
+    status: true,
+    message: `Daily reflection bedtime job completed at ${result.nowClock} (${result.timezone})`,
+    ...result,
   });
 });

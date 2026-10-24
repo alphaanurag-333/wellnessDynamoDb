@@ -6,6 +6,8 @@ const {
   computeBodyFat,
   computeWaistHipRatio,
   computeVisceralFat,
+  computeSamoudaVisceralFat,
+  deriveMetricsFromBodyMeasurement,
   computeFattyLiverIndex,
   getFliRiskCategory,
   buildFattyLiverSnapshot,
@@ -49,6 +51,53 @@ test("computeVisceralFat returns risk assessment", () => {
   assert.ok(result.riskAssessment);
 });
 
+test("computeSamoudaVisceralFat matches the LIH VAT model", () => {
+  assert.equal(
+    computeSamoudaVisceralFat({
+      gender: "male",
+      age: 25,
+      heightCm: 178,
+      weightKg: 70,
+      waistCm: 96,
+      thighCm: 55,
+    }),
+    149.55
+  );
+  assert.equal(
+    computeSamoudaVisceralFat({
+      gender: "female",
+      age: 36,
+      heightCm: 165,
+      weightKg: 62,
+      waistCm: 80,
+      thighCm: 58,
+    }),
+    62.96
+  );
+});
+
+test("deriveMetricsFromBodyMeasurement uses calculator.net inputs", () => {
+  const metrics = deriveMetricsFromBodyMeasurement(
+    {
+      recordedAt: "2026-10-01T12:00:00.000Z",
+      heightCm: 178,
+      weightKg: 70,
+      neckCm: 50,
+      waistCm: 96,
+      hipCm: 92,
+      thighsCm: 55,
+      activityLevel: "sedentary",
+    },
+    { gender: "male", dob: "2001-10-01" }
+  );
+  assert.equal(metrics.bmi, 22.1);
+  assert.equal(metrics.bmr, 1693);
+  assert.equal(metrics.tdee, 2032);
+  assert.equal(metrics.bodyFatPercent, 15.7);
+  assert.equal(metrics.estimatedVisceralFat, 149.55);
+  assert.equal(metrics.waistHipRatio, 1.04);
+});
+
 test("computeWaistHipRatio uses waist / hip", () => {
   assert.equal(computeWaistHipRatio(80, 100), 0.8);
   assert.equal(computeWaistHipRatio(90, 90), 1);
@@ -80,7 +129,7 @@ test("body_fat snapshot stores waistHipRatio", () => {
   assert.ok(snapshot.bodyFatPercent > 0);
 });
 
-test("computeFattyLiverIndex returns expected value", () => {
+test("computeFattyLiverIndex accepts triglycerides in mg/dL", () => {
   const fli = computeFattyLiverIndex({
     bmi: 28,
     waistCm: 95,
@@ -88,7 +137,7 @@ test("computeFattyLiverIndex returns expected value", () => {
     ggt: 45,
   });
   assert.ok(fli != null);
-  assert.ok(fli > 0);
+  assert.ok(fli > 10);
 });
 
 test("getFliRiskCategory maps risk bands", () => {

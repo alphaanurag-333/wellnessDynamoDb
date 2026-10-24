@@ -16,7 +16,6 @@ import {
   isEagleClient,
   isEagleMoveTarget,
   lastActiveMinutes,
-  listPaidUpgradeOptions,
   listTierMoveOptions,
   nextTier,
   normalizeTier,
@@ -40,6 +39,7 @@ import {
   fetchUsers,
   mapUiStatusToApi,
   mapUiTierToApi,
+  mapUiTierToClientCategory,
   moveMaintenanceUserToHeal,
   moveUserToEagle,
   undoUserEagleConversion,
@@ -150,6 +150,17 @@ function resolveAwcId(user) {
     return String(user.assignedCoachId);
   }
   return "";
+}
+
+function awcOptionsForUser(options, user) {
+  const coachId = resolveWcId(user);
+  if (!coachId) return options;
+  const currentAwcId = resolveAwcId(user);
+  return options.filter((option) => {
+    if (!option.id) return true;
+    if (currentAwcId && option.id === currentAwcId) return true;
+    return String(option.parentAccountId || "") === coachId;
+  });
 }
 
 function SortButton({ label, active, direction, onClick }) {
@@ -280,7 +291,7 @@ export function UsersPage() {
   const { pathname } = useLocation();
   const openUserId = matchOpenUserId(pathname);
   const { showToast: onToast } = useOutletContext();
-  const { activeRole, can, dataScope, isAdminView, sessionUi, viewAs, viewAsPersona } = useViewAs();
+  const { activeRole, can, dataScope, isAdminView, viewAs, viewAsPersona } = useViewAs();
   const [searchParams, setSearchParams] = useSearchParams();
   const listSearchRef = useRef(searchParams);
   const profileWasOpenRef = useRef(Boolean(openUserId));
@@ -293,17 +304,10 @@ export function UsersPage() {
 
   const canCreate = can("console.cl.create");
   const canEdit = can("console.cl.edit");
-  const canDelete = can("console.cl.delete");
+  // Archive (soft-delete) client accounts is admin-only — WC must not remove users from the roster.
+  const canDelete = Boolean(isAdminView);
   const canExport = can("console.cl.export");
-  // Downgrades stay admin-only. A wellness coach can upgrade their own clients to HEAL or Eagles.
   const canChangeTier = Boolean(isAdminView);
-  const canUpgradePaidTier =
-    canChangeTier
-    || (
-      sessionUi === "wc"
-      && (viewAs === "wc" || viewAsPersona === "wc")
-      && can("console.cl.edit")
-    );
   // Disable / re-enable client accounts is admin-only (WC and other staff must not see this).
   const canDisable = Boolean(isAdminView);
   // Admin can assign WC / AWC from this list. WC, AWC, and other staff only see names.
@@ -420,6 +424,7 @@ export function UsersPage() {
     search: debouncedSearch || undefined,
     status: mapUiStatusToApi(statusFilter),
     userTier: mapUiTierToApi(tierFilter),
+    clientCategory: mapUiTierToClientCategory(tierFilter),
     parentCoachId: coachFilter || undefined,
     assignedCoachId: awcFilter || undefined,
     subscriptionExpiryDays: subscriptionExpiryDays || undefined,
@@ -801,23 +806,15 @@ export function UsersPage() {
     });
   };
 
-  const withWcAllocationNote = (prompt) => {
-    if (canChangeTier || !canUpgradePaidTier) return prompt;
-    return {
-      ...prompt,
-      body: `${prompt.body} They stay allocated to you as their wellness coach.`,
-    };
-  };
-
   const adminTierChangeBlocked = (user) => canChangeTier && tierChangeBlockedWithoutCoach(user);
 
   const convertTier = (user) => {
-    if (!canUpgradePaidTier) return;
+    if (!canChangeTier) return;
     if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, direction: "up", ...withWcAllocationNote(conversionPrompt(user, "up")) });
+    setConversionAsk({ user, direction: "up", ...conversionPrompt(user, "up") });
   };
 
   const convertFromEagle = (user) => {
@@ -829,17 +826,17 @@ export function UsersPage() {
     setConversionAsk({
       user,
       kind: "leave-eagle",
-      ...withWcAllocationNote(eagleToHealConversionPrompt(user)),
+      ...eagleToHealConversionPrompt(user),
     });
   };
 
   const convertToEagle = (user) => {
-    if (!canUpgradePaidTier || isEagleClient(user)) return;
+    if (!canChangeTier || isEagleClient(user)) return;
     if (adminTierChangeBlocked(user)) {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, kind: "eagle", ...withWcAllocationNote(eagleConversionPrompt(user)) });
+    setConversionAsk({ user, kind: "eagle", ...eagleConversionPrompt(user) });
   };
 
   const downgradeTier = (user) => {
@@ -848,13 +845,17 @@ export function UsersPage() {
       onToast(WC_OR_AWC_REQUIRED_MESSAGE);
       return;
     }
-    setConversionAsk({ user, direction: "down", ...conversionPrompt(user, "down") });
+    setConversionAsk({
+      user,
+      direction: "down",
+      ...(isEagleClient(user) ? { kind: "eagle-to-seek" } : {}),
+      ...conversionPrompt(user, "down"),
+    });
   };
 
   const confirmConversion = async () => {
     const ask = conversionAsk;
-    if (!canUpgradePaidTier || !ask?.user) return;
-    if (!canChangeTier && ask.direction === "down") return;
+    if (!canChangeTier || !ask?.user) return;
     const user = ask.user;
     const key = userOverrideKey(user);
     if (adminTierChangeBlocked(user)) {
@@ -923,11 +924,21 @@ export function UsersPage() {
       return;
     }
     const fromTier = user.tier;
-    const toTier = ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier);
+    const eagleToSeek = ask.kind === "eagle-to-seek";
+    if (!eagleToSeek && ask.direction === "up" && isEagleClient(user) && fromTier === "Seek to Heal") {
+      onToast("An Eagle client cannot move to Maintenance. Convert them to Heal first.");
+      setConversionAsk(null);
+      return;
+    }
+    const toTier = eagleToSeek
+      ? "Seek"
+      : (ask.direction === "up" ? nextTier(fromTier) : prevTier(fromTier));
     setActionBusy(true);
     try {
       let updated;
-      if (ask.direction === "up") {
+      if (eagleToSeek) {
+        updated = await moveUserToSeek(key);
+      } else if (ask.direction === "up") {
         updated = user.tier === "Seek to Heal"
           ? await moveUserToMaintenance(key)
           : await moveUserToHeal(key);
@@ -954,9 +965,11 @@ export function UsersPage() {
         }
         return next;
       });
-      onToast(ask.direction === "up"
-        ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
-        : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
+      onToast(eagleToSeek
+        ? `${user.name} moved to SEEK`
+        : ask.direction === "up"
+          ? `${user.name} converted to ${tierLabel(nextTier(user.tier))}`
+          : `${user.name} moved to ${tierLabel(prevTier(user.tier))}`);
       setConversionAsk(null);
       refreshUsers();
     } catch (err) {
@@ -1116,6 +1129,18 @@ export function UsersPage() {
       return;
     }
 
+    const selectedWcId = resolveWcId(user);
+    if (
+      kind === "awc" &&
+      selectedWcId &&
+      parentCoachId &&
+      String(parentCoachId) !== selectedWcId
+    ) {
+      setSelectReset((n) => n + 1);
+      onToast("This assistant is not associated with the selected wellness coach");
+      return;
+    }
+
     setReassignAsk({
       user,
       kind,
@@ -1203,7 +1228,7 @@ export function UsersPage() {
           meta={(
             <>
               <span className="page-head__count">{loading ? "…" : headerCount}</span>&nbsp;
-              {isArchivedTab ? "archived · " : "clients · "}
+              {isArchivedTab ? "archived · " : "clients · "} 
               {useScopedUsers ? <span>Your assigned clients</span> : <ScopeChip />}
             </>
           )}
@@ -1447,7 +1472,7 @@ export function UsersPage() {
               const tone = u.off || u.status === "Disabled" ? "red" : u.status === "Active" ? "green" : "muted";
               const tierMoves = canChangeTier
                 ? listTierMoveOptions(u.tier, u.ageDays, u)
-                : (canUpgradePaidTier ? listPaidUpgradeOptions(u.tier, u.ageDays) : []);
+                : [];
               const rowKey = userOverrideKey(u) || u.name;
               const tierChangeBlocked = adminTierChangeBlocked(u);
               const tierUndo = canChangeTier ? tierUndoByKey[userOverrideKey(u) || rowKey] : null;
@@ -1499,7 +1524,9 @@ export function UsersPage() {
                               onClick={() => (
                                 move.kind === "leave-eagle"
                                   ? convertFromEagle(u)
-                                  : (move.direction === "up" ? convertTier(u) : downgradeTier(u))
+                                  : move.kind === "eagle-to-seek"
+                                    ? downgradeTier(u)
+                                    : (move.direction === "up" ? convertTier(u) : downgradeTier(u))
                               )}
                             >
                               {move.label}
@@ -1508,7 +1535,7 @@ export function UsersPage() {
                         })}
                       </div>
                     ) : null}
-                    {canUpgradePaidTier && !isEagleClient(u) ? (
+                    {canChangeTier && !isEagleClient(u) ? (
                       <button
                         type="button"
                         className="ua-tier-action ua-tier-action--eagle"
@@ -1561,7 +1588,7 @@ export function UsersPage() {
                         onChange={(e) => askReassign(u, "awc", e.target.value)}
                         disabled={actionBusy}
                       >
-                        {awcSelectOptions.map((o) => (
+                        {awcOptionsForUser(awcSelectOptions, u).map((o) => (
                           <option key={o.id || "unassigned"} value={o.id}>{o.name}</option>
                         ))}
                       </select>

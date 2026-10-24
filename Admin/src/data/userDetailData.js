@@ -17,7 +17,7 @@ export const CLIENT_MENU = [
   { id: "exchange", label: "Energy Exchange" },
   { id: "counselling", label: "Counselling sessions" },
   { id: "protocol", label: "Protocol Settings" },
-  { id: "gut", label: "Load Preset" },
+  { id: "gut", label: "Gut Reset" },
 ];
 
 const PERSONAL_MENU_ITEM = CLIENT_MENU.find((item) => item.id === "personal");
@@ -517,6 +517,7 @@ function emptyProfileExtras(goal = "") {
     stateRaw: "",
     dietaryPreference: "",
     wellnessJourneyFor: "",
+    wellnessJourneyForRaw: [],
     joined: "",
     joinedAgo: "",
     lastReviewed: "",
@@ -533,6 +534,8 @@ function emptyProfileExtras(goal = "") {
     dietPlanEnabled: true,
     heartRateEnabled: true,
     sleepTrackingEnabled: true,
+    bodyMeasurementEnabled: false,
+    bodyMeasurementEnabledRaw: false,
     referralCode: "",
     referredByCode: "",
     paidOnboardingCompleted: false,
@@ -591,6 +594,9 @@ export function profileFromListUser(row, userId) {
     stateRaw: base.stateRaw || extra.stateRaw,
     dietaryPreference: base.dietaryPreference || extra.dietaryPreference,
     wellnessJourneyFor: base.wellnessJourneyFor || extra.wellnessJourneyFor,
+    wellnessJourneyForRaw: Array.isArray(base.wellnessJourneyForRaw)
+      ? base.wellnessJourneyForRaw
+      : extra.wellnessJourneyForRaw,
     joined: base.joined || extra.joined,
     joinedAgo: base.joinedAgo || extra.joinedAgo,
     lastReviewed: base.lastReviewed || extra.lastReviewed,
@@ -606,6 +612,11 @@ export function profileFromListUser(row, userId) {
     dietPlanEnabled: base.dietPlanEnabled !== false,
     heartRateEnabled: base.heartRateEnabled !== false,
     sleepTrackingEnabled: base.sleepTrackingEnabled !== false,
+    bodyMeasurementEnabled: base.bodyMeasurementEnabled === true
+      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "done"
+      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "skipped",
+    bodyMeasurementEnabledRaw: base.bodyMeasurementEnabledRaw === true
+      || base.bodyMeasurementEnabled === true,
     referralCode: base.referralCode || extra.referralCode,
     referredByCode: base.referredByCode || extra.referredByCode || "",
     tags: Array.isArray(base.tags) && base.tags.length ? base.tags : extra.tags,

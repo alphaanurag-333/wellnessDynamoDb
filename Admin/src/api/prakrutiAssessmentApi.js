@@ -27,6 +27,7 @@ function mapThing(row) {
   if (!row) return null;
   return {
     id: row.id || row._id,
+    prakrutiType: String(row.prakrutiType || "").trim().toLowerCase(),
     title: String(row.title || "").trim(),
     sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
     status: row.status === "inactive" ? "inactive" : "active",
@@ -133,12 +134,16 @@ export async function adminDeletePrakrutiQuestion(token, id) {
   }
 }
 
-export async function adminListPrakrutiThingsToAvoid(token, { page = 1, limit = 200, status, search } = {}) {
+export async function adminListPrakrutiThingsToAvoid(
+  token,
+  { page = 1, limit = 200, status, search, prakrutiType } = {},
+) {
   const q = new URLSearchParams();
   q.set("page", String(page));
   q.set("limit", String(limit));
   if (status) q.set("status", status);
   if (search && String(search).trim()) q.set("search", String(search).trim());
+  if (prakrutiType) q.set("prakrutiType", prakrutiType);
   try {
     const { data } = await api.get(`${AVOID_BASE}?${q}`, {
       headers: authHeader(tokenOrStored(token)),
@@ -160,6 +165,7 @@ export async function adminCreatePrakrutiThingToAvoid(token, fields) {
     const { data } = await api.post(
       AVOID_BASE,
       {
+        prakrutiType: String(fields.prakrutiType ?? "").trim(),
         title: String(fields.title ?? "").trim(),
         status: fields.status || (fields.shown === false ? "inactive" : "active"),
         ...(fields.sortOrder !== undefined ? { sortOrder: fields.sortOrder } : {}),
@@ -174,6 +180,7 @@ export async function adminCreatePrakrutiThingToAvoid(token, fields) {
 
 export async function adminUpdatePrakrutiThingToAvoid(token, id, fields) {
   const payload = {};
+  if (fields.prakrutiType !== undefined) payload.prakrutiType = String(fields.prakrutiType).trim();
   if (fields.title !== undefined) payload.title = String(fields.title).trim();
   if (fields.sortOrder !== undefined) payload.sortOrder = fields.sortOrder;
   if (fields.status !== undefined) payload.status = String(fields.status);

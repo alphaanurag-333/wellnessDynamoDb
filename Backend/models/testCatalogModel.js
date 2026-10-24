@@ -17,6 +17,7 @@ const {
 const TABLE = "TestCatalog";
 const ALLOWED_STATUS = ["active", "inactive"];
 const ALLOWED_TYPES = ["PROFILE", "SINGLE"];
+const FASTING_TYPES = ["Fasting", "Non-fasting", "Post-prandial"];
 const STATUS = new Set(ALLOWED_STATUS);
 const TYPES = new Set(ALLOWED_TYPES);
 const NAME_MIN_LEN = 2;
@@ -24,6 +25,7 @@ const NAME_MAX_LEN = 200;
 const CATEGORY_MIN_LEN = 2;
 const CATEGORY_MAX_LEN = 100;
 const TEST_ID_MAX_LEN = 80;
+const DURATION_MAX_LEN = 80;
 const PARAM_NAME_MAX_LEN = 100;
 const UNIT_MAX_LEN = 40;
 const REF_RANGE_MAX_LEN = 120;
@@ -107,19 +109,245 @@ function normalizeCategory(value) {
   return category;
 }
 
+function normalizeFastingType(value, { required = false } = {}) {
+  const next = String(value ?? "").trim();
+  if (!next) {
+    if (!required) return "";
+    const err = new Error("fasting type is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const match = FASTING_TYPES.find((entry) => entry.toLowerCase() === next.toLowerCase());
+  if (!match) {
+    const err = new Error(`fasting type must be one of: ${FASTING_TYPES.join(", ")}`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return match;
+}
+
+function normalizeDuration(value, { required = false } = {}) {
+  const duration = String(value ?? "").trim();
+  if (!duration) {
+    if (!required) return "";
+    const err = new Error("duration is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (duration.length > DURATION_MAX_LEN) {
+    const err = new Error(`duration cannot exceed ${DURATION_MAX_LEN} characters`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return duration;
+}
+
+function normalizeLines(lines, { limit = MAX_PARAMETERS } = {}) {
+  if (lines === undefined || lines === null) return [];
+  if (!Array.isArray(lines)) {
+    const err = new Error("lines must be an array");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (limit != null && lines.length > limit) {
+    const err = new Error(`A test cannot have more than ${limit} lines`);
+    err.name = "ValidationError";
+    throw err;
+  }
+  return lines.map((line, index) => {
+    try {
+      return {
+        category: normalizeCategory(line?.category),
+        name: normalizeName(line?.name),
+        fastingType: normalizeFastingType(line?.fastingType, { required: true }),
+        duration: normalizeDuration(line?.duration, { required: true }),
+        code: normalizeCode(line?.code),
+        hours: normalizeHours(line?.hours ?? ""),
+        selected: line?.selected !== false,
+      };
+    } catch (err) {
+      err.message = `Line ${index + 1}: ${err.message}`;
+      throw err;
+    }
+  });
+}
+
+function normalizeCode(value) {
+  const code = String(value ?? "").trim();
+  if (code.length > 40) {
+    const err = new Error("code cannot exceed 40 characters");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return code;
+}
+
+function normalizeHours(value) {
+  if (value === "" || value === null || value === undefined) return 0;
+  const hours = Number(value);
+  if (!Number.isFinite(hours) || hours < 0 || hours > 168) {
+    const err = new Error("fasting / prep hours must be between 0 and 168");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return Math.round(hours);
+}
+
+function normalizeRecordId(value, fallback) {
+  const id = String(value || "").trim();
+  if (!id || id.length > 80) return fallback;
+  return id;
+}
+
+function readHours(value) {
+  const hours = Number(value);
+  if (!Number.isFinite(hours) || hours < 0) return 0;
+  return Math.min(168, Math.round(hours));
+}
+
+function publicLines(lines) {
+  if (!Array.isArray(lines)) return [];
+  return lines.map((line) => ({
+    category: String(line?.category || "").trim(),
+    name: String(line?.name || "").trim(),
+    fastingType: String(line?.fastingType || "").trim(),
+    duration: String(line?.duration || "").trim(),
+    code: String(line?.code || "").trim(),
+    hours: readHours(line?.hours),
+    selected: line?.selected !== false,
+  }));
+}
+
+function publicSections(sections) {
+  if (!Array.isArray(sections)) return [];
+  return sections.map((section, sectionIndex) => ({
+    id: normalizeRecordId(section?.id, `section-${sectionIndex + 1}`),
+    category: String(section?.category || "").trim(),
+    tests: (Array.isArray(section?.tests) ? section.tests : []).map((test, testIndex) => ({
+      id: normalizeRecordId(test?.id, `test-${sectionIndex + 1}-${testIndex + 1}`),
+      name: String(test?.name || "").trim(),
+      code: String(test?.code || "").trim(),
+      hours: readHours(test?.hours),
+      selected: test?.selected !== false,
+    })),
+  }));
+}
+
+function normalizeDismissedCategories(value) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) {
+    const err = new Error("dismissedCategories must be an array");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return [...new Set(
+    value
+      .map((entry) => String(entry || "").trim())
+      .filter((entry) => entry.length >= CATEGORY_MIN_LEN && entry.length <= CATEGORY_MAX_LEN),
+  )];
+}
+
+function normalizeSections(sections) {
+  if (sections === undefined || sections === null) return [];
+  if (!Array.isArray(sections)) {
+    const err = new Error("sections must be an array");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (sections.length > 40) {
+    const err = new Error("A goal cannot have more than 40 sections");
+    err.name = "ValidationError";
+    throw err;
+  }
+  const withCategory = sections.filter((section) => String(section?.category || "").trim());
+  return withCategory.map((section, sectionIndex) => {
+    const tests = Array.isArray(section?.tests) ? section.tests : [];
+    return {
+      id: normalizeRecordId(section?.id, `section-${sectionIndex + 1}`),
+      category: normalizeCategory(section?.category),
+      tests: tests.map((test, testIndex) => {
+        try {
+          return {
+            id: normalizeRecordId(test?.id, `test-${sectionIndex + 1}-${testIndex + 1}`),
+            name: normalizeName(test?.name),
+            code: normalizeCode(test?.code),
+            hours: normalizeHours(test?.hours),
+            selected: test?.selected !== false,
+          };
+        } catch (err) {
+          err.message = `${String(section?.category || "Section").trim() || "Section"} test ${testIndex + 1}: ${err.message}`;
+          throw err;
+        }
+      }),
+    };
+  });
+}
+
+function projectGoalCatalog({ name, status = "active", sections, dismissedCategories } = {}) {
+  const goalName = normalizeName(name);
+  const nextStatus = normalizeStatus(status);
+  const nextSections = normalizeSections(Array.isArray(sections) ? sections : []);
+  const dismissed = normalizeDismissedCategories(dismissedCategories);
+  const selected = [];
+
+  nextSections.forEach((section) => {
+    section.tests.forEach((test) => {
+      if (!test.selected || !test.name) return;
+      const post = /^(pfbs|ppbs|pp|post)/i.test(test.code);
+      const hours = Number(test.hours) || 0;
+      selected.push({
+        category: section.category,
+        name: test.name,
+        fastingType: post ? "Post-prandial" : hours > 0 ? "Fasting" : "Non-fasting",
+        duration: hours === 1 ? "1 hr" : `${hours} hrs`,
+        code: test.code,
+        hours,
+        selected: true,
+      });
+    });
+  });
+
+  const usedIds = new Set();
+  const parameterSource = selected.length ? selected : [{ name: goalName }];
+  const parameters = parameterSource.map((line, index) => {
+    const base = slugify(line.name) || `param-${index + 1}`;
+    let paramId = base;
+    let suffix = 2;
+    while (usedIds.has(paramId)) paramId = `${base}-${suffix++}`;
+    usedIds.add(paramId);
+    return { paramId, name: line.name, unit: "—", refRange: "—", sequence: index + 1 };
+  });
+
+  return {
+    kind: "goal",
+    testId: `goal-${slugify(goalName)}`,
+    name: goalName,
+    type: selected.length > 1 ? "PROFILE" : "SINGLE",
+    category: nextSections[0]?.category || "Goal",
+    status: nextStatus,
+    fastingType: selected[0]?.fastingType || "Fasting",
+    duration: selected[0]?.duration || "0 hrs",
+    lines: selected,
+    parameters,
+    sections: nextSections,
+    dismissedCategories: dismissed,
+    sequence: 0,
+  };
+}
+
 function normalizeSequence(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
 }
 
-function normalizeParameters(parameters, { type = "SINGLE" } = {}) {
+function normalizeParameters(parameters, { type = "SINGLE", limit = MAX_PARAMETERS } = {}) {
   if (!Array.isArray(parameters) || parameters.length === 0) {
     const err = new Error("At least one parameter is required");
     err.name = "ValidationError";
     throw err;
   }
-  if (parameters.length > MAX_PARAMETERS) {
-    const err = new Error(`A test cannot have more than ${MAX_PARAMETERS} parameters`);
+  if (limit != null && parameters.length > limit) {
+    const err = new Error(`A test cannot have more than ${limit} parameters`);
     err.name = "ValidationError";
     throw err;
   }
@@ -188,6 +416,14 @@ function toTestCatalogPublic(item) {
     type: normalizeType(row.type),
     category: row.category,
     status: normalizeStatus(row.status),
+    fastingType: String(row.fastingType || "").trim(),
+    duration: String(row.duration || "").trim(),
+    kind: row.kind === "goal" || (Array.isArray(row.sections) && row.sections.length) ? "goal" : "test",
+    lines: publicLines(row.lines),
+    sections: publicSections(row.sections),
+    dismissedCategories: Array.isArray(row.dismissedCategories)
+      ? row.dismissedCategories.map((entry) => String(entry || "").trim()).filter(Boolean)
+      : [],
     parameters: Array.isArray(row.parameters) ? row.parameters : [],
     sequence: normalizeSequence(row.sequence),
     createdBy: row.createdBy || null,
@@ -200,10 +436,14 @@ function snapshotTest(item) {
   const pub = toTestCatalogPublic(item);
   if (!pub) return null;
   return {
+    catalogId: pub.id,
     testId: pub.testId,
     name: pub.name,
     type: pub.type,
     category: pub.category,
+    fastingType: pub.fastingType,
+    duration: pub.duration,
+    lines: pub.lines,
     parameters: pub.parameters,
   };
 }
@@ -229,9 +469,15 @@ async function createTestCatalog({
   type = "SINGLE",
   category,
   status = "active",
+  fastingType = "",
+  duration = "",
+  lines,
   parameters,
   sequence = 0,
   createdBy,
+  kind = "test",
+  sections,
+  dismissedCategories,
 }) {
   const slug = normalizeTestId(testId || name);
   const existing = await getTestCatalogByTestId(slug);
@@ -242,6 +488,7 @@ async function createTestCatalog({
   }
 
   const now = new Date().toISOString();
+  const isGoal = kind === "goal";
   const item = {
     id: uuidv4(),
     testId: slug,
@@ -249,8 +496,18 @@ async function createTestCatalog({
     type: normalizeType(type),
     category: normalizeCategory(category),
     status: normalizeStatus(status),
-    parameters: normalizeParameters(parameters, { type: normalizeType(type) }),
+    fastingType: normalizeFastingType(fastingType),
+    duration: normalizeDuration(duration),
+    lines: normalizeLines(lines, { limit: isGoal ? null : MAX_PARAMETERS }),
+    parameters: normalizeParameters(parameters, { type: normalizeType(type), limit: isGoal ? null : MAX_PARAMETERS }),
     sequence: normalizeSequence(sequence),
+    kind: isGoal ? "goal" : "test",
+    ...(isGoal
+      ? {
+          sections: normalizeSections(sections),
+          dismissedCategories: normalizeDismissedCategories(dismissedCategories),
+        }
+      : {}),
     createdBy: String(createdBy || "").trim() || null,
     createdAt: now,
     updatedAt: now,
@@ -336,6 +593,14 @@ async function listActiveTestCatalog() {
     .map((row) => toTestCatalogPublic(row))
     .filter(isLiveCatalogRow);
   return rows.sort(sortLiveCatalog);
+}
+
+async function listTestGoals() {
+  const items = await scanAllTestCatalog();
+  return items
+    .map((row) => toTestCatalogPublic(row))
+    .filter((row) => row && row.kind === "goal")
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 }
 
 async function listActiveTestCatalogPaginated({ page = 1, limit = 12, search, category } = {}) {
@@ -427,6 +692,7 @@ async function updateTestCatalog(id, updates) {
   }
 
   const entries = [];
+  const isGoal = updates?.kind === "goal" || existing.kind === "goal";
 
   for (const [key, value] of Object.entries(updates || {})) {
     if (blockedFields.has(key) || value === undefined) continue;
@@ -434,11 +700,17 @@ async function updateTestCatalog(id, updates) {
     else if (key === "type") entries.push([key, normalizeType(value)]);
     else if (key === "name") entries.push([key, normalizeName(value)]);
     else if (key === "category") entries.push([key, normalizeCategory(value)]);
+    else if (key === "fastingType") entries.push([key, normalizeFastingType(value)]);
+    else if (key === "duration") entries.push([key, normalizeDuration(value)]);
+    else if (key === "lines") entries.push([key, normalizeLines(value, { limit: isGoal ? null : MAX_PARAMETERS })]);
+    else if (key === "sections") entries.push([key, normalizeSections(value)]);
+    else if (key === "dismissedCategories") entries.push([key, normalizeDismissedCategories(value)]);
+    else if (key === "kind") entries.push([key, value === "goal" ? "goal" : "test"]);
     else if (key === "sequence") entries.push([key, normalizeSequence(value)]);
     else if (key === "parameters") {
       const nextType =
         updates.type !== undefined ? normalizeType(updates.type) : normalizeType(existing.type);
-      entries.push([key, normalizeParameters(value, { type: nextType })]);
+      entries.push([key, normalizeParameters(value, { type: nextType, limit: isGoal ? null : MAX_PARAMETERS })]);
     }
     else if (key === "testId") entries.push([key, normalizeTestId(value)]);
     else entries.push([key, value]);
@@ -499,9 +771,15 @@ module.exports = {
   TABLE,
   ALLOWED_STATUS,
   ALLOWED_TYPES,
+  FASTING_TYPES,
   slugify,
   normalizeStatus,
   normalizeType,
+  normalizeFastingType,
+  normalizeDuration,
+  normalizeLines,
+  normalizeSections,
+  projectGoalCatalog,
   normalizeTestId,
   normalizeParameters,
   toTestCatalogPublic,
@@ -514,6 +792,7 @@ module.exports = {
   listActiveTestCatalog,
   listActiveTestCatalogPaginated,
   listTestCatalog,
+  listTestGoals,
   updateTestCatalog,
   deleteTestCatalog,
 };

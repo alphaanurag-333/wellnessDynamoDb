@@ -15,6 +15,7 @@ export const AWC_DEFAULT = {
 export const TIER_OPTIONS = [
   { value: "", label: "All tiers" },
   { value: "Seek to Heal", label: "HEAL" },
+  { value: "Eagle", label: "EAGLE" },
   { value: "Consultancy", label: "PWC" },
   { value: "Seek", label: "SEEK" },
   { value: "Maintenance", label: "MAINTENANCE" },
@@ -106,7 +107,8 @@ export function filterUsers(list, filters) {
   if (q) {
     result = result.filter((u) => `${u.name}${u.email}${u.phone}`.toLowerCase().includes(q));
   }
-  if (filters.tierFilter) result = result.filter((u) => u.tier === filters.tierFilter);
+  if (filters.tierFilter === "Eagle") result = result.filter((u) => isEagleClient(u));
+  else if (filters.tierFilter) result = result.filter((u) => u.tier === filters.tierFilter);
   if (filters.statusFilter) result = result.filter((u) => u.status === filters.statusFilter);
   if (filters.typeTab && filters.typeTab !== "all") {
     result = result.filter((u) => u.utype === filters.typeTab);
@@ -129,14 +131,18 @@ export function buildUserTypeTabs(pool, activeTab, countPool = pool) {
 
 const TIER_ALIASES = {
   HEAL: "Seek to Heal",
+  SEEK_TO_HEAL: "Seek to Heal",
   MAINTENANCE: "Maintenance",
   PWC: "Consultancy",
+  CONSULTANCY: "Consultancy",
+  CONSULTANCY_ONLY: "Consultancy",
   SEEK: "Seek",
 };
 
 export function normalizeTier(tier) {
   if (!tier) return tier;
-  return TIER_ALIASES[tier] || tier;
+  const key = String(tier).trim().toUpperCase().replace(/[\s-]+/g, "_");
+  return TIER_ALIASES[key] || tier;
 }
 
 export function tierStyle(tier) {
@@ -221,6 +227,14 @@ export function userTierBadge(user) {
   return { label: tierLabel(user?.tier), style: tierStyle(user?.tier) };
 }
 
+/** Badge for API payloads that expose `userTier` instead of UI `tier`. */
+export function userTierBadgeFromApi(user) {
+  return userTierBadge({
+    ...user,
+    tier: user?.tier || user?.userTier,
+  });
+}
+
 export function eagleConversionPrompt(user) {
   const name = String(user?.name || "this client").trim() || "this client";
   return {
@@ -235,7 +249,7 @@ export function eagleToHealConversionPrompt(user) {
   const name = String(user?.name || "this client").trim() || "this client";
   return {
     title: `Convert ${name} from EAGLE to HEAL?`,
-    body: `${name} leaves Eagle and stays on the Heal plan. Maintenance and Seek are still available after that.`,
+    body: `${name} leaves Eagle and stays on the Heal plan. Maintenance is still available after that.`,
     confirm: "Convert to HEAL",
     kicker: "Conversion",
   };
@@ -247,10 +261,8 @@ export function conversionPrompt(user, direction) {
   if (direction === "up") {
     if (t === "Seek to Heal") {
       return {
-        title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to MAINTENANCE?`,
-        body: isEagleClient(user)
-          ? `${name} leaves Eagle and moves into maintenance. They stay on the roster without an active Heal program.`
-          : `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
+        title: `Move ${name} from HEAL to MAINTENANCE?`,
+        body: `${name} stays on the roster without an active Heal program. Use this when every goal has been achieved.`,
         confirm: "Move to MAINTENANCE",
         kicker: "Conversion",
       };
@@ -267,6 +279,14 @@ export function conversionPrompt(user, direction) {
       title: `Convert ${name} from SEEK to HEAL?`,
       body: `This is a manual upgrade when payment did not go through. ${name} becomes a Heal client with coaching entitlements under their assigned coach.`,
       confirm: "Convert to HEAL",
+      kicker: "Conversion",
+    };
+  }
+  if (isEagleClient(user)) {
+    return {
+      title: `Move ${name} from EAGLE to SEEK?`,
+      body: `${name} leaves Eagle and moves back to Seek. Paid coaching entitlements end, and their history stays on the account.`,
+      confirm: "Move to SEEK",
       kicker: "Conversion",
     };
   }
@@ -287,10 +307,8 @@ export function conversionPrompt(user, direction) {
     };
   }
   return {
-    title: `Move ${name} from ${isEagleClient(user) ? "EAGLE" : "HEAL"} to SEEK?`,
-    body: isEagleClient(user)
-      ? `${name} leaves Eagle and moves back to Seek. Paid coaching entitlements end, and their history stays on the account.`
-      : `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
+    title: `Move ${name} from HEAL to SEEK?`,
+    body: `This ends paid coaching entitlements. ${name}’s history stays on the account.`,
     confirm: "Move to SEEK",
     kicker: "Conversion",
   };
@@ -320,7 +338,12 @@ export function listPaidUpgradeOptions(tier, ageDays) {
 export function listTierMoveOptions(tier, ageDays, user) {
   const t = normalizeTier(tier);
   const options = [];
-  if (isEagleClient(user) && t === "Seek to Heal") {
+  const eagle = isEagleClient(user);
+  // Eagle stays Eagle. Heal and Seek are the only moves from here.
+  // Maintenance is available only after the client leaves Eagle and is on Heal.
+  const eagleOnHeal = eagle && t === "Seek to Heal";
+
+  if (eagleOnHeal) {
     options.push({
       direction: "up",
       kind: "leave-eagle",
@@ -328,8 +351,7 @@ export function listTierMoveOptions(tier, ageDays, user) {
       label: "→ HEAL",
       title: "Convert this Eagle client back to HEAL. They stay on the Heal plan.",
     });
-  }
-  if (canConvertTier(t)) {
+  } else if (canConvertTier(t)) {
     const target = nextTier(t);
     options.push({
       direction: "up",
@@ -342,7 +364,15 @@ export function listTierMoveOptions(tier, ageDays, user) {
           : "Convert this client from SEEK to HEAL when payment did not go through",
     });
   }
-  if (canDowngradeTier(t, ageDays)) {
+  if (eagle) {
+    options.push({
+      direction: "down",
+      kind: "eagle-to-seek",
+      target: "Seek",
+      label: "↓ SEEK",
+      title: "Move this Eagle client back to SEEK. They leave Eagle and paid coaching entitlements end.",
+    });
+  } else if (canDowngradeTier(t, ageDays)) {
     const target = prevTier(t);
     options.push({
       direction: "down",

@@ -340,39 +340,94 @@ export function normalizeItemMacro(value) {
   return Math.round(n * 100) / 100;
 }
 
-export function formatApproxMacro(value, unit) {
-  const n = Math.round(Number(value) || 0);
-  return `~${n} ${unit}`;
+function displayedMacro(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.round(n);
 }
 
-export function sumItemsMacros(items) {
-  return roundMacros(
-    (Array.isArray(items) ? items : []).reduce(
-      (acc, item) => ({
-        protein: acc.protein + (Number(item?.proteinGm) || 0),
-        carbs: acc.carbs + (Number(item?.carbsGm) || 0),
-        fat: acc.fat + (Number(item?.fatsGm) || 0),
-        calories: acc.calories + (Number(item?.caloriesKcal) || 0),
-      }),
-      { protein: 0, carbs: 0, fat: 0, calories: 0 },
-    ),
+export function formatApproxMacro(value, unit) {
+  return `~${displayedMacro(value)} ${unit}`;
+}
+
+function itemHasMacros(item) {
+  return Boolean(
+    Number(item?.proteinGm) || Number(item?.fatsGm) || Number(item?.carbsGm) || Number(item?.caloriesKcal),
   );
 }
 
-export function scaleItemQuantity(item, newQuantityGm) {
-  const oldQty = Number(item?.quantityGm) || 0;
-  const newQty = Math.max(0, Number(newQuantityGm) || 0);
-  if (oldQty <= 0 || newQty === oldQty) {
-    return { ...item, quantityGm: Math.round(newQty * 100) / 100 };
+export function sumItemsMacros(items) {
+  return (Array.isArray(items) ? items : []).reduce(
+    (acc, item) => ({
+      protein: acc.protein + displayedMacro(item?.proteinGm),
+      carbs: acc.carbs + displayedMacro(item?.carbsGm),
+      fat: acc.fat + displayedMacro(item?.fatsGm),
+      calories: acc.calories + displayedMacro(item?.caloriesKcal),
+    }),
+    { protein: 0, carbs: 0, fat: 0, calories: 0 },
+  );
+}
+
+function macroBaseline(item) {
+  if (item && item.baseQuantityGm != null) {
+    return {
+      baseQuantityGm: Number(item.baseQuantityGm) || 0,
+      baseProteinGm: Number(item.baseProteinGm) || 0,
+      baseFatsGm: Number(item.baseFatsGm) || 0,
+      baseCarbsGm: Number(item.baseCarbsGm) || 0,
+      baseCaloriesKcal: Number(item.baseCaloriesKcal) || 0,
+    };
   }
-  const ratio = newQty / oldQty;
+  return {
+    baseQuantityGm: Number(item?.quantityGm) || 0,
+    baseProteinGm: Number(item?.proteinGm) || 0,
+    baseFatsGm: Number(item?.fatsGm) || 0,
+    baseCarbsGm: Number(item?.carbsGm) || 0,
+    baseCaloriesKcal: Number(item?.caloriesKcal) || 0,
+  };
+}
+
+export function sanitizeDecimalText(value) {
+  const cleaned = String(value ?? "").replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+  return cleaned.replace(/^0+(?=\d)/, "");
+}
+
+export function scaleItemQuantity(item, rawValue) {
+  const text = sanitizeDecimalText(rawValue);
+  const baseline = macroBaseline(item);
+  const parsed = Number(text);
+  const pending = text === "" || text === "." || text === "0" || text === "0." || !Number.isFinite(parsed) || parsed <= 0;
+  if (pending) {
+    return {
+      ...item,
+      ...baseline,
+      quantityText: text,
+    };
+  }
+  const newQty = Math.round(parsed * 100) / 100;
+  const baseQty = baseline.baseQuantityGm;
+  if (!(baseQty > 0) || newQty === baseQty) {
+    return {
+      ...item,
+      ...baseline,
+      quantityText: text,
+      quantityGm: newQty,
+      proteinGm: baseline.baseProteinGm,
+      fatsGm: baseline.baseFatsGm,
+      carbsGm: baseline.baseCarbsGm,
+      caloriesKcal: baseline.baseCaloriesKcal,
+    };
+  }
+  const ratio = newQty / baseQty;
   return {
     ...item,
-    quantityGm: Math.round(newQty * 100) / 100,
-    proteinGm: normalizeItemMacro((Number(item?.proteinGm) || 0) * ratio),
-    fatsGm: normalizeItemMacro((Number(item?.fatsGm) || 0) * ratio),
-    carbsGm: normalizeItemMacro((Number(item?.carbsGm) || 0) * ratio),
-    caloriesKcal: normalizeItemMacro((Number(item?.caloriesKcal) || 0) * ratio),
+    ...baseline,
+    quantityText: text,
+    quantityGm: newQty,
+    proteinGm: normalizeItemMacro(baseline.baseProteinGm * ratio),
+    fatsGm: normalizeItemMacro(baseline.baseFatsGm * ratio),
+    carbsGm: normalizeItemMacro(baseline.baseCarbsGm * ratio),
+    caloriesKcal: normalizeItemMacro(baseline.baseCaloriesKcal * ratio),
   };
 }
 
@@ -408,7 +463,12 @@ export function normalizeMealItems(items) {
     .map((item) => {
       const name = String(item?.name || "").trim();
       if (!name) return null;
-      const qty = Number(item?.quantityGm);
+      const hasTypedQuantity = Object.prototype.hasOwnProperty.call(item, "quantityText");
+      let qty = Number(item?.quantityGm);
+      if (hasTypedQuantity) {
+        const typed = String(item.quantityText ?? "").trim();
+        qty = typed === "" || typed === "." ? NaN : Number(typed);
+      }
       const normalized = {
         name,
         quantityGm: Number.isFinite(qty) && qty >= 0 ? Math.round(qty * 100) / 100 : 0,
@@ -438,6 +498,7 @@ export function mapMealLogToUi(log) {
     photoAiStatus === "analysed"
     || reviewStatus === "approved"
     || (reviewStatus === "pending" && normalizedItems.length > 0);
+  const suppliedItemMacros = normalizedItems.some(itemHasMacros);
   const items = distributeMealMacrosToItems(
     normalizedItems,
     hasCountableMacros
@@ -455,6 +516,9 @@ export function mapMealLogToUi(log) {
       return Number.isFinite(qty) && qty > 0 ? `${item.name} · ${qty} g` : item.name;
     });
   const detailedTags = itemTags;
+  const sourceLabel = log?.trackingMode === "detailed_macro"
+    ? "Detailed Meal"
+    : "Macro Meal";
 
   return {
     id: String(log?.id || log?._id || ""),
@@ -463,20 +527,24 @@ export function mapMealLogToUi(log) {
     description,
     items,
     detailedTags,
-    macros: hasCountableMacros
-      ? roundMacros({
-        protein: log?.proteinGm,
-        carbs: log?.carbsGm,
-        fat: log?.fatsGm,
-        calories: log?.caloriesKcal,
-      })
-      : null,
+    macros: suppliedItemMacros
+      ? sumItemsMacros(items)
+      : (hasCountableMacros
+        ? roundMacros({
+          protein: log?.proteinGm,
+          carbs: log?.carbsGm,
+          fat: log?.fatsGm,
+          calories: log?.caloriesKcal,
+        })
+        : null),
     aiStatus: uiStatus,
     reviewStatus,
     photoAiStatus,
     photoUrl: log?.photoUrl || "",
     declineMessage: String(log?.aiError || log?.rejectionReason || "").trim(),
     loggedBy,
+    sourceLabel,
+    trackingMode: log?.trackingMode === "detailed_macro" ? "detailed" : "macro",
     date: log?.date || "",
   };
 }

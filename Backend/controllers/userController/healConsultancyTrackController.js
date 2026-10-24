@@ -9,7 +9,7 @@ const {
   toUserFacingHealConsultancyTrack,
   mirrorRequestedSlots,
 } = require("../../models/userHealConsultancyTrackModel");
-const { normalizeRequestedSlots } = require("../../utils/requestedSlotsHelpers");
+const { normalizeRequestedSlots, durationFromRange } = require("../../utils/requestedSlotsHelpers");
 const {
   readPagination,
   parseCreateBody,
@@ -22,7 +22,24 @@ const {
   dispatchCounsellingRequestedCoachNotificationAsync,
   dispatchCounsellingPeriodSelectedCoachNotificationAsync,
   dispatchCounsellingTimeRequestedCoachNotificationAsync,
+  dispatchCounsellingScheduledNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { createZoomForMeeting } = require("../../services/onboardingMeetingService");
+const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
+const { getUserById } = require("../../models/userModel");
+
+async function coachMeetingFields(userId, user) {
+  try {
+    const snapshot = await loadCoachMeetingSnapshot(userId, user || null);
+    return {
+      coachMeetings: snapshot.meetings,
+      lastReviewedAt: snapshot.lastReviewedAt,
+    };
+  } catch (err) {
+    console.error("[heal consultancy] coach meetings failed", err?.message || err);
+    return { coachMeetings: [], lastReviewedAt: null };
+  }
+}
 
 exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) => {
   const user = req.currentUser;
@@ -46,6 +63,7 @@ exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) =
       assignedCoachType: hierarchy.assignedCoachType,
       concern: body.concern,
       status: "requested",
+      initiatedByRole: "client",
     });
   } catch (err) {
     handleValidationError(err);
@@ -72,6 +90,8 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
   const result = await listHealConsultancyTracksByUserId(userId, { page, limit, status });
   const active = await findActiveHealConsultancyTrackByUserId(userId);
   const scheduled = await findScheduledHealConsultancyTrackByUserId(userId);
+  const user = req.currentUser || (await getUserById(userId));
+  const meetings = await coachMeetingFields(userId, user);
 
   return res.status(200).json({
     status: true,
@@ -81,6 +101,7 @@ exports.listMyHealConsultancyTracksController = asyncHandler(async (req, res) =>
       activeTrack: toUserFacingHealConsultancyTrack(active),
       scheduledTrack: toUserFacingHealConsultancyTrack(scheduled),
       pagination: result.pagination,
+      ...meetings,
     },
   });
 });
@@ -100,6 +121,65 @@ exports.selectMyHealConsultancyPeriodController = asyncHandler(async (req, res) 
   const { offerId } = parseSelectPeriodBody(req.body || {});
   const offer = (track.periodOffers || []).find((row) => String(row.id) === offerId);
   if (!offer) throw new AppError("offerId is not one of the offered periods", 400);
+
+  // Coach-offered exact slots (LAUNCH-style): picking one confirms the meeting immediately.
+  if (String(offer.kind || "").toLowerCase() === "slot" && offer.startAt) {
+    if (new Date(offer.startAt).getTime() <= Date.now()) {
+      throw new AppError("That slot is no longer available", 400);
+    }
+    const durationMinutes = durationFromRange(
+      offer.startAt,
+      offer.endAt,
+      track.durationMinutes || 45,
+    );
+
+    let zoom;
+    try {
+      zoom = await createZoomForMeeting({
+        stepKey: "counselling",
+        userName: req.currentUser?.name,
+        startAt: offer.startAt,
+        durationMinutes,
+      });
+    } catch (err) {
+      throw new AppError(err.message || "Failed to create Zoom meeting", 502);
+    }
+
+    let updated;
+    try {
+      updated = await updateHealConsultancyTrack(trackId, {
+        status: "scheduled",
+        selectedOfferId: offer.id,
+        selectedPeriod: offer.period,
+        selectedDate: offer.date,
+        scheduledAt: offer.startAt,
+        durationMinutes,
+        meetingLink: zoom.zoomJoinUrl,
+        zoomMeetingId: zoom.zoomMeetingId,
+        zoomJoinUrl: zoom.zoomJoinUrl,
+        zoomStartUrl: zoom.zoomStartUrl,
+        confirmedAt: new Date().toISOString(),
+        ...mirrorRequestedSlots([]),
+      });
+    } catch (err) {
+      handleValidationError(err);
+    }
+
+    dispatchCounsellingScheduledNotificationAsync({
+      userId,
+      trackId,
+    });
+    dispatchCounsellingPeriodSelectedCoachNotificationAsync({
+      user: req.currentUser,
+      trackId,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Counselling session booked",
+      data: { track: toUserFacingHealConsultancyTrack(updated) },
+    });
+  }
 
   let updated;
   try {

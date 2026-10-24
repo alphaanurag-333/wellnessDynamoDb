@@ -19,17 +19,19 @@ const {
 const {
   createWeightLog,
   listWeightLogsByUser,
-  toPublicWeightLog,
+  toUserWeightLog,
 } = require("../../models/healthProgressWeightModel");
 const {
   createGlucoseLog,
   listGlucoseLogsByUser,
-  toPublicGlucoseLog,
+  toUserGlucoseLog,
 } = require("../../models/healthProgressGlucoseModel");
+const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
+const { listHba1cReadingsFromLabReports } = require("../../utils/programProgressCalculations");
 const {
   createBloodPressureLog,
   listBloodPressureLogsByUser,
-  toPublicBloodPressureLog,
+  toUserBloodPressureLog,
 } = require("../../models/healthProgressBloodPressureModel");
 const {
   createMenstrualCycleLog,
@@ -41,9 +43,19 @@ const {
   listConditionLogsByUser,
   toPublicConditionLog,
 } = require("../../models/healthProgressConditionModel");
+const {
+  ensurePurchasedProgramTrackers,
+} = require("../../services/healthProgressProgramTrackerService");
+const {
+  clientUploadWindows,
+  syncClientUploadWindow,
+  assertClientUploadOpen,
+  closeClientUploadAfterSave,
+} = require("../../services/healthProgressClientUploadService");
 
 exports.getHealthProgressSettingsController = asyncHandler(async (req, res) => {
-  const user = req.currentUser;
+  const tracked = await ensurePurchasedProgramTrackers(req.currentUser);
+  const user = await syncClientUploadWindow(tracked);
   const settings = resolveHealthProgressSettings(user);
 
   return res.status(200).json({
@@ -51,6 +63,7 @@ exports.getHealthProgressSettingsController = asyncHandler(async (req, res) => {
     message: "Health progress settings fetched",
     data: {
       settings,
+      clientUpload: clientUploadWindows(user.healthProgressClientUpload).windows,
       gender: user.gender,
     },
   });
@@ -71,6 +84,7 @@ exports.createWeightLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
   if (weightKg == null) throw new AppError("weightKg is required", 400);
+  assertClientUploadOpen(req.currentUser, "weightPic");
 
   const weightPicKey = await uploadFileFromRequest(
     req,
@@ -89,10 +103,12 @@ exports.createWeightLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  await closeClientUploadAfterSave(userId, "weightPic", req.currentUser);
+
   return res.status(201).json({
     status: true,
     message: "Weight entry saved",
-    data: { log: toPublicWeightLog(log) },
+    data: { log: toUserWeightLog(log) },
   });
 });
 
@@ -105,7 +121,7 @@ exports.listWeightLogsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Weight history fetched",
     data: {
-      logs: result.items.map(toPublicWeightLog),
+      logs: result.items.map(toUserWeightLog),
       pagination: result.pagination,
     },
   });
@@ -125,6 +141,7 @@ exports.createGlucoseLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
   if (value == null) throw new AppError("value is required", 400);
+  assertClientUploadOpen(req.currentUser, "glucose");
 
   const glucosePicKey = await uploadFileFromRequest(
     req,
@@ -144,24 +161,31 @@ exports.createGlucoseLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  await closeClientUploadAfterSave(userId, "glucose", req.currentUser);
+
   return res.status(201).json({
     status: true,
     message: "Glucose entry saved",
-    data: { log: toPublicGlucoseLog(log) },
+    data: { log: toUserGlucoseLog(log) },
   });
 });
 
 exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const { page, limit } = readPagination(req);
-  const result = await listGlucoseLogsByUser(userId, { page, limit });
+  const [result, labReports] = await Promise.all([
+    listGlucoseLogsByUser(userId, { page, limit }),
+    listUserLabReportsByUserId(userId),
+  ]);
+  const hba1cReadings = listHba1cReadingsFromLabReports(labReports);
 
   return res.status(200).json({
     status: true,
     message: "Glucose history fetched",
     data: {
-      logs: result.items.map(toPublicGlucoseLog),
+      logs: result.items.map(toUserGlucoseLog),
       pagination: result.pagination,
+      hba1cReadings,
     },
   });
 });
@@ -182,6 +206,7 @@ exports.createBloodPressureLogController = asyncHandler(async (req, res) => {
   if (sys == null || dia == null) {
     throw new AppError("sys and dia are required", 400);
   }
+  assertClientUploadOpen(req.currentUser, "bloodPressure");
 
   const bpPicKey = await uploadFileFromRequest(
     req,
@@ -201,10 +226,12 @@ exports.createBloodPressureLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  await closeClientUploadAfterSave(userId, "bloodPressure", req.currentUser);
+
   return res.status(201).json({
     status: true,
     message: "Blood pressure entry saved",
-    data: { log: toPublicBloodPressureLog(log) },
+    data: { log: toUserBloodPressureLog(log) },
   });
 });
 
@@ -217,7 +244,7 @@ exports.listBloodPressureLogsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Blood pressure history fetched",
     data: {
-      logs: result.items.map(toPublicBloodPressureLog),
+      logs: result.items.map(toUserBloodPressureLog),
       pagination: result.pagination,
     },
   });
@@ -288,6 +315,7 @@ exports.createConditionLogController = asyncHandler(async (req, res) => {
     "users/health-progress/condition-comparison"
   );
   if (!picKey) throw new AppError("condition_pic is required", 400);
+  assertClientUploadOpen(req.currentUser, "conditionComparison");
 
   let log;
   try {
@@ -302,6 +330,8 @@ exports.createConditionLogController = asyncHandler(async (req, res) => {
   } catch (err) {
     handleValidationError(err);
   }
+
+  await closeClientUploadAfterSave(userId, "conditionComparison", req.currentUser);
 
   return res.status(201).json({
     status: true,

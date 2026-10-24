@@ -13,6 +13,7 @@ const {
 } = require("../../services/notificationDispatchService");
 const {
   listEnrichedWellnessPrescriptionsForUser,
+  loadCoachMeetingSnapshot,
   syncUserLastReviewedAt,
   enrichAssignmentsWithReviewMeta,
 } = require("../../services/wellnessPrescriptionReviewService");
@@ -50,12 +51,14 @@ exports.listCoachUserWellnessPrescriptionsController = asyncHandler(async (req, 
   await assertStaffCanAccessUser(req, user);
   assertHealTierUser(user);
 
-  const assignments = await listEnrichedWellnessPrescriptionsForUser(userId, user);
+  const snapshot = await loadCoachMeetingSnapshot(userId, user);
 
   return res.status(200).json({
     status: true,
     message: "Wellness prescriptions fetched successfully",
-    ...mapPrescriptionListResponse(assignments),
+    ...mapPrescriptionListResponse(snapshot.assignments),
+    meetings: snapshot.meetings,
+    lastReviewedAt: snapshot.lastReviewedAt,
   });
 });
 

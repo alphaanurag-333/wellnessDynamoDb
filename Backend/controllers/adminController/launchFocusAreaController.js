@@ -9,6 +9,7 @@ const {
   listLaunchFocusAreas,
   LAUNCH_FOCUS_AREA_ALLOWED_STATUS,
 } = require("../../models/launchFocusAreaModel");
+const { getLaunchDomainById } = require("../../models/launchDomainModel");
 
 const TITLE_MAX_LEN = 300;
 const SORT_ORDER_MIN = 0;
@@ -20,6 +21,14 @@ function validateSortOrder(value) {
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < SORT_ORDER_MIN || n > SORT_ORDER_MAX) {
     throw new AppError(`sortOrder must be a whole number between ${SORT_ORDER_MIN} and ${SORT_ORDER_MAX}`, 400);
   }
+}
+
+async function assertLaunchDomainId(domainId) {
+  const id = String(domainId || "").trim();
+  if (!id) throw new AppError("domainId is required", 400);
+  const domain = await getLaunchDomainById(id);
+  if (!domain) throw new AppError("LAUNCH domain not found", 400);
+  return id;
 }
 
 exports.listLaunchFocusAreasController = asyncHandler(async (req, res) => {
@@ -44,9 +53,11 @@ exports.createLaunchFocusAreaController = asyncHandler(async (req, res) => {
     throw new AppError("status must be active or inactive", 400);
   }
   validateSortOrder(req.body.sortOrder);
+  const domainId = await assertLaunchDomainId(req.body.domainId);
 
   const focusArea = await createLaunchFocusArea({
     title,
+    domainId,
     sortOrder: req.body.sortOrder,
     status,
   });
@@ -79,6 +90,9 @@ exports.updateLaunchFocusAreaController = asyncHandler(async (req, res) => {
       throw new AppError("status must be active or inactive", 400);
     }
     updates.status = status;
+  }
+  if (req.body.domainId !== undefined) {
+    updates.domainId = await assertLaunchDomainId(req.body.domainId);
   }
 
   if (Object.keys(updates).length === 0) {

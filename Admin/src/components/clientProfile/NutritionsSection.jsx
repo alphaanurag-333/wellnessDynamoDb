@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
-import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { formatLongDate } from "../../api/usersApi.js";
 import {
   createUserSupplementDosage,
@@ -9,16 +9,20 @@ import {
   listActiveSupplementPool,
   listUserSupplementDosages,
   listUserSupplementRecommendations,
+  publishUserSupplementDosages,
   stopUserSupplementDosage,
   uploadUserSupplementFulfilmentOrderBill,
   upsertUserSupplementFulfilmentOrder,
 } from "../../api/supplementAssignmentApi.js";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 
 const MAX_TIMINGS = 4;
 const MAX_DAY_PARTS = 3;
 const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const COMPOSITE_PERIOD_SEP = "__";
+const NUTRITIONS_POLL_VISIBLE_MS = 5000;
+const NUTRITIONS_POLL_HIDDEN_MS = 15000;
 
 const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -160,6 +164,39 @@ function dayPartButtonLabel(selected) {
     .join(", ");
 }
 
+const DAY_PART_ID_SET = new Set(DAY_PART_OPTIONS.map((row) => row.id));
+const MEAL_TIMING_ID_SET = new Set(MEAL_TIMING_OPTIONS.map((row) => row.id));
+
+function periodsToFormState(periods) {
+  const dayPartIds = [];
+  const mealTimingIds = [];
+  const quantities = new Set();
+
+  for (const row of periods || []) {
+    const periodId = String(row?.period || "").trim().toLowerCase();
+    if (!periodId) continue;
+
+    const composite = parseCompositePeriod(periodId);
+    if (composite) {
+      if (!dayPartIds.includes(composite.dayPart)) dayPartIds.push(composite.dayPart);
+      if (!mealTimingIds.includes(composite.mealTiming)) mealTimingIds.push(composite.mealTiming);
+    } else if (DAY_PART_ID_SET.has(periodId)) {
+      if (!dayPartIds.includes(periodId)) dayPartIds.push(periodId);
+    } else if (MEAL_TIMING_ID_SET.has(periodId) && !mealTimingIds.includes(periodId)) {
+      mealTimingIds.push(periodId);
+    }
+    quantities.add(Math.max(1, Math.floor(Number(row.quantity) || 1)));
+  }
+
+  const qtyValues = [...quantities];
+  return {
+    dayPartIds,
+    mealTimingIds,
+    qty: qtyValues.length === 1 ? qtyValues[0] : qtyValues[0] || 1,
+    mixedQty: qtyValues.length > 1,
+  };
+}
+
 function isHealClientUser(user) {
   const tier = String(user?.userTier || "").toLowerCase().trim();
   const label = String(user?.tier || "").toLowerCase().trim();
@@ -201,6 +238,64 @@ function formatDateRange(startDate, endDate) {
   return start || end || "";
 }
 
+function addDaysToIsoDate(isoDate, days) {
+  const raw = String(isoDate || "").trim();
+  if (!raw) return "";
+  const d = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function resolveDosageSchedule(dosage) {
+  const packSize = Number(dosage?.packSize) || 0;
+  const totalPerDay = Number(dosage?.totalPerDay) || 0;
+  const startDate = String(dosage?.startDate || "").trim();
+  let durationDays = Number(dosage?.durationDays) || 0;
+  let endDate = String(dosage?.endDate || "").trim();
+
+  if (packSize > 0 && totalPerDay > 0) {
+    const computedDuration = Math.floor(packSize / totalPerDay);
+    if (computedDuration >= 1) {
+      durationDays = computedDuration;
+      if (startDate) {
+        endDate = addDaysToIsoDate(startDate, durationDays - 1);
+      }
+    }
+  }
+
+  let progressPercent = Number(dosage?.progressPercent) || 0;
+  if (durationDays > 0 && startDate && endDate) {
+    const today = todayIsoDate();
+    if (today < startDate) {
+      progressPercent = 0;
+    } else if (today >= endDate) {
+      progressPercent = 100;
+    } else {
+      const startMs = new Date(`${startDate}T00:00:00`).getTime();
+      const todayMs = new Date(`${today}T00:00:00`).getTime();
+      const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
+      progressPercent = Math.min(100, Math.floor((elapsedDays / durationDays) * 100));
+    }
+  }
+
+  const unit = String(dosage?.unit || "").trim();
+  const packMeta = packSize > 0 && durationDays > 0
+    ? `Pack ${packSize}${unit ? ` ${unit}` : ""} · ${durationDays}-day supply`
+    : "";
+
+  return {
+    startDate,
+    endDate,
+    durationDays,
+    progressPercent,
+    packMeta,
+  };
+}
+
 function sameItems(a = [], b = []) {
   if (a.length !== b.length) return false;
   const left = [...a].sort((x, y) => String(x.id).localeCompare(String(y.id)));
@@ -222,6 +317,44 @@ function mapApiOrderToUi(order, index) {
     billName: order.billName || "",
     billPdfUrl: order.billPdfUrl || "",
     saved: true,
+  };
+}
+
+function coachOrderHasLocalEdits(order) {
+  if (order.saved) return false;
+  return (
+    (order.items?.length ?? 0) > 0
+    || String(order.placedOn || "").trim()
+    || String(order.vendor || "").trim()
+    || String(order.tracking || "").trim()
+    || String(order.expectedDelivery || "").trim()
+    || String(order.billName || "").trim()
+  );
+}
+
+/** True while silent polling must not overwrite in-progress coach fulfilment orders. */
+function coachOrdersNeedPollProtection(orders) {
+  if (!Array.isArray(orders) || !orders.length) return false;
+  const unsaved = orders.filter((o) => !o.saved);
+  const saved = orders.filter((o) => o.saved);
+  if (unsaved.some(coachOrderHasLocalEdits)) return true;
+  if (saved.length > 0 && unsaved.length > 0) return true;
+  if (unsaved.length > 1) return true;
+  return false;
+}
+
+function recommendationSummary(rec) {
+  const items = rec?.items || [];
+  const historyRow = recommendationToHistoryRow(rec);
+  return {
+    id: rec?.id,
+    itemCount: items.length,
+    sentOn: formatLongDate(rec?.createdAt) || "—",
+    amount: Number(rec?.billingTotal) || 0,
+    status: historyRow.status,
+    tone: historyRow.tone,
+    type: historyRow.type,
+    itemsLabel: items.map((item) => `${item.name} × ${item.qty}`).join(" · ") || "Nutritions",
   };
 }
 
@@ -252,12 +385,14 @@ function recommendationToHistoryRow(rec) {
 }
 
 function mapDosageToCard(dosage) {
-  const pct = Number(dosage.progressPercent) || 0;
+  const schedule = resolveDosageSchedule(dosage);
+  const pct = schedule.progressPercent;
   return {
     id: dosage.id,
     name: dosage.name,
     daily: `${dosage.totalPerDay} ${dosage.unit}`.trim(),
-    range: formatDateRange(dosage.startDate, dosage.endDate),
+    range: formatDateRange(schedule.startDate, schedule.endDate),
+    packMeta: schedule.packMeta,
     pct,
     progressTone: pct >= 60 ? "green" : pct >= 25 ? "orange" : "purple",
     status: dosage.status,
@@ -309,6 +444,54 @@ function FulfilmentStatus({ recommendation }) {
       {requestedOn ? (
         <p className="ua-cp-nut-log__hint">Delivery was previously requested on {requestedOn}.</p>
       ) : null}
+    </div>
+  );
+}
+
+function SyncedRecommendationModal({ open, onClose, items, billingTotal, sentOnLabel }) {
+  if (!open) return null;
+  const rows = Array.isArray(items) ? items : [];
+  const total = Number(billingTotal) || rows.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+
+  return (
+    <div className="ua-cp-modal-backdrop ua-cp-modal-backdrop--drawer" onClick={onClose} role="presentation">
+      <div className="ua-cp-modal ua-cp-nut-synced-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="synced-rec-modal-title">
+        <div className="ua-cp-nut-synced-modal__head">
+          <div>
+            <h3 id="synced-rec-modal-title">Sent to client</h3>
+            <p>
+              {sentOnLabel ? `Synced on ${sentOnLabel}. ` : ""}
+              Nutritions the coach sent to the client app.
+            </p>
+          </div>
+          <button type="button" className="ua-cp-nut-bill-modal__close" onClick={onClose} aria-label="Close">×</button>
+        </div>
+        {rows.length ? (
+          <div className="ua-cp-nut-synced-modal__items">
+            {rows.map((item) => (
+              <div key={item.id} className="ua-cp-nut-synced-modal__item">
+                <div>
+                  <strong>{item.name}</strong>
+                  {packPriceLabel(item) ? <span>{packPriceLabel(item)}</span> : null}
+                </div>
+                <div className="ua-cp-nut-synced-modal__meta">
+                  <span>Qty {item.qty}</span>
+                  <strong>Rs. {((Number(item.price) || 0) * item.qty).toLocaleString("en-IN")}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="ua-cp-rec-hint">No nutritions in this recommendation.</p>
+        )}
+        <div className="ua-cp-billing-bar ua-cp-nut-synced-modal__total">
+          <span>Billing amount</span>
+          <strong>Rs. {total.toLocaleString("en-IN")}</strong>
+        </div>
+        <div className="ua-cp-nut-synced-modal__foot">
+          <button type="button" className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block" onClick={onClose}>Close</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -386,6 +569,7 @@ function CoachOrderCard({
   pool,
   selected,
   disabled,
+  canRemoveOrder = false,
   onUpdate,
   onRemove,
   onSave,
@@ -439,7 +623,7 @@ function CoachOrderCard({
         </div>
         <div className="ua-cp-nut-order-card__actions">
           <span className="ua-cp-nut-order-card__badge">{order.saved ? "Saved" : "Draft"}</span>
-          {!disabled ? (
+          {!disabled && (canRemoveOrder || !order.saved) ? (
             <button type="button" className="ua-cp-nut-order-card__close" onClick={onRemove} aria-label="Remove order">×</button>
           ) : null}
         </div>
@@ -581,6 +765,7 @@ function CoachFulfilmentLog({
   pool,
   selected,
   disabled,
+  canRemoveOrder = false,
   onAddOrder,
   onUpdateOrder,
   onRemoveOrder,
@@ -615,6 +800,7 @@ function CoachFulfilmentLog({
             pool={pool}
             selected={selected}
             disabled={disabled}
+            canRemoveOrder={canRemoveOrder}
             onUpdate={onUpdateOrder}
             onRemove={() => onRemoveOrder(order.id)}
             onSave={() => onSaveOrder(order.id)}
@@ -639,15 +825,35 @@ function CoachFulfilmentLog({
   );
 }
 
-function DosageCard({ card, canRemove, onRemove }) {
+function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
   return (
-    <div className={`ua-cp-dosage-card${card.status === "stopped" ? " ua-cp-dosage-card--stopped" : ""}`}>
+    <div className={`ua-cp-dosage-card${card.status === "stopped" ? " ua-cp-dosage-card--stopped" : ""}${card.status === "draft" ? " ua-cp-dosage-card--draft" : ""}${isEditing ? " ua-cp-dosage-card--editing" : ""}`}>
       <div className="ua-cp-dosage-card__head">
         <strong>{card.name}</strong>
         <span>Daily dosage: <strong>{card.daily}</strong></span>
-        {canRemove && card.status !== "stopped" ? (
-          <button type="button" className="ua-cp-dosage-card__close" onClick={onRemove} aria-label={`Stop ${card.name}`}>×</button>
-        ) : null}
+        <div className="ua-cp-dosage-card__actions">
+          {canEdit && card.status !== "stopped" ? (
+            <button
+              type="button"
+              className="ua-cp-dosage-card__edit"
+              onClick={onEdit}
+              disabled={isEditing}
+              aria-label={`Edit ${card.name}`}
+            >
+              Edit
+            </button>
+          ) : null}
+          {canRemove && card.status !== "stopped" ? (
+            <button
+              type="button"
+              className="ua-cp-dosage-card__edit ua-cp-dosage-card__delete"
+              onClick={onRemove}
+              aria-label={`Delete ${card.name}`}
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
       </div>
       <div className="ua-cp-dosage-meals">
         {card.meals.map((meal) => (
@@ -661,11 +867,25 @@ function DosageCard({ card, canRemove, onRemove }) {
         ))}
       </div>
       <div className="ua-cp-dosage-card__foot">
-        <span>{card.status === "stopped" ? "Stopped" : card.range}</span>
+        <div className="ua-cp-dosage-card__foot-dates">
+          <span>
+            {card.status === "stopped"
+              ? "Stopped"
+              : card.range || "—"}
+          </span>
+          {card.status === "draft" ? (
+            <span className="ua-cp-dosage-card__draft-tag">Draft · not in app</span>
+          ) : null}
+          {card.packMeta ? (
+            <span className="ua-cp-dosage-card__pack">{card.packMeta}</span>
+          ) : null}
+        </div>
         <div className={`ua-cp-dosage-progress ua-cp-dosage-progress--${card.progressTone || "purple"}`}>
           <span style={{ width: `${card.pct}%` }} />
         </div>
-        <span>{card.pct}% Completed</span>
+        <span title="Based on start date and pack size ÷ daily dosage">
+          {card.pct}% Completed
+        </span>
       </div>
     </div>
   );
@@ -674,9 +894,9 @@ function DosageCard({ card, canRemove, onRemove }) {
 export function NutritionsSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = isHealClientUser(user);
-  const { can } = useViewAs();
-  const canWrite = can("console.diet.create");
-  const canRemove = can("console.diet.delete");
+  const { canDelete: canRemove, canCreate: canWrite } = useClientSectionPermissions("nutritions");
+  /** Coaches can stop/remove dosages when they can build the schedule (backend: supplement-dosage write). */
+  const canRemoveDosage = canRemove || canWrite;
 
   const [sub, setSub] = useState("recommendation");
   const [pool, setPool] = useState([]);
@@ -687,6 +907,7 @@ export function NutritionsSection({ user, onToast }) {
   const [selected, setSelected] = useState([]);
   const [fulfilment, setFulfilment] = useState("delivery");
   const [coachOrders, setCoachOrders] = useState([]);
+  const [composeCoachOrders, setComposeCoachOrders] = useState(() => [createDraftOrder(1)]);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
@@ -699,9 +920,23 @@ export function NutritionsSection({ user, onToast }) {
   const [timingOpen, setTimingOpen] = useState(false);
   const dayPartRef = useRef(null);
   const timingRef = useRef(null);
+  const [pendingDosageDelete, setPendingDosageDelete] = useState(null);
+  const [pendingOrderDelete, setPendingOrderDelete] = useState(null);
+  const [editingDosageId, setEditingDosageId] = useState(null);
+  const [syncedRecViewOpen, setSyncedRecViewOpen] = useState(false);
+  const [viewRecommendation, setViewRecommendation] = useState(null);
+  const [composingNewRecommendation, setComposingNewRecommendation] = useState(false);
+  const dosageFormRef = useRef(null);
+  const dirtyRef = useRef(false);
+  const composingNewRef = useRef(false);
+  const localNutritionFormEditRef = useRef(false);
+  const loadInFlightRef = useRef(false);
+  const deliveryRequestedSigRef = useRef("");
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
   const selectedPeriodCount = plannedPeriodCount(addDayParts, addPeriods);
+  const clientName = user?.name?.trim() || "Client";
 
-  const billing = useMemo(() => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0), [selected]);
   const availablePool = useMemo(
     () => pool.filter((item) => !selected.some((row) => row.id === item.id)),
     [pool, selected],
@@ -710,22 +945,114 @@ export function NutritionsSection({ user, onToast }) {
     () => dosages.filter((row) => row.status !== "stopped"),
     [dosages],
   );
+  const draftDosageCount = useMemo(
+    () => activeDosages.filter((row) => row.status === "draft").length,
+    [activeDosages],
+  );
+  const editingDosage = useMemo(
+    () => activeDosages.find((row) => row.id === editingDosageId) || null,
+    [activeDosages, editingDosageId],
+  );
   const dirty = useMemo(() => {
-    const savedOption = recommended?.deliveryOption === "self_billing" ? "self" : "delivery";
-    const itemsOrOptionChanged = !sameItems(selected, recommended?.items || []) || fulfilment !== savedOption;
-    const hasUnsyncedOrders = fulfilment === "delivery" && coachOrders.some((order) => (
+    const ordersForDraft = composingNewRecommendation || !recommended?.id
+      ? composeCoachOrders
+      : coachOrders;
+    const hasUnsyncedOrders = fulfilment === "delivery" && ordersForDraft.some((order) => (
       !order.saved
       && order.items.length
       && String(order.placedOn || "").trim()
       && String(order.vendor || "").trim()
     ));
-    return itemsOrOptionChanged || hasUnsyncedOrders;
-  }, [coachOrders, fulfilment, recommended, selected]);
+    const hasPendingCoachOrderEdits = fulfilment === "delivery"
+      && coachOrdersNeedPollProtection(ordersForDraft);
+    if (composingNewRecommendation || !recommended?.id) {
+      return selected.length > 0 || hasUnsyncedOrders || hasPendingCoachOrderEdits;
+    }
+    return hasUnsyncedOrders || hasPendingCoachOrderEdits;
+  }, [coachOrders, composeCoachOrders, composingNewRecommendation, fulfilment, recommended, selected]);
 
-  const canSaveAndSync = Boolean(canWrite && isHealClient && selected.length && !saving);
+  function touchLocalNutritionEdits() {
+    localNutritionFormEditRef.current = true;
+  }
+
+  useEffect(() => {
+    dirtyRef.current = dirty;
+    if (!dirty && !composingNewRef.current) {
+      localNutritionFormEditRef.current = false;
+    }
+  }, [dirty]);
+
+  useEffect(() => {
+    composingNewRef.current = composingNewRecommendation;
+  }, [composingNewRecommendation]);
+
+  const currentRecommendation = recommended?.items?.length ? recommended : null;
+  const showComposePanel = composingNewRecommendation || !currentRecommendation;
+  const composeBilling = useMemo(
+    () => selected.reduce((sum, s) => sum + (Number(s.price) || 0) * s.qty, 0),
+    [selected],
+  );
+  const canSaveAndSync = Boolean(
+    canWrite
+    && isHealClient
+    && selected.length
+    && !saving
+    && showComposePanel
+    && (composingNewRecommendation || !currentRecommendation || dirty),
+  );
+  const previousRecommendations = useMemo(
+    () => history.filter((entry) => entry?.items?.length),
+    [history],
+  );
+
+  const applyRecommendedToForm = useCallback((rec) => {
+    localNutritionFormEditRef.current = false;
+    setSelected((rec?.items || []).map((item) => ({ ...item })));
+    setFulfilment(rec?.deliveryOption === "self_billing" ? "self" : "delivery");
+    const savedOrders = (rec?.deliveryOption === "coach_delivery"
+      ? (rec?.fulfilmentOrders || [])
+      : []
+    ).map(mapApiOrderToUi);
+    setCoachOrders(
+      savedOrders.length
+        ? savedOrders
+        : rec?.deliveryOption === "self_billing"
+          ? []
+          : [createDraftOrder(1)],
+    );
+  }, []);
+
+  function openRecommendationView(rec) {
+    if (!rec) return;
+    setViewRecommendation(rec);
+    setSyncedRecViewOpen(true);
+  }
+
+  function startNewRecommendation() {
+    setComposingNewRecommendation(true);
+    setSelected([]);
+    setFulfilment("delivery");
+    setComposeCoachOrders([createDraftOrder(1)]);
+  }
+
+  function cancelNewRecommendation() {
+    setComposingNewRecommendation(false);
+    if (currentRecommendation) {
+      applyRecommendedToForm(currentRecommendation);
+    } else {
+      setSelected([]);
+      setFulfilment("delivery");
+      setComposeCoachOrders([createDraftOrder(1)]);
+    }
+  }
+  const clientConfirmedNutritionOrder = Boolean(
+    recommended?.deliveryRequestedAt
+    && recommended?.deliveryOption !== "self_billing",
+  );
 
   const load = useCallback(async ({ silent = false } = {}) => {
-    if (!userId) return;
+    if (!userId || loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
     if (!silent) setLoading(true);
     setError("");
     const errors = [];
@@ -747,21 +1074,27 @@ export function NutritionsSection({ user, onToast }) {
 
       if (recResult.status === "fulfilled") {
         const current = recResult.value?.recommended || null;
+        const requestedSig = current?.deliveryRequestedAt || "";
+        if (silent && requestedSig && requestedSig !== deliveryRequestedSigRef.current) {
+          onToastRef.current?.(`${clientName} has confirmed the Nutrition Order`);
+        }
+        deliveryRequestedSigRef.current = requestedSig;
+
         setRecommended(current);
         setHistory(recResult.value?.history || []);
-        setSelected((current?.items || []).map((item) => ({ ...item })));
-        setFulfilment(current?.deliveryOption === "self_billing" ? "self" : "delivery");
-        const savedOrders = (current?.deliveryOption === "coach_delivery"
-          ? (current?.fulfilmentOrders || [])
-          : []
-        ).map(mapApiOrderToUi);
-        setCoachOrders(
-          savedOrders.length
-            ? savedOrders
-            : current?.deliveryOption === "self_billing"
-              ? []
-              : [createDraftOrder(1)]
-        );
+        if (
+          !silent
+          || (
+            !dirtyRef.current
+            && !composingNewRef.current
+            && !localNutritionFormEditRef.current
+          )
+        ) {
+          applyRecommendedToForm(current);
+          if (current?.items?.length) {
+            setComposingNewRecommendation(false);
+          }
+        }
       } else {
         setRecommended(null);
         setHistory([]);
@@ -784,14 +1117,59 @@ export function NutritionsSection({ user, onToast }) {
         onToast?.(errors[0]);
       }
     } finally {
-      setLoading(false);
-      setPoolLoading(false);
+      loadInFlightRef.current = false;
+      if (!silent) {
+        setLoading(false);
+        setPoolLoading(false);
+      }
     }
-  }, [onToast, userId]);
+  }, [applyRecommendedToForm, clientName, userId]);
 
   useEffect(() => {
+    deliveryRequestedSigRef.current = "";
+    setComposingNewRecommendation(false);
+    setViewRecommendation(null);
+    setSyncedRecViewOpen(false);
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let intervalId = null;
+
+    const tick = () => {
+      load({ silent: true });
+    };
+
+    const reschedule = () => {
+      if (intervalId) window.clearInterval(intervalId);
+      const ms =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? NUTRITIONS_POLL_HIDDEN_MS
+          : NUTRITIONS_POLL_VISIBLE_MS;
+      intervalId = window.setInterval(tick, ms);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+      reschedule();
+    };
+
+    const onFocus = () => tick();
+
+    reschedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [load, userId]);
 
   useEffect(() => {
     function onDocClick(event) {
@@ -809,6 +1187,7 @@ export function NutritionsSection({ user, onToast }) {
   function addFromPool(id) {
     const item = pool.find((s) => s.id === id);
     if (!item) return;
+    touchLocalNutritionEdits();
     setSelected((list) => {
       const existing = list.find((x) => x.id === item.id);
       if (existing) return list.map((x) => (x.id === item.id ? { ...x, qty: x.qty + 1 } : x));
@@ -818,10 +1197,12 @@ export function NutritionsSection({ user, onToast }) {
   }
 
   function addCoachOrder() {
+    touchLocalNutritionEdits();
     setCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
   }
 
   function updateCoachOrder(updated) {
+    touchLocalNutritionEdits();
     setCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
   }
 
@@ -844,7 +1225,28 @@ export function NutritionsSection({ user, onToast }) {
       return;
     }
 
+    touchLocalNutritionEdits();
     setCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+  }
+
+  function addComposeCoachOrder() {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
+  }
+
+  function updateComposeCoachOrder(updated) {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
+  }
+
+  function removeComposeCoachOrder(id) {
+    touchLocalNutritionEdits();
+    setComposeCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
+  }
+
+  function adjustSelectedItem(id, fn) {
+    touchLocalNutritionEdits();
+    setSelected((list) => fn(list));
   }
 
   async function saveCoachOrder(id) {
@@ -959,7 +1361,10 @@ export function NutritionsSection({ user, onToast }) {
 
       let syncedOrders = 0;
       if (fulfilment === "delivery" && recommendationId) {
-        const readyOrders = coachOrders.filter((order) => (
+        const ordersForSave = composingNewRecommendation || !currentRecommendation
+          ? composeCoachOrders
+          : coachOrders;
+        const readyOrders = ordersForSave.filter((order) => (
           order.items.length
           && String(order.placedOn || "").trim()
           && String(order.vendor || "").trim()
@@ -977,13 +1382,15 @@ export function NutritionsSection({ user, onToast }) {
           syncedOrders += 1;
         }
 
-        const skipped = coachOrders.length - readyOrders.length;
+        const skipped = ordersForSave.length - readyOrders.length;
         if (skipped > 0 && readyOrders.length === 0) {
           onToast?.("Recommendation synced. Add items, date and vendor on each order to sync fulfilment logs.");
         }
       }
 
       await load({ silent: true });
+      setComposingNewRecommendation(false);
+      setComposeCoachOrders([createDraftOrder(1)]);
 
       if (syncedOrders > 0) {
         onToast(`Saved & synced to user app · ${syncedOrders} order${syncedOrders === 1 ? "" : "s"}. Check the client app.`);
@@ -997,17 +1404,89 @@ export function NutritionsSection({ user, onToast }) {
     }
   }
 
+  function cancelEditDosage() {
+    setEditingDosageId(null);
+    setAddSupp("");
+    setAddDayParts([]);
+    setAddPeriods([]);
+    setAddQty(1);
+    setAddStart(todayIsoDate());
+    setDayPartOpen(false);
+    setTimingOpen(false);
+  }
+
+  function beginEditDosage(dosage) {
+    if (!dosage?.id) return;
+    const form = periodsToFormState(dosage.periods);
+    setEditingDosageId(dosage.id);
+    setAddSupp(dosage.supplementId || "");
+    setAddDayParts(form.dayPartIds);
+    setAddPeriods(form.mealTimingIds);
+    setAddQty(form.qty);
+    setAddStart(dosage.startDate || todayIsoDate());
+    setDayPartOpen(false);
+    setTimingOpen(false);
+    if (form.mixedQty) {
+      onToast?.("Different amounts per timing — saving will use one amount for all selected timings.");
+    }
+    requestAnimationFrame(() => {
+      dosageFormRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+    });
+  }
+
   async function addDosageCard() {
     const nextPeriods = buildDosagePeriods(addDayParts, addPeriods, addQty);
     if (!addSupp || !nextPeriods.length) return;
 
-    const existing = activeDosages.find((row) => row.supplementId === addSupp);
-    const periods = existing
-      ? mergeDosagePeriods(existing.periods, nextPeriods)
+    if (editingDosageId) {
+      if (nextPeriods.length > MAX_PERIODS) {
+        onToast?.(`Max ${MAX_PERIODS} timings per nutrition.`);
+        return;
+      }
+      const editing = activeDosages.find((row) => row.id === editingDosageId);
+      setSaving(true);
+      try {
+        if (editing?.status === "draft") {
+          await stopUserSupplementDosage(userId, editingDosageId);
+        }
+        const otherDraft = activeDosages.find(
+          (row) => row.supplementId === addSupp
+            && row.status === "draft"
+            && row.id !== editingDosageId,
+        );
+        if (otherDraft) {
+          await stopUserSupplementDosage(userId, otherDraft.id);
+        }
+        await createUserSupplementDosage(userId, {
+          supplementId: addSupp,
+          startDate: addStart || todayIsoDate(),
+          periods: nextPeriods,
+        });
+        const name = pool.find((item) => item.id === addSupp)?.name || editing?.name || "Nutrition";
+        onToast(`Updated ${name} in schedule. Push to app when ready.`);
+        cancelEditDosage();
+        await load({ silent: true });
+      } catch (err) {
+        onToast?.(err?.message || "Could not update dosage");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    const existingDraft = activeDosages.find(
+      (row) => row.supplementId === addSupp && row.status === "draft",
+    );
+    const existingActive = activeDosages.find(
+      (row) => row.supplementId === addSupp && row.status === "active",
+    );
+    const mergeSource = existingDraft || existingActive;
+    const periods = mergeSource
+      ? mergeDosagePeriods(mergeSource.periods, nextPeriods)
       : nextPeriods;
 
     if (periods.length > MAX_PERIODS) {
-      const existingCount = existing?.periods?.length || 0;
+      const existingCount = mergeSource?.periods?.length || 0;
       const remaining = Math.max(0, MAX_PERIODS - existingCount);
       onToast?.(
         remaining === 0
@@ -1019,20 +1498,20 @@ export function NutritionsSection({ user, onToast }) {
 
     setSaving(true);
     try {
-      if (existing) {
-        await stopUserSupplementDosage(userId, existing.id);
+      if (existingDraft) {
+        await stopUserSupplementDosage(userId, existingDraft.id);
       }
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
-        startDate: existing?.startDate || addStart || todayIsoDate(),
+        startDate: mergeSource?.startDate || addStart || todayIsoDate(),
         periods,
       });
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
       const addedCount = nextPeriods.length;
       onToast(
-        existing
-          ? `Updated ${name} · +${addedCount} timing${addedCount === 1 ? "" : "s"} (${periods.length} total)`
-          : `Added ${name} ×${addedCount}`,
+        mergeSource
+          ? `Updated ${name} in schedule · +${addedCount} timing${addedCount === 1 ? "" : "s"} (${periods.length} total). Push to app when ready.`
+          : `Added ${name} to schedule ×${addedCount}. Push to app when ready.`,
       );
       setAddDayParts([]);
       setAddPeriods([]);
@@ -1051,10 +1530,34 @@ export function NutritionsSection({ user, onToast }) {
     setSaving(true);
     try {
       await stopUserSupplementDosage(userId, dosageId);
+      if (dosageId === editingDosageId) cancelEditDosage();
       onToast("Dosage stopped");
       await load({ silent: true });
     } catch (err) {
       onToast?.(err?.message || "Could not stop dosage");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function pushDosagesToApp() {
+    if (!draftDosageCount) return;
+    setSaving(true);
+    try {
+      const result = await publishUserSupplementDosages(userId);
+      if (result?.dosages) {
+        setDosages(result.dosages);
+      } else {
+        await load({ silent: true });
+      }
+      const count = result?.publishedCount || 0;
+      onToast(
+        count
+          ? result?.message || `Pushed ${count} dosage${count === 1 ? "" : "s"} to client app`
+          : "No unpublished dosages to push",
+      );
+    } catch (err) {
+      onToast?.(err?.message || "Could not push dosages to app");
     } finally {
       setSaving(false);
     }
@@ -1080,16 +1583,12 @@ export function NutritionsSection({ user, onToast }) {
       });
     };
 
-    if (recommended) {
-      pushOrderRows(recommended);
-      rows.push(recommendationToHistoryRow(recommended));
-    }
     history.forEach((entry) => {
       pushOrderRows(entry);
       rows.push(recommendationToHistoryRow(entry));
     });
     return rows;
-  }, [history, recommended]);
+  }, [history]);
 
   if (!userId) {
     return <p className="ua-page-head__sub">Client is required to load nutritions.</p>;
@@ -1101,7 +1600,14 @@ export function NutritionsSection({ user, onToast }) {
         <h2 className="ua-cp-nutritions__title">Nutritions</h2>
         <p className="ua-cp-nutritions__sub">Nutritions recommendation, pricing &amp; dosage plan.</p>
       </div>
-      <PillTabs tabs={[{ id: "recommendation", label: "Recommendation" }, { id: "dosage", label: "Dosage" }]} active={sub} onChange={setSub} size="md" />
+      <div className="ua-cp-nutritions__tabs">
+        <PillTabs
+          tabs={[{ id: "recommendation", label: "Recommendation" }, { id: "dosage", label: "Dosage" }]}
+          active={sub}
+          onChange={setSub}
+          size="md"
+        />
+      </div>
 
       {loading ? <p className="ua-page-head__sub">Loading nutritions…</p> : null}
       {error && !loading ? <p className="ua-page-head__sub" style={{ color: "#b42318" }}>{error}</p> : null}
@@ -1111,103 +1617,257 @@ export function NutritionsSection({ user, onToast }) {
 
       {sub === "recommendation" ? (
         <>
-          <div className="ua-cp-rec-block">
-            <div className="ua-cp-rec-head">
-              <span>Recommendations for the client</span>
-              <span className="ua-cp-rec-head__count">{selected.length} selected</span>
+          {currentRecommendation && !composingNewRecommendation ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--cta">
+              <div className="ua-cp-rec-slot-label">1 · Send new to client</div>
+              <p className="ua-cp-rec-hint">
+                The current plan stays in the client app until you save a new recommendation. Previous plans move to the list below and order history.
+              </p>
+              {canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                  disabled={saving}
+                  onClick={startNewRecommendation}
+                >
+                  Send new recommendation to client
+                </button>
+              ) : null}
             </div>
-            <p className="ua-cp-rec-hint">Pick items from the nutrition bank and set quantities — the bill totals automatically. Saving syncs this plan to the client app.</p>
-            <div className="ua-cp-rec-add">
-              <select
-                className="ua-cp-rec-select"
-                value=""
-                onChange={(e) => addFromPool(e.target.value)}
-                disabled={!canWrite || !isHealClient || poolLoading || saving || !availablePool.length}
-              >
-                <option value="">
-                  {poolLoading
-                    ? "Loading nutritions pool…"
-                    : availablePool.length
-                      ? "+ Add nutritions from pool..."
-                      : pool.length
-                        ? "All nutritions from the pool are selected"
-                        : "Add nutritions in Config → Nutrition bank first"}
-                </option>
-                {availablePool.map((s) => (
-                  <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
-                ))}
-              </select>
-            </div>
-            {selected.length ? (
-              <div className="ua-cp-rec-items">
-                {selected.map((s) => (
-                  <div key={s.id} className="ua-cp-rec-item">
-                    <div className="ua-cp-rec-item__info">
-                      <div className="ua-cp-rec-item__name">{s.name}</div>
-                      {packPriceLabel(s) ? <div className="ua-cp-rec-item__pack">{packPriceLabel(s)}</div> : null}
-                    </div>
-                    <div className="ua-cp-rec-item__meta">
-                      <div className="ua-cp-rec-item__qty">
-                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
-                        <span>{s.qty}</span>
-                        <button type="button" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
-                      </div>
-                      <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
-                      <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => setSelected((list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
-                    </div>
-                  </div>
-                ))}
+          ) : null}
+
+          {showComposePanel ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--compose">
+              <div className="ua-cp-rec-slot-label">
+                {currentRecommendation
+                  ? "1 · New recommendation for client"
+                  : "1 · Recommendations for the client"}
               </div>
-            ) : (!loading ? <p className="ua-cp-rec-hint">No nutritions selected yet.</p> : null)}
-            <div className="ua-cp-billing-bar">
-              <span>Billing amount</span>
-              <strong>Rs. {billing.toLocaleString("en-IN")}</strong>
+              <div className="ua-cp-rec-head">
+                <span>{composingNewRecommendation ? "Build new plan" : "First recommendation"}</span>
+                <span className="ua-cp-rec-head__count">{selected.length} selected</span>
+              </div>
+              <p className="ua-cp-rec-hint">
+                Pick items from the nutrition bank and set quantities — the bill totals automatically. Saving syncs this plan to the client app.
+              </p>
+              <div className="ua-cp-rec-add">
+                <select
+                  className="ua-cp-rec-select"
+                  value=""
+                  onChange={(e) => addFromPool(e.target.value)}
+                  disabled={!canWrite || !isHealClient || poolLoading || saving || !availablePool.length}
+                >
+                  <option value="">
+                    {poolLoading
+                      ? "Loading nutritions pool…"
+                      : availablePool.length
+                        ? "+ Add nutritions from pool..."
+                        : pool.length
+                          ? "All nutritions from the pool are selected"
+                          : "Add nutritions in Config → Nutrition bank first"}
+                  </option>
+                  {availablePool.map((s) => (
+                    <option key={s.id} value={s.id}>{formatSupplementOption(s)}</option>
+                  ))}
+                </select>
+              </div>
+              {selected.length ? (
+                <div className="ua-cp-rec-items">
+                  {selected.map((s) => (
+                    <div key={s.id} className="ua-cp-rec-item">
+                      <div className="ua-cp-rec-item__info">
+                        <div className="ua-cp-rec-item__name">{s.name}</div>
+                        {packPriceLabel(s) ? <div className="ua-cp-rec-item__pack">{packPriceLabel(s)}</div> : null}
+                      </div>
+                      <div className="ua-cp-rec-item__meta">
+                        <div className="ua-cp-rec-item__qty">
+                          <button type="button" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.map((x) => (x.id === s.id ? { ...x, qty: Math.max(1, x.qty - 1) } : x)))}>−</button>
+                          <span>{s.qty}</span>
+                          <button type="button" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.map((x) => (x.id === s.id ? { ...x, qty: x.qty + 1 } : x)))}>+</button>
+                        </div>
+                        <div className="ua-cp-rec-item__total">Rs. {((Number(s.price) || 0) * s.qty).toLocaleString("en-IN")}</div>
+                        <button type="button" className="ua-cp-rec-item__remove" disabled={!canWrite || saving} onClick={() => adjustSelectedItem(s.id, (list) => list.filter((x) => x.id !== s.id))} aria-label={`Remove ${s.name}`}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (!loading ? <p className="ua-cp-rec-hint">No nutritions selected yet.</p> : null)}
+              <div className="ua-cp-billing-bar">
+                <span>Billing amount</span>
+                <strong>Rs. {composeBilling.toLocaleString("en-IN")}</strong>
+              </div>
+
+              <div className="ua-cp-fulfil ua-cp-fulfil--nested">
+                <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
+                <div className="ua-cp-fulfil__options">
+                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
+                    setFulfilment("delivery");
+                    setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
+                  }}>
+                    <strong>Send it to me</strong>
+                    <span>Request delivery from coach</span>
+                  </button>
+                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "self" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("self")}>
+                    <strong>Self billing</strong>
+                    <span>Client buys &amp; uploads bill (PDF)</span>
+                  </button>
+                </div>
+
+                {fulfilment === "delivery" ? (
+                  <CoachFulfilmentLog
+                    orders={composeCoachOrders}
+                    pool={pool}
+                    selected={selected}
+                    disabled={!canWrite || saving || !isHealClient}
+                    canRemoveOrder={canRemove}
+                    onAddOrder={addComposeCoachOrder}
+                    onUpdateOrder={updateComposeCoachOrder}
+                    onRemoveOrder={(id) => {
+                      const order = composeCoachOrders.find((o) => o.id === id);
+                      if (!order) return;
+                      removeComposeCoachOrder(id);
+                    }}
+                    onSaveOrder={() => onToast?.("Order logs sync when you click Save & sync to user app")}
+                    onAttachBill={() => onToast?.("Save the recommendation first, then attach bills on the current plan")}
+                  />
+                ) : null}
+              </div>
+
+              {canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                  disabled={!canSaveAndSync}
+                  onClick={saveRecommendation}
+                >
+                  {saving ? "Saving…" : "Save & sync to user app"}
+                </button>
+              ) : null}
+              {composingNewRecommendation && canWrite && isHealClient ? (
+                <button
+                  type="button"
+                  className="ua-cp-rec-sent-actions__edit"
+                  onClick={cancelNewRecommendation}
+                  disabled={saving}
+                >
+                  Cancel new recommendation
+                </button>
+              ) : null}
             </div>
-          </div>
+          ) : null}
 
-          <div className="ua-cp-fulfil">
-            <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
-            <div className="ua-cp-fulfil__options">
-              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
-                setFulfilment("delivery");
-                setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
-              }}>
-                <strong>Send it to me</strong>
-                <span>Request delivery from coach</span>
-              </button>
-              <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "self" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("self")}>
-                <strong>Self billing</strong>
-                <span>Client buys &amp; uploads bill (PDF)</span>
-              </button>
-            </div>
-
-            {fulfilment === "delivery" ? (
-              <CoachFulfilmentLog
-                orders={coachOrders}
-                pool={pool}
-                selected={selected}
-                disabled={!canWrite || saving || !isHealClient}
-                onAddOrder={addCoachOrder}
-                onUpdateOrder={updateCoachOrder}
-                onRemoveOrder={removeCoachOrder}
-                onSaveOrder={saveCoachOrder}
-                onAttachBill={attachBill}
-              />
-            ) : (
-              <FulfilmentStatus recommendation={recommended} />
-            )}
-
-            {canWrite && isHealClient ? (
-              <button
-                type="button"
-                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
-                disabled={!canSaveAndSync}
-                onClick={saveRecommendation}
+          {currentRecommendation ? (
+            <div className="ua-cp-rec-block ua-cp-rec-block--current">
+              <div className="ua-cp-rec-slot-label">2 · Current · Sent to client</div>
+              <div className="ua-cp-rec-head">
+                <span>Live in client app</span>
+                <span className="ua-cp-rec-head__count">
+                  {currentRecommendation.items.length} item{currentRecommendation.items.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="ua-cp-rec-synced-summary">
+                Sent on {formatLongDate(currentRecommendation.createdAt) || "—"}
+                {" · "}
+                Rs. {(Number(currentRecommendation.billingTotal) || 0).toLocaleString("en-IN")}
+              </p>
+              <div
+                className={`ua-cp-rec-current-actions${clientConfirmedNutritionOrder ? " ua-cp-rec-current-actions--confirmed" : ""}`}
               >
-                {saving ? "Saving…" : "Save & sync to user app"}
-              </button>
-            ) : null}
-          </div>
+                {clientConfirmedNutritionOrder ? (
+                  <p className="ua-cp-rec-delivery-confirmed" role="status">
+                    {clientName} has confirmed the Nutrition Order
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-rec-current-actions__view"
+                  onClick={() => openRecommendationView(currentRecommendation)}
+                >
+                  View
+                </button>
+              </div>
+
+              <div className="ua-cp-fulfil ua-cp-fulfil--nested">
+                <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
+                <div className="ua-cp-fulfil__options">
+                  <button
+                    type="button"
+                    disabled
+                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption !== "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
+                  >
+                    <strong>Send it to me</strong>
+                    <span>Request delivery from coach</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption === "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
+                  >
+                    <strong>Self billing</strong>
+                    <span>Client buys &amp; uploads bill (PDF)</span>
+                  </button>
+                </div>
+
+                {currentRecommendation.deliveryOption !== "self_billing" ? (
+                  <CoachFulfilmentLog
+                    orders={coachOrders}
+                    pool={pool}
+                    selected={currentRecommendation.items}
+                    disabled={!canWrite || saving || !isHealClient}
+                    canRemoveOrder={canRemove}
+                    onAddOrder={addCoachOrder}
+                    onUpdateOrder={updateCoachOrder}
+                    onRemoveOrder={(id) => {
+                      const order = coachOrders.find((o) => o.id === id);
+                      if (!order) return;
+                      const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
+                      if (saved && !canRemove) return;
+                      setPendingOrderDelete({
+                        id: order.id,
+                        number: order.number,
+                        saved,
+                      });
+                    }}
+                    onSaveOrder={saveCoachOrder}
+                    onAttachBill={attachBill}
+                  />
+                ) : (
+                  <FulfilmentStatus recommendation={currentRecommendation} />
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {previousRecommendations.length ? (
+            <div className="ua-cp-rec-previous">
+              <div className="ua-cp-rec-slot-label">Previous · Sent to client</div>
+              <div className="ua-cp-rec-previous__list">
+                {previousRecommendations.map((entry) => {
+                  const summary = recommendationSummary(entry);
+                  return (
+                    <div key={entry.id} className="ua-cp-rec-previous__card">
+                      <div className="ua-cp-rec-previous__main">
+                        <strong>{summary.sentOn}</strong>
+                        <span>{summary.itemCount} nutrition{summary.itemCount === 1 ? "" : "s"} · {summary.type}</span>
+                        <span className="ua-cp-rec-previous__items">{summary.itemsLabel}</span>
+                      </div>
+                      <div className="ua-cp-rec-previous__side">
+                        <strong>Rs. {summary.amount.toLocaleString("en-IN")}</strong>
+                        <span className={`ua-cp-order-status ua-cp-order-status--${summary.tone}`}>{summary.status}</span>
+                        <button
+                          type="button"
+                          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
+                          onClick={() => openRecommendationView(entry)}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="ua-cp-order-history">
             <div className="ua-cp-order-history__label">Order history · Since joining</div>
@@ -1223,7 +1883,7 @@ export function NutritionsSection({ user, onToast }) {
               )) : (
                 <div className="ua-cp-order-table__row">
                   <div>—</div>
-                  <div>No recommendations saved yet</div>
+                  <div>No completed recommendations yet — older plans appear here after you send a new one</div>
                   <div>—</div>
                   <div>—</div>
                 </div>
@@ -1234,9 +1894,19 @@ export function NutritionsSection({ user, onToast }) {
       ) : (
         <>
           <p className="ua-cp-dosage-hint">
-            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and date, then add it to the client&apos;s dosage schedule. Max {MAX_PERIODS} timings per nutrition (including when you add again to merge). Duration is calculated from pack size.
+            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and start date, then add it to the schedule below. Finish date and <strong>% Completed</strong> use the nutrition bank pack size ÷ daily dosage (days of supply). Use <strong>Edit</strong> or <strong>Delete</strong> on a card, or add the same nutrition again to merge timings (max {MAX_PERIODS}). <strong>Push to app</strong> when ready for the client.
           </p>
-          <div className="ua-cp-dosage-add">
+          {editingDosage ? (
+            <p className="ua-cp-dosage-edit-banner">
+              Editing <strong>{editingDosage.name}</strong> — change the fields below, then click Update.
+              {" "}
+              <button type="button" className="ua-cp-dosage-edit-banner__cancel" onClick={cancelEditDosage}>Cancel</button>
+            </p>
+          ) : null}
+          <div
+            className={`ua-cp-dosage-add${editingDosageId ? " ua-cp-dosage-add--editing" : ""}`}
+            ref={dosageFormRef}
+          >
             {/* 1. Nutrition (one select) */}
             <select
               className="ua-cp-dosage-nutrition"
@@ -1374,14 +2044,30 @@ export function NutritionsSection({ user, onToast }) {
               disabled={!canWrite || saving || !isHealClient}
             />
             {canWrite && isHealClient ? (
-              <button
-                type="button"
-                className="ua-cp-btn ua-cp-btn--primary"
-                disabled={!addSupp || !selectedPeriodCount || saving}
-                onClick={addDosageCard}
-              >
-                {saving ? "Saving…" : `Add${selectedPeriodCount ? ` ×${selectedPeriodCount}` : ""}`}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary"
+                  disabled={!addSupp || !selectedPeriodCount || saving}
+                  onClick={addDosageCard}
+                >
+                  {saving
+                    ? "Saving…"
+                    : editingDosageId
+                      ? "Update"
+                      : `Add${selectedPeriodCount ? ` ×${selectedPeriodCount}` : ""}`}
+                </button>
+                {editingDosageId ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--muted"
+                    disabled={saving}
+                    onClick={cancelEditDosage}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </>
             ) : null}
           </div>
 
@@ -1389,16 +2075,100 @@ export function NutritionsSection({ user, onToast }) {
             <p className="ua-cp-dosage-hint">No dosage schedule yet.</p>
           ) : null}
 
-          {activeDosages.map((dosage) => (
-            <DosageCard
-              key={dosage.id}
-              card={mapDosageToCard(dosage)}
-              canRemove={canRemove}
-              onRemove={() => handleStopDosage(dosage.id)}
-            />
-          ))}
+          {activeDosages.length ? (
+            <div className="ua-cp-dosage-list">
+              <div className="ua-cp-dosage-list__label">
+                Dosage schedule
+                {draftDosageCount ? (
+                  <span className="ua-cp-dosage-list__draft">{draftDosageCount} draft{draftDosageCount === 1 ? "" : "s"} · not in app yet</span>
+                ) : null}
+              </div>
+              {activeDosages.map((dosage) => (
+                <DosageCard
+                  key={dosage.id}
+                  card={mapDosageToCard(dosage)}
+                  canEdit={canWrite}
+                  canRemove={canRemoveDosage}
+                  isEditing={dosage.id === editingDosageId}
+                  onEdit={() => beginEditDosage(dosage)}
+                  onRemove={() => setPendingDosageDelete({
+                    id: dosage.id,
+                    name: dosage.name,
+                    status: dosage.status,
+                  })}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {canWrite && isHealClient && draftDosageCount ? (
+            <>
+              <p className="ua-cp-dosage-hint">
+                {draftDosageCount} dosage{draftDosageCount === 1 ? "" : "s"} waiting to go live in the client app.
+              </p>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
+                disabled={saving}
+                onClick={pushDosagesToApp}
+              >
+                {saving ? "Pushing…" : "Push to app"}
+              </button>
+            </>
+          ) : null}
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDosageDelete)}
+        tag="Dosage"
+        title={pendingDosageDelete ? `Delete “${pendingDosageDelete.name}”?` : ""}
+        body={
+          pendingDosageDelete?.status === "draft"
+            ? "This removes the draft from the schedule. It is not in the client app yet."
+            : "This stops the dosage plan and removes it from the client app. Completion history is kept."
+        }
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingDosageDelete(null)}
+        onConfirm={() => {
+          const id = pendingDosageDelete?.id;
+          setPendingDosageDelete(null);
+          if (id) handleStopDosage(id);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingOrderDelete)}
+        tag="Fulfilment order"
+        title={pendingOrderDelete ? `Delete order #${pendingOrderDelete.number}?` : ""}
+        body={
+          pendingOrderDelete?.saved
+            ? "This permanently removes the logged order from the client's recommendation."
+            : "This removes the unsaved order draft from this session."
+        }
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        confirmTone="danger"
+        onCancel={() => setPendingOrderDelete(null)}
+        onConfirm={() => {
+          const id = pendingOrderDelete?.id;
+          setPendingOrderDelete(null);
+          if (id) removeCoachOrder(id);
+        }}
+      />
+
+      <SyncedRecommendationModal
+        open={syncedRecViewOpen}
+        onClose={() => {
+          setSyncedRecViewOpen(false);
+          setViewRecommendation(null);
+        }}
+        items={viewRecommendation?.items || []}
+        billingTotal={viewRecommendation?.billingTotal}
+        sentOnLabel={viewRecommendation?.createdAt ? formatLongDate(viewRecommendation.createdAt) : ""}
+      />
     </div>
   );
 }

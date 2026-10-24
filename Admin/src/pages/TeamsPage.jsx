@@ -490,6 +490,7 @@ function CreateMemberModal({
   roles,
   parentOptions,
   isSuperAdmin,
+  canEditProfile = true,
   onClose,
   onSaved,
   onToast,
@@ -500,6 +501,7 @@ function CreateMemberModal({
     [roles],
   );
   const [name, setName] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [dob, setDob] = useState("");
@@ -533,6 +535,10 @@ function CreateMemberModal({
   }
 
   const isEdit = Boolean(member?.id);
+  // Coaches may open this dialog only to set a password. Profile fields stay with Admin.
+  const profileLocked = isEdit && !canEditProfile;
+  // An email can be added later, but once set it cannot be changed here.
+  const emailLocked = isEdit && Boolean(String(member?.email || "").trim());
   const memberId = member?.id || "";
   const memberParentId = member?.parentAccountId || "";
 
@@ -548,6 +554,7 @@ function CreateMemberModal({
     skipNameSearchRef.current = true;
     setName(sanitizePersonName(user.name || ""));
     setDob(parseDateOfBirthIso(user.dobIso) || "");
+    setWhatsapp(nationalPhoneDigits(user.whatsapp || user.phone));
     setPhone(nationalPhoneDigits(user.phone));
     setEmail(sanitizeEmailInput(user.email || ""));
     setCountry(String(user.country || "").trim());
@@ -558,6 +565,7 @@ function CreateMemberModal({
       const next = { ...prev };
       delete next.name;
       delete next.dob;
+      delete next.whatsapp;
       delete next.phone;
       delete next.email;
       delete next.country;
@@ -573,7 +581,8 @@ function CreateMemberModal({
     if (!open || !member?.id) return;
     setErrors({});
     setName(sanitizePersonName(member.name || ""));
-    setPhone(nationalPhoneDigits(member.phone));
+    setWhatsapp(nationalPhoneDigits(member.whatsappPhone || member.phone));
+    setPhone(nationalPhoneDigits(member.mobilePhone));
     setEmail(sanitizeEmailInput(member.email || ""));
     setDob(parseDateOfBirthIso(member.dateOfBirth) || "");
     setCountry(member.country || "");
@@ -595,6 +604,7 @@ function CreateMemberModal({
     if (!open || memberId) return;
     setErrors({});
     setName("");
+    setWhatsapp("");
     setPhone("");
     setEmail("");
     setDob("");
@@ -710,10 +720,14 @@ function CreateMemberModal({
     const next = {};
     const nameErr = validatePersonName(name);
     if (nameErr) next.name = nameErr;
-    const phoneErr = validatePhoneDigits(phone);
-    if (phoneErr) next.phone = phoneErr;
-    if (!isEdit) {
-      const emailErr = validateEmail(email);
+    const whatsappErr = validatePhoneDigits(whatsapp, { label: "WhatsApp number" });
+    if (whatsappErr) next.whatsapp = whatsappErr;
+    if (phone.trim()) {
+      const phoneErr = validatePhoneDigits(phone);
+      if (phoneErr) next.phone = phoneErr;
+    }
+    if (!emailLocked) {
+      const emailErr = validateEmail(email, { required: false });
       if (emailErr) next.email = emailErr;
     }
     const dobErr = validateDateOfBirth(dob, { required: true });
@@ -735,20 +749,24 @@ function CreateMemberModal({
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (profileLocked) return;
     if (!validate()) return;
     setBusy(true);
     try {
       if (isEdit) {
         const result = await updateTeamMember(member.id, {
           name: name.trim(),
-          phone: phone.trim(),
-          phoneCountryCode: member.phoneCountryCode || "+91",
+          whatsappPhone: whatsapp.trim(),
+          whatsappCountryCode: member.whatsappCountryCode || member.phoneCountryCode || "+91",
+          mobilePhone: phone.trim() || null,
+          mobileCountryCode: phone.trim() ? member.mobileCountryCode || "+91" : null,
           dateOfBirth: dob,
           country: country.trim(),
           state: state.trim(),
           city: city.trim(),
           bio: String(bio || "").trim() || null,
           approvalStatus: approvalFromUiStatus(memberStatus),
+          ...(!emailLocked && email.trim() ? { email: email.trim() } : {}),
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
@@ -784,9 +802,11 @@ function CreateMemberModal({
       }
       const result = await createTeamMember({
         name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        phoneCountryCode: "+91",
+        email: email.trim() || null,
+        whatsappPhone: whatsapp.trim(),
+        whatsappCountryCode: "+91",
+        mobilePhone: phone.trim() || null,
+        mobileCountryCode: phone.trim() ? "+91" : null,
         dateOfBirth: dob,
         country: country.trim(),
         state: state.trim(),
@@ -864,7 +884,13 @@ function CreateMemberModal({
             </span>
             <div className="ua-teams-create__copy">
               <h2 id="ua-teams-create-title">{isEdit ? "Edit profile" : "Create a team member"}</h2>
-              <p>{isEdit ? "Same fields as create · email cannot be changed" : "Works for every role"}</p>
+              <p>
+                {isEdit
+                  ? profileLocked
+                    ? "You can change the password. Other details are managed by Admin."
+                    : "Same fields as create · email cannot be changed once set"
+                  : "Works for every role"}
+              </p>
             </div>
           </div>
           <button
@@ -890,17 +916,18 @@ function CreateMemberModal({
                 </span>
                 {isEdit ? (
                   <input
-                    className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}`}
+                    className={`ua-teams-create__input${errors.name ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
                     placeholder="e.g. Anita Rao"
                     value={name}
                     maxLength={PERSON_NAME_MAX_LEN}
                     autoComplete="name"
-                    onKeyDown={blockPersonNameDigitKeyDown}
-                    onChange={(event) => {
+                    readOnly={profileLocked}
+                    onKeyDown={profileLocked ? undefined : blockPersonNameDigitKeyDown}
+                    onChange={profileLocked ? undefined : (event) => {
                       setName(sanitizePersonName(event.target.value));
                       clearError("name");
                     }}
-                    autoFocus
+                    autoFocus={!profileLocked}
                   />
                 ) : (
                   <div className="ua-teams-create__name-search" ref={nameSearchRef}>
@@ -964,10 +991,12 @@ function CreateMemberModal({
                   Date of birth <span aria-hidden="true">*</span>
                 </span>
                 <input
-                  className={`ua-teams-create__input${errors.dob ? " is-invalid" : ""}`}
+                  className={`ua-teams-create__input${errors.dob ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
                   type="date"
                   value={dob}
-                  onChange={(event) => {
+                  readOnly={profileLocked}
+                  disabled={profileLocked}
+                  onChange={profileLocked ? undefined : (event) => {
                     setDob(event.target.value);
                     clearError("dob");
                   }}
@@ -981,12 +1010,13 @@ function CreateMemberModal({
                 <span className="ua-teams-create__count">{bio.length}/{TEAM_BIO_MAX_LEN}</span>
               </span>
               <textarea
-                className={`ua-teams-create__bio${errors.bio ? " is-invalid" : ""}`}
+                className={`ua-teams-create__bio${errors.bio ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
                 rows={2}
                 value={bio}
                 maxLength={TEAM_BIO_MAX_LEN}
                 placeholder="Short bio shown on their profile (optional)"
-                onChange={(event) => {
+                readOnly={profileLocked}
+                onChange={profileLocked ? undefined : (event) => {
                   setBio(event.target.value.slice(0, TEAM_BIO_MAX_LEN));
                   clearError("bio");
                 }}
@@ -998,47 +1028,64 @@ function CreateMemberModal({
             <div className="ua-teams-create__grid ua-teams-create__grid--contact">
               <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label">
-                  Mobile number <span aria-hidden="true">*</span>
+                  WhatsApp number <span aria-hidden="true">*</span>
                 </span>
                 <input
-                  className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}`}
-                  placeholder="10-digit mobile"
+                  className={`ua-teams-create__input${errors.whatsapp ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
+                  placeholder="10-digit WhatsApp number"
                   inputMode="numeric"
                   autoComplete="tel"
-                  value={phone}
+                  value={whatsapp}
                   maxLength={PHONE_NATIONAL_LEN}
-                  onKeyDown={blockIndianMobileFirstDigitKeyDown}
-                  onChange={(event) => {
-                    setPhone(sanitizePhoneDigits(event.target.value));
-                    clearError("phone");
+                  readOnly={profileLocked}
+                  onKeyDown={profileLocked ? undefined : blockIndianMobileFirstDigitKeyDown}
+                  onChange={profileLocked ? undefined : (event) => {
+                    setWhatsapp(sanitizePhoneDigits(event.target.value));
+                    clearError("whatsapp");
                   }}
                 />
-                {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : null}
+                {errors.whatsapp ? <span className="ua-teams-create__error">{errors.whatsapp}</span> : null}
               </label>
               <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">Mobile number</span>
+                  <input
+                    className={`ua-teams-create__input${errors.phone ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
+                    placeholder="10-digit mobile (optional)"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={phone}
+                    maxLength={PHONE_NATIONAL_LEN}
+                    readOnly={profileLocked}
+                    onKeyDown={profileLocked ? undefined : blockIndianMobileFirstDigitKeyDown}
+                    onChange={profileLocked ? undefined : (event) => {
+                      setPhone(sanitizePhoneDigits(event.target.value));
+                      clearError("phone");
+                    }}
+                  />
+                {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : null}
+              </label>
+            </div>
+            <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label-row">
-                  <span className="ua-teams-create__label">
-                    Email address <span aria-hidden="true">*</span>
-                  </span>
+                  <span className="ua-teams-create__label">Email address</span>
                   <span className="ua-teams-create__count">{email.trim().length}/{EMAIL_MAX_LEN}</span>
                 </span>
                 <input
-                  className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${isEdit ? " is-readonly" : ""}`}
-                  placeholder="name@company.com"
+                  className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${emailLocked || profileLocked ? " is-readonly" : ""}`}
+                  placeholder="name@company.com (optional)"
                   type="email"
                   autoComplete="email"
                   value={email}
                   maxLength={EMAIL_MAX_LEN}
-                  readOnly={isEdit}
-                  aria-readonly={isEdit ? "true" : undefined}
-                  onChange={isEdit ? undefined : (event) => {
+                  readOnly={emailLocked || profileLocked}
+                  aria-readonly={emailLocked || profileLocked ? "true" : undefined}
+                  onChange={emailLocked || profileLocked ? undefined : (event) => {
                     setEmail(sanitizeEmailInput(event.target.value));
                     clearError("email");
                   }}
                 />
                 {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
               </label>
-            </div>
 
             {/* <div className="ua-teams-create__section">Location</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--location">
@@ -1052,7 +1099,7 @@ function CreateMemberModal({
                 className={`ua-teams-create__select${errors.country ? " is-invalid" : ""}`}
                 options={COUNTRY_OPTIONS.map((name) => ({ value: name, label: name }))}
                 value={country}
-                disabled={busy}
+                disabled={busy || profileLocked}
                 onChange={(value) => {
                   setCountry(value);
                   setState("");
@@ -1077,7 +1124,7 @@ function CreateMemberModal({
                     className={`ua-teams-create__select${errors.state ? " is-invalid" : ""}`}
                     options={INDIA_STATES.map((name) => ({ value: name, label: name }))}
                     value={state}
-                    disabled={busy || !country}
+                    disabled={busy || profileLocked || !country}
                     onChange={(value) => {
                       setState(value);
                       setCity("");
@@ -1089,10 +1136,11 @@ function CreateMemberModal({
                   />
                 ) : (
                   <input
-                    className={`ua-teams-create__input${errors.state ? " is-invalid" : ""}`}
+                    className={`ua-teams-create__input${errors.state ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
                     placeholder="State or region"
                     value={state}
-                    disabled={busy || !country}
+                    readOnly={profileLocked}
+                    disabled={busy || profileLocked || !country}
                     onChange={(event) => {
                       setState(event.target.value);
                       clearError("state");
@@ -1112,7 +1160,7 @@ function CreateMemberModal({
                     className={`ua-teams-create__select${errors.city ? " is-invalid" : ""}`}
                     options={cityOptions.map((name) => ({ value: name, label: name }))}
                     value={city}
-                    disabled={busy || !state}
+                    disabled={busy || profileLocked || !state}
                     onChange={(value) => {
                       setCity(value);
                       clearError("city");
@@ -1122,10 +1170,11 @@ function CreateMemberModal({
                   />
                 ) : (
                   <input
-                    className={`ua-teams-create__input${errors.city ? " is-invalid" : ""}`}
+                    className={`ua-teams-create__input${errors.city ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
                     placeholder="City"
                     value={city}
-                    disabled={busy || !country}
+                    readOnly={profileLocked}
+                    disabled={busy || profileLocked || !country}
                     onChange={(event) => {
                       setCity(event.target.value);
                       clearError("city");
@@ -1147,7 +1196,7 @@ function CreateMemberModal({
                 className={`ua-teams-create__select${errors.role ? " is-invalid" : ""}`}
                 options={creatableRoles.map((role) => ({ value: role.id, label: role.name }))}
                 value={consoleRoleId}
-                disabled={busy || creatableRoles.length === 0}
+                disabled={busy || profileLocked || creatableRoles.length === 0}
                 onChange={(value) => {
                   setConsoleRoleId(value);
                   clearError("role");
@@ -1172,7 +1221,7 @@ function CreateMemberModal({
                     label: `${coach.name} · ${coach.email}`,
                   }))}
                   value={parentAccountId}
-                  disabled={busy}
+                  disabled={busy || profileLocked}
                   onChange={(value) => {
                     setParentAccountId(value);
                     clearError("parent");
@@ -1192,7 +1241,7 @@ function CreateMemberModal({
                   className="ua-teams-create__select"
                   options={MEMBER_STATUS_OPTIONS}
                   value={memberStatus}
-                  disabled={busy}
+                  disabled={busy || profileLocked}
                   onChange={setMemberStatus}
                   ariaLabel="Status"
                   placeholder="Select status"
@@ -1244,9 +1293,11 @@ function CreateMemberModal({
             <button type="button" className="ua-cfg-btn ua-cfg-btn--outline" onClick={onClose} disabled={busy || totpBusy || passwordBusy}>
               Cancel
             </button>
-            <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || totpBusy || passwordBusy || !consoleRoleId}>
-              {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create member"}
-            </button>
+            {profileLocked ? null : (
+              <button type="submit" className="ua-cfg-btn ua-cfg-btn--primary" disabled={busy || totpBusy || passwordBusy || !consoleRoleId}>
+                {busy ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : "Create member"}
+              </button>
+            )}
           </div>
         </form>
         {isEdit ? (
@@ -1267,13 +1318,13 @@ function CreateMemberModal({
 
 export function TeamsPage() {
   const { showToast: onToast } = useOutletContext();
-  const { isSuperAdmin, viewAs, sessionUi, can, accessRoles, liveRolesReady, reloadLiveRoles } = useViewAs();
+  const { isSuperAdmin, isAdminView, viewAs, sessionUi, can, accessRoles, liveRolesReady, reloadLiveRoles } = useViewAs();
   const teamsPersona = isSuperAdmin ? viewAs : sessionUi || viewAs;
   const actorIsWc = teamsPersona === "wc";
   const actorIsAwc = teamsPersona === "awc";
   const canCreateMember = can("console.tm.create");
   const canEditMember = can("console.tm.edit");
-  const canDeleteMember = can("console.tm.delete");
+  const canDeleteMember = Boolean(isAdminView) && can("console.tm.delete");
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState([]);
@@ -1661,13 +1712,15 @@ export function TeamsPage() {
                           ) : null}
                         </>
                       ) : null}
-                      <button
-                        type="button"
-                        className="ua-team-actions__link"
-                        onClick={() => openMember(s.id, isSuperAdmin || actorIsWc ? "permissions" : undefined)}
-                      >
-                        {isSuperAdmin || actorIsWc ? "Permissions" : "View members"} ›
-                      </button>
+                      {isAdminView ? (
+                        <button
+                          type="button"
+                          className="ua-team-actions__link"
+                          onClick={() => openMember(s.id, "permissions")}
+                        >
+                          Permissions ›
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1694,6 +1747,7 @@ export function TeamsPage() {
         roles={createRoles}
         parentOptions={parentOptions}
         isSuperAdmin={isSuperAdmin}
+        canEditProfile={isAdminView}
         onClose={() => {
           setCreateOpen(false);
           setEditingMember(null);
@@ -1708,8 +1762,13 @@ export function TeamsPage() {
                     totpRequired: Boolean(account.totpRequired),
                     totpConfigured: Boolean(account.totpConfigured),
                     name: account.name || prev.name,
+                    email: account.email ?? prev.email,
                     phone: account.phone ?? prev.phone,
                     phoneCountryCode: account.phoneCountryCode || prev.phoneCountryCode,
+                    whatsappPhone: account.whatsappPhone ?? prev.whatsappPhone,
+                    whatsappCountryCode: account.whatsappCountryCode ?? prev.whatsappCountryCode,
+                    mobilePhone: account.mobilePhone ?? null,
+                    mobileCountryCode: account.mobileCountryCode ?? null,
                     approvalStatus: account.approvalStatus ?? prev.approvalStatus,
                     displayStatus:
                       String(account.status || "").toLowerCase() === "inactive"

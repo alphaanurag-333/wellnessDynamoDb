@@ -1,21 +1,39 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   acceptHealConsultancyRequest,
   confirmHealConsultancyTime,
+  createHealConsultancyTrack,
   fetchHealConsultancyTracks,
   offerHealConsultancyPeriods,
+  rejectHealConsultancyIntake,
   rejectHealConsultancyRequest,
   updateHealConsultancyTrack,
 } from "../../api/counsellingApi.js";
-import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-import { MeetingDateSelector } from "./MeetingDateSelector.jsx";
-import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
-  formatDateKey,
-  isBeforeCalendarDay,
-  parseDateKey,
-  startOfDay,
-} from "./meetingDateUtils.js";
+  assignmentsFromPrescriptionPayload,
+  coachMeetingsFromAssignments,
+  listUserWellnessPrescriptions,
+} from "../../api/wellnessPrescriptionAssignmentApi.js";
+import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { mergeMeetingsWithOrphanTracks } from "../../utils/counsellingReviewHistory.js";
+import { COUNSELLING_ACTIVITY_EVENT } from "../../utils/counsellingLiveRefresh.js";
+import { useInbox } from "../../context/InboxContext.jsx";
+
+const COUNSELLING_POLL_VISIBLE_MS = 3000;
+const COUNSELLING_POLL_HIDDEN_MS = 12000;
+const COUNSELLING_HISTORY_REFRESH_MS = 60_000;
+
+function activeTrackSignature(track) {
+  if (!track) return "";
+  return [
+    track.id,
+    track.status,
+    track.updatedAt || track.createdAt,
+    track.scheduledAt || "",
+  ].join("|");
+}
 
 const PERIODS = [
   { key: "morning", label: "Morning", range: "08:00–12:00" },
@@ -35,6 +53,17 @@ const STATUS_LABEL = {
   cancelled: "Cancelled",
 };
 
+function formatReviewDay(value) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return "—";
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function formatWhen(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -48,7 +77,81 @@ function formatWhen(value) {
   });
 }
 
+/** Scheduled column: e.g. 23 Oct 2026 08:30AM */
+function formatReviewScheduledColumn(calendarDay, instant) {
+  const day = String(calendarDay || "").trim();
+  const iso = String(instant || "").trim();
+  if (iso) {
+    const date = new Date(iso);
+    if (!Number.isNaN(date.getTime())) {
+      const isDateOnlyPlaceholder =
+        Boolean(day)
+        && /^\d{4}-\d{2}-\d{2}T00:00:00(\.000)?Z$/.test(iso)
+        && iso.startsWith(day);
+      if (!isDateOnlyPlaceholder) {
+        const datePart = date.toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+        const timePart = date
+          .toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+          .replace(/\s/g, "");
+        return `${datePart} ${timePart}`;
+      }
+    }
+  }
+  if (day) return formatReviewDay(day);
+  return "—";
+}
+
+function reviewScheduleByLabel(meeting) {
+  const role = String(meeting?.initiatedByRole || "").toLowerCase();
+  return role === "client" ? "Client" : "You";
+}
+
+function reviewTrackingStatusLabel(meeting) {
+  const session = String(meeting?.sessionStatus || "").toLowerCase();
+  if (session === "complete") return "Completed";
+  if (session === "cancel") return "Cancelled";
+  if (session === "pending") {
+    const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+    if (trackStatus === "scheduled") return "Scheduled";
+    return "Pending";
+  }
+
+  const reviewStatus = String(meeting?.reviewStatus || "").toLowerCase();
+  const trackStatus = String(meeting?.trackStatus || "").toLowerCase();
+  if (meeting?.cancelled || reviewStatus === "cancelled" || trackStatus === "cancelled") {
+    return "Cancelled";
+  }
+  if (trackStatus === "completed" || trackStatus === "follow_up_needed") return "Completed";
+  if (reviewStatus === "active" && (meeting?.completedAt || meeting?.completedDate)) {
+    return "Completed";
+  }
+  if (trackStatus === "scheduled" && meeting?.scheduledAt) return "Scheduled";
+  if (trackStatus && !["completed", "cancelled", "follow_up_needed"].includes(trackStatus)) {
+    return "Pending";
+  }
+  return "Pending";
+}
+
+function reviewTrackingStatusClass(meeting) {
+  const label = reviewTrackingStatusLabel(meeting).toLowerCase();
+  if (label === "completed") return "completed";
+  if (label === "cancelled") return "cancelled";
+  if (label === "scheduled") return "scheduled";
+  return "active";
+}
+
 function formatOffer(offer) {
+  if (String(offer?.kind || "").toLowerCase() === "slot") {
+    return `${offer.date} · ${offer.label || `${offer.startLocal || ""}–${offer.endLocal || ""}`}`;
+  }
   const period = PERIODS.find((row) => row.key === offer.period);
   return `${offer.date} · ${offer.label || period?.label || offer.period} (${offer.startLocal || period?.range || ""}${offer.endLocal ? `–${offer.endLocal}` : ""})`;
 }
@@ -75,45 +178,152 @@ function windowBounds(offer) {
 }
 
 export function CounsellingSection({ user, onToast }) {
+  const { loadInbox } = useInbox();
   const { canCreate, canEdit, canDelete } = useClientSectionPermissions("counselling");
   const canManage = canCreate || canEdit;
   const userId = String(user?.id || user?._id || "").trim();
-  const [tracks, setTracks] = useState([]);
+  const [meetings, setMeetings] = useState([]);
+  const [meetingsLoading, setMeetingsLoading] = useState(Boolean(userId));
   const [activeTrack, setActiveTrack] = useState(null);
   const [scheduledTrack, setScheduledTrack] = useState(null);
   const [loading, setLoading] = useState(Boolean(userId));
   const [busy, setBusy] = useState(false);
-  const [offerDate, setOfferDate] = useState("");
-  const [offerPeriods, setOfferPeriods] = useState([]);
-  const [pendingOffers, setPendingOffers] = useState([]);
-  const [coachNotes, setCoachNotes] = useState("");
   const [fixedTime, setFixedTime] = useState("18:00");
   const [durationMinutes, setDurationMinutes] = useState(45);
   const [selectedRequestedSlotId, setSelectedRequestedSlotId] = useState("");
   const [pendingCancel, setPendingCancel] = useState(null);
+  const [pendingRejectIntake, setPendingRejectIntake] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const loadInFlightRef = useRef(false);
+  const activeTrackSigRef = useRef("");
+  const lastHistoryRefreshRef = useRef(0);
+  const onToastRef = useRef(onToast);
+  onToastRef.current = onToast;
 
-  async function load() {
-    if (!userId) return;
-    setLoading(true);
+  async function loadReviewHistory(tracksList, coachMeetingsFromTracks) {
+    if (Array.isArray(coachMeetingsFromTracks)) {
+      return mergeMeetingsWithOrphanTracks(coachMeetingsFromTracks, tracksList);
+    }
     try {
-      const data = await fetchHealConsultancyTracks(userId, { page: 1, limit: 30 });
-      setTracks(data.tracks || []);
-      setActiveTrack(data.activeTrack || null);
-      setScheduledTrack(data.scheduledTrack || null);
-      setCoachNotes(data.activeTrack?.coachNotes || "");
-      const slots = data.activeTrack?.requestedSlots || [];
-      setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
-    } catch (error) {
-      onToast?.(error.message || "Could not load counselling sessions");
-    } finally {
-      setLoading(false);
+      const data = await listUserWellnessPrescriptions(userId);
+      const fromApi = Array.isArray(data?.meetings) ? data.meetings : [];
+      const prescriptionMeetings = fromApi.length
+        ? fromApi
+        : coachMeetingsFromAssignments(assignmentsFromPrescriptionPayload(data));
+      return mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracksList);
+    } catch {
+      return mergeMeetingsWithOrphanTracks([], tracksList);
     }
   }
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const load = useCallback(async (options = {}) => {
+    if (!userId || loadInFlightRef.current) return;
+    const silent = Boolean(options.silent);
+    loadInFlightRef.current = true;
+    if (!silent) {
+      setLoading(true);
+      setMeetingsLoading(true);
+    }
+    try {
+      const data = await fetchHealConsultancyTracks(userId, { page: 1, limit: 30 });
+      const tracksList = data.tracks || [];
+      const nextActive = data.activeTrack || null;
+      const nextSig = activeTrackSignature(nextActive);
+
+      if (silent && nextSig && nextSig !== activeTrackSigRef.current && nextActive?.status === "requested") {
+        onToastRef.current?.("Client requested a counselling session");
+      }
+      activeTrackSigRef.current = nextSig;
+
+      setActiveTrack(nextActive);
+      setScheduledTrack(data.scheduledTrack || null);
+      const slots = nextActive?.requestedSlots || [];
+      setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
+
+      const now = Date.now();
+      const shouldRefreshHistory =
+        !silent
+        || !lastHistoryRefreshRef.current
+        || now - lastHistoryRefreshRef.current >= COUNSELLING_HISTORY_REFRESH_MS;
+      if (shouldRefreshHistory) {
+        lastHistoryRefreshRef.current = now;
+        setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
+      }
+    } catch (error) {
+      if (!silent) {
+        onToastRef.current?.(error.message || "Could not load counselling sessions");
+        setMeetings([]);
+      }
+    } finally {
+      loadInFlightRef.current = false;
+      if (!silent) {
+        setLoading(false);
+        setMeetingsLoading(false);
+      }
+    }
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) {
+      activeTrackSigRef.current = "";
+      lastHistoryRefreshRef.current = 0;
+      setMeetings([]);
+      setActiveTrack(null);
+      setScheduledTrack(null);
+      setLoading(false);
+      setMeetingsLoading(false);
+      return;
+    }
+    load();
+    loadInbox({ silent: true });
+  }, [userId, load, loadInbox]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let intervalId = null;
+
+    const tick = () => {
+      load({ silent: true });
+    };
+
+    const reschedule = () => {
+      if (intervalId) window.clearInterval(intervalId);
+      const ms =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? COUNSELLING_POLL_HIDDEN_MS
+          : COUNSELLING_POLL_VISIBLE_MS;
+      intervalId = window.setInterval(tick, ms);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        tick();
+      }
+      reschedule();
+    };
+
+    const onFocus = () => tick();
+
+    const onCounsellingActivity = (event) => {
+      const subjectUserId = String(event.detail?.subjectUserId || "").trim();
+      if (subjectUserId && subjectUserId === userId) {
+        tick();
+      }
+    };
+
+    reschedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
+    };
+  }, [userId, load]);
 
   const selectedOffer = useMemo(() => {
     if (!activeTrack) return null;
@@ -123,57 +333,6 @@ export function CounsellingSection({ user, onToast }) {
   useEffect(() => {
     if (selectedOffer?.startLocal) setFixedTime(selectedOffer.startLocal);
   }, [selectedOffer?.id, selectedOffer?.startLocal]);
-
-  function addPendingOffer() {
-    if (!offerDate || !offerPeriods.length) {
-      onToast?.("Pick a date and at least one period");
-      return;
-    }
-    if (isPastOfferDate(offerDate)) {
-      onToast?.("Choose today or a future date");
-      return;
-    }
-    const next = [...pendingOffers];
-    for (const period of offerPeriods) {
-      const key = `${offerDate}#${period}`;
-      if (next.some((row) => `${row.date}#${row.period}` === key)) continue;
-      next.push({ date: offerDate, period });
-    }
-    setPendingOffers(next);
-    setOfferPeriods([]);
-  }
-
-  async function shareAvailability() {
-    if (!activeTrack) return;
-    const offers = pendingOffers.length
-      ? pendingOffers
-      : offerDate && offerPeriods.length
-        ? offerPeriods.map((period) => ({ date: offerDate, period }))
-        : [];
-    if (!offers.length) {
-      onToast?.("Add at least one date and period");
-      return;
-    }
-    if (offers.some((row) => isPastOfferDate(row.date))) {
-      onToast?.("Choose today or a future date");
-      return;
-    }
-    setBusy(true);
-    try {
-      const track = await offerHealConsultancyPeriods(userId, activeTrack.id, {
-        offers,
-        coachNotes,
-      });
-      setActiveTrack(track);
-      setPendingOffers([]);
-      onToast?.("Availability shared with client");
-      await load();
-    } catch (error) {
-      onToast?.(error.message || "Could not share availability");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function confirmTime() {
     if (!activeTrack || !selectedOffer) return;
@@ -266,6 +425,55 @@ export function CounsellingSection({ user, onToast }) {
     await patchTrackStatus(activeTrack.id, status);
   }
 
+  async function sendCounsellingSlots(payload) {
+    if (!canCreate) return;
+    const slots = (payload?.slots || []).map((slot) => ({
+      startAt: slot.startAt,
+      endAt: slot.endAt,
+    }));
+    if (!slots.length) {
+      onToast?.("Add at least one slot");
+      return;
+    }
+    setBusy(true);
+    try {
+      const trackPayload = {
+        slots,
+        coachNotes: payload?.note || undefined,
+        durationMinutes: payload?.duration,
+      };
+      if (activeTrack?.id && activeTrack.status === "requested") {
+        await offerHealConsultancyPeriods(userId, activeTrack.id, trackPayload);
+      } else if (!activeTrack) {
+        await createHealConsultancyTrack(userId, trackPayload);
+      } else {
+        await offerHealConsultancyPeriods(userId, activeTrack.id, trackPayload);
+      }
+      setScheduleOpen(false);
+      onToast?.("Counselling slots sent");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not send slots");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmRejectIntake() {
+    if (!activeTrack?.id) return;
+    setPendingRejectIntake(false);
+    setBusy(true);
+    try {
+      await rejectHealConsultancyIntake(userId, activeTrack.id);
+      onToast?.("Counselling request rejected — client notified");
+      await load();
+    } catch (error) {
+      onToast?.(error.message || "Could not reject request");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function askCancel(track, extras = {}) {
     if (!track?.id) return;
     setPendingCancel({
@@ -286,37 +494,42 @@ export function CounsellingSection({ user, onToast }) {
     scheduledTrack && scheduledTrack.id !== activeTrack?.id ? scheduledTrack : null;
 
   const bounds = selectedOffer ? windowBounds(selectedOffer) : null;
-  const showShareBlock =
-    canManage &&
-    (activeTrack?.status === "requested" ||
-      activeTrack?.status === "periods_offered" ||
-      activeTrack?.status === "time_requested");
+  const showClientIntake =
+    canManage && activeTrack?.status === "requested";
   const requestedSlots = activeTrack?.requestedSlots || [];
-  const minOfferDate = useMemo(() => startOfDay(new Date()), []);
-  const selectedOfferDate = useMemo(
-    () => parseDateKey(offerDate) || minOfferDate,
-    [offerDate, minOfferDate],
-  );
-
-  function isPastOfferDate(date) {
-    if (!date) return false;
-    const value = typeof date === "string" ? parseDateKey(date) : startOfDay(date);
-    return value ? isBeforeCalendarDay(value, minOfferDate) : false;
-  }
 
   return (
     <div className="ua-cp-section ua-cp-counselling">
       <header className="ua-cp-counselling__head">
         <h2 className="ua-cp-placeholder__title">Counselling sessions</h2>
         <p className="ua-cp-placeholder__sub">
-          Client requests a session, you share date and period windows, they pick one or request another time, then you confirm.
+          Client requests a session, or you offer slots for them to pick. They pick a slot or ask for another time, then you confirm.
         </p>
       </header>
 
       {loading ? <p className="ua-cp-counselling__muted">Loading sessions…</p> : null}
 
       {!loading && !activeTrack && !scheduledSession ? (
-        <div className="ua-cp-counselling__empty">No open counselling request. History is listed below.</div>
+        <div className="ua-cp-counselling__empty">
+          <p className="ua-cp-counselling__empty-text">No open counselling request. History is listed below.</p>
+          {canCreate ? (
+            <div className="ua-cp-counselling__empty-cta">
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--launch-schedule"
+                onClick={() => setScheduleOpen(true)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 5h18v16H3z" />
+                  <path d="M3 10h18" />
+                  <path d="M8 3v4" />
+                  <path d="M16 3v4" />
+                </svg>
+                Schedule counselling meeting
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {scheduledSession ? (
@@ -379,86 +592,57 @@ export function CounsellingSection({ user, onToast }) {
             <span className="ua-cp-counselling__muted">Requested {formatWhen(activeTrack.createdAt)}</span>
           </div>
 
-          {activeTrack.concern ? (
+          {activeTrack.concern && activeTrack.status !== "requested" ? (
             <p className="ua-cp-counselling__concern">{activeTrack.concern}</p>
           ) : null}
 
-          {showShareBlock ? (
-            <div className="ua-cp-counselling__block">
-              <h3>Share availability</h3>
-              <div className="ua-cp-counselling__row ua-cp-counselling__row--single">
-                <MeetingDateSelector
-                  value={selectedOfferDate}
-                  onChange={(date) => setOfferDate(formatDateKey(date))}
-                  minDate={minOfferDate}
-                  onInvalidDate={(message) => onToast?.(message)}
-                />
-              </div>
-              <p className="ua-cp-counselling__periods-label">Period windows</p>
-              <div className="ua-cp-counselling__chips">
-                {PERIODS.map((period) => {
-                  const on = offerPeriods.includes(period.key);
-                  return (
-                    <button
-                      key={period.key}
-                      type="button"
-                      className={`ua-cp-counselling__chip${on ? " is-on" : ""}`}
-                      onClick={() => {
-                        setOfferPeriods((prev) =>
-                          prev.includes(period.key)
-                            ? prev.filter((key) => key !== period.key)
-                            : [...prev, period.key],
-                        );
-                      }}
-                    >
-                      {period.label}
-                      <small>{period.range}</small>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="ua-cp-counselling__offer-actions">
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={addPendingOffer} disabled={busy}>
-                  Add to list
+          {showClientIntake ? (
+            <div className="ua-cp-counselling__block ua-cp-counselling__intake">
+              <p className="ua-cp-counselling__intake-message">Client requested for Counselling sessions</p>
+              <div className="ua-cp-counselling__actions">
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--green"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={busy}
+                >
+                  Accept
                 </button>
-              </div>
-              {pendingOffers.length ? (
-                <ul className="ua-cp-counselling__list ua-cp-counselling__pending">
-                  {pendingOffers.map((row) => (
-                    <li key={`${row.date}-${row.period}`}>
-                      <span>{formatOffer(row)}</span>
-                      <button
-                        type="button"
-                        className="ua-cp-counselling__remove"
-                        onClick={() => setPendingOffers((prev) => prev.filter((item) => !(item.date === row.date && item.period === row.period)))}
-                      >
-                        Remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <label className="ua-cp-counselling__notes">
-                <span className="ua-cp-counselling__field-label">Note to client (optional)</span>
-                <textarea rows={3} value={coachNotes} onChange={(e) => setCoachNotes(e.target.value)} />
-              </label>
-              <div className="ua-cp-counselling__cta">
-                <button type="button" className="ua-cp-btn ua-cp-btn--primary" onClick={shareAvailability} disabled={busy}>
-                  {busy ? "Sharing…" : "Share with client"}
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--danger"
+                  onClick={() => setPendingRejectIntake(true)}
+                  disabled={busy}
+                >
+                  Reject
                 </button>
               </div>
             </div>
           ) : null}
 
           {activeTrack.status === "periods_offered" ? (
-            <p className="ua-cp-counselling__wait">Waiting for the client to pick a period or request another time.</p>
+            <>
+              {(activeTrack.periodOffers || []).some((row) => String(row.kind || "").toLowerCase() === "slot") ? (
+                <div className="ua-cp-counselling__block">
+                  <h3>Slots offered</h3>
+                  <ul className="ua-cp-counselling__list">
+                    {(activeTrack.periodOffers || []).map((offer) => (
+                      <li key={offer.id || `${offer.date}-${offer.startLocal}`}>
+                        <span>{formatOffer(offer)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <p className="ua-cp-counselling__wait">Waiting for the client to pick a slot or request another time.</p>
+            </>
           ) : null}
 
           {canManage && activeTrack.status === "time_requested" ? (
             <div className="ua-cp-counselling__block">
               <h3>Client requested times</h3>
               <p className="ua-cp-counselling__muted">
-                Accept one of the times below, reject to keep existing period offers, or share new availability above.
+                Accept one of the times below, or reject to keep existing slot offers.
               </p>
               {!requestedSlots.length ? (
                 <p className="ua-cp-counselling__muted">No requested slots found.</p>
@@ -569,7 +753,7 @@ export function CounsellingSection({ user, onToast }) {
             </div>
           ) : null}
 
-          {canDelete && activeTrack.status !== "scheduled" ? (
+          {canDelete && activeTrack.status !== "scheduled" && activeTrack.status !== "requested" ? (
             <div className="ua-cp-counselling__foot">
               <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => askCancel(activeTrack)} disabled={busy}>
                 Cancel request
@@ -581,45 +765,66 @@ export function CounsellingSection({ user, onToast }) {
 
       <div className="ua-cp-counselling__history">
         <h3>Review Tracking</h3>
-        <p className="ua-cp-counselling__muted">Same list the client sees as “When have I met my Wellness Coach?”</p>
-        {!tracks.length ? (
-          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No sessions yet.</p>
+        <p className="ua-cp-counselling__muted">Same list the client sees as “When have I met my Wellness Coach?” Dates come from each Wellness Prescription.</p>
+        {meetingsLoading ? (
+          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">Loading reviews…</p>
+        ) : !meetings.length ? (
+          <p className="ua-cp-counselling__muted ua-cp-counselling__history-empty">No reviews yet.</p>
         ) : (
           <div className="ua-cp-counselling__history-list">
-            {[...tracks]
-              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-              .map((track, index) => {
-                const reviewNumber = Math.max(tracks.length - index, 1);
-                const dateLabel = new Date(track.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                });
-                return (
-                  <div key={track.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
-                    <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
-                    <span className="ua-cp-counselling__history-date">{dateLabel}</span>
-                    <span className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${track.status}`}>
-                      {STATUS_LABEL[track.status] || track.status}
-                    </span>
-                    <div className="ua-cp-counselling__history-action">
-                      {canDelete && track.status === "scheduled" && track.id !== scheduledSession?.id ? (
-                        <button
-                          type="button"
-                          className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
-                          onClick={() => askCancel(track, { label: `Review ${reviewNumber}` })}
-                          disabled={busy}
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="ua-cp-counselling__history-row ua-cp-counselling__history-row--head" aria-hidden="true">
+              <span className="ua-cp-counselling__history-label">Review</span>
+              <span className="ua-cp-counselling__history-col">Scheduled Date</span>
+              <span className="ua-cp-counselling__history-col">Status</span>
+              <span className="ua-cp-counselling__history-col">Schedule by</span>
+            </div>
+            {meetings.map((meeting, index) => {
+              const reviewNumber = Math.max(meetings.length - index, 1);
+              const statusClass = reviewTrackingStatusClass(meeting);
+              return (
+                <div key={meeting.id} className="ua-cp-counselling__history-row ua-cp-counselling__history-row--review">
+                  <strong className="ua-cp-counselling__history-label">Review {reviewNumber}</strong>
+                  <span className="ua-cp-counselling__history-date">
+                    {formatReviewScheduledColumn(meeting.scheduledDate, meeting.scheduledAt)}
+                  </span>
+                  <span
+                    className={`ua-cp-counselling__history-status ua-cp-counselling__history-status--${statusClass}`}
+                  >
+                    {reviewTrackingStatusLabel(meeting)}
+                  </span>
+                  <span className="ua-cp-counselling__history-date">
+                    {reviewScheduleByLabel(meeting)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {scheduleOpen ? (
+        <ScheduleMeetingModal
+          user={user}
+          title="Schedule counselling meeting"
+          defaultNote="Looking forward to our counselling session."
+          showClientNote={false}
+          defaultDuration={45}
+          onClose={() => setScheduleOpen(false)}
+          onSend={sendCounsellingSlots}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={pendingRejectIntake}
+        tag="Counselling"
+        title="Reject counselling request?"
+        body="The client will be notified that this request was declined."
+        cancelLabel="Keep request"
+        confirmLabel="Reject request"
+        confirmTone="danger"
+        onCancel={() => setPendingRejectIntake(false)}
+        onConfirm={confirmRejectIntake}
+      />
 
       <ConfirmDialog
         open={Boolean(pendingCancel)}

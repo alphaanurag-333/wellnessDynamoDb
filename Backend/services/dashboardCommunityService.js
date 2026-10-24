@@ -1,5 +1,6 @@
 const { getUserById, TABLE: USER_TABLE } = require("../models/userModel");
 const { getWellnessCoachById } = require("../models/wellnessCoachModel");
+const { getWellnessCoachByIdResolved } = require("./accountResolver");
 const { monthLabel } = require("../models/monthlyChampionPostModel");
 const { computeUserAveragesForMonth } = require("./monthlyChampionScoreService");
 const { listScopedUsers } = require("./pendingTasksService");
@@ -8,12 +9,14 @@ const { todayInTimezone } = require("../utils/birthdayTimezone");
 const { parseDateOnly } = require("../utils/dateOnly");
 const { computeDobMonthDay, pad2, isLeapYear } = require("../utils/dobMonthDay");
 const { isCommunityBirthdayUser } = require("../models/userAssignmentLogic");
+const { coachNameFromMap, wellnessCoachIdsForUser } = require("../utils/programProgressCalculations");
 
 const IST_TZ = "Asia/Kolkata";
 const BIRTHDAY_LIMIT = 10;
-const CLIENT_CARD_LIMIT = 2;
+const BIRTHDAY_WINDOW_DAYS = 15;
+const CLIENT_CARD_LIMIT = 3;
 const COACH_CARD_LIMIT = 1;
-const LEADERBOARD_LIMIT = 10;
+const LEADERBOARD_LIMIT = 15;
 const LEADERBOARD_MONTHS = 6;
 const COACH_RANK_SAMPLE = 40;
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -161,13 +164,14 @@ function nextBirthdayFromDob(dobIso, todayDateOnly) {
   return { dateOnly, offset };
 }
 
-function pickUpcomingBirthdays(users, limit = BIRTHDAY_LIMIT, todayDateOnly = todayInTimezone().dateOnly) {
+function pickUpcomingBirthdays(users, limit = BIRTHDAY_LIMIT, todayDateOnly = todayInTimezone().dateOnly, withinDays = null) {
   const byId = new Map();
   for (const user of users || []) {
     const id = userIdOf(user);
     if (!id || byId.has(id)) continue;
     const next = nextBirthdayFromDob(user.dob, todayDateOnly);
     if (!next) continue;
+    if (withinDays != null && next.offset > withinDays) continue;
     byId.set(id, {
       id,
       name: displayName(user),
@@ -236,7 +240,9 @@ async function loadCoachNames(coachIds) {
   await Promise.all(
     unique.map(async (id) => {
       try {
-        const coach = await getWellnessCoachById(id);
+        const coach =
+          (await getWellnessCoachByIdResolved(id)) ||
+          (await getWellnessCoachById(id));
         const name = String(coach?.name || "").trim();
         if (name) byId.set(id, name);
       } catch {
@@ -247,11 +253,18 @@ async function loadCoachNames(coachIds) {
   return byId;
 }
 
-function toClientCard(row, user) {
+function resolvedCoachName(user, coachNames) {
+  const name = String(coachNameFromMap(user, coachNames) || "").trim();
+  return name && name !== "Not assigned" ? name : "";
+}
+
+function toClientCard(row, user, coachName = "") {
   const totalScore = inferredTotalScore(row);
+  const coach = String(coachName || "").trim();
   return {
     id: row.userId,
     name: displayName(user),
+    coachName: coach && coach !== "Not assigned" ? coach : "",
     score: formatClientScore(totalScore),
     totalScore: formatClientScore(totalScore),
     averageScore: formatScoreNumber(row.averageScore),
@@ -259,12 +272,14 @@ function toClientCard(row, user) {
   };
 }
 
-function toLeaderboardRow(row, user, rank) {
+function toLeaderboardRow(row, user, rank, coachName = "") {
   const totalScore = formatClientScore(inferredTotalScore(row));
+  const coach = String(coachName || "").trim();
   return {
     rank,
     userId: row.userId,
     name: displayName(user),
+    coachName: coach && coach !== "Not assigned" ? coach : "",
     score: totalScore,
     totalScore,
     averageScore: formatScoreNumber(row.averageScore),
@@ -272,6 +287,16 @@ function toLeaderboardRow(row, user, rank) {
     medal: medalForRank(rank),
     highlight: rank === 2,
   };
+}
+
+async function leaderboardRowsFromRanked(ranked, usersById) {
+  const coachNames = await loadCoachNames(
+    ranked.flatMap((row) => wellnessCoachIdsForUser(usersById.get(row.userId))),
+  );
+  return ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => {
+    const user = usersById.get(row.userId);
+    return toLeaderboardRow(row, user, index + 1, coachNameFromMap(user, coachNames));
+  });
 }
 
 function buildTopClientCoach(topClientRows, usersById, coachNames) {
@@ -287,9 +312,11 @@ function buildTopClientCoach(topClientRows, usersById, coachNames) {
   const scores = coachedTopRows.map((row) => Number(row.averageScore) || 0);
   const averageScore = scores.length ? scores.reduce((sum, n) => sum + n, 0) / scores.length : 0;
 
+  const coachName = coachNames.get(coachId) || resolvedCoachName(topUser, coachNames);
   return [{
     id: coachId,
-    name: coachNames.get(coachId) || "Wellness coach",
+    name: coachName || "Wellness coach",
+    coachName: coachName || "",
     score: formatScoreDisplay(averageScore),
     averageScore: formatScoreNumber(averageScore),
   }];
@@ -322,9 +349,7 @@ async function buildLeaderboardRows(allowedIds, monthYear) {
   const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
   const usersById = await enrichUsers(sample.map((row) => row.userId));
   const ranked = sample.filter((row) => usersById.has(row.userId));
-  const leaderboardRows = ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => (
-    toLeaderboardRow(row, usersById.get(row.userId), index + 1)
-  ));
+  const leaderboardRows = await leaderboardRowsFromRanked(ranked, usersById);
 
   return {
     monthYear: resolvedMonth,
@@ -341,17 +366,21 @@ async function loadChampionsAndLeaderboard(allowedIds, monthYear = currentMonthY
   const ranked = sample.filter((row) => usersById.has(row.userId));
   const topClients = ranked.slice(0, CLIENT_CARD_LIMIT);
   const coachNames = await loadCoachNames(
-    topClients.map((row) => usersById.get(row.userId)?.parentCoachId).filter(Boolean),
+    ranked.flatMap((row) => wellnessCoachIdsForUser(usersById.get(row.userId))),
   );
-  const leaderboardRows = ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => (
-    toLeaderboardRow(row, usersById.get(row.userId), index + 1)
-  ));
+  const leaderboardRows = ranked.slice(0, LEADERBOARD_LIMIT).map((row, index) => {
+    const user = usersById.get(row.userId);
+    return toLeaderboardRow(row, user, index + 1, coachNameFromMap(user, coachNames));
+  });
 
   return {
     champions: {
       monthYear: resolvedMonth,
       monthLabel: monthLbl,
-      clients: topClients.map((row) => toClientCard(row, usersById.get(row.userId))),
+      clients: topClients.map((row) => {
+        const user = usersById.get(row.userId);
+        return toClientCard(row, user, resolvedCoachName(user, coachNames));
+      }),
       coaches: buildTopClientCoach(topClients, usersById, coachNames).slice(0, COACH_CARD_LIMIT),
     },
     leaderboard: {
@@ -389,7 +418,7 @@ async function getDashboardCommunity(actor) {
     const allowedIds = await loadAllowedUserIds(actor, scopedUsers);
     const champData = await loadChampionsAndLeaderboard(allowedIds);
     return {
-      birthdays: pickUpcomingBirthdays(users, BIRTHDAY_LIMIT),
+      birthdays: pickUpcomingBirthdays(users, BIRTHDAY_LIMIT, undefined, BIRTHDAY_WINDOW_DAYS),
       champions: champData.champions,
       leaderboard: champData.leaderboard,
     };

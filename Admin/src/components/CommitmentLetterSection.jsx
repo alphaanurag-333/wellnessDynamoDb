@@ -60,7 +60,7 @@ export function CommitmentLetterBody({ text, clientName = "{name}" }) {
   );
 }
 
-export function CommitmentLetterDocument({ text, version }) {
+export function CommitmentLetterDocument({ text, version, clientName = "{name}", showNameHint = true }) {
   return (
     <div className="ua-cp-present-letter__doc ua-cfg-cl-doc">
       <div className="ua-cp-present-letter__brand">
@@ -72,8 +72,10 @@ export function CommitmentLetterDocument({ text, version }) {
       </div>
       <hr className="ua-cp-present-letter__rule" />
       <h4 className="ua-cp-present-letter__heading">My commitment</h4>
-      <p className="ua-cfg-cl-doc__hint">Use {"{name}"} for the client’s name when this letter is assigned.</p>
-      <CommitmentLetterBody text={text} />
+      {showNameHint ? (
+        <p className="ua-cfg-cl-doc__hint">Use {"{name}"} for the client’s name when this letter is assigned.</p>
+      ) : null}
+      <CommitmentLetterBody text={text} clientName={clientName} />
       <div className="ua-cp-present-letter__signatures">
         <div className="ua-cp-present-letter__sign-block">
           <span className="ua-cp-present-letter__sign-name">Coach</span>

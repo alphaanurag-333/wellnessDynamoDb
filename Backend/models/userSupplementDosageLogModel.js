@@ -146,6 +146,22 @@ async function queryLogsByUserId(userId) {
   return items;
 }
 
+function computeScheduleProgressPercent(dosage, asOfDate) {
+  const durationDays = Number(dosage?.durationDays) || 0;
+  const startDate = String(dosage?.startDate || "").trim();
+  const endDate = String(dosage?.endDate || "").trim();
+  if (durationDays <= 0 || !startDate || !endDate) return 0;
+
+  const today = normalizeLogDate(asOfDate);
+  if (today < startDate) return 0;
+  if (today >= endDate) return 100;
+
+  const startMs = new Date(`${startDate}T00:00:00.000Z`).getTime();
+  const todayMs = new Date(`${today}T00:00:00.000Z`).getTime();
+  const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
+  return Math.min(100, Math.max(0, Math.floor((elapsedDays / durationDays) * 100)));
+}
+
 function computeProgressPercent(dosage, logs) {
   const durationDays = Number(dosage?.durationDays) || 0;
   const periods = Array.isArray(dosage?.periods) ? dosage.periods : [];
@@ -246,6 +262,7 @@ module.exports = {
   queryLogsByUserIdAndDate,
   queryLogsByUserId,
   computeProgressPercent,
+  computeScheduleProgressPercent,
   buildTodayCompletionMap,
   normalizeLogDate,
   normalizePeriod,

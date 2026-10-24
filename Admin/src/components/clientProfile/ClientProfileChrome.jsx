@@ -1,12 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { updateUserProfileImage } from "../../api/usersApi.js";
+import { updateUserProfileImage, parseWellnessJourneyTokens, formatWellnessJourneyDisplay } from "../../api/usersApi.js";
 import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
+import { userTierBadge } from "../../data/usersData.js";
 import { NotificationInboxPanel } from "../NotificationInboxPanel.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 
 const PROFILE_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+function concernKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function wellnessJourneyExtras(user, primary) {
+  const tokens = parseWellnessJourneyTokens(
+    user?.wellnessJourneyForRaw?.length ? user.wellnessJourneyForRaw : user?.wellnessJourneyFor,
+  );
+  const primaryKey = concernKey(primary);
+  const seen = new Set(primaryKey ? [primaryKey] : []);
+  const extras = [];
+  for (const token of tokens) {
+    const label = formatWellnessJourneyDisplay(token);
+    const key = concernKey(label);
+    if (!label || seen.has(key)) continue;
+    seen.add(key);
+    extras.push(label);
+  }
+  return extras;
+}
 
 function clientInitials(name) {
   const parts = String(name || "Client").trim().split(/\s+/).filter(Boolean);
@@ -85,8 +107,8 @@ export function ClientProfileTopbar({
   backTo,
 }) {
   const navigate = useNavigate();
-  const { can } = useViewAs();
-  const canEditPii = !readOnly && can("console.pii.edit");
+  const { isAdminView } = useViewAs();
+  const canEditPii = !readOnly && Boolean(isAdminView);
   const usersPath = backTo || UPDATED_ADMIN_PATHS.users;
 
   return (
@@ -147,13 +169,13 @@ export function ClientProfileSidebar({
   onToast,
   readOnly = false,
 }) {
-  const { can } = useViewAs();
-  const canEditPii = !readOnly && can("console.pii.edit");
-  const tags = Array.isArray(user?.tags) ? user.tags : [];
-  const visibleTags = showAllTags ? tags : tags.slice(0, 2);
-  const extraTags = tags.length - 2;
-  const programLabel = user?.programLabel || "—";
+  const { isAdminView } = useViewAs();
+  const canEditPii = !readOnly && Boolean(isAdminView);
+  const primaryConcern = String(user?.goal || "").trim();
+  const journeyExtras = wellnessJourneyExtras(user, primaryConcern);
   const programs = user?.programs ?? 0;
+  const tierText = userTierBadge(user).label || "—";
+  const programLine = `${tierText} · ${programs} ${programs === 1 ? "program" : "programs"}`;
   const userId = String(user?.id || user?._id || "").trim();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -230,7 +252,7 @@ export function ClientProfileSidebar({
           <div className="ua-cp-sidebar__mobile-name" title={user?.name || "Client"}>
             {user?.name || "Client"}
           </div>
-          <div className="ua-cp-sidebar__mobile-sub">{programLabel} · {programs} programs</div>
+          <div className="ua-cp-sidebar__mobile-sub">{programLine}</div>
         </div>
         <button
           type="button"
@@ -271,17 +293,33 @@ export function ClientProfileSidebar({
               <div className="ua-cp-sidebar__name" title={user?.name || "Client"}>
                 {user?.name || "Client"}
               </div>
-              <div className="ua-cp-sidebar__sub">
-                {programLabel} · {programs} {programs === 1 ? "program" : "programs"}
-              </div>
+              <div className="ua-cp-sidebar__sub">{programLine}</div>
             </div>
           </div>
           <div className="ua-cp-sidebar__tags">
-            {visibleTags.map((tag, i) => (
-              <span key={`${tag}-${i}`} className={`ua-cp-tag ua-cp-tag--${i % 3}`}>{tag}</span>
-            ))}
-            {!showAllTags && extraTags > 0 ? (
-              <button type="button" className="ua-cp-tag ua-cp-tag--more" onClick={onToggleTags}>+{extraTags} more</button>
+            {primaryConcern ? (
+              <span className="ua-cp-tag ua-cp-tag--0" title="Primary health concern">{primaryConcern}</span>
+            ) : null}
+            {showAllTags
+              ? journeyExtras.map((tag, i) => (
+                <span
+                  key={`${tag}-${i}`}
+                  className={`ua-cp-tag ua-cp-tag--${(i + 1) % 3}`}
+                  title="Wellness journey for"
+                >
+                  {tag}
+                </span>
+              ))
+              : null}
+            {journeyExtras.length > 0 ? (
+              <button
+                type="button"
+                className={`ua-cp-tag ua-cp-tag--more${showAllTags ? " ua-cp-tag--less" : ""}`}
+                onClick={onToggleTags}
+                title={showAllTags ? "Hide wellness journey" : "Show wellness journey"}
+              >
+                {showAllTags ? "Show less" : `+${journeyExtras.length} more`}
+              </button>
             ) : null}
           </div>
         </div>

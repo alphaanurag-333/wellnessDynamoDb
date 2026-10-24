@@ -9,6 +9,8 @@ const {
   setCanonicalStepStatus,
   markStepSkipped,
   markStepDone,
+  applyBodyAnalyticsPhotoReview,
+  wizardStepAfterPhotosSaved,
 } = require("../utils/paidOnboardingHelpers");
 
 describe("buildPaidOnboardingResetUpdates", () => {
@@ -130,6 +132,126 @@ describe("bodyAnalytics derivation", () => {
   });
 });
 
+function reviewedPhoto(statuses) {
+  return {
+    frontPicKey: "front",
+    rightPicKey: "right",
+    leftPicKey: "left",
+    frontReviewStatus: statuses.front,
+    rightReviewStatus: statuses.right,
+    leftReviewStatus: statuses.left,
+  };
+}
+
+describe("body analytics photo review", () => {
+  const completed = {
+    personalDetails: "done",
+    bodyAnalytics: "done",
+    bodyMeasurement: "done",
+    progressPhotos180: "done",
+    medicalConditions: "done",
+    internalParameter: "done",
+  };
+
+  it("reopens Body Analytics when front, right, or left is rejected", () => {
+    for (const angle of ["front", "right", "left"]) {
+      const opened = applyBodyAnalyticsPhotoReview(completed, {
+        angle,
+        action: "rejected",
+        photo: reviewedPhoto({
+          front: angle === "front" ? "rejected" : "approved",
+          right: angle === "right" ? "rejected" : "approved",
+          left: angle === "left" ? "rejected" : "approved",
+        }),
+      });
+      assert.equal(opened.bodyAnalytics, "pending", `${angle} should reopen the step`);
+      assert.equal(opened.progressPhotos180, "pending");
+      assert.equal(opened.bodyMeasurement, "done");
+      assert.equal(opened.medicalConditions, "done");
+      assert.equal(opened.internalParameter, "done");
+      assert.equal(opened.personalDetails, "done");
+      assert.equal(normalizePaidOnboardingStepStatus(opened).bodyAnalytics, "pending");
+    }
+  });
+
+  it("keeps the photo subkey pending so a later subkey completion cannot re-promote", () => {
+    const uploaded = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      progressPhotos180: "done",
+    });
+    const opened = applyBodyAnalyticsPhotoReview(uploaded, {
+      angle: "left",
+      action: "rejected",
+      photo: reviewedPhoto({ front: "pending", right: "pending", left: "rejected" }),
+    });
+    const later = normalizePaidOnboardingStepStatus({
+      ...opened,
+      bodyMeasurement: "done",
+      medicalConditions: "done",
+    });
+    assert.equal(later.progressPhotos180, "pending");
+    assert.equal(later.bodyAnalytics, "pending");
+  });
+
+  it("marks Body Analytics done only when front, right, and left are all accepted", () => {
+    const opened = applyBodyAnalyticsPhotoReview(completed, {
+      angle: "front",
+      action: "rejected",
+      photo: reviewedPhoto({ front: "rejected", right: "approved", left: "approved" }),
+    });
+    const partial = applyBodyAnalyticsPhotoReview(opened, {
+      angle: "right",
+      action: "approved",
+      photo: reviewedPhoto({ front: "pending", right: "approved", left: "pending" }),
+    });
+    assert.equal(partial, null);
+
+    const stillRejected = applyBodyAnalyticsPhotoReview(completed, {
+      angle: "right",
+      action: "approved",
+      photo: reviewedPhoto({ front: "rejected", right: "approved", left: "approved" }),
+    });
+    assert.equal(stillRejected.bodyAnalytics, "pending");
+
+    const done = applyBodyAnalyticsPhotoReview(opened, {
+      angle: "front",
+      action: "approved",
+      photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
+    });
+    assert.equal(done.bodyAnalytics, "done");
+    assert.equal(done.progressPhotos180, "done");
+    assert.equal(done.bodyMeasurement, "done");
+    assert.equal(done.internalParameter, "done");
+  });
+
+  it("returns a finished client to the app after they resubmit 180 photos", () => {
+    const reopened = applyBodyAnalyticsPhotoReview(completed, {
+      angle: "right",
+      action: "rejected",
+      photo: reviewedPhoto({ front: "rejected", right: "rejected", left: "rejected" }),
+    });
+    assert.equal(reopened.progressPhotos180, "pending");
+    const saved = markStepDone(reopened, "progressPhotos180");
+    assert.equal(wizardStepAfterPhotosSaved("photos180", saved), "done");
+    assert.equal(saved.bodyAnalytics, "done");
+  });
+
+  it("continues to medical when 180 photos are the client's first upload", () => {
+    const first = markStepDone(
+      normalizePaidOnboardingStepStatus({ personalDetails: "done", bodyMeasurement: "done" }),
+      "progressPhotos180",
+    );
+    assert.equal(wizardStepAfterPhotosSaved("photos180", first), "medical");
+  });
+
+  it("ignores weight photo reviews", () => {
+    assert.equal(
+      applyBodyAnalyticsPhotoReview(completed, { angle: "weight", action: "rejected", photo: {} }),
+      null,
+    );
+  });
+});
+
 describe("onboardingStepJustCompleted", () => {
   const { onboardingStepJustCompleted } = require("../utils/paidOnboardingHelpers");
 
@@ -139,5 +261,38 @@ describe("onboardingStepJustCompleted", () => {
     assert.equal(onboardingStepJustCompleted(pending, done, "bodyAnalytics"), true);
     assert.equal(onboardingStepJustCompleted(done, done, "bodyAnalytics"), false);
     assert.equal(onboardingStepJustCompleted(pending, done, "protocolSettings"), false);
+  });
+});
+
+describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
+  const {
+    buildBodyAnalyticsCompletionAppLockUpdates,
+    setCanonicalStepStatus,
+  } = require("../utils/paidOnboardingHelpers");
+
+  it("persists app locks when Body Analytics first becomes done", () => {
+    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const locks = buildBodyAnalyticsCompletionAppLockUpdates({}, pending, done);
+    assert.deepEqual(locks, {
+      progressPhotosInAppEnabled: false,
+      bodyMeasurementEnabled: false,
+      medicalConditionsInAppEnabled: false,
+    });
+  });
+
+  it("does not override coach-enabled gates", () => {
+    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const locks = buildBodyAnalyticsCompletionAppLockUpdates(
+      {
+        progressPhotosInAppEnabled: true,
+        bodyMeasurementEnabled: true,
+        medicalConditionsInAppEnabled: true,
+      },
+      pending,
+      done,
+    );
+    assert.deepEqual(locks, {});
   });
 });

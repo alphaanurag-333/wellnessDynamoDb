@@ -70,6 +70,74 @@ export function groupAssignmentItems(items, catalog = []) {
   return sections;
 }
 
+export function prescriptionCalendarDate(value) {
+  const day = String(value || "").trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "";
+}
+
+/** Latest active Wellness Prescription date (YYYY-MM-DD). Cancelled reviews are skipped. */
+export function latestActivePrescriptionDate(assignments) {
+  let latest = "";
+  for (const row of assignments || []) {
+    if (String(row?.reviewStatus || "active").toLowerCase() === "cancelled") continue;
+    const day = prescriptionCalendarDate(row?.date);
+    if (day && day > latest) latest = day;
+  }
+  return latest;
+}
+
+function calendarDayFrom(value) {
+  const raw = String(value || "").trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
+}
+
+/** Same meeting list the app shows as “When have I met my Wellness Coach?” */
+export function coachMeetingsFromAssignments(assignments) {
+  return (assignments || [])
+    .map((row) => {
+      const date = prescriptionCalendarDate(row?.date);
+      if (!row?.id || !date) return null;
+      const reviewStatus = String(row.reviewStatus || "active").toLowerCase();
+      const completedDate =
+        row.completedDate
+        || calendarDayFrom(row.completedAt)
+        || (reviewStatus === "active" ? date : null);
+      const cancelledDate =
+        row.cancelledDate
+        || calendarDayFrom(row.cancelledAt)
+        || null;
+      const scheduledDate =
+        row.scheduledDate
+        || calendarDayFrom(row.scheduledAt)
+        || null;
+      return {
+        id: String(row.id),
+        date,
+        reviewStatus,
+        summary: String(row.summary || "").trim(),
+        authorName: String(row.authorName || "").trim(),
+        cancelled: reviewStatus === "cancelled",
+        scheduledDate,
+        completedDate,
+        cancelledDate,
+        scheduledAt: row.scheduledAt || null,
+        completedAt: row.completedAt || null,
+        cancelledAt: row.cancelledAt || null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+}
+
+export function assignmentsFromPrescriptionPayload(data) {
+  if (Array.isArray(data?.assignments) && data.assignments.length) return data.assignments;
+  return [
+    ...(data?.recommended ? [data.recommended] : []),
+    ...(Array.isArray(data?.history) ? data.history : []),
+  ].filter(Boolean);
+}
+
 export function mapWellnessPrescriptionAssignment(row, catalog = []) {
   if (!row) return null;
   const id = row.id || row._id;
@@ -92,11 +160,16 @@ export function mapWellnessPrescriptionAssignment(row, catalog = []) {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     reviewStatus: String(row.reviewStatus || "active").toLowerCase(),
-    reviewAt: row.reviewAt || row.updatedAt || row.createdAt,
+    reviewAt: prescriptionCalendarDate(row.date) || row.reviewAt || row.createdAt,
     summary: String(row.summary || "").trim(),
     authorName: String(row.authorName || "").trim(),
     authorRole: String(row.authorRole || "").trim(),
     cancelledAt: row.cancelledAt || null,
+    scheduledDate: row.scheduledDate || calendarDayFrom(row.scheduledAt) || null,
+    completedDate: row.completedDate || calendarDayFrom(row.completedAt) || null,
+    cancelledDate: row.cancelledDate || calendarDayFrom(row.cancelledAt) || null,
+    scheduledAt: row.scheduledAt || null,
+    completedAt: row.completedAt || null,
     editableUntil: row.editableUntil || null,
     canEdit,
   };
@@ -133,12 +206,21 @@ export async function listUserWellnessPrescriptions(userId, catalog = []) {
       .map((row) => mapWellnessPrescriptionAssignment(row, catalog))
       .filter(Boolean);
     const historyRaw = Array.isArray(data.history) ? data.history : [];
+    const meetings = Array.isArray(data.meetings)
+      ? data.meetings.map((row) => ({
+        ...row,
+        id: String(row.id || ""),
+      })).filter((row) => row.id)
+      : coachMeetingsFromAssignments(assignments);
+
     return {
       assignments,
       recommended: mapWellnessPrescriptionAssignment(data.recommended, catalog) || assignments[0] || null,
       history: historyRaw.length
         ? historyRaw.map((row) => mapWellnessPrescriptionAssignment(row, catalog)).filter(Boolean)
         : assignments.slice(1),
+      meetings,
+      lastReviewedAt: data.lastReviewedAt || null,
     };
   } catch (error) {
     normalizeApiError(error);

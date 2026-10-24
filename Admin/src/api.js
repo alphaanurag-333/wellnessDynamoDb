@@ -3,12 +3,18 @@ import {
   hydrateAdminProfile,
   hydrateStoreFromApiResponse,
 } from "./store/hydrateFromApi.js";
+import {
+  announcePanelSessionExpired,
+  clearPanelSession,
+  getPanelSessionExpiryReason,
+} from "./utils/panelSession.js";
 
 // Prefer local backend during development so panel picks up unpaid onboard fixes.
 // Override with VITE_API_URL when you need the remote API.
-// const API_BASE = "http://localhost:5000";
-const API_BASE = "https://irwellness.in";
 // const API_BASE =  "https://wellness-development.developmentalphawizz.com";
+const API_BASE = "http://localhost:5000";
+// const API_BASE = "https://irwellness.in";
+// Remote development still rejects mobile login with "Email and password are required".
 // const API_BASE = "https://wellness.developmentalphawizz.com:5005";
 // const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
 const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";
@@ -38,15 +44,36 @@ function writeAccountAuth(nextAuth) {
   if (typeof window === "undefined") return;
   if (!nextAuth?.accessToken) {
     window.localStorage.removeItem(ACCOUNT_AUTH_STORAGE_KEY);
+    clearPanelSession();
     return;
   }
   window.localStorage.setItem(ACCOUNT_AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+}
+
+function isAuthBypassUrl(url) {
+  const requestUrl = String(url || "");
+  return (
+    requestUrl.includes("/account/auth/login") ||
+    requestUrl.includes("/account/auth/otp") ||
+    requestUrl.includes("/account/auth/refresh-token")
+  );
+}
+
+function endExpiredPanelSession(reason) {
+  writeAccountAuth(null);
+  announcePanelSessionExpired(reason);
 }
 
 let refreshPromise = null;
 
 async function refreshAccountToken() {
   if (refreshPromise) return refreshPromise;
+
+  const expiryReason = getPanelSessionExpiryReason();
+  if (expiryReason && expiryReason !== "missing") {
+    endExpiredPanelSession(expiryReason);
+    throw new Error("Session expired");
+  }
 
   const current = readAccountAuth();
   const refreshToken = current?.refreshToken;
@@ -75,6 +102,11 @@ async function refreshAccountToken() {
 
 api.interceptors.request.use((config) => {
   const stored = readAccountAuth();
+  const expiryReason = stored?.accessToken ? getPanelSessionExpiryReason() : null;
+  if (expiryReason && expiryReason !== "missing" && !isAuthBypassUrl(config?.url)) {
+    endExpiredPanelSession(expiryReason);
+    return Promise.reject(new Error("Session expired"));
+  }
   const latestToken = stored?.accessToken;
   const existingAuth = config.headers?.Authorization || config.headers?.authorization;
   if (latestToken && !existingAuth) {
