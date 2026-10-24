@@ -30,6 +30,7 @@ const {
 const { listUserLaunchAssessmentsByUserId } = require("../models/userLaunchAssessmentModel");
 const {
   listUserSupplementDosagesByUserId,
+  parseCompositePeriod,
 } = require("../models/userSupplementDosageModel");
 const {
   listWeightLogsByUser,
@@ -410,6 +411,32 @@ const PERIOD_LABEL = {
   before_evening_snacks: "Before Evening Snacks",
 };
 
+function resolvePeriodLabel(period) {
+  const key = String(period || "").trim();
+  if (PERIOD_LABEL[key]) return PERIOD_LABEL[key];
+  const composite = parseCompositePeriod(key);
+  if (composite) {
+    const day = PERIOD_LABEL[composite.dayPart] || composite.dayPart;
+    const meal = PERIOD_LABEL[composite.mealTiming] || composite.mealTiming;
+    return `${day} · ${meal}`;
+  }
+  return key;
+}
+
+function resolvePeriodTone(period) {
+  const key = String(period || "").trim();
+  if (PERIOD_TONE[key]) return PERIOD_TONE[key];
+  const composite = parseCompositePeriod(key);
+  if (composite) {
+    return (
+      PERIOD_TONE[composite.dayPart]
+      || PERIOD_TONE[composite.mealTiming]
+      || "morning"
+    );
+  }
+  return "morning";
+}
+
 function buildSupplements(dosages, today) {
   const active = (dosages || []).filter(
     (row) => String(row.status || "").toLowerCase() === "active"
@@ -420,8 +447,13 @@ function buildSupplements(dosages, today) {
     const periods = Array.isArray(row.periods) ? row.periods : [];
     const first = periods[0];
     const noteParts = [];
-    if (first?.period && PERIOD_LABEL[first.period]) {
-      noteParts.push(PERIOD_LABEL[first.period]);
+    if (first?.period) {
+      const periodLabel = resolvePeriodLabel(first.period);
+      if (periodLabel && periodLabel !== first.period) {
+        noteParts.push(periodLabel);
+      } else if (PERIOD_LABEL[first.period]) {
+        noteParts.push(PERIOD_LABEL[first.period]);
+      }
     } else if (first?.mealRelation) {
       noteParts.push(first.mealRelation === "before" ? "Before meal" : "After meal");
     }
@@ -429,8 +461,8 @@ function buildSupplements(dosages, today) {
       name: row.name || "Nutrition",
       note: noteParts.join(" · ") || row.unit || "",
       dosages: periods.map((p) => ({
-        label: `${PERIOD_LABEL[p.period] || p.period} · ${p.quantity}`,
-        tone: PERIOD_TONE[p.period] || "morning",
+        label: `${resolvePeriodLabel(p.period)} · ${p.quantity}`,
+        tone: resolvePeriodTone(p.period),
       })),
       date: endDate ? shortDateLabel(endDate) : EMPTY,
       daysLeft: daysLeft != null ? daysLeft : null,

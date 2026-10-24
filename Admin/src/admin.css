@@ -31954,21 +31954,6 @@ scrollbar-width: thin;
   border: 1px solid var(--border);
 }
 
-.updated-admin .ua-cp-hptrack-search {
-  width: 100%;
-  height: 38px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 0 12px;
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-
-.updated-admin .ua-cp-hptrack-list {
-  max-height: 220px;
-  overflow-y: auto;
-}
-
 .updated-admin .ua-cp-hptrack-list__row {
   display: grid;
   grid-template-columns: 10px minmax(0, 1fr) auto 44px;

@@ -737,20 +737,20 @@ function WeightPhotoCard({ photo, canDelete, canReview = true, deleting, reviewi
           </button>
         ) : null}
       </div>
-      {hasPhoto && canReview ? (
+      {hasPhoto && canReview && tone === "pending" ? (
         <div className="ua-cp-hptrack-weight-photo-card__actions">
           <button
             type="button"
-            className={`ua-cp-hptrack-weight-photo-card__approve${tone === "approved" ? " ua-cp-hptrack-weight-photo-card__approve--done" : ""}`}
-            disabled={reviewing || deleting || tone === "approved"}
+            className="ua-cp-hptrack-weight-photo-card__approve"
+            disabled={reviewing || deleting}
             onClick={() => onReview?.(photo, "approved")}
           >
-            {reviewing && tone !== "approved" ? "Saving…" : "Accept"}
+            {reviewing ? "Saving…" : "Accept"}
           </button>
           <button
             type="button"
-            className={`ua-cp-hptrack-weight-photo-card__reject${tone === "rejected" ? " ua-cp-hptrack-weight-photo-card__reject--done" : ""}`}
-            disabled={reviewing || deleting || tone === "rejected"}
+            className="ua-cp-hptrack-weight-photo-card__reject"
+            disabled={reviewing || deleting}
             onClick={() => onReview?.(photo, "rejected")}
           >
             Reject
@@ -2046,7 +2046,6 @@ export function HealthProgressSection({ user, onToast }) {
 
   const [trackers, setTrackers] = useState(() => CLIENT_HEALTH_TRACKERS.map((row) => ({ ...row, enabled: false })));
   const [isFemale, setIsFemale] = useState(true);
-  const [search, setSearch] = useState("");
   const [trackingFilter, setTrackingFilter] = useState("all");
   const [loading, setLoading] = useState(() => Boolean(userId) && !isMock);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -2065,14 +2064,9 @@ export function HealthProgressSection({ user, onToast }) {
   const enabledKey = trackers.filter((t) => t.enabled).map((t) => t.featureKey).filter(Boolean).sort().join(",");
 
   const filteredTrackers = useMemo(() => {
-    let list = trackers;
-    if (trackingFilter !== "all") list = list.filter((t) => t.id === trackingFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((t) => `${t.name} ${t.category}`.toLowerCase().includes(q));
-    }
-    return list;
-  }, [trackers, trackingFilter, search]);
+    if (trackingFilter === "all") return trackers;
+    return trackers.filter((t) => t.id === trackingFilter);
+  }, [trackers, trackingFilter]);
 
   const enabledTrackers = useMemo(
     () => trackers.filter((t) => t.enabled),
@@ -2457,13 +2451,6 @@ export function HealthProgressSection({ user, onToast }) {
             </div>
           </div>
         ) : null}
-        <input
-          type="search"
-          className="ua-cp-hptrack-search"
-          placeholder="Search trackers…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
         <div className="ua-cp-hptrack-list">
           {filteredTrackers.map((tracker) => {
             const menstrualLocked = tracker.featureKey === "menstrualCycle" && !isFemale && !isMock;
