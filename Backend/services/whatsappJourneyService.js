@@ -285,6 +285,15 @@ async function notifyHapMeetingCoachConfirmedToUser(user) {
   });
 }
 
+async function notifyReportsBriefingMeetingCoachConfirmedToUser(user) {
+  if (!user) return { sent: false, reason: "missing_user" };
+  return sendNamedWhatsAppTemplate({
+    templateKey: "reportBfSchedmeetMeetInvUser",
+    person: user,
+    params: [firstName(user.name)],
+  });
+}
+
 async function notifyProgramInitMeetingCoachConfirmedToUser(user) {
   if (!user) return { sent: false, reason: "missing_user" };
   return sendNamedWhatsAppTemplate({
@@ -555,6 +564,90 @@ async function notifyProgramInitMeetingSlotConfirmedByClientToCoaches(user) {
   });
 }
 
+async function notifyReportsBriefingMeetingClientProposedSlotsToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "reportBfSchedmeetUserSlotWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "reportBfSchedmeetUserSlotWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
+async function notifyReportsBriefingMeetingSlotConfirmedByClientToCoaches(user) {
+  if (!user) return [];
+  const clientName = firstName(user.name);
+  const coaches = await loadAssignedCoachPersons(user);
+  if (!coaches.length) return [{ sent: false, reason: "no_assigned_coach" }];
+
+  const assignedCoachType = String(user.assignedCoachType || "").trim().toLowerCase();
+  const parentCoachId = String(user.parentCoachId || "").trim();
+  const assignedCoachId = String(user.assignedCoachId || "").trim();
+
+  if (
+    assignedCoachType === "assistant_wellness_coach" &&
+    assignedCoachId &&
+    parentCoachId
+  ) {
+    const wc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === parentCoachId) || coaches[0];
+    const awc =
+      coaches.find((c) => String(c.id || c._id || "").trim() === assignedCoachId) || coaches[1];
+    if (wc && awc && wc !== awc) {
+      const params = [firstName(wc.name), firstName(awc.name), clientName];
+      const results = [];
+      for (const coach of coaches) {
+        results.push(
+          await sendNamedWhatsAppTemplate({
+            templateKey: "reportBfSchedmeetUserAvailWcAwc",
+            person: coach,
+            params,
+          })
+        );
+      }
+      return results;
+    }
+  }
+
+  return notifyAssignedCoaches({
+    user,
+    templateKey: "reportBfSchedmeetUserAvailWc",
+    paramsForCoach: (coach) => [firstName(coach.name), clientName],
+  });
+}
+
 async function notifyOnboardingSlotsOffered({ user, userId, stepKey }) {
   const templateKey = slotTemplateKeyForStep(stepKey);
   if (!templateKey) return { sent: false, reason: "no_template_for_step" };
@@ -635,6 +728,20 @@ function notifyHapMeetingSlotConfirmedByClientToCoachesAsync(user) {
   runWhatsAppSafely("hap-schedmeet-useravail", notifyHapMeetingSlotConfirmedByClientToCoaches(user));
 }
 
+function notifyReportsBriefingMeetingSlotConfirmedByClientToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "reportbf-schedmeet-useravail",
+    notifyReportsBriefingMeetingSlotConfirmedByClientToCoaches(user)
+  );
+}
+
+function notifyReportsBriefingMeetingClientProposedSlotsToCoachesAsync(user) {
+  runWhatsAppSafely(
+    "reportbf-schedmeet-userslot",
+    notifyReportsBriefingMeetingClientProposedSlotsToCoaches(user)
+  );
+}
+
 function notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync(user) {
   runWhatsAppSafely(
     "programinit-schedmeet-useravail",
@@ -655,6 +762,13 @@ function notifyHapMeetingClientProposedSlotsToCoachesAsync(user) {
 
 function notifyHapMeetingCoachConfirmedToUserAsync(user) {
   runWhatsAppSafely("hap-schedmeet-meetinv-user", notifyHapMeetingCoachConfirmedToUser(user));
+}
+
+function notifyReportsBriefingMeetingCoachConfirmedToUserAsync(user) {
+  runWhatsAppSafely(
+    "reportbf-schedmeet-meetinv-user",
+    notifyReportsBriefingMeetingCoachConfirmedToUser(user)
+  );
 }
 
 function notifyProgramInitMeetingCoachConfirmedToUserAsync(user) {
@@ -698,6 +812,12 @@ module.exports = {
   notifyLaunchMeetingConfirmedClientWhatsAppAsync,
   notifyHapMeetingSlotConfirmedByClientToCoaches,
   notifyHapMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyReportsBriefingMeetingClientProposedSlotsToCoaches,
+  notifyReportsBriefingMeetingClientProposedSlotsToCoachesAsync,
+  notifyReportsBriefingMeetingSlotConfirmedByClientToCoaches,
+  notifyReportsBriefingMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyReportsBriefingMeetingCoachConfirmedToUser,
+  notifyReportsBriefingMeetingCoachConfirmedToUserAsync,
   notifyProgramInitMeetingSlotConfirmedByClientToCoaches,
   notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync,
   notifyProgramInitMeetingClientProposedSlotsToCoaches,

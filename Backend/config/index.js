@@ -106,6 +106,30 @@ module.exports = {
     "BHASHSMS_REPORTBRF_HAP_CONFAVAIL_USER_TEMPLATE",
     "irw_reportbrf_hap_confavail_messtouser"
   ),
+  bhashsmsReportBrfSchedmeetConfavailUserTemplate: str(
+    "BHASHSMS_REPORTBRF_SCHEDMEET_CONFAVAIL_USER_TEMPLATE",
+    "irw_reportbrf_schedmeet_confavail_messtouser"
+  ),
+  bhashsmsReportBfSchedmeetUserAvailWcTemplate: str(
+    "BHASHSMS_REPORTBF_SCHEDMEET_USERAVAIL_WC_TEMPLATE",
+    "irw_reportbf_schedmeet_useravail_messtowc"
+  ),
+  bhashsmsReportBfSchedmeetUserAvailWcAwcTemplate: str(
+    "BHASHSMS_REPORTBF_SCHEDMEET_USERAVAIL_WC_AWC_TEMPLATE",
+    "irw_reportbf_schedmeet_useravail_messtowcawc_01"
+  ),
+  bhashsmsReportBfSchedmeetUserSlotWcTemplate: str(
+    "BHASHSMS_REPORTBF_SCHEDMEET_USERSLOT_WC_TEMPLATE",
+    "irw_reportbf_schedmeet_userslot_messtowc_01"
+  ),
+  bhashsmsReportBfSchedmeetUserSlotWcAwcTemplate: str(
+    "BHASHSMS_REPORTBF_SCHEDMEET_USERSLOT_WC_AWC_TEMPLATE",
+    "irw_reportbf_schedmeet_userslot_messtowcawc"
+  ),
+  bhashsmsReportBfSchedmeetMeetInvUserTemplate: str(
+    "BHASHSMS_REPORTBF_SCHEDMEET_MEETINV_USER_TEMPLATE",
+    "irw_reportbf_schedmeet_meetinv_messtouser"
+  ),
   bhashsmsUobLauTemplate: str("BHASHSMS_UOB_LAU_TEMPLATE", "ir_uob_lau_01"),
   bhashsmsLaunchInitWcScheduleMeetUserTemplate: str(
     "BHASHSMS_LAUNCH_INIT_WC_SCHEDULE_MEET_USER_TEMPLATE",

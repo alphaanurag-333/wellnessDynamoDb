@@ -1,6 +1,7 @@
 import api, { normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
 import { UNASSIGNED_COACH, tierLabel } from "../data/usersData.js";
+import { normalizeAtAGlanceSupplements } from "../utils/supplementPeriodLabels.js";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -891,7 +892,11 @@ export async function fetchUserAtAGlance(id) {
       `/account/users/${encodeURIComponent(id)}/at-a-glance`,
       { headers: authHeader() },
     );
-    return data.glance || null;
+    const glance = data.glance || null;
+    if (glance?.supplements) {
+      glance.supplements = normalizeAtAGlanceSupplements(glance.supplements);
+    }
+    return glance;
   } catch (error) {
     normalizeApiError(error);
   }

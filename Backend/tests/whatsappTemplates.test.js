@@ -65,7 +65,31 @@ describe("named WhatsApp templates", () => {
 
   it("maps onboarding meeting steps to user templates", () => {
     assert.equal(SLOT_TEMPLATE_BY_STEP.launch, "launchInitWcScheduleMeetUser");
-    assert.equal(SLOT_TEMPLATE_BY_STEP.reportsBriefing, "uobReportsBriefing");
+    assert.equal(SLOT_TEMPLATE_BY_STEP.reportsBriefing, "reportBrfSchedmeetConfavailUser");
+    assert.equal(
+      NAMED_TEMPLATES.reportBrfSchedmeetConfavailUser.defaultName,
+      "irw_reportbrf_schedmeet_confavail_messtouser"
+    );
+    assert.equal(
+      NAMED_TEMPLATES.reportBfSchedmeetUserAvailWc.defaultName,
+      "irw_reportbf_schedmeet_useravail_messtowc"
+    );
+    assert.equal(
+      NAMED_TEMPLATES.reportBfSchedmeetUserAvailWcAwc.defaultName,
+      "irw_reportbf_schedmeet_useravail_messtowcawc_01"
+    );
+    assert.equal(
+      NAMED_TEMPLATES.reportBfSchedmeetUserSlotWc.defaultName,
+      "irw_reportbf_schedmeet_userslot_messtowc_01"
+    );
+    assert.equal(
+      NAMED_TEMPLATES.reportBfSchedmeetUserSlotWcAwc.defaultName,
+      "irw_reportbf_schedmeet_userslot_messtowcawc"
+    );
+    assert.equal(
+      NAMED_TEMPLATES.reportBfSchedmeetMeetInvUser.defaultName,
+      "irw_reportbf_schedmeet_meetinv_messtouser"
+    );
     assert.equal(SLOT_TEMPLATE_BY_STEP.hap, "reportBrfHapConfavailUser");
     assert.equal(
       NAMED_TEMPLATES.reportBrfHapConfavailUser.defaultName,

@@ -24,6 +24,8 @@ const {
   notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync,
   notifyProgramInitMeetingClientProposedSlotsToCoachesAsync,
   notifyLaunchMeetingConfirmedClientWhatsAppAsync,
+  notifyReportsBriefingMeetingSlotConfirmedByClientToCoachesAsync,
+  notifyReportsBriefingMeetingClientProposedSlotsToCoachesAsync,
 } = require("../../services/whatsappJourneyService");
 
 function authedUserId(req) {
@@ -113,6 +115,8 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
   if (stepKey === "launch" && user) {
     notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync(user);
     notifyLaunchMeetingConfirmedClientWhatsAppAsync(user);
+  } else if (stepKey === "reportsBriefing" && user) {
+    notifyReportsBriefingMeetingSlotConfirmedByClientToCoachesAsync(user);
   } else if (stepKey === "hap" && user) {
     notifyHapMeetingSlotConfirmedByClientToCoachesAsync(user);
   } else if (stepKey === "programInitiation" && user) {
@@ -157,6 +161,8 @@ exports.requestUserOnboardingMeetingTimeController = asyncHandler(async (req, re
   const stepKey = String(meeting.stepKey || "").trim();
   if (stepKey === "launch" && user) {
     notifyLaunchMeetingClientProposedSlotsToCoachesAsync(user);
+  } else if (stepKey === "reportsBriefing" && user) {
+    notifyReportsBriefingMeetingClientProposedSlotsToCoachesAsync(user);
   } else if (stepKey === "hap" && user) {
     notifyHapMeetingClientProposedSlotsToCoachesAsync(user);
   } else if (stepKey === "programInitiation" && user) {

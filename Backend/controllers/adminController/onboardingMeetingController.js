@@ -32,6 +32,7 @@ const {
   notifyLaunchMeetingConfirmedClientWhatsAppAsync,
   notifyHapMeetingCoachConfirmedToUserAsync,
   notifyProgramInitMeetingCoachConfirmedToUserAsync,
+  notifyReportsBriefingMeetingCoachConfirmedToUserAsync,
 } = require("../../services/whatsappJourneyService");
 
 function handleMeetingError(err) {
@@ -229,6 +230,8 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
   if (stepKey === "launch") {
     notifyLaunchMeetingCoachConfirmedToUserAsync(user);
     notifyLaunchMeetingConfirmedClientWhatsAppAsync(user);
+  } else if (stepKey === "reportsBriefing") {
+    notifyReportsBriefingMeetingCoachConfirmedToUserAsync(user);
   } else if (stepKey === "hap") {
     notifyHapMeetingCoachConfirmedToUserAsync(user);
   } else if (stepKey === "programInitiation") {
