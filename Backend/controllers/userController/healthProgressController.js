@@ -23,7 +23,7 @@ const {
 } = require("../../models/healthProgressWeightModel");
 const {
   createGlucoseLog,
-  listGlucoseLogsByUser,
+  listGlucoseLogsForUserView,
   toUserGlucoseLog,
 } = require("../../models/healthProgressGlucoseModel");
 const { listUserLabReportsByUserId } = require("../../models/userLabReportModel");
@@ -174,7 +174,7 @@ exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
   const userId = authedUserId(req);
   const { page, limit } = readPagination(req);
   const [result, labReports] = await Promise.all([
-    listGlucoseLogsByUser(userId, { page, limit }),
+    listGlucoseLogsForUserView(userId, { page, limit }),
     listUserLabReportsByUserId(userId),
   ]);
   const hba1cReadings = listHba1cReadingsFromLabReports(labReports);
@@ -183,7 +183,7 @@ exports.listGlucoseLogsController = asyncHandler(async (req, res) => {
     status: true,
     message: "Glucose history fetched",
     data: {
-      logs: result.items.map(toUserGlucoseLog),
+      logs: result.items.map(toUserGlucoseLog).filter(Boolean),
       pagination: result.pagination,
       hba1cReadings,
     },

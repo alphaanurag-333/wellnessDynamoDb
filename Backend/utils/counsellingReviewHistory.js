@@ -32,9 +32,49 @@ function resolveCounsellingInitiatedBy(track) {
   return "client";
 }
 
+function resolveGenericInitiatedByLabel(staffRole) {
+  const role = String(staffRole || "").trim().toLowerCase();
+  if (role === "client" || role === "user") return "Self";
+  if (role === "admin") return "Admin";
+  if (role === "assistant_wellness_coach") return "AWC";
+  if (
+    role === "wellness_coach"
+    || role === "coach"
+    || role === "trainee"
+    || role === "staff"
+  ) {
+    return "Coach";
+  }
+  return "Coach";
+}
+
+function resolveStaffInitiatorRole({ track, meeting, initiatedByRole }) {
+  if (initiatedByRole === "client") return "client";
+
+  const fromMeeting = String(meeting?.authorRole || meeting?.createdByRole || "").trim().toLowerCase();
+  if (fromMeeting) return fromMeeting;
+
+  const updatedBy = String(track?.statusUpdatedByRole || "").trim().toLowerCase();
+  if (STAFF_INITIATOR_ROLES.has(updatedBy)) return updatedBy;
+
+  const assignedType = String(track?.assignedCoachType || "").trim().toLowerCase();
+  if (assignedType === "assistant_wellness_coach") return "assistant_wellness_coach";
+
+  return "wellness_coach";
+}
+
+function resolvePublicInitiatedByRole({ track, meeting, initiatedByRole }) {
+  if (initiatedByRole === "client") return "client";
+  const staffRole = resolveStaffInitiatorRole({ track, meeting, initiatedByRole });
+  if (staffRole === "admin") return "admin";
+  if (staffRole === "assistant_wellness_coach") return "assistant_wellness_coach";
+  return "coach";
+}
+
 function resolveInitiatedByDisplayName(initiatedByRole, { targetUser, track, meeting, staffNameMap, genericInitiatorLabels } = {}) {
   if (genericInitiatorLabels) {
-    return initiatedByRole === "client" ? "Self" : "Coach";
+    const staffRole = resolveStaffInitiatorRole({ track, meeting, initiatedByRole });
+    return resolveGenericInitiatedByLabel(staffRole);
   }
   if (initiatedByRole === "client") {
     return String(targetUser?.name || "").trim() || "Client";
@@ -88,8 +128,13 @@ function resolveCounsellingSessionStatus({ reviewStatus, trackStatus, cancelled,
 
 function attachCounsellingSessionMeta(meeting, { track, initiatorContext } = {}) {
   if (!meeting) return meeting;
-  const initiatedByRole = track ? resolveCounsellingInitiatedBy(track) : "coach";
-  const initiatedBy = resolveInitiatedByDisplayName(initiatedByRole, {
+  const counsellingInitiator = track ? resolveCounsellingInitiatedBy(track) : "coach";
+  const initiatedByRole = resolvePublicInitiatedByRole({
+    track,
+    meeting,
+    initiatedByRole: counsellingInitiator,
+  });
+  const initiatedBy = resolveInitiatedByDisplayName(counsellingInitiator, {
     targetUser: initiatorContext?.targetUser,
     track,
     meeting,
@@ -262,6 +307,9 @@ module.exports = {
   calendarDayFrom,
   normalizeInitiatedBy,
   resolveCounsellingInitiatedBy,
+  resolveGenericInitiatedByLabel,
+  resolveStaffInitiatorRole,
+  resolvePublicInitiatedByRole,
   resolveInitiatedByDisplayName,
   resolveCounsellingSessionStatus,
   attachCounsellingSessionMeta,

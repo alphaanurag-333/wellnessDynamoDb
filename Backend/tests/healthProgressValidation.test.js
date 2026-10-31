@@ -1,5 +1,6 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
+const { isGlucoseLogVisibleToUser } = require("../models/healthProgressGlucoseModel");
 const {
   parseHealthWeightKg,
   parseGlucoseValue,
@@ -38,6 +39,13 @@ describe("health progress weight", () => {
 });
 
 describe("health progress glucose", () => {
+  it("hides coach-rejected glucose logs from the user-facing history", () => {
+    assert.equal(isGlucoseLogVisibleToUser({ glucosePicReviewStatus: "rejected" }), false);
+    assert.equal(isGlucoseLogVisibleToUser({ glucosePicReviewStatus: "pending" }), true);
+    assert.equal(isGlucoseLogVisibleToUser({ glucosePicReviewStatus: "approved" }), true);
+    assert.equal(isGlucoseLogVisibleToUser({ glucosePicKey: "x.jpg" }), true);
+  });
+
   it("requires fbs or ppbs and value 0 < n <= 600", () => {
     assert.equal(normalizeGlucoseType("FBS"), "fbs");
     assert.equal(normalizeGlucoseType("ppbs"), "ppbs");

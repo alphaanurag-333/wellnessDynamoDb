@@ -230,6 +230,10 @@ async function listGlucoseLogsByUser(userId, { page = 1, limit = 50 } = {}) {
   };
 }
 
+function isGlucoseLogVisibleToUser(item) {
+  return String(item?.glucosePicReviewStatus || "").toLowerCase() !== "rejected";
+}
+
 function toPublicGlucoseLog(item) {
   if (!item) return null;
   return {
@@ -240,11 +244,46 @@ function toPublicGlucoseLog(item) {
 }
 
 function toUserGlucoseLog(item) {
+  if (!isGlucoseLogVisibleToUser(item)) return null;
   const log = toPublicGlucoseLog(item);
   if (!log) return null;
   return {
     ...log,
     ...alignWeightLogDates(log),
+  };
+}
+
+async function listGlucoseLogsForUserView(userId, { page = 1, limit = 50 } = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+
+  let dbPage = 1;
+  const dbLimit = 200;
+  let allItems = [];
+  let dbTotal = 0;
+  let dbPages = 1;
+
+  do {
+    const result = await listGlucoseLogsByUser(userId, { page: dbPage, limit: dbLimit });
+    allItems = allItems.concat(result.items || []);
+    dbTotal = result.pagination?.total ?? allItems.length;
+    dbPages = result.pagination?.pages ?? 1;
+    if (allItems.length >= dbTotal) break;
+    dbPage += 1;
+  } while (dbPage <= dbPages);
+
+  const visible = allItems.filter(isGlucoseLogVisibleToUser);
+  const start = (safePage - 1) * safeLimit;
+  const pageItems = visible.slice(start, start + safeLimit);
+
+  return {
+    items: pageItems,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total: visible.length,
+      pages: Math.max(1, Math.ceil(visible.length / safeLimit)),
+    },
   };
 }
 
@@ -275,6 +314,8 @@ module.exports = {
   createGlucoseLog,
   getGlucoseLogById,
   listGlucoseLogsByUser,
+  listGlucoseLogsForUserView,
+  isGlucoseLogVisibleToUser,
   reviewGlucoseLogPhoto,
   toPublicGlucoseLog,
   toUserGlucoseLog,

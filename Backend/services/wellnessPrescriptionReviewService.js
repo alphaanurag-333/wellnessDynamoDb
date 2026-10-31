@@ -143,6 +143,8 @@ function coachMeetingsFromAssignments(assignments, tracks = [], initiatorContext
           reviewStatus,
           summary: row.summary || "",
           authorName: row.authorName || "",
+          authorRole: row.authorRole || row.createdByRole || null,
+          createdByRole: row.createdByRole || null,
           cancelled: reviewStatus === "cancelled",
           trackStatus: track?.status || null,
           scheduledDate: enriched.scheduledDate || null,

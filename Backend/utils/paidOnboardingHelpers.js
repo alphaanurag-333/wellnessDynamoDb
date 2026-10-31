@@ -1,3 +1,8 @@
+const { addDaysDateOnly } = require("./dateOnly");
+
+const PROGRAM_START_TIMEZONE = "Asia/Kolkata";
+const PROGRAM_START_IST_OFFSET = "+05:30";
+
 const USER_ALLOWED_PAID_ONBOARDING_STEPS = [
   "register",
   "personal",
@@ -180,6 +185,46 @@ function onboardingStepJustCompleted(previousStatus, nextStatus, stepKey) {
   const prev = normalizePaidOnboardingStepStatus(previousStatus);
   const next = normalizePaidOnboardingStepStatus(nextStatus);
   return prev[stepKey] !== "done" && next[stepKey] === "done";
+}
+
+function onboardingStepReopened(previousStatus, nextStatus, stepKey) {
+  const prev = normalizePaidOnboardingStepStatus(previousStatus);
+  const next = normalizePaidOnboardingStepStatus(nextStatus);
+  return prev[stepKey] === "done" && next[stepKey] !== "done";
+}
+
+function calendarDateInTimezone(isoOrDate, timeZone = PROGRAM_START_TIMEZONE) {
+  const dt = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dt);
+}
+
+/** Program day 1 begins at midnight IST on the calendar day after initiation is marked done. */
+function programStartedAtFromInitiationCompleted(completedAt = new Date(), timeZone = PROGRAM_START_TIMEZONE) {
+  const completionDay = calendarDateInTimezone(completedAt, timeZone);
+  if (!completionDay) return null;
+  const startDay = addDaysDateOnly(completionDay, 1);
+  if (!startDay) return null;
+  return new Date(`${startDay}T00:00:00.000${PROGRAM_START_IST_OFFSET}`).toISOString();
+}
+
+function buildProgramStartedAtUpdates(user, previousStatus, nextStatus, completedAt = new Date()) {
+  if (onboardingStepReopened(previousStatus, nextStatus, "programInitiation")) {
+    return { programStartedAt: null };
+  }
+  if (user?.programStartedAt) {
+    return {};
+  }
+  if (!onboardingStepJustCompleted(previousStatus, nextStatus, "programInitiation")) {
+    return {};
+  }
+  const programStartedAt = programStartedAtFromInitiationCompleted(completedAt);
+  return programStartedAt ? { programStartedAt } : {};
 }
 
 function getNextIncompleteStep(stepStatus) {
@@ -385,6 +430,7 @@ function buildOnboardingPersistUpdates(user, previousStatus, nextStatus, extra =
   return {
     ...buildOnboardingStatusUpdates(nextStatus),
     ...buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus),
+    ...buildProgramStartedAtUpdates(user, previousStatus, nextStatus),
     ...extra,
   };
 }
@@ -395,6 +441,7 @@ function buildPaidOnboardingResetUpdates() {
     paidOnboardingCompleted: false,
     paidOnboardingStep: "register",
     paidOnboardingStepStatus: defaultPaidOnboardingStepStatus(),
+    programStartedAt: null,
   };
 }
 
@@ -407,6 +454,7 @@ function buildEaglePaidOnboardingCompleteUpdates() {
     paidOnboardingCompleted: true,
     paidOnboardingStep: "done",
     paidOnboardingStepStatus: status,
+    programStartedAt: programStartedAtFromInitiationCompleted(new Date()),
   };
 }
 
@@ -445,5 +493,7 @@ module.exports = {
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,
+  programStartedAtFromInitiationCompleted,
+  buildProgramStartedAtUpdates,
   applyBodyAnalyticsPhotoReview,
 };

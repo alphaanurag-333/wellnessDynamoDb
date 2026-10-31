@@ -454,7 +454,9 @@ function sanitizeUpdateField(key, value) {
   if (key === "assignmentSource") return normalizeAssignmentSource(value);
   if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
   if (key === "convertedAt" || key === "assignedAt" || key === "consultancyPaidAt") return normalizeDob(value);
-  if (key === "healPaidAt" || key === "lastActiveAt") return normalizeDob(value);
+  if (key === "healPaidAt" || key === "lastActiveAt" || key === "programStartedAt") {
+    return normalizeDob(value);
+  }
   if (
     key === "paidOnboardingCompleted" ||
     key === "energyExchangeEnabled" ||
@@ -658,6 +660,7 @@ function buildUserItem(input, { id, now } = {}) {
     ),
     wellnessJourneyFor: normalizeWellnessJourneyFor(input.wellnessJourneyFor),
     healPaidAt: input.healPaidAt ? normalizeDob(input.healPaidAt) : null,
+    programStartedAt: input.programStartedAt ? normalizeDob(input.programStartedAt) : null,
     lastActiveAt: input.lastActiveAt ? normalizeDob(input.lastActiveAt) : now,
     createdAt: now,
     updatedAt: now,

@@ -189,9 +189,7 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
   const paidOnboardingCompleted = Boolean(user.paidOnboardingCompleted);
   return {
     paidOnboardingCompleted,
-    ...(paidOnboardingCompleted
-      ? { programInitiationCompletedAt: new Date().toISOString() }
-      : {}),
+    programStartedAt: user.programStartedAt || null,
     paidOnboardingStep:
       user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
     paidOnboardingStepStatus: stepStatus,

@@ -11,6 +11,9 @@ const {
   markStepDone,
   applyBodyAnalyticsPhotoReview,
   wizardStepAfterPhotosSaved,
+  programStartedAtFromInitiationCompleted,
+  buildProgramStartedAtUpdates,
+  buildOnboardingPersistUpdates,
 } = require("../utils/paidOnboardingHelpers");
 
 describe("buildPaidOnboardingResetUpdates", () => {
@@ -294,5 +297,72 @@ describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
       done,
     );
     assert.deepEqual(locks, {});
+  });
+});
+
+describe("programStartedAt", () => {
+  it("starts the program at midnight IST on the day after initiation completes", () => {
+    const iso = programStartedAtFromInitiationCompleted(new Date("2026-10-29T18:30:00+05:30"));
+    assert.equal(iso, "2026-10-29T18:30:00.000Z");
+  });
+
+  it("persists programStartedAt when program initiation is newly marked done", () => {
+    const previousStatus = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      bodyAnalytics: "done",
+      internalParameter: "done",
+      launch: "done",
+      rca: "done",
+      reportsBriefing: "done",
+      hap: "done",
+      protocolSettings: "done",
+      commitmentLetter: "done",
+      programInitiation: "pending",
+    });
+    const nextStatus = { ...previousStatus, programInitiation: "done" };
+    const completedAt = new Date("2026-01-15T10:00:00+05:30");
+    const updates = buildProgramStartedAtUpdates({}, previousStatus, nextStatus, completedAt);
+    assert.equal(updates.programStartedAt, "2026-01-15T18:30:00.000Z");
+  });
+
+  it("does not overwrite an existing programStartedAt", () => {
+    const previousStatus = normalizePaidOnboardingStepStatus({ programInitiation: "pending" });
+    const nextStatus = { ...previousStatus, programInitiation: "done" };
+    const updates = buildProgramStartedAtUpdates(
+      { programStartedAt: "2025-06-01T18:30:00.000Z" },
+      previousStatus,
+      nextStatus,
+    );
+    assert.deepEqual(updates, {});
+  });
+
+  it("clears programStartedAt when program initiation is reopened", () => {
+    const previousStatus = normalizePaidOnboardingStepStatus({ programInitiation: "done" });
+    const nextStatus = { ...previousStatus, programInitiation: "pending" };
+    const updates = buildProgramStartedAtUpdates(
+      { programStartedAt: "2025-06-01T18:30:00.000Z" },
+      previousStatus,
+      nextStatus,
+    );
+    assert.equal(updates.programStartedAt, null);
+  });
+
+  it("includes programStartedAt in onboarding persist updates", () => {
+    const previousStatus = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      bodyAnalytics: "done",
+      internalParameter: "done",
+      launch: "done",
+      rca: "done",
+      reportsBriefing: "done",
+      hap: "done",
+      protocolSettings: "done",
+      commitmentLetter: "done",
+      programInitiation: "pending",
+    });
+    const nextStatus = { ...previousStatus, programInitiation: "done" };
+    const updates = buildOnboardingPersistUpdates({}, previousStatus, nextStatus);
+    assert.ok(updates.programStartedAt);
+    assert.equal(updates.paidOnboardingCompleted, true);
   });
 });
