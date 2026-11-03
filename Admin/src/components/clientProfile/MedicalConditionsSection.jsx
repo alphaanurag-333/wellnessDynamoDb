@@ -199,14 +199,20 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
           : "Client can view and submit medical conditions in the app"
       }
     >
-      <span className="ua-cp-medical__in-app-label">Disabled in the app</span>
+      <span className="ua-cp-medical__in-app-label">
+        {medicalDisabledInApp ? "Disabled in the app" : "Allowed in the app"}
+      </span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${medicalDisabledInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${medicalDisabledInApp ? "" : " ua-toggle--on"}`}
         onClick={requestToggleInApp}
         disabled={settingsBusy}
-        aria-pressed={medicalDisabledInApp}
-        aria-label="Disable medical conditions in client app"
+        aria-pressed={!medicalDisabledInApp}
+        aria-label={
+          medicalDisabledInApp
+            ? "Allow medical conditions in client app"
+            : "Disable medical conditions in client app"
+        }
       >
         <span className="ua-toggle__knob" />
       </button>

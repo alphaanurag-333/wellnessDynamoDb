@@ -255,6 +255,51 @@ describe("body analytics photo review", () => {
   });
 });
 
+describe("applyBodyAnalyticsWeightPhotoReview", () => {
+  const { applyBodyAnalyticsWeightPhotoReview } = require("../utils/paidOnboardingHelpers");
+
+  const completedUser = {
+    bodyMeasurementEnabled: true,
+    paidOnboardingStep: "done",
+    paidOnboardingStepStatus: {
+      bodyAnalytics: "done",
+      bodyMeasurement: "done",
+      progressPhotos180: "done",
+      medicalConditions: "done",
+    },
+  };
+
+  it("reopens body measurements when weight is rejected and coach has not disabled the app form", () => {
+    const result = applyBodyAnalyticsWeightPhotoReview(completedUser, completedUser.paidOnboardingStepStatus, {
+      action: "rejected",
+    });
+    assert.equal(result.stepStatus.bodyMeasurement, "pending");
+    assert.equal(result.stepStatus.bodyAnalytics, "done");
+    assert.equal(result.extraUserUpdates.bodyMeasurementEnabled, true);
+    assert.equal(result.extraUserUpdates.paidOnboardingStep, "body");
+  });
+
+  it("does nothing when coach disabled body measurements in the app", () => {
+    assert.equal(
+      applyBodyAnalyticsWeightPhotoReview(
+        { ...completedUser, bodyMeasurementEnabled: false },
+        completedUser.paidOnboardingStepStatus,
+        { action: "rejected" },
+      ),
+      null,
+    );
+  });
+
+  it("ignores approvals", () => {
+    assert.equal(
+      applyBodyAnalyticsWeightPhotoReview(completedUser, completedUser.paidOnboardingStepStatus, {
+        action: "approved",
+      }),
+      null,
+    );
+  });
+});
+
 describe("onboardingStepJustCompleted", () => {
   const { onboardingStepJustCompleted } = require("../utils/paidOnboardingHelpers");
 

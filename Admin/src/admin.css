@@ -17649,7 +17649,7 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-ba-photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
   padding: 16px 20px 20px;
   overflow-y: auto;

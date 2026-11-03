@@ -428,11 +428,13 @@ export function photoReviewSummary(photos) {
   const list = photos || [];
   if (!list.length) return null;
   const pending = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "pending").length;
-  const rejected = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "rejected").length;
-  const approved = list.length - pending - rejected;
   if (pending === list.length) return { label: "Pending", tone: "pending" };
   if (pending > 0) return { label: `${pending} pending`, tone: "pending" };
-  if (rejected && approved) return { label: "Reviewed", tone: "mixed" };
+
+  const latest = latestAnglePhoto(list);
+  if (latest) return photoReviewMeta(latest.reviewStatus);
+
+  const rejected = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "rejected").length;
   if (rejected) return { label: "Rejected", tone: "rejected" };
   return { label: "Accepted", tone: "approved" };
 }
