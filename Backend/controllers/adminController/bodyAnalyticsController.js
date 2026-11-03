@@ -30,6 +30,7 @@ const {
 } = require("../../services/whatsappJourneyService");
 const {
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsWeightPhotoReview,
   buildOnboardingPersistUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
@@ -340,9 +341,21 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   let onboarding = null;
+  let weightResubmitOpened = false;
   try {
-    const nextStatus = rejectedAngleDay
-      ? applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+    let nextStatus = null;
+    let persistExtra = {};
+    if (action === "rejected" && angle === "weight") {
+      const weightReview = applyBodyAnalyticsWeightPhotoReview(user, user.paidOnboardingStepStatus, {
+        action,
+      });
+      if (weightReview) {
+        nextStatus = weightReview.stepStatus;
+        persistExtra = weightReview.extraUserUpdates;
+        weightResubmitOpened = true;
+      }
+    } else if (rejectedAngleDay) {
+      nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
         action: "rejected",
         photo: rejectedPhotos[0] || updated,
@@ -350,16 +363,17 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         ...user.paidOnboardingStepStatus,
         bodyAnalytics: "pending",
         progressPhotos180: "pending",
-      })
-      : (angle === "weight" ? null : applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+      });
+      persistExtra = { paidOnboardingStep: "photos180" };
+    } else if (angle !== "weight") {
+      nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
         action,
         photo: updated,
-      }));
-    if (nextStatus) {
-      const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, {
-        ...(rejectedAngleDay ? { paidOnboardingStep: "photos180" } : {}),
       });
+    }
+    if (nextStatus) {
+      const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, persistExtra);
       const saved = await updateUser(userId, updates);
       const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
       onboarding = {
@@ -367,6 +381,7 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         paidOnboardingStepStatus,
         paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
         completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
+        bodyMeasurementEnabled: isBodyMeasurementEnabled(saved || user),
       };
       notifyOnboardingWhatsAppTransitions({
         user: saved || user,
@@ -383,9 +398,13 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
     status: true,
     message: rejectedAngleDay
       ? "This day's 180° photos were rejected. The client can submit Front, Right, and Left again."
-      : action === "rejected"
-        ? `${label} photo rejected`
-        : `${label} photo accepted`,
+      : action === "rejected" && angle === "weight"
+        ? (weightResubmitOpened
+          ? "Weight photo rejected. The client can submit body measurements again in the app."
+          : "Weight photo rejected. Body measurements stay hidden in the app until you turn off “Disabled in the app”.")
+        : action === "rejected"
+          ? `${label} photo rejected`
+          : `${label} photo accepted`,
     angle,
     photo: updated,
     ...(rejectedAngleDay ? { rejectedPhotos, rejectedMeasurements } : {}),

@@ -30,6 +30,36 @@ function mapApiStatusToUi(status) {
   return "Disabled";
 }
 
+/** Tri-state coach flag from API user or profile row (undefined = not stored on user). */
+export function readBodyMeasurementCoachFlag(source) {
+  if (!source) return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, "bodyMeasurementEnabledRaw")) {
+    const raw = source.bodyMeasurementEnabledRaw;
+    return raw === true || raw === false ? raw : undefined;
+  }
+  const stored = source.bodyMeasurementEnabled;
+  return stored === true || stored === false ? stored : undefined;
+}
+
+export function readProgressPhotosInAppCoachFlag(source) {
+  if (!source) return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, "progressPhotosInAppEnabledRaw")) {
+    const raw = source.progressPhotosInAppEnabledRaw;
+    return raw === true || raw === false ? raw : undefined;
+  }
+  const stored = source.progressPhotosInAppEnabled;
+  return stored === true || stored === false ? stored : undefined;
+}
+
+/** Build API-shaped user for app-gate resolvers from a profile list row. */
+export function appGateUserFromProfileRow(row) {
+  return {
+    bodyMeasurementEnabled: readBodyMeasurementCoachFlag(row),
+    progressPhotosInAppEnabled: readProgressPhotosInAppCoachFlag(row),
+    paidOnboardingStepStatus: row?.paidOnboardingStepStatus,
+  };
+}
+
 /** Matches Backend/models/userModel isBodyMeasurementEnabled. */
 export function resolveBodyMeasurementClientEnabled(user) {
   if (user?.bodyMeasurementEnabled === true) return true;
@@ -685,9 +715,19 @@ export function mapApiUserToRow(user, index = 0) {
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
-    bodyMeasurementEnabledRaw: user?.bodyMeasurementEnabled === true,
+    bodyMeasurementEnabledRaw:
+      user?.bodyMeasurementEnabled === true
+        ? true
+        : user?.bodyMeasurementEnabled === false
+          ? false
+          : undefined,
     progressPhotosInAppEnabled: resolveProgressPhotosInAppEnabled(user),
-    progressPhotosInAppEnabledRaw: user?.progressPhotosInAppEnabled === true,
+    progressPhotosInAppEnabledRaw:
+      user?.progressPhotosInAppEnabled === true
+        ? true
+        : user?.progressPhotosInAppEnabled === false
+          ? false
+          : undefined,
     medicalConditionsInAppEnabled: resolveMedicalConditionsInAppEnabled(user),
     referralCode: String(user?.referralCode || "").trim(),
     referredByCode: String(user?.referredByCode || "").trim(),

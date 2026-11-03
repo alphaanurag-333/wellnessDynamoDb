@@ -163,6 +163,30 @@ function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}
   return null;
 }
 
+/**
+ * Rejecting the onboarding weight photo reopens body measurements in the client app
+ * when the coach has not disabled client fill (bodyMeasurementEnabled !== false).
+ */
+function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) {
+  const normalizedAction = String(action || "").toLowerCase().trim();
+  if (normalizedAction !== "rejected") return null;
+  if (user?.bodyMeasurementEnabled === false) return null;
+
+  const current = normalizePaidOnboardingStepStatus(stepStatus);
+  const nextStatus = syncDerivedOnboardingSteps({
+    ...current,
+    bodyMeasurement: "pending",
+  });
+
+  return {
+    stepStatus: nextStatus,
+    extraUserUpdates: {
+      bodyMeasurementEnabled: true,
+      paidOnboardingStep: "body",
+    },
+  };
+}
+
 function normalizePaidOnboardingStepStatus(value) {
   const defaults = defaultPaidOnboardingStepStatus();
   if (!value || typeof value !== "object") return defaults;
@@ -496,4 +520,5 @@ module.exports = {
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsWeightPhotoReview,
 };

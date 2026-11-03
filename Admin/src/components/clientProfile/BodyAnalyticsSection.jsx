@@ -7,6 +7,7 @@ import {
   mapApiUserToRow,
   patchUserBodyMeasurementSettings,
   patchUserProgressPhotosInAppSettings,
+  appGateUserFromProfileRow,
   resolveBodyMeasurementClientEnabled,
   resolveProgressPhotosInAppEnabled,
   reviewUserProgressPhoto,
@@ -327,7 +328,9 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
           {rejecting
             ? (rejectDayAngles
               ? "Front, Right, and Left from this day are rejected together. The weight photo stays as-is. The client is sent back to the 180° page to submit the three angles again."
-              : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
+              : angle === "Weight"
+                ? "If body measurements are allowed in the app (Disabled in the app is off), the client can open the body measurement form and upload a new weight photo."
+                : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
             : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
         </p>
         {rejecting ? (
@@ -440,9 +443,10 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
       onToast?.(
         action === "approved"
           ? `Accepted ${angle} photo (${photo.date}).${glanceNote}`
-          : isSingle
-            ? `Rejected ${angle} photo (${photo.date}).`
-            : `Rejected Front, Right, and Left from ${photo.date}. Weight was not changed. The client can submit 180° photos again.${glanceNote}`,
+          : result?.message
+            || (isSingle
+              ? `Rejected ${angle} photo (${photo.date}).`
+              : `Rejected Front, Right, and Left from ${photo.date}. Weight was not changed. The client can submit 180° photos again.${glanceNote}`),
       );
       setReviewTarget(null);
       setRejectReason("");
@@ -657,12 +661,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   );
 
   useEffect(() => {
-    setFeatureEnabled(resolveBodyMeasurementClientEnabled(user));
-  }, [user?.bodyMeasurementEnabled, user?.paidOnboardingStepStatus]);
+    setFeatureEnabled(resolveBodyMeasurementClientEnabled(appGateUserFromProfileRow(user)));
+  }, [
+    user?.bodyMeasurementEnabledRaw,
+    user?.paidOnboardingStepStatus?.bodyAnalytics,
+    user?.paidOnboardingStepStatus?.bodyMeasurement,
+  ]);
 
   useEffect(() => {
-    setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(user));
-  }, [user?.progressPhotosInAppEnabled, user?.paidOnboardingStepStatus?.progressPhotos180]);
+    setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(appGateUserFromProfileRow(user)));
+  }, [
+    user?.progressPhotosInAppEnabledRaw,
+    user?.paidOnboardingStepStatus?.bodyAnalytics,
+    user?.paidOnboardingStepStatus?.progressPhotos180,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -775,7 +787,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         onUserUpdated?.({
           ...user,
           progressPhotosInAppEnabled: next,
-          progressPhotosInAppEnabledRaw: next,
+          progressPhotosInAppEnabledRaw: next === true ? true : next === false ? false : undefined,
         });
       }
       try {
@@ -817,7 +829,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         onUserUpdated?.({
           ...user,
           bodyMeasurementEnabled: next,
-          bodyMeasurementEnabledRaw: next,
+          bodyMeasurementEnabledRaw: next === true ? true : next === false ? false : undefined,
         });
       }
       try {
@@ -866,14 +878,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           : "Client can fill body measurements (height, weight, neck, etc.)"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
+      <span className="ua-cp-ba-client-entry__label">
+        {bodyMeasurementDisabledInApp ? "Disabled in the app" : "Allowed in the app"}
+      </span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${bodyMeasurementDisabledInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${bodyMeasurementDisabledInApp ? "" : " ua-toggle--on"}`}
         onClick={requestToggleBodyMeasurementClientFill}
         disabled={settingsBusy}
-        aria-pressed={bodyMeasurementDisabledInApp}
-        aria-label="Disable body measurements in client app"
+        aria-pressed={!bodyMeasurementDisabledInApp}
+        aria-label={
+          bodyMeasurementDisabledInApp
+            ? "Allow body measurements in client app"
+            : "Disable body measurements in client app"
+        }
       >
         <span className="ua-toggle__knob" />
       </button>
@@ -890,14 +908,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           : "Client can upload front, right, and left progress photos in the app"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
+      <span className="ua-cp-ba-client-entry__label">
+        {progressPhotosDisabledInApp ? "Disabled in the app" : "Allowed in the app"}
+      </span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${progressPhotosDisabledInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${progressPhotosDisabledInApp ? "" : " ua-toggle--on"}`}
         onClick={requestToggleProgressPhotosInApp}
         disabled={progressPhotosBusy}
-        aria-pressed={progressPhotosDisabledInApp}
-        aria-label="Disable progress photos in client app"
+        aria-pressed={!progressPhotosDisabledInApp}
+        aria-label={
+          progressPhotosDisabledInApp
+            ? "Allow progress photos in client app"
+            : "Disable progress photos in client app"
+        }
       >
         <span className="ua-toggle__knob" />
       </button>
@@ -1006,7 +1030,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
             ? "This applies only to the Body measurements · history section. The client can enter height, weight, neck, and other measures in the app. Progress photos and metabolic metrics are not affected."
             : "The client will not be able to submit new body measurement data until you turn Client fill back on. Existing history in this section stays visible to you."
         }
-        confirmLabel={clientFillConfirm?.next ? "Enable client fill" : "Disable client fill"}
+        confirmLabel={clientFillConfirm?.next ? "Enable in app" : "Disable in app"}
         confirmTone={clientFillConfirm?.next ? "primary" : "danger"}
         onCancel={() => {
           if (!settingsBusy) setClientFillConfirm(null);
@@ -1025,8 +1049,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           angle={photoAngle}
           photos={photosByAngle[photoAngle] || []}
           canReview={canEdit}
-          onReviewed={(record, angle, result) => {
-            setBodyAnalytics((current) => applyReviewResult(current, { ...result, photo: record }, angle));
+          onReviewed={(record, angleSlug, result) => {
+            setBodyAnalytics((current) => applyReviewResult(current, { ...result, photo: record }, angleSlug));
+            if (result?.bodyMeasurementEnabled !== undefined) {
+              setFeatureEnabled(Boolean(result.bodyMeasurementEnabled));
+            }
             const status = result?.paidOnboardingStepStatus;
             if (!status || !onUserUpdated) return;
             const done = Number(result.completedStepsCount);
@@ -1035,6 +1062,9 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
               paidOnboardingStepStatus: status,
               paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
               ...(result.paidOnboardingStep ? { paidOnboardingStep: result.paidOnboardingStep } : {}),
+              ...(result.bodyMeasurementEnabled === true
+                ? { bodyMeasurementEnabled: true, bodyMeasurementEnabledRaw: true }
+                : {}),
               ...(Number.isFinite(done) ? {
                 onboardingDone: done,
                 onboardingPct: Math.round((done / 10) * 100),
