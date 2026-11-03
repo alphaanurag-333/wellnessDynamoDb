@@ -607,7 +607,8 @@ function buildUserItem(input, { id, now } = {}) {
     bodyMeasurementEnabled: input.bodyMeasurementEnabled !== false,
     medicalConditionsInAppEnabled: input.medicalConditionsInAppEnabled !== false,
     progressPhotosInAppEnabled: input.progressPhotosInAppEnabled !== false,
-    labReportSubmissionLocked: input.labReportSubmissionLocked !== false,
+    // Default unlocked so new clients can upload a report; coach can still lock, and upload auto-locks after submit.
+    labReportSubmissionLocked: input.labReportSubmissionLocked === true,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
