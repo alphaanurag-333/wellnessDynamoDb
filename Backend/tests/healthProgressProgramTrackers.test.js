@@ -3,7 +3,9 @@ const assert = require("node:assert/strict");
 const {
   trackerFeatureKeysForProgramLabel,
   applyPurchasedProgramTrackers,
+  normalizeHealthProgressFeatures,
 } = require("../utils/healthProgressHelpers");
+const { reconcileHealthProgressFeatures } = require("../services/healthProgressProgramTrackerService");
 
 describe("purchased program health trackers", () => {
   it("maps fat loss, diabetes, pcos, and hypertension programs", () => {
@@ -52,6 +54,28 @@ describe("purchased program health trackers", () => {
       { gender: "female" }
     );
     assert.equal(next.menstrualCycle, true);
+  });
+
+  it("reconciles auto trackers from labels and keeps condition comparison manual toggle", () => {
+    const user = { gender: "female", healthProgressFeatures: { conditionComparison: true, weightPic: true } };
+    const next = reconcileHealthProgressFeatures(user, ["Fat Loss"]);
+    assert.equal(next.weightPic, true);
+    assert.equal(next.glucose, false);
+    assert.equal(next.conditionComparison, true);
+  });
+
+  it("drops auto trackers when wellness journey labels no longer match", () => {
+    const user = {
+      gender: "male",
+      healthProgressFeatures: normalizeHealthProgressFeatures({
+        weightPic: true,
+        glucose: true,
+        conditionComparison: false,
+      }),
+    };
+    const next = reconcileHealthProgressFeatures(user, ["Thyroid Care"]);
+    assert.equal(next.weightPic, false);
+    assert.equal(next.glucose, false);
   });
 
   it("turns on the concern and matching wellness-journey trackers after purchase", () => {

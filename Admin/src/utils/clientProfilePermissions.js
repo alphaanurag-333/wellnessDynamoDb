@@ -1,3 +1,5 @@
+import { clientHasHealthProgressSection } from "./healthProgressSection.js";
+
 /**
  * Client profile sidebar sections → Access Control console permissions.
  * Slugs mirror PERM_CATALOG in data/accessData.js.
@@ -111,8 +113,14 @@ export function clientSectionCanView(can, sectionId) {
   return can(spec.view);
 }
 
-export function filterClientProfileMenu(menu, can) {
-  return (menu || []).filter((item) => clientSectionCanView(can, item.id));
+export function filterClientProfileMenu(menu, can, user = null) {
+  return (menu || []).filter((item) => {
+    if (!clientSectionCanView(can, item.id)) return false;
+    if (item.id === "health-progress" && user && !clientHasHealthProgressSection(user)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export function resolveClientSectionPermissions(can, sectionId, { isAdminView = false } = {}) {

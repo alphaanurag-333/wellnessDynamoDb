@@ -405,6 +405,33 @@ function parseConditionBodyPart(body = {}) {
   return { bodyPart, bodyPartOther: other.slice(0, BODY_PART_OTHER_MAX_LEN) };
 }
 
+function isPhotoReviewChartPublished(item, picKey, picUrl, reviewStatusKey) {
+  const hasPhoto = Boolean(item?.[picKey] || item?.[picUrl]);
+  if (!hasPhoto) return true;
+  return String(item?.[reviewStatusKey] || "").toLowerCase() === "approved";
+}
+
+/** Journey charts include entries without a photo, or with a staff-accepted upload photo. */
+function isWeightLogChartPublished(item) {
+  if (item?.weightKg == null || !Number.isFinite(Number(item.weightKg))) return false;
+  return isPhotoReviewChartPublished(item, "weightPicKey", "weightPicUrl", "weightPicReviewStatus");
+}
+
+function isGlucoseLogChartPublished(item) {
+  if (item?.value == null || !Number.isFinite(Number(item.value))) return false;
+  return isPhotoReviewChartPublished(item, "glucosePicKey", "glucosePicUrl", "glucosePicReviewStatus");
+}
+
+function isBloodPressureLogChartPublished(item) {
+  if (!Number.isFinite(Number(item?.sys)) || !Number.isFinite(Number(item?.dia))) return false;
+  return isPhotoReviewChartPublished(item, "bpPicKey", "bpPicUrl", "bpPicReviewStatus");
+}
+
+function isConditionLogChartPublished(item) {
+  if (!item?.picKey && !item?.picUrl) return false;
+  return isPhotoReviewChartPublished(item, "picKey", "picUrl", "picReviewStatus");
+}
+
 function formatChartDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -459,6 +486,11 @@ module.exports = {
   healthProgressDateKey,
   alignWeightLogDates,
   healthProgressDayBounds,
+  isPhotoReviewChartPublished,
+  isWeightLogChartPublished,
+  isGlucoseLogChartPublished,
+  isBloodPressureLogChartPublished,
+  isConditionLogChartPublished,
   formatChartDate,
   formatSummaryDate,
 };

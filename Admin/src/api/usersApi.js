@@ -752,6 +752,10 @@ export function mapApiUserToRow(user, index = 0) {
     labReportSubmissionLocked: resolveLabReportSubmissionLocked(user),
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
+    healthProgressFeatures:
+      user?.healthProgressFeatures && typeof user.healthProgressFeatures === "object"
+        ? { ...user.healthProgressFeatures }
+        : undefined,
   };
 }
 

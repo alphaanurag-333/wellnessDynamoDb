@@ -202,6 +202,7 @@ exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
       userId,
       weightKg,
       weightPicKey: weightPicKey || null,
+      weightPicReviewStatus: weightPicKey ? "approved" : null,
       recordedAt,
     });
   } catch (err) {

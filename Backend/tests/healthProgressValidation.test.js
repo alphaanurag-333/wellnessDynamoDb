@@ -14,6 +14,10 @@ const {
   alignWeightLogDates,
   healthProgressDayBounds,
   normalizeGlucoseType,
+  isWeightLogChartPublished,
+  isGlucoseLogChartPublished,
+  isBloodPressureLogChartPublished,
+  isConditionLogChartPublished,
 } = require("../utils/healthProgressHelpers");
 
 describe("health progress weight", () => {
@@ -36,9 +40,37 @@ describe("health progress weight", () => {
     assert.throws(() => parseHealthWeightKg("100000000000000000000", "lbs"), /at most 500/);
     assert.throws(() => parseHealthWeightKg("1e20", "kg"), /positive number/);
   });
+
+  it("publishes weight journey points only after the weight photo is accepted", () => {
+    assert.equal(isWeightLogChartPublished({ weightKg: 70 }), true);
+    assert.equal(
+      isWeightLogChartPublished({ weightKg: 70, weightPicKey: "w.jpg", weightPicReviewStatus: "approved" }),
+      true,
+    );
+    assert.equal(
+      isWeightLogChartPublished({ weightKg: 70, weightPicKey: "w.jpg", weightPicReviewStatus: "pending" }),
+      false,
+    );
+    assert.equal(
+      isWeightLogChartPublished({ weightKg: 70, weightPicKey: "w.jpg", weightPicReviewStatus: "rejected" }),
+      false,
+    );
+  });
 });
 
 describe("health progress glucose", () => {
+  it("publishes glucose chart points only after the upload photo is accepted", () => {
+    assert.equal(isGlucoseLogChartPublished({ value: 110 }), true);
+    assert.equal(
+      isGlucoseLogChartPublished({ value: 110, glucosePicKey: "g.jpg", glucosePicReviewStatus: "approved" }),
+      true,
+    );
+    assert.equal(
+      isGlucoseLogChartPublished({ value: 110, glucosePicKey: "g.jpg", glucosePicReviewStatus: "pending" }),
+      false,
+    );
+  });
+
   it("hides coach-rejected glucose logs from the user-facing history", () => {
     assert.equal(isGlucoseLogVisibleToUser({ glucosePicReviewStatus: "rejected" }), false);
     assert.equal(isGlucoseLogVisibleToUser({ glucosePicReviewStatus: "pending" }), true);
@@ -59,6 +91,18 @@ describe("health progress glucose", () => {
 });
 
 describe("health progress blood pressure", () => {
+  it("publishes BP chart points only after the upload photo is accepted", () => {
+    assert.equal(isBloodPressureLogChartPublished({ sys: 120, dia: 80 }), true);
+    assert.equal(
+      isBloodPressureLogChartPublished({ sys: 120, dia: 80, bpPicKey: "b.jpg", bpPicReviewStatus: "approved" }),
+      true,
+    );
+    assert.equal(
+      isBloodPressureLogChartPublished({ sys: 120, dia: 80, bpPicKey: "b.jpg", bpPicReviewStatus: "pending" }),
+      false,
+    );
+  });
+
   it("caps sys at 300 and dia at 200 without requiring sys > dia", () => {
     assert.equal(parseBloodPressureSys("120"), 120);
     assert.equal(parseBloodPressureDia("80"), 80);
@@ -125,6 +169,17 @@ describe("health progress same-day key", () => {
 });
 
 describe("health progress condition comparison", () => {
+  it("publishes condition photos only after staff acceptance", () => {
+    assert.equal(
+      isConditionLogChartPublished({ picKey: "c.jpg", picReviewStatus: "approved" }),
+      true,
+    );
+    assert.equal(
+      isConditionLogChartPublished({ picKey: "c.jpg", picReviewStatus: "pending" }),
+      false,
+    );
+  });
+
   it("requires a known body part and bodyPartOther when other", () => {
     assert.deepEqual(parseConditionBodyPart({ bodyPart: "face" }), {
       bodyPart: "face",

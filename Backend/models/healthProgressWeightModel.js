@@ -90,11 +90,14 @@ async function createWeightLog(input) {
   const weightPicKey = input.weightPicKey ? String(input.weightPicKey) : keptPhotoKey;
   const previousPicKey = existing?.weightPicKey || null;
   const samePhoto = Boolean(weightPicKey) && previousPicKey === weightPicKey;
-  const weightPicReviewStatus = !weightPicKey
-    ? null
-    : samePhoto
-      ? (existing?.weightPicReviewStatus || "pending")
-      : "pending";
+  const requestedReview = input.weightPicReviewStatus;
+  const weightPicReviewStatus = requestedReview === "approved" || requestedReview === "rejected"
+    ? requestedReview
+    : !weightPicKey
+      ? null
+      : samePhoto
+        ? (existing?.weightPicReviewStatus || "pending")
+        : "pending";
 
   const item = buildWeightItem(
     {

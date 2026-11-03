@@ -17,6 +17,10 @@ const {
 } = require("../../models/userModel");
 const { getAccountById, getMembership } = require("../../models/accountModel");
 const {
+  syncHealthProgressAfterProfileSelections,
+  updatesAffectHealthProgressSelections,
+} = require("../../services/healthProgressProgramTrackerService");
+const {
   parseUserFields,
   enrichUser,
   assertUniqueEmail,
@@ -282,6 +286,10 @@ exports.updateUserController = asyncHandler(async (req, res) => {
       throw new AppError("User not found", 404);
     }
     throw err;
+  }
+
+  if (updatesAffectHealthProgressSelections(updates)) {
+    user = await syncHealthProgressAfterProfileSelections(user);
   }
 
   return res.status(200).json({

@@ -182,7 +182,7 @@ export function UserDetailPage() {
 
   const profileDefinition = useMemo(() => {
     const base = getClientProfileDefinition(user);
-    const menu = filterClientProfileMenu(base.menu, can);
+    const menu = filterClientProfileMenu(base.menu, can, user);
     let defaultSection = base.defaultSection;
     if (!menu.some((item) => item.id === defaultSection)) {
       defaultSection = menu[0]?.id || base.defaultSection;

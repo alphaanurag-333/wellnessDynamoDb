@@ -76,13 +76,37 @@ async function trackerLabelsForUser(user) {
   return [...programLabels, ...selections];
 }
 
+function reconcileHealthProgressFeatures(user, labels) {
+  const stored = normalizeHealthProgressFeatures(user?.healthProgressFeatures);
+  const next = applyPurchasedProgramTrackers({}, labels, user);
+  next.conditionComparison = Boolean(stored.conditionComparison);
+  return next;
+}
+
 async function ensurePurchasedProgramTrackers(user) {
   if (!user?.id) return user;
   const labels = await trackerLabelsForUser(user);
   const stored = normalizeHealthProgressFeatures(user.healthProgressFeatures);
-  const next = applyPurchasedProgramTrackers(stored, labels, user);
+  const next = reconcileHealthProgressFeatures(user, labels);
   if (!featuresChanged(stored, next)) return user;
   return updateUser(user.id, { healthProgressFeatures: next });
+}
+
+const PROFILE_SELECTION_SYNC_KEYS = new Set([
+  "wellnessJourneyFor",
+  "primaryHealthConcern",
+  "primaryHealthConcernOther",
+  "healthConcerns",
+]);
+
+function updatesAffectHealthProgressSelections(updates) {
+  if (!updates || typeof updates !== "object") return false;
+  return Object.keys(updates).some((key) => PROFILE_SELECTION_SYNC_KEYS.has(key));
+}
+
+async function syncHealthProgressAfterProfileSelections(user) {
+  if (!user?.id) return user;
+  return ensurePurchasedProgramTrackers(user);
 }
 
 async function withPurchasedProgramTrackers(user, features) {
@@ -92,6 +116,9 @@ async function withPurchasedProgramTrackers(user, features) {
 
 module.exports = {
   purchasedProgramLabels,
+  reconcileHealthProgressFeatures,
   ensurePurchasedProgramTrackers,
   withPurchasedProgramTrackers,
+  updatesAffectHealthProgressSelections,
+  syncHealthProgressAfterProfileSelections,
 };
