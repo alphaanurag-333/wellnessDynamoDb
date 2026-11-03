@@ -14149,6 +14149,7 @@
   place-items: center;
   z-index: 100;
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .updated-admin .ua-cp-modal-backdrop--drawer {
@@ -15938,6 +15939,32 @@
   padding-top: 4px;
 }
 
+.updated-admin .ua-cp-fulfil__push {
+  margin-top: 14px;
+}
+
+.updated-admin .ua-cp-nut-place-order {
+  margin-top: 14px;
+}
+
+.updated-admin .ua-cp-nut-place-order__label {
+  margin-bottom: 8px;
+}
+
+.updated-admin .ua-cp-nut-place-order--waiting .ua-cp-nut-place-order__waiting {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px dashed #c5d0dc;
+  background: #f8fafc;
+}
+
+.updated-admin .ua-cp-nut-place-order__waiting p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #5a6b85;
+}
+
 .updated-admin .ua-cp-rec-previous {
   margin-top: 18px;
 }
@@ -16216,9 +16243,8 @@
 }
 
 .updated-admin .ua-cp-dosage-nutrition,
-.updated-admin .ua-cp-dosage-daypart,
-.updated-admin .ua-cp-dosage-meals {
-  min-width: 140px;
+.updated-admin .ua-cp-dosage-daypart {
+  min-width: 180px;
   flex: 1 1 0;
 }
 
@@ -16389,8 +16415,8 @@
 }
 
 .updated-admin .ua-cp-dosage-card {
-  padding: 14px 16px;
-  margin-bottom: 12px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
 }
 
 .updated-admin .ua-cp-dosage-card--stopped {
@@ -16500,6 +16526,12 @@
   padding: 0;
 }
 
+.updated-admin .ua-cp-dosage-edit-banner--warn {
+  background: rgba(220, 53, 69, 0.08);
+  color: #9b1c2c;
+  border: 1px solid rgba(220, 53, 69, 0.25);
+}
+
 .updated-admin .ua-cp-dosage-card__close {
   border: none;
   background: none;
@@ -16510,27 +16542,36 @@
 
 .updated-admin .ua-cp-dosage-meals {
   display: grid;
-  grid-template-columns: repeat(11, minmax(0, 1fr));
-  gap: 10px 8px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .updated-admin .ua-cp-dosage-meal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  min-width: 0;
+  min-width: 212px;
+  padding: 14px 16px 12px;
+  border: 1px solid rgba(216, 222, 232, 0.95);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(22, 35, 63, 0.04);
 }
 
 .updated-admin .ua-cp-dosage-circle {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: 1.5px solid #d8dee8;
   display: grid;
   place-items: center;
-  margin: 0 auto 6px;
-  font-size: 12px;
+  margin: 0 auto 10px;
+  font-size: 13px;
   font-weight: 800;
   color: #8a97ac;
+  flex-shrink: 0;
 }
 
 .updated-admin .ua-cp-dosage-circle--done {
@@ -16540,14 +16581,56 @@
 }
 
 .updated-admin .ua-cp-dosage-meal__label {
-  font-size: 10.5px;
-  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: rgb(60, 72, 92);
+  font-weight: 600;
+  width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .updated-admin .ua-cp-dosage-meal__amt {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  margin-top: 2px;
+  margin-top: 6px;
+  color: #16233f;
+}
+
+.updated-admin .ua-cp-dosage-meal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.updated-admin .ua-cp-dosage-meal__edit,
+.updated-admin .ua-cp-dosage-meal__delete {
+  border: 1px solid transparent;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+.updated-admin .ua-cp-dosage-meal__edit {
+  color: #7b61ff;
+  border-color: rgba(123, 97, 255, 0.35);
+}
+
+.updated-admin .ua-cp-dosage-meal__delete {
+  color: #c82333;
+  border-color: rgba(220, 53, 69, 0.35);
+}
+
+.updated-admin .ua-cp-dosage-meal__edit:disabled,
+.updated-admin .ua-cp-dosage-meal__delete:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .updated-admin .ua-cp-dosage-card__foot-dates {
@@ -17592,8 +17675,11 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-modal--photos {
-  width: min(720px, 100%);
-  max-height: min(86vh, 720px);
+  width: min(1024px, 100%);
+  max-width: 100%;
+  max-height: min(88vh, 840px);
+  min-height: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -17601,9 +17687,23 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-modal__head--photos {
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 18px 20px 14px;
   margin-bottom: 0;
   border-bottom: 1px solid #f1f4f8;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.updated-admin .ua-cp-modal__body--photos {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .updated-admin .ua-cp-modal__actions {
@@ -17649,55 +17749,122 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-ba-photo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   padding: 16px 20px 20px;
-  overflow-y: auto;
+  width: 100%;
+  min-width: 0;
+  align-content: start;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .updated-admin .ua-cp-modal--photos {
+    width: 100%;
+  }
+
+  .updated-admin .ua-cp-ba-photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .updated-admin .ua-cp-ba-photo-card__meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .updated-admin .ua-cp-modal__head--photos .ua-cp-modal__actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 520px) {
+  .updated-admin .ua-cp-modal-backdrop--drawer {
+    padding: 12px;
+  }
+
+  .updated-admin .ua-cp-modal--photos {
+    width: 100%;
+    max-height: min(92vh, 720px);
+  }
+
+  .updated-admin .ua-cp-ba-photo-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 14px 16px;
+    gap: 12px;
+  }
 }
 
 .updated-admin .ua-cp-ba-photo-card {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid #e6ebf2;
   border-radius: 12px;
   overflow: hidden;
   background: #fff;
+  isolation: isolate;
 }
 
-.updated-admin .ua-cp-ba-photo-card__img {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+.updated-admin .ua-cp-ba-photo-card__media {
+  position: relative;
+  display: block;
+  flex: 0 0 auto;
+  flex-shrink: 0;
   width: 100%;
-  min-height: 140px;
+  height: 220px;
+  max-height: 220px;
+  min-height: 180px;
   padding: 0;
   border: none;
   background: #f8fafc;
   color: #8a97ac;
   font-size: 12px;
   font-weight: 650;
+  overflow: hidden;
   cursor: zoom-in;
 }
 
-.updated-admin .ua-cp-ba-photo-card__img img {
+.updated-admin .ua-cp-ba-photo-card__photo {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 180px;
+  max-width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center;
   pointer-events: none;
 }
 
-.updated-admin .ua-cp-ba-photo-card__img span:first-child {
-  font-size: 24px;
-  opacity: 0.5;
+.updated-admin .ua-cp-ba-photo-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  max-width: calc(100% - 16px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .updated-admin .ua-cp-ba-photo-card__foot {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid #eef2f7;
+  background: #fff;
   font-size: 11.5px;
   font-weight: 650;
   color: #5a6b85;
@@ -17705,9 +17872,21 @@ scrollbar-width: thin;
 
 .updated-admin .ua-cp-ba-photo-card__meta {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
+}
+
+.updated-admin .ua-cp-ba-photo-card__meta > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+  font-size: 11px;
+}
+
+.updated-admin .ua-cp-ba-photo-card__meta .ua-cp-ba-photo__status {
+  flex: 0 0 auto;
 }
 
 .updated-admin .ua-cp-ba-photo-card__reason {
@@ -17721,9 +17900,11 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-ba-photo-card__actions {
   display: flex;
   flex-wrap: wrap;
+  flex-shrink: 0;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  width: 100%;
 }
 
 .updated-admin .ua-cp-ba-photo-card__review {
@@ -17797,69 +17978,129 @@ scrollbar-width: thin;
 .updated-admin .ua-cp-ba-photo-preview__dialog {
   display: flex;
   flex-direction: column;
-  width: min(920px, 100%);
+  width: min(920px, calc(100vw - 32px));
   max-height: min(92vh, 900px);
   overflow: hidden;
-  background: #111827;
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
 .updated-admin .ua-cp-ba-photo-preview__head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 14px 16px;
+  flex-direction: column;
+  flex-shrink: 0;
   background: #fff;
+  border-bottom: 1px solid #eef2f7;
 }
 
-.updated-admin .ua-cp-ba-photo-preview__head .ua-cp-modal__actions {
-  flex-wrap: wrap;
+.updated-admin .ua-cp-ba-photo-preview__head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__head-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__toolbar {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
+  padding: 0 18px 14px;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__toolbar .ua-cp-ba-photo-card__actions {
+  width: 100%;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .updated-admin .ua-cp-ba-photo-preview__title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 750;
   color: #16233f;
+  line-height: 1.25;
 }
 
 .updated-admin .ua-cp-ba-photo-preview__sub {
-  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
   font-size: 12px;
+  font-weight: 600;
   color: #8a97ac;
+  line-height: 1.35;
 }
 
-.updated-admin .ua-cp-ba-photo-preview__dialog img {
+.updated-admin .ua-cp-ba-photo-preview__stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  padding: 20px;
+  background: #eef2f7;
+  overflow: auto;
+}
+
+.updated-admin .ua-cp-ba-photo-preview__stage img {
   display: block;
-  width: 100%;
-  max-height: calc(92vh - 68px);
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(72vh, 680px);
   object-fit: contain;
-  background: #0b1220;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.14);
 }
 
 .updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__dialog {
-  width: min(440px, calc(100% - 32px));
-  max-height: min(58vh, 420px);
-  border-radius: 12px;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(90vh, 820px);
 }
 
-.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__head {
-  padding: 10px 12px;
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__stage {
+  min-height: 320px;
+  padding: 24px;
 }
 
-.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__title {
-  font-size: 13px;
+.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__stage img {
+  max-height: min(68vh, 620px);
 }
 
-.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__sub {
-  font-size: 11px;
-}
+@media (max-width: 520px) {
+  .updated-admin .ua-cp-ba-photo-preview {
+    padding: 12px;
+  }
 
-.updated-admin .ua-cp-ba-photo-preview--weight .ua-cp-ba-photo-preview__dialog img {
-  max-height: min(calc(58vh - 52px), 360px);
+  .updated-admin .ua-cp-ba-photo-preview__head-top {
+    padding: 14px 14px 8px;
+  }
+
+  .updated-admin .ua-cp-ba-photo-preview__toolbar {
+    padding: 0 14px 12px;
+  }
+
+  .updated-admin .ua-cp-ba-photo-preview__toolbar .ua-cp-ba-photo-card__actions {
+    justify-content: stretch;
+  }
+
+  .updated-admin .ua-cp-ba-photo-preview__toolbar .ua-cp-ba-photo-card__review {
+    flex: 1 1 auto;
+  }
+
+  .updated-admin .ua-cp-ba-photo-preview__stage {
+    padding: 12px;
+    min-height: 200px;
+  }
 }
 
 
@@ -62777,7 +63018,7 @@ scrollbar-width: thin;
 
 
   .updated-admin .ua-cp-dosage-meals {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 
 
@@ -63701,7 +63942,11 @@ scrollbar-width: thin;
 
 
   .updated-admin .ua-cp-dosage-meals {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+  }
+
+  .updated-admin .ua-cp-dosage-meal {
+    min-width: 0;
   }
 
   .updated-admin .ua-cp-nut-order-card__fields {
@@ -65777,10 +66022,6 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-ba-photo--weight {
     max-width: 168px;
     justify-self: start;
-  }
-
-  .updated-admin .ua-cp-ba-photo-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .updated-admin .ua-cp-ba-head {

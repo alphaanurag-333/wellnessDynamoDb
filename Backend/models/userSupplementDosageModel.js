@@ -175,6 +175,14 @@ function normalizePeriods(periods) {
   return normalized;
 }
 
+function packUtilizationFraction(packSize, totalPerDay, durationDays) {
+  const size = Number(packSize) || 0;
+  const perDay = Number(totalPerDay) || 0;
+  const days = Number(durationDays) || 0;
+  if (size <= 0 || perDay <= 0 || days <= 0) return 1;
+  return Math.min(1, (perDay * days) / size);
+}
+
 function computeDosageMetrics(packSize, periods) {
   const totalPerDay = (periods || []).reduce(
     (sum, row) => sum + (Number(row.quantity) || 0),
@@ -463,6 +471,7 @@ module.exports = {
   normalizePeriods,
   normalizeStartDate,
   computeDosageMetrics,
+  packUtilizationFraction,
   addDaysToDate,
   normalizeCreatedByRole,
   parseCompositePeriod,

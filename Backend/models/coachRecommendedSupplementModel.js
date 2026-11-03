@@ -390,9 +390,18 @@ async function assertCoachDeliveryRecommendation(record) {
   }
 }
 
+function assertClientConfirmedForFulfilment(record) {
+  if (!record?.deliveryRequestedAt) {
+    const err = new Error("Client must confirm the order before logging fulfilment");
+    err.name = "ValidationError";
+    throw err;
+  }
+}
+
 async function upsertFulfilmentOrder(recommendationId, payload) {
   const record = await getCoachRecommendedSupplementRecordById(recommendationId);
   await assertCoachDeliveryRecommendation(record);
+  assertClientConfirmedForFulfilment(record);
 
   const orders = Array.isArray(record.fulfilmentOrders) ? [...record.fulfilmentOrders] : [];
   const orderId = String(payload?.id || "").trim();
@@ -433,6 +442,7 @@ async function upsertFulfilmentOrder(recommendationId, payload) {
 async function saveFulfilmentOrderBill(recommendationId, orderId, billPdfKey, billFileName = "") {
   const record = await getCoachRecommendedSupplementRecordById(recommendationId);
   await assertCoachDeliveryRecommendation(record);
+  assertClientConfirmedForFulfilment(record);
 
   const oid = String(orderId || "").trim();
   const key = String(billPdfKey || "").trim();
@@ -573,4 +583,5 @@ module.exports = {
   normalizeDeliveryOption,
   normalizeCreatedByRole,
   computeBillingTotal,
+  assertClientConfirmedForFulfilment,
 };

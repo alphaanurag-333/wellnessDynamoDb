@@ -17,8 +17,8 @@ import {
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 
-const MAX_TIMINGS = 4;
-const MAX_DAY_PARTS = 3;
+const MAX_TIMINGS = 1;
+const MAX_DAY_PARTS = 1;
 const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const COMPOSITE_PERIOD_SEP = "__";
 const NUTRITIONS_POLL_VISIBLE_MS = 5000;
@@ -114,6 +114,106 @@ function buildDosagePeriods(dayPartIds, mealTimingIds, quantity) {
   }));
 }
 
+function totalQuantityPerDay(periods) {
+  return (periods || []).reduce(
+    (sum, row) => sum + Math.max(0, Number(row.quantity) || 0),
+    0,
+  );
+}
+
+function resolvePackSizeForSupplement(pool, activeDosages, supplementId) {
+  const item = (pool || []).find((row) => row.id === supplementId);
+  const fromPool = Number(item?.packSize) || 0;
+  if (fromPool > 0) return fromPool;
+  const dosage = (activeDosages || []).find((row) => row.supplementId === supplementId);
+  return Number(dosage?.packSize) || 0;
+}
+
+function resolveSupplementUnit(pool, activeDosages, supplementId) {
+  const item = (pool || []).find((row) => row.id === supplementId);
+  if (item?.unit) return String(item.unit).trim();
+  const dosage = (activeDosages || []).find((row) => row.supplementId === supplementId);
+  return String(dosage?.unit || "").trim();
+}
+
+function validatePeriodsAgainstPackSize(packSize, periods, unit = "") {
+  const size = Number(packSize) || 0;
+  const totalPerDay = totalQuantityPerDay(periods);
+  if (size <= 0 || totalPerDay <= 0) return null;
+  if (totalPerDay > size) {
+    const unitLabel = unit ? ` ${unit}` : "";
+    return `Daily total (${totalPerDay}${unitLabel}) exceeds pack size (${size}${unitLabel}). Lower the amount or remove a timing.`;
+  }
+  return null;
+}
+
+function normalizeIsoDate(value) {
+  const raw = String(value || "").trim();
+  return raw ? raw.slice(0, 10) : "";
+}
+
+function periodRowsMatch(a, b) {
+  return String(a?.period || "").trim() === String(b?.period || "").trim()
+    && Math.max(1, Math.floor(Number(a?.quantity) || 1))
+      === Math.max(1, Math.floor(Number(b?.quantity) || 1));
+}
+
+function findMergeSourceForSupplement(activeDosages, supplementId) {
+  return activeDosages.find(
+    (row) => row.supplementId === supplementId && row.status === "draft",
+  )
+    || activeDosages.find(
+      (row) => row.supplementId === supplementId && row.status === "active",
+    )
+    || null;
+}
+
+function listDosagesForSupplement(activeDosages, supplementId) {
+  return (activeDosages || []).filter((row) => row.supplementId === supplementId);
+}
+
+function replaceDosagePeriod(periods, previousPeriodKey, nextPeriods) {
+  const previous = String(previousPeriodKey || "").trim();
+  const kept = (periods || []).filter(
+    (row) => String(row?.period || "").trim() !== previous,
+  );
+  return mergeDosagePeriods(kept, nextPeriods);
+}
+
+function removePeriodFromList(periods, periodKey) {
+  const key = String(periodKey || "").trim();
+  return (periods || []).filter(
+    (row) => String(row?.period || "").trim() !== key,
+  );
+}
+
+function resolveDosageStartDateForAdd(activeDosages, supplementId, addStart, editingDosageId) {
+  if (editingDosageId) return normalizeIsoDate(addStart);
+  const mergeSource = findMergeSourceForSupplement(activeDosages, supplementId);
+  return normalizeIsoDate(mergeSource?.startDate) || normalizeIsoDate(addStart);
+}
+
+function hasDuplicateDosageSchedule(activeDosages, {
+  supplementId,
+  startDate,
+  nextPeriods,
+  ignoreDosageId = null,
+}) {
+  const start = normalizeIsoDate(startDate);
+  if (!supplementId || !start || !nextPeriods?.length) return false;
+
+  for (const dosage of activeDosages || []) {
+    if (ignoreDosageId && dosage.id === ignoreDosageId) continue;
+    if (dosage.supplementId !== supplementId) continue;
+    if (normalizeIsoDate(dosage.startDate) !== start) continue;
+    for (const nextRow of nextPeriods) {
+      const exists = (dosage.periods || []).some((row) => periodRowsMatch(row, nextRow));
+      if (exists) return true;
+    }
+  }
+  return false;
+}
+
 function mergeDosagePeriods(existingPeriods, nextPeriods) {
   const byPeriod = new Map();
   for (const row of existingPeriods || []) {
@@ -137,6 +237,14 @@ function mergeDosagePeriods(existingPeriods, nextPeriods) {
   return [...byPeriod.values()];
 }
 
+function combinePeriodsFromDosages(dosageRows) {
+  let periods = [];
+  for (const row of dosageRows || []) {
+    periods = mergeDosagePeriods(periods, row.periods);
+  }
+  return periods;
+}
+
 function formatPeriodCardLabel(period) {
   const composite = parseCompositePeriod(period.period);
   if (composite) {
@@ -149,23 +257,47 @@ function formatPeriodCardLabel(period) {
   return label;
 }
 
-function toggleLimitedOption(list, id, checked, max) {
-  if (!checked) return list.filter((x) => x !== id);
-  if (list.includes(id)) return list;
-  if (list.length >= max) return list;
-  return [...list, id];
-}
-
 function dayPartButtonLabel(selected) {
   if (!selected.length) return "Morning / Afternoon / Evening…";
-  if (selected.length === DAY_PART_OPTIONS.length) return "All day parts";
-  return selected
-    .map((id) => DAY_PART_OPTIONS.find((row) => row.id === id)?.label || id)
-    .join(", ");
+  const id = selected[0];
+  return DAY_PART_OPTIONS.find((row) => row.id === id)?.label || id;
+}
+
+function mealTimingButtonLabel(selected) {
+  if (!selected.length) return "Choose meal timing…";
+  const id = selected[0];
+  return MEAL_TIMING_OPTIONS.find((row) => row.id === id)?.label || id;
 }
 
 const DAY_PART_ID_SET = new Set(DAY_PART_OPTIONS.map((row) => row.id));
 const MEAL_TIMING_ID_SET = new Set(MEAL_TIMING_OPTIONS.map((row) => row.id));
+
+function periodRowToFormState(row) {
+  if (!row) {
+    return { dayPartIds: [], mealTimingIds: [], qty: 1 };
+  }
+  const periodId = String(row.period || "").trim().toLowerCase();
+  const qty = Math.max(1, Math.floor(Number(row.quantity) || 1));
+  if (!periodId) {
+    return { dayPartIds: [], mealTimingIds: [], qty };
+  }
+
+  const composite = parseCompositePeriod(periodId);
+  if (composite) {
+    return {
+      dayPartIds: [composite.dayPart],
+      mealTimingIds: [composite.mealTiming],
+      qty,
+    };
+  }
+  if (DAY_PART_ID_SET.has(periodId)) {
+    return { dayPartIds: [periodId], mealTimingIds: [], qty };
+  }
+  if (MEAL_TIMING_ID_SET.has(periodId)) {
+    return { dayPartIds: [], mealTimingIds: [periodId], qty };
+  }
+  return { dayPartIds: [], mealTimingIds: [], qty };
+}
 
 function periodsToFormState(periods) {
   const dayPartIds = [];
@@ -238,6 +370,24 @@ function formatDateRange(startDate, endDate) {
   return start || end || "";
 }
 
+function packUtilizationFraction(packSize, totalPerDay, durationDays) {
+  const size = Number(packSize) || 0;
+  const perDay = Number(totalPerDay) || 0;
+  const days = Number(durationDays) || 0;
+  if (size <= 0 || perDay <= 0 || days <= 0) return 1;
+  return Math.min(1, (perDay * days) / size);
+}
+
+function roundProgressPercent(value) {
+  return Math.min(100, Math.max(0, Math.round(Number(value) * 100) / 100));
+}
+
+function formatProgressPercentLabel(value) {
+  const n = roundProgressPercent(value);
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
+}
+
 function addDaysToIsoDate(isoDate, days) {
   const raw = String(isoDate || "").trim();
   if (!raw) return "";
@@ -269,17 +419,20 @@ function resolveDosageSchedule(dosage) {
 
   let progressPercent = Number(dosage?.progressPercent) || 0;
   if (durationDays > 0 && startDate && endDate) {
+    const packFraction = packUtilizationFraction(packSize, totalPerDay, durationDays);
     const today = todayIsoDate();
+    let timeFraction = 0;
     if (today < startDate) {
-      progressPercent = 0;
+      timeFraction = 0;
     } else if (today >= endDate) {
-      progressPercent = 100;
+      timeFraction = 1;
     } else {
       const startMs = new Date(`${startDate}T00:00:00`).getTime();
       const todayMs = new Date(`${today}T00:00:00`).getTime();
       const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
-      progressPercent = Math.min(100, Math.floor((elapsedDays / durationDays) * 100));
+      timeFraction = Math.min(1, elapsedDays / durationDays);
     }
+    progressPercent = roundProgressPercent(timeFraction * packFraction * 100);
   }
 
   const unit = String(dosage?.unit || "").trim();
@@ -397,6 +550,7 @@ function mapDosageToCard(dosage) {
     progressTone: pct >= 60 ? "green" : pct >= 25 ? "orange" : "purple",
     status: dosage.status,
     meals: (dosage.periods || []).map((period) => ({
+      periodKey: period.period,
       label: formatPeriodCardLabel(period),
       amount: `${period.quantity} ${dosage.unit}`.trim(),
       done: Boolean(period.completed),
@@ -825,24 +979,13 @@ function CoachFulfilmentLog({
   );
 }
 
-function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
+function DosageCard({ card, canEdit, canRemove, isEditing, onEditMeal, onRemoveMeal, onRemove }) {
   return (
     <div className={`ua-cp-dosage-card${card.status === "stopped" ? " ua-cp-dosage-card--stopped" : ""}${card.status === "draft" ? " ua-cp-dosage-card--draft" : ""}${isEditing ? " ua-cp-dosage-card--editing" : ""}`}>
       <div className="ua-cp-dosage-card__head">
         <strong>{card.name}</strong>
         <span>Daily dosage: <strong>{card.daily}</strong></span>
         <div className="ua-cp-dosage-card__actions">
-          {canEdit && card.status !== "stopped" ? (
-            <button
-              type="button"
-              className="ua-cp-dosage-card__edit"
-              onClick={onEdit}
-              disabled={isEditing}
-              aria-label={`Edit ${card.name}`}
-            >
-              Edit
-            </button>
-          ) : null}
           {canRemove && card.status !== "stopped" ? (
             <button
               type="button"
@@ -857,12 +1000,36 @@ function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
       </div>
       <div className="ua-cp-dosage-meals">
         {card.meals.map((meal) => (
-          <div key={meal.label} className="ua-cp-dosage-meal">
+          <div key={meal.periodKey || meal.label} className="ua-cp-dosage-meal">
             <div className={`ua-cp-dosage-circle${meal.done ? " ua-cp-dosage-circle--done" : ""}`}>
               {meal.done ? "✓" : meal.count}
             </div>
             <div className="ua-cp-dosage-meal__label">{meal.label}</div>
             <div className="ua-cp-dosage-meal__amt">{meal.amount}</div>
+            {canEdit && card.status !== "stopped" && (onEditMeal || onRemoveMeal) ? (
+              <div className="ua-cp-dosage-meal__actions">
+                {onEditMeal ? (
+                  <button
+                    type="button"
+                    className="ua-cp-dosage-meal__edit"
+                    onClick={() => onEditMeal(meal.periodKey)}
+                    disabled={isEditing}
+                  >
+                    Edit timing
+                  </button>
+                ) : null}
+                {canRemove && onRemoveMeal ? (
+                  <button
+                    type="button"
+                    className="ua-cp-dosage-meal__delete"
+                    onClick={() => onRemoveMeal(meal.periodKey, meal.label)}
+                    disabled={isEditing}
+                  >
+                    Delete
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>
@@ -883,8 +1050,8 @@ function DosageCard({ card, canEdit, canRemove, isEditing, onEdit, onRemove }) {
         <div className={`ua-cp-dosage-progress ua-cp-dosage-progress--${card.progressTone || "purple"}`}>
           <span style={{ width: `${card.pct}%` }} />
         </div>
-        <span title="Based on start date and pack size ÷ daily dosage">
-          {card.pct}% Completed
+        <span title="Schedule progress × share of pack used by this plan (daily total × days ÷ pack size)">
+          {formatProgressPercentLabel(card.pct)}% Completed
         </span>
       </div>
     </div>
@@ -907,7 +1074,6 @@ export function NutritionsSection({ user, onToast }) {
   const [selected, setSelected] = useState([]);
   const [fulfilment, setFulfilment] = useState("delivery");
   const [coachOrders, setCoachOrders] = useState([]);
-  const [composeCoachOrders, setComposeCoachOrders] = useState(() => [createDraftOrder(1)]);
   const [recommended, setRecommended] = useState(null);
   const [history, setHistory] = useState([]);
   const [dosages, setDosages] = useState([]);
@@ -915,14 +1081,16 @@ export function NutritionsSection({ user, onToast }) {
   const [addDayParts, setAddDayParts] = useState([]);
   const [addPeriods, setAddPeriods] = useState([]);
   const [addQty, setAddQty] = useState(1);
-  const [addStart, setAddStart] = useState(todayIsoDate);
+  const [addStart, setAddStart] = useState(() => todayIsoDate());
   const [dayPartOpen, setDayPartOpen] = useState(false);
   const [timingOpen, setTimingOpen] = useState(false);
   const dayPartRef = useRef(null);
   const timingRef = useRef(null);
   const [pendingDosageDelete, setPendingDosageDelete] = useState(null);
+  const [pendingPeriodDelete, setPendingPeriodDelete] = useState(null);
   const [pendingOrderDelete, setPendingOrderDelete] = useState(null);
   const [editingDosageId, setEditingDosageId] = useState(null);
+  const [editingPeriodKey, setEditingPeriodKey] = useState(null);
   const [syncedRecViewOpen, setSyncedRecViewOpen] = useState(false);
   const [viewRecommendation, setViewRecommendation] = useState(null);
   const [composingNewRecommendation, setComposingNewRecommendation] = useState(false);
@@ -934,7 +1102,6 @@ export function NutritionsSection({ user, onToast }) {
   const deliveryRequestedSigRef = useRef("");
   const onToastRef = useRef(onToast);
   onToastRef.current = onToast;
-  const selectedPeriodCount = plannedPeriodCount(addDayParts, addPeriods);
   const clientName = user?.name?.trim() || "Client";
 
   const availablePool = useMemo(
@@ -945,6 +1112,84 @@ export function NutritionsSection({ user, onToast }) {
     () => dosages.filter((row) => row.status !== "stopped"),
     [dosages],
   );
+
+  const dosageFormComplete = useMemo(
+    () => Boolean(
+      addSupp
+      && addDayParts.length
+      && addPeriods.length
+      && Number(addQty) >= 1
+      && normalizeIsoDate(addStart),
+    ),
+    [addSupp, addDayParts, addPeriods, addQty, addStart],
+  );
+
+  const pendingAddPeriods = useMemo(
+    () => (dosageFormComplete
+      ? buildDosagePeriods(addDayParts, addPeriods, addQty)
+      : []),
+    [dosageFormComplete, addDayParts, addPeriods, addQty],
+  );
+
+  const pendingDosageStartDate = useMemo(
+    () => resolveDosageStartDateForAdd(activeDosages, addSupp, addStart, editingDosageId),
+    [activeDosages, addSupp, addStart, editingDosageId],
+  );
+
+  const isDuplicateDosageEntry = useMemo(
+    () => hasDuplicateDosageSchedule(activeDosages, {
+      supplementId: addSupp,
+      startDate: pendingDosageStartDate,
+      nextPeriods: pendingAddPeriods,
+      ignoreDosageId: editingDosageId,
+    }),
+    [
+      activeDosages,
+      addSupp,
+      pendingDosageStartDate,
+      pendingAddPeriods,
+      editingDosageId,
+    ],
+  );
+
+  const pendingMergedPeriods = useMemo(() => {
+    if (!dosageFormComplete || !pendingAddPeriods.length) return [];
+    if (editingDosageId) {
+      const editing = activeDosages.find((row) => row.id === editingDosageId);
+      const periods = replaceDosagePeriod(
+        editing?.periods,
+        editingPeriodKey,
+        pendingAddPeriods,
+      );
+      const siblings = listDosagesForSupplement(activeDosages, addSupp).filter(
+        (row) => row.id !== editingDosageId,
+      );
+      return siblings.length
+        ? mergeDosagePeriods(combinePeriodsFromDosages(siblings), periods)
+        : periods;
+    }
+    const siblings = listDosagesForSupplement(activeDosages, addSupp);
+    return siblings.length
+      ? mergeDosagePeriods(combinePeriodsFromDosages(siblings), pendingAddPeriods)
+      : pendingAddPeriods;
+  }, [
+    activeDosages,
+    addSupp,
+    dosageFormComplete,
+    editingDosageId,
+    editingPeriodKey,
+    pendingAddPeriods,
+  ]);
+
+  const exceedsPackLimitMessage = useMemo(
+    () => validatePeriodsAgainstPackSize(
+      resolvePackSizeForSupplement(pool, activeDosages, addSupp),
+      pendingMergedPeriods,
+      resolveSupplementUnit(pool, activeDosages, addSupp),
+    ),
+    [activeDosages, addSupp, pendingMergedPeriods, pool],
+  );
+
   const draftDosageCount = useMemo(
     () => activeDosages.filter((row) => row.status === "draft").length,
     [activeDosages],
@@ -954,22 +1199,19 @@ export function NutritionsSection({ user, onToast }) {
     [activeDosages, editingDosageId],
   );
   const dirty = useMemo(() => {
-    const ordersForDraft = composingNewRecommendation || !recommended?.id
-      ? composeCoachOrders
-      : coachOrders;
-    const hasUnsyncedOrders = fulfilment === "delivery" && ordersForDraft.some((order) => (
+    if (composingNewRecommendation || !recommended?.id) {
+      return selected.length > 0;
+    }
+    const hasUnsyncedOrders = fulfilment === "delivery" && coachOrders.some((order) => (
       !order.saved
       && order.items.length
       && String(order.placedOn || "").trim()
       && String(order.vendor || "").trim()
     ));
     const hasPendingCoachOrderEdits = fulfilment === "delivery"
-      && coachOrdersNeedPollProtection(ordersForDraft);
-    if (composingNewRecommendation || !recommended?.id) {
-      return selected.length > 0 || hasUnsyncedOrders || hasPendingCoachOrderEdits;
-    }
+      && coachOrdersNeedPollProtection(coachOrders);
     return hasUnsyncedOrders || hasPendingCoachOrderEdits;
-  }, [coachOrders, composeCoachOrders, composingNewRecommendation, fulfilment, recommended, selected]);
+  }, [coachOrders, composingNewRecommendation, fulfilment, recommended, selected]);
 
   function touchLocalNutritionEdits() {
     localNutritionFormEditRef.current = true;
@@ -1032,7 +1274,6 @@ export function NutritionsSection({ user, onToast }) {
     setComposingNewRecommendation(true);
     setSelected([]);
     setFulfilment("delivery");
-    setComposeCoachOrders([createDraftOrder(1)]);
   }
 
   function cancelNewRecommendation() {
@@ -1042,7 +1283,6 @@ export function NutritionsSection({ user, onToast }) {
     } else {
       setSelected([]);
       setFulfilment("delivery");
-      setComposeCoachOrders([createDraftOrder(1)]);
     }
   }
   const clientConfirmedNutritionOrder = Boolean(
@@ -1229,21 +1469,6 @@ export function NutritionsSection({ user, onToast }) {
     setCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
   }
 
-  function addComposeCoachOrder() {
-    touchLocalNutritionEdits();
-    setComposeCoachOrders((list) => [...list, createDraftOrder(list.length + 1)]);
-  }
-
-  function updateComposeCoachOrder(updated) {
-    touchLocalNutritionEdits();
-    setComposeCoachOrders((list) => list.map((o) => (o.id === updated.id ? updated : o)));
-  }
-
-  function removeComposeCoachOrder(id) {
-    touchLocalNutritionEdits();
-    setComposeCoachOrders((list) => list.filter((o) => o.id !== id).map((o, index) => ({ ...o, number: index + 1 })));
-  }
-
   function adjustSelectedItem(id, fn) {
     touchLocalNutritionEdits();
     setSelected((list) => fn(list));
@@ -1262,6 +1487,10 @@ export function NutritionsSection({ user, onToast }) {
     }
     if (!recommended?.id || recommended.deliveryOption !== "coach_delivery") {
       onToast?.("Save & sync the coach-delivery recommendation first");
+      return;
+    }
+    if (!recommended.deliveryRequestedAt) {
+      onToast?.(`Waiting for ${clientName} to confirm the nutrition order in the app`);
       return;
     }
 
@@ -1294,6 +1523,10 @@ export function NutritionsSection({ user, onToast }) {
     if (!order) return;
     if (!recommended?.id || recommended.deliveryOption !== "coach_delivery") {
       onToast?.("Save & sync the coach-delivery recommendation first");
+      return;
+    }
+    if (!recommended.deliveryRequestedAt) {
+      onToast?.(`Waiting for ${clientName} to confirm the nutrition order in the app`);
       return;
     }
 
@@ -1356,49 +1589,14 @@ export function NutritionsSection({ user, onToast }) {
         items: selected,
         deliveryOption: fulfilment,
       });
-      let recommendationId = nextRecommendation?.id || "";
       if (nextRecommendation) setRecommended(nextRecommendation);
-
-      let syncedOrders = 0;
-      if (fulfilment === "delivery" && recommendationId) {
-        const ordersForSave = composingNewRecommendation || !currentRecommendation
-          ? composeCoachOrders
-          : coachOrders;
-        const readyOrders = ordersForSave.filter((order) => (
-          order.items.length
-          && String(order.placedOn || "").trim()
-          && String(order.vendor || "").trim()
-        ));
-
-        for (const order of readyOrders) {
-          const result = await upsertUserSupplementFulfilmentOrder(userId, recommendationId, {
-            ...order,
-            id: undefined,
-          });
-          if (result?.recommendation) {
-            setRecommended(result.recommendation);
-            recommendationId = result.recommendation.id;
-          }
-          syncedOrders += 1;
-        }
-
-        const skipped = ordersForSave.length - readyOrders.length;
-        if (skipped > 0 && readyOrders.length === 0) {
-          onToast?.("Recommendation synced. Add items, date and vendor on each order to sync fulfilment logs.");
-        }
-      }
 
       await load({ silent: true });
       setComposingNewRecommendation(false);
-      setComposeCoachOrders([createDraftOrder(1)]);
 
-      if (syncedOrders > 0) {
-        onToast(`Saved & synced to user app · ${syncedOrders} order${syncedOrders === 1 ? "" : "s"}. Check the client app.`);
-      } else {
-        onToast("Saved & synced to user app. Check nutritions in the client app.");
-      }
+      onToast("Saved and pushed to User App. Check nutritions in the client app.");
     } catch (err) {
-      onToast?.(err?.message || "Could not save & sync");
+      onToast?.(err?.message || "Could not save and push to User App");
     } finally {
       setSaving(false);
     }
@@ -1406,6 +1604,7 @@ export function NutritionsSection({ user, onToast }) {
 
   function cancelEditDosage() {
     setEditingDosageId(null);
+    setEditingPeriodKey(null);
     setAddSupp("");
     setAddDayParts([]);
     setAddPeriods([]);
@@ -1415,20 +1614,26 @@ export function NutritionsSection({ user, onToast }) {
     setTimingOpen(false);
   }
 
-  function beginEditDosage(dosage) {
+  function beginEditDosage(dosage, periodKey = null) {
     if (!dosage?.id) return;
-    const form = periodsToFormState(dosage.periods);
+    const periods = dosage.periods || [];
+    const periodRow = periodKey
+      ? periods.find((row) => row.period === periodKey)
+      : periods[0];
+    const form = periodRowToFormState(periodRow);
+    if (!form.dayPartIds.length || !form.mealTimingIds.length) {
+      onToast?.("Could not load this timing for edit — pick time of day and meal timing below.");
+    }
+    touchLocalNutritionEdits();
     setEditingDosageId(dosage.id);
+    setEditingPeriodKey(periodRow?.period || periodKey || null);
     setAddSupp(dosage.supplementId || "");
-    setAddDayParts(form.dayPartIds);
-    setAddPeriods(form.mealTimingIds);
+    setAddDayParts(form.dayPartIds.slice(0, MAX_DAY_PARTS));
+    setAddPeriods(form.mealTimingIds.slice(0, MAX_TIMINGS));
     setAddQty(form.qty);
-    setAddStart(dosage.startDate || todayIsoDate());
+    setAddStart(normalizeIsoDate(dosage.startDate) || todayIsoDate());
     setDayPartOpen(false);
     setTimingOpen(false);
-    if (form.mixedQty) {
-      onToast?.("Different amounts per timing — saving will use one amount for all selected timings.");
-    }
     requestAnimationFrame(() => {
       dosageFormRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
     });
@@ -1436,32 +1641,64 @@ export function NutritionsSection({ user, onToast }) {
 
   async function addDosageCard() {
     const nextPeriods = buildDosagePeriods(addDayParts, addPeriods, addQty);
-    if (!addSupp || !nextPeriods.length) return;
+    if (!dosageFormComplete || !nextPeriods.length) {
+      onToast?.("Fill nutrition, time of day, meal timing, amount, and start date.");
+      return;
+    }
+
+    const scheduleStartDate = resolveDosageStartDateForAdd(
+      activeDosages,
+      addSupp,
+      addStart,
+      editingDosageId,
+    );
+    if (hasDuplicateDosageSchedule(activeDosages, {
+      supplementId: addSupp,
+      startDate: scheduleStartDate,
+      nextPeriods,
+      ignoreDosageId: editingDosageId,
+    })) {
+      onToast?.("This dosage is already on the schedule (same nutrition, timing, amount, and start date).");
+      return;
+    }
 
     if (editingDosageId) {
-      if (nextPeriods.length > MAX_PERIODS) {
+      const editing = activeDosages.find((row) => row.id === editingDosageId);
+      const periods = replaceDosagePeriod(
+        editing?.periods,
+        editingPeriodKey,
+        nextPeriods,
+      );
+      if (periods.length > MAX_PERIODS) {
         onToast?.(`Max ${MAX_PERIODS} timings per nutrition.`);
         return;
       }
-      const editing = activeDosages.find((row) => row.id === editingDosageId);
+      const siblings = listDosagesForSupplement(activeDosages, addSupp).filter(
+        (row) => row.id !== editingDosageId,
+      );
+      const mergedPeriods = siblings.length
+        ? mergeDosagePeriods(combinePeriodsFromDosages(siblings), periods)
+        : periods;
+      const packError = validatePeriodsAgainstPackSize(
+        resolvePackSizeForSupplement(pool, activeDosages, addSupp),
+        mergedPeriods,
+        resolveSupplementUnit(pool, activeDosages, addSupp),
+      );
+      if (packError) {
+        onToast?.(packError);
+        return;
+      }
       setSaving(true);
       try {
-        if (editing?.status === "draft") {
-          await stopUserSupplementDosage(userId, editingDosageId);
-        }
-        const otherDraft = activeDosages.find(
-          (row) => row.supplementId === addSupp
-            && row.status === "draft"
-            && row.id !== editingDosageId,
-        );
-        if (otherDraft) {
-          await stopUserSupplementDosage(userId, otherDraft.id);
-        }
         await createUserSupplementDosage(userId, {
           supplementId: addSupp,
           startDate: addStart || todayIsoDate(),
-          periods: nextPeriods,
+          periods: mergedPeriods,
         });
+        await stopUserSupplementDosage(userId, editingDosageId);
+        for (const row of siblings) {
+          await stopUserSupplementDosage(userId, row.id);
+        }
         const name = pool.find((item) => item.id === addSupp)?.name || editing?.name || "Nutrition";
         onToast(`Updated ${name} in schedule. Push to app when ready.`);
         cancelEditDosage();
@@ -1474,19 +1711,23 @@ export function NutritionsSection({ user, onToast }) {
       return;
     }
 
-    const existingDraft = activeDosages.find(
-      (row) => row.supplementId === addSupp && row.status === "draft",
-    );
-    const existingActive = activeDosages.find(
-      (row) => row.supplementId === addSupp && row.status === "active",
-    );
-    const mergeSource = existingDraft || existingActive;
-    const periods = mergeSource
-      ? mergeDosagePeriods(mergeSource.periods, nextPeriods)
+    const siblings = listDosagesForSupplement(activeDosages, addSupp);
+    const periods = siblings.length
+      ? mergeDosagePeriods(combinePeriodsFromDosages(siblings), nextPeriods)
       : nextPeriods;
 
+    const packError = validatePeriodsAgainstPackSize(
+      resolvePackSizeForSupplement(pool, activeDosages, addSupp),
+      periods,
+      resolveSupplementUnit(pool, activeDosages, addSupp),
+    );
+    if (packError) {
+      onToast?.(packError);
+      return;
+    }
+
     if (periods.length > MAX_PERIODS) {
-      const existingCount = mergeSource?.periods?.length || 0;
+      const existingCount = combinePeriodsFromDosages(siblings).length;
       const remaining = Math.max(0, MAX_PERIODS - existingCount);
       onToast?.(
         remaining === 0
@@ -1498,23 +1739,27 @@ export function NutritionsSection({ user, onToast }) {
 
     setSaving(true);
     try {
-      if (existingDraft) {
-        await stopUserSupplementDosage(userId, existingDraft.id);
-      }
       await createUserSupplementDosage(userId, {
         supplementId: addSupp,
-        startDate: mergeSource?.startDate || addStart || todayIsoDate(),
+        startDate: scheduleStartDate,
         periods,
       });
+      for (const row of siblings) {
+        await stopUserSupplementDosage(userId, row.id);
+      }
       const name = pool.find((item) => item.id === addSupp)?.name || "Nutrition";
       const addedCount = nextPeriods.length;
       onToast(
-        mergeSource
+        siblings.length
           ? `Updated ${name} in schedule · +${addedCount} timing${addedCount === 1 ? "" : "s"} (${periods.length} total). Push to app when ready.`
-          : `Added ${name} to schedule ×${addedCount}. Push to app when ready.`,
+          : `Added ${name} to schedule. Push to app when ready.`,
       );
+      if (siblings.length > 1) {
+        onToast?.("Merged duplicate cards for this nutrition into one schedule.");
+      }
       setAddDayParts([]);
       setAddPeriods([]);
+      setAddQty(1);
       setDayPartOpen(false);
       setTimingOpen(false);
       await load({ silent: true });
@@ -1535,6 +1780,54 @@ export function NutritionsSection({ user, onToast }) {
       await load({ silent: true });
     } catch (err) {
       onToast?.(err?.message || "Could not stop dosage");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleRemoveDosagePeriod(dosageId, periodKey) {
+    const dosage = activeDosages.find((row) => row.id === dosageId);
+    if (!dosage?.id || !periodKey) return;
+
+    const periodsOnCard = removePeriodFromList(dosage.periods, periodKey);
+    const siblings = listDosagesForSupplement(activeDosages, dosage.supplementId).filter(
+      (row) => row.id !== dosageId,
+    );
+
+    if (!periodsOnCard.length && !siblings.length) {
+      await handleStopDosage(dosageId);
+      return;
+    }
+
+    const periods = siblings.length
+      ? mergeDosagePeriods(combinePeriodsFromDosages(siblings), periodsOnCard)
+      : periodsOnCard;
+
+    if (!periods.length) {
+      await handleStopDosage(dosageId);
+      for (const row of siblings) {
+        await stopUserSupplementDosage(userId, row.id);
+      }
+      await load({ silent: true });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createUserSupplementDosage(userId, {
+        supplementId: dosage.supplementId,
+        startDate: normalizeIsoDate(dosage.startDate) || todayIsoDate(),
+        periods,
+      });
+      await stopUserSupplementDosage(userId, dosageId);
+      for (const row of siblings) {
+        await stopUserSupplementDosage(userId, row.id);
+      }
+      if (dosageId === editingDosageId) cancelEditDosage();
+      onToast(`Removed timing from ${dosage.name || "nutrition"}. Push to app when ready.`);
+      await load({ silent: true });
+    } catch (err) {
+      onToast?.(err?.message || "Could not remove timing");
     } finally {
       setSaving(false);
     }
@@ -1648,7 +1941,7 @@ export function NutritionsSection({ user, onToast }) {
                 <span className="ua-cp-rec-head__count">{selected.length} selected</span>
               </div>
               <p className="ua-cp-rec-hint">
-                Pick items from the nutrition bank and set quantities — the bill totals automatically. Saving syncs this plan to the client app.
+                Pick items from the nutrition bank and set quantities — the bill totals automatically. Push sends this plan to the client app; for coach delivery, log vendor orders after the client confirms.
               </p>
               <div className="ua-cp-rec-add">
                 <select
@@ -1700,10 +1993,7 @@ export function NutritionsSection({ user, onToast }) {
               <div className="ua-cp-fulfil ua-cp-fulfil--nested">
                 <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
                 <div className="ua-cp-fulfil__options">
-                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => {
-                    setFulfilment("delivery");
-                    setCoachOrders((list) => (list.length ? list : [createDraftOrder(1)]));
-                  }}>
+                  <button type="button" disabled={!canWrite || saving || !isHealClient} className={`ua-cp-fulfil__opt${fulfilment === "delivery" ? " ua-cp-fulfil__opt--active" : ""}`} onClick={() => setFulfilment("delivery")}>
                     <strong>Send it to me</strong>
                     <span>Request delivery from coach</span>
                   </button>
@@ -1714,35 +2004,22 @@ export function NutritionsSection({ user, onToast }) {
                 </div>
 
                 {fulfilment === "delivery" ? (
-                  <CoachFulfilmentLog
-                    orders={composeCoachOrders}
-                    pool={pool}
-                    selected={selected}
-                    disabled={!canWrite || saving || !isHealClient}
-                    canRemoveOrder={canRemove}
-                    onAddOrder={addComposeCoachOrder}
-                    onUpdateOrder={updateComposeCoachOrder}
-                    onRemoveOrder={(id) => {
-                      const order = composeCoachOrders.find((o) => o.id === id);
-                      if (!order) return;
-                      removeComposeCoachOrder(id);
-                    }}
-                    onSaveOrder={() => onToast?.("Order logs sync when you click Save & sync to user app")}
-                    onAttachBill={() => onToast?.("Save the recommendation first, then attach bills on the current plan")}
-                  />
+                  <p className="ua-cp-rec-hint">
+                    After {clientName} confirms in the app, use <strong>Place order</strong> on the current plan to log vendor orders.
+                  </p>
+                ) : null}
+
+                {canWrite && isHealClient ? (
+                  <button
+                    type="button"
+                    className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block ua-cp-fulfil__push"
+                    disabled={!canSaveAndSync}
+                    onClick={saveRecommendation}
+                  >
+                    {saving ? "Saving…" : "Save and push to User App"}
+                  </button>
                 ) : null}
               </div>
-
-              {canWrite && isHealClient ? (
-                <button
-                  type="button"
-                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--block"
-                  disabled={!canSaveAndSync}
-                  onClick={saveRecommendation}
-                >
-                  {saving ? "Saving…" : "Save & sync to user app"}
-                </button>
-              ) : null}
               {composingNewRecommendation && canWrite && isHealClient ? (
                 <button
                   type="button"
@@ -1809,28 +2086,39 @@ export function NutritionsSection({ user, onToast }) {
                 </div>
 
                 {currentRecommendation.deliveryOption !== "self_billing" ? (
-                  <CoachFulfilmentLog
-                    orders={coachOrders}
-                    pool={pool}
-                    selected={currentRecommendation.items}
-                    disabled={!canWrite || saving || !isHealClient}
-                    canRemoveOrder={canRemove}
-                    onAddOrder={addCoachOrder}
-                    onUpdateOrder={updateCoachOrder}
-                    onRemoveOrder={(id) => {
-                      const order = coachOrders.find((o) => o.id === id);
-                      if (!order) return;
-                      const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
-                      if (saved && !canRemove) return;
-                      setPendingOrderDelete({
-                        id: order.id,
-                        number: order.number,
-                        saved,
-                      });
-                    }}
-                    onSaveOrder={saveCoachOrder}
-                    onAttachBill={attachBill}
-                  />
+                  <div className={`ua-cp-nut-place-order${clientConfirmedNutritionOrder ? "" : " ua-cp-nut-place-order--waiting"}`}>
+                    <div className="ua-cp-rec-slot-label ua-cp-nut-place-order__label">3 · Place order</div>
+                    {clientConfirmedNutritionOrder ? (
+                      <CoachFulfilmentLog
+                        orders={coachOrders}
+                        pool={pool}
+                        selected={currentRecommendation.items}
+                        disabled={!canWrite || saving || !isHealClient}
+                        canRemoveOrder={canRemove}
+                        onAddOrder={addCoachOrder}
+                        onUpdateOrder={updateCoachOrder}
+                        onRemoveOrder={(id) => {
+                          const order = coachOrders.find((o) => o.id === id);
+                          if (!order) return;
+                          const saved = Boolean(order.saved && recommended?.id && !String(order.id).startsWith("order-"));
+                          if (saved && !canRemove) return;
+                          setPendingOrderDelete({
+                            id: order.id,
+                            number: order.number,
+                            saved,
+                          });
+                        }}
+                        onSaveOrder={saveCoachOrder}
+                        onAttachBill={attachBill}
+                      />
+                    ) : (
+                      <div className="ua-cp-nut-place-order__waiting">
+                        <p>
+                          Waiting for <strong>{clientName}</strong> to confirm the nutrition order in the app. You can log vendor orders here after they confirm.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <FulfilmentStatus recommendation={currentRecommendation} />
                 )}
@@ -1894,13 +2182,18 @@ export function NutritionsSection({ user, onToast }) {
       ) : (
         <>
           <p className="ua-cp-dosage-hint">
-            Pick a nutrition, select morning / afternoon / evening (multi-select), select up to {MAX_TIMINGS} meal timings, set the amount and start date, then add it to the schedule below. Finish date and <strong>% Completed</strong> use the nutrition bank pack size ÷ daily dosage (days of supply). Use <strong>Edit</strong> or <strong>Delete</strong> on a card, or add the same nutrition again to merge timings (max {MAX_PERIODS}). <strong>Push to app</strong> when ready for the client.
+            All fields are required: nutrition, time of day, meal timing, amount, and start date. Adding the same nutrition again merges timings onto <strong>one card</strong> (max {MAX_PERIODS} timings). You cannot duplicate the same timing, amount, and start date. Use <strong>Edit timing</strong> on a row to change one timing without removing the others. <strong>Push to app</strong> when ready for the client.
           </p>
           {editingDosage ? (
             <p className="ua-cp-dosage-edit-banner">
               Editing <strong>{editingDosage.name}</strong> — change the fields below, then click Update.
               {" "}
               <button type="button" className="ua-cp-dosage-edit-banner__cancel" onClick={cancelEditDosage}>Cancel</button>
+            </p>
+          ) : null}
+          {exceedsPackLimitMessage ? (
+            <p className="ua-cp-dosage-edit-banner ua-cp-dosage-edit-banner--warn" role="alert">
+              {exceedsPackLimitMessage}
             </p>
           ) : null}
           <div
@@ -1912,7 +2205,7 @@ export function NutritionsSection({ user, onToast }) {
               className="ua-cp-dosage-nutrition"
               value={addSupp}
               onChange={(e) => setAddSupp(e.target.value)}
-              disabled={!canWrite || poolLoading || !pool.length || saving || !isHealClient}
+              disabled={!canWrite || poolLoading || !pool.length || saving || !isHealClient || Boolean(editingDosageId)}
             >
               <option value="">Choose nutrition…</option>
               {pool.map((s) => (
@@ -1920,7 +2213,7 @@ export function NutritionsSection({ user, onToast }) {
               ))}
             </select>
 
-            {/* 2. Morning / Afternoon / Evening (multi-select) */}
+            {/* 2. Morning / Afternoon / Evening (single-select) */}
             <div className="ua-cp-timing-wrap ua-cp-dosage-daypart" ref={dayPartRef}>
               <button
                 type="button"
@@ -1939,29 +2232,25 @@ export function NutritionsSection({ user, onToast }) {
                 <span className="ua-cp-timing-btn__chevron" aria-hidden="true" />
               </button>
               {dayPartOpen ? (
-                <div className="ua-cp-timing-menu ua-cp-timing-menu--daypart" role="listbox" aria-multiselectable="true">
+                <div className="ua-cp-timing-menu ua-cp-timing-menu--daypart" role="listbox" aria-multiselectable="false">
                   <div className="ua-cp-timing-menu__tools">
-                    <span className="ua-cp-timing-menu__limit">Multi-select · Max {MAX_DAY_PARTS}</span>
+                    <span className="ua-cp-timing-menu__limit">Select one</span>
                     <button type="button" onClick={() => setAddDayParts([])}>Clear</button>
                   </div>
                   {DAY_PART_OPTIONS.map((t) => {
-                    const checked = addDayParts.includes(t.id);
-                    const nextCount = plannedPeriodCount(
-                      checked ? addDayParts.filter((id) => id !== t.id) : [...addDayParts, t.id],
-                      addPeriods,
-                    );
-                    const atLimit = !checked && (
-                      addDayParts.length >= MAX_DAY_PARTS
-                      || nextCount > MAX_PERIODS
-                    );
+                    const checked = addDayParts[0] === t.id;
+                    const nextCount = plannedPeriodCount([t.id], addPeriods);
+                    const atLimit = !checked && nextCount > MAX_PERIODS;
                     return (
                       <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
                         <input
-                          type="checkbox"
+                          type="radio"
+                          name="ua-cp-dosage-daypart"
                           checked={checked}
                           disabled={atLimit}
-                          onChange={(e) => {
-                            setAddDayParts((list) => toggleLimitedOption(list, t.id, e.target.checked, MAX_DAY_PARTS));
+                          onChange={() => {
+                            setAddDayParts([t.id]);
+                            setDayPartOpen(false);
                           }}
                         />
                         {t.label}
@@ -1972,7 +2261,7 @@ export function NutritionsSection({ user, onToast }) {
               ) : null}
             </div>
 
-            {/* 3. Meal timings (checkbox, max 4) */}
+            {/* 3. Meal timing (single-select) */}
             <div className="ua-cp-timing-wrap" ref={timingRef}>
               <button
                 type="button"
@@ -1986,36 +2275,30 @@ export function NutritionsSection({ user, onToast }) {
                 aria-expanded={timingOpen}
               >
                 <span className="ua-cp-timing-btn__label">
-                  {addPeriods.length
-                    ? `${addPeriods.length} of ${MAX_TIMINGS} meal timings`
-                    : "Choose meal timings…"}
+                  {mealTimingButtonLabel(addPeriods)}
                 </span>
                 <span className="ua-cp-timing-btn__chevron" aria-hidden="true" />
               </button>
               {timingOpen ? (
-                <div className="ua-cp-timing-menu" role="listbox" aria-multiselectable="true">
+                <div className="ua-cp-timing-menu" role="listbox" aria-multiselectable="false">
                   <div className="ua-cp-timing-menu__tools">
-                    <span className="ua-cp-timing-menu__limit">Max {MAX_TIMINGS}</span>
+                    <span className="ua-cp-timing-menu__limit">Select one</span>
                     <button type="button" onClick={() => setAddPeriods([])}>Clear</button>
                   </div>
                   {MEAL_TIMING_OPTIONS.map((t) => {
-                    const checked = addPeriods.includes(t.id);
-                    const nextCount = plannedPeriodCount(
-                      addDayParts,
-                      checked ? addPeriods.filter((id) => id !== t.id) : [...addPeriods, t.id],
-                    );
-                    const atLimit = !checked && (
-                      addPeriods.length >= MAX_TIMINGS
-                      || nextCount > MAX_PERIODS
-                    );
+                    const checked = addPeriods[0] === t.id;
+                    const nextCount = plannedPeriodCount(addDayParts, [t.id]);
+                    const atLimit = !checked && nextCount > MAX_PERIODS;
                     return (
                       <label key={t.id} className={`ua-cp-timing-opt${atLimit ? " is-disabled" : ""}`}>
                         <input
-                          type="checkbox"
+                          type="radio"
+                          name="ua-cp-dosage-meal-timing"
                           checked={checked}
                           disabled={atLimit}
-                          onChange={(e) => {
-                            setAddPeriods((list) => toggleLimitedOption(list, t.id, e.target.checked, MAX_TIMINGS));
+                          onChange={() => {
+                            setAddPeriods([t.id]);
+                            setTimingOpen(false);
                           }}
                         />
                         {t.label}
@@ -2048,14 +2331,25 @@ export function NutritionsSection({ user, onToast }) {
                 <button
                   type="button"
                   className="ua-cp-btn ua-cp-btn--primary"
-                  disabled={!addSupp || !selectedPeriodCount || saving}
+                  disabled={
+                    !dosageFormComplete
+                    || isDuplicateDosageEntry
+                    || Boolean(exceedsPackLimitMessage)
+                    || saving
+                  }
+                  title={
+                    exceedsPackLimitMessage
+                      || (isDuplicateDosageEntry
+                        ? "This exact dosage is already on the schedule"
+                        : undefined)
+                  }
                   onClick={addDosageCard}
                 >
                   {saving
                     ? "Saving…"
                     : editingDosageId
                       ? "Update"
-                      : `Add${selectedPeriodCount ? ` ×${selectedPeriodCount}` : ""}`}
+                      : "Add"}
                 </button>
                 {editingDosageId ? (
                   <button
@@ -2090,7 +2384,14 @@ export function NutritionsSection({ user, onToast }) {
                   canEdit={canWrite}
                   canRemove={canRemoveDosage}
                   isEditing={dosage.id === editingDosageId}
-                  onEdit={() => beginEditDosage(dosage)}
+                  onEditMeal={(periodKey) => beginEditDosage(dosage, periodKey)}
+                  onRemoveMeal={(periodKey, label) => setPendingPeriodDelete({
+                    dosageId: dosage.id,
+                    periodKey,
+                    label,
+                    name: dosage.name,
+                    status: dosage.status,
+                  })}
                   onRemove={() => setPendingDosageDelete({
                     id: dosage.id,
                     name: dosage.name,
@@ -2118,6 +2419,31 @@ export function NutritionsSection({ user, onToast }) {
           ) : null}
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingPeriodDelete)}
+        tag="Dosage timing"
+        title={
+          pendingPeriodDelete
+            ? `Delete “${pendingPeriodDelete.label}”?`
+            : ""
+        }
+        body={
+          pendingPeriodDelete?.status === "draft"
+            ? `Removes this timing from ${pendingPeriodDelete?.name || "the nutrition"}. Other timings on the card stay.`
+            : `Removes this timing from the client schedule. Other timings on ${pendingPeriodDelete?.name || "this nutrition"} stay.`
+        }
+        cancelLabel="Cancel"
+        confirmLabel="Delete timing"
+        confirmTone="danger"
+        onCancel={() => setPendingPeriodDelete(null)}
+        onConfirm={() => {
+          const dosageId = pendingPeriodDelete?.dosageId;
+          const periodKey = pendingPeriodDelete?.periodKey;
+          setPendingPeriodDelete(null);
+          if (dosageId && periodKey) handleRemoveDosagePeriod(dosageId, periodKey);
+        }}
+      />
 
       <ConfirmDialog
         open={Boolean(pendingDosageDelete)}

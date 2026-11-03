@@ -32,7 +32,7 @@ import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function getModalRoot() {
-  return document.querySelector(".updated-admin .ua-cp-drawer") || document.querySelector(".updated-admin");
+  return document.querySelector(".updated-admin") || document.body;
 }
 
 function isLiveUserId(userId) {
@@ -499,6 +499,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
               </div>
             </div>
+            <div className="ua-cp-modal__body ua-cp-modal__body--photos">
             <div className="ua-cp-ba-photo-grid">
               {photos.map((p) => {
                 const review = photoReviewMeta(p.reviewStatus);
@@ -506,11 +507,15 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 <div key={p.id} className="ua-cp-ba-photo-card">
                   <button
                     type="button"
-                    className="ua-cp-ba-photo-card__img"
+                    className="ua-cp-ba-photo-card__media"
                     onClick={() => setPreview(p)}
                     aria-label={`Preview ${angle} photo from ${p.date}, ${review.label}`}
                   >
-                    <img src={p.url} alt={`${angle} progress from ${p.date}`} />
+                    <img
+                      className="ua-cp-ba-photo-card__photo"
+                      src={p.url}
+                      alt={`${angle} progress from ${p.date}`}
+                    />
                     <span className={`ua-cp-ba-photo-card__badge ua-cp-ba-photo__status ua-cp-ba-photo__status--${review.tone}`}>
                       {review.label}
                     </span>
@@ -538,6 +543,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 );
               })}
             </div>
+            </div>
           </div>
         </div>
       )}
@@ -554,22 +560,19 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
             aria-labelledby="photo-preview-title"
           >
             <div className="ua-cp-ba-photo-preview__head">
-              <div>
-                <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
-                <div className="ua-cp-ba-photo-preview__sub">
-                  {isSingle ? `Onboarding · ${activePreview.date}` : activePreview.date}
-                  {` · ${photoReviewMeta(activePreview.reviewStatus).label}`}
+              <div className="ua-cp-ba-photo-preview__head-top">
+                <div className="ua-cp-ba-photo-preview__head-copy">
+                  <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
+                  <div className="ua-cp-ba-photo-preview__sub">
+                    {isSingle ? `Onboarding · ${activePreview.date}` : activePreview.date}
+                    {" · "}
+                    <span
+                      className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${photoReviewMeta(activePreview.reviewStatus).tone}`}
+                    >
+                      {photoReviewMeta(activePreview.reviewStatus).label}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="ua-cp-modal__actions">
-                <PhotoReviewActions
-                  photo={activePreview}
-                  canReview={canReview}
-                  busy={busy}
-                  onSave={handleSave}
-                  onAccept={(photo) => openReview(photo, "approved")}
-                  onReject={(photo) => openReview(photo, "rejected")}
-                />
                 <button
                   type="button"
                   className="ua-cp-modal__close"
@@ -579,8 +582,20 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                   ×
                 </button>
               </div>
+              <div className="ua-cp-ba-photo-preview__toolbar">
+                <PhotoReviewActions
+                  photo={activePreview}
+                  canReview={canReview}
+                  busy={busy}
+                  onSave={handleSave}
+                  onAccept={(photo) => openReview(photo, "approved")}
+                  onReject={(photo) => openReview(photo, "rejected")}
+                />
+              </div>
             </div>
-            <img src={activePreview.url} alt={`${angle} from ${activePreview.date}`} />
+            <div className="ua-cp-ba-photo-preview__stage">
+              <img src={activePreview.url} alt={`${angle} from ${activePreview.date}`} />
+            </div>
           </div>
         </div>
       ) : null}

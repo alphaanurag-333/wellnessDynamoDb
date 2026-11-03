@@ -166,6 +166,8 @@ function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}
 /**
  * Rejecting the onboarding weight photo reopens body measurements in the client app
  * when the coach has not disabled client fill (bodyMeasurementEnabled !== false).
+ * Also clears the At a Glance Body Analytics step until the client resubmits and
+ * the coach completes review again.
  */
 function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) {
   const normalizedAction = String(action || "").toLowerCase().trim();
@@ -175,6 +177,7 @@ function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) 
   const current = normalizePaidOnboardingStepStatus(stepStatus);
   const nextStatus = syncDerivedOnboardingSteps({
     ...current,
+    bodyAnalytics: "pending",
     bodyMeasurement: "pending",
   });
 

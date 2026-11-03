@@ -5,7 +5,7 @@ const {
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
-const { isValidPeriod } = require("./userSupplementDosageModel");
+const { isValidPeriod, packUtilizationFraction } = require("./userSupplementDosageModel");
 
 const TABLE = "UserSupplementDosageLog";
 
@@ -146,20 +146,32 @@ async function queryLogsByUserId(userId) {
   return items;
 }
 
+function roundProgressPercent(value) {
+  return Math.min(100, Math.max(0, Math.round(Number(value) * 100) / 100));
+}
+
 function computeScheduleProgressPercent(dosage, asOfDate) {
   const durationDays = Number(dosage?.durationDays) || 0;
   const startDate = String(dosage?.startDate || "").trim();
   const endDate = String(dosage?.endDate || "").trim();
   if (durationDays <= 0 || !startDate || !endDate) return 0;
 
+  const packSize = Number(dosage?.packSize) || 0;
+  const totalPerDay = Number(dosage?.totalPerDay) || 0;
+  const packFraction = packUtilizationFraction(packSize, totalPerDay, durationDays);
+
   const today = normalizeLogDate(asOfDate);
   if (today < startDate) return 0;
-  if (today >= endDate) return 100;
 
-  const startMs = new Date(`${startDate}T00:00:00.000Z`).getTime();
-  const todayMs = new Date(`${today}T00:00:00.000Z`).getTime();
-  const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
-  return Math.min(100, Math.max(0, Math.floor((elapsedDays / durationDays) * 100)));
+  let timeFraction = 1;
+  if (today < endDate) {
+    const startMs = new Date(`${startDate}T00:00:00.000Z`).getTime();
+    const todayMs = new Date(`${today}T00:00:00.000Z`).getTime();
+    const elapsedDays = Math.floor((todayMs - startMs) / 86400000) + 1;
+    timeFraction = Math.min(1, elapsedDays / durationDays);
+  }
+
+  return roundProgressPercent(timeFraction * packFraction * 100);
 }
 
 function computeProgressPercent(dosage, logs) {
@@ -181,7 +193,11 @@ function computeProgressPercent(dosage, logs) {
     if (loggedPeriods.size >= periodSet.size) completedDays += 1;
   }
 
-  return Math.min(100, Math.floor((completedDays / durationDays) * 100));
+  const packSize = Number(dosage?.packSize) || 0;
+  const totalPerDay = Number(dosage?.totalPerDay) || 0;
+  const packFraction = packUtilizationFraction(packSize, totalPerDay, durationDays);
+  const timeFraction = Math.min(1, completedDays / durationDays);
+  return roundProgressPercent(timeFraction * packFraction * 100);
 }
 
 function buildTodayCompletionMap(dosage, logs, logDate) {

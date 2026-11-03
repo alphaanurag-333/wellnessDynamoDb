@@ -274,7 +274,7 @@ describe("applyBodyAnalyticsWeightPhotoReview", () => {
       action: "rejected",
     });
     assert.equal(result.stepStatus.bodyMeasurement, "pending");
-    assert.equal(result.stepStatus.bodyAnalytics, "done");
+    assert.equal(result.stepStatus.bodyAnalytics, "pending");
     assert.equal(result.extraUserUpdates.bodyMeasurementEnabled, true);
     assert.equal(result.extraUserUpdates.paidOnboardingStep, "body");
   });
