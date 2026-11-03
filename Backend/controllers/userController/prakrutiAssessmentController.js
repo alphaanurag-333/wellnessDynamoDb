@@ -3,7 +3,7 @@ const { asyncHandler } = require("../../utils/asyncHandler");
 const { PRAKRUTI_TYPE_LABELS } = require("../../utils/prakrutiConstants");
 const {
   getLatestUserPrakrutiAssessmentByUserId,
-  enrichAssessmentPublic,
+  enrichAssessmentPublicForUser,
 } = require("../../models/userPrakrutiAssessmentModel");
 
 function readUserId(req) {
@@ -16,7 +16,21 @@ function readUserId(req) {
 exports.getMyPrakrutiAssessmentController = asyncHandler(async (req, res) => {
   const userId = readUserId(req);
   const raw = await getLatestUserPrakrutiAssessmentByUserId(userId);
-  const assessment = raw ? await enrichAssessmentPublic(raw) : null;
+  if (!raw?.pushedAt) {
+    return res.status(200).json({
+      status: true,
+      message: "No Prakruti assessment yet",
+      prakrutiType: null,
+      prakrutiTypeLabel: null,
+      thingsToAvoid: [],
+      thingsToAvoidTitles: [],
+      recommendations: [],
+      recommendationTitles: [],
+      assessment: null,
+    });
+  }
+
+  const assessment = await enrichAssessmentPublicForUser(raw);
 
   return res.status(200).json({
     status: true,

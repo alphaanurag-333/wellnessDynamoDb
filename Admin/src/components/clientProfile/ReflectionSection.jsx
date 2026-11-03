@@ -14,6 +14,7 @@ import {
   parseFoodDateInput,
 } from "../../data/foodData.js";
 import { FoodDateRow } from "./FoodDatePicker.jsx";
+import { BedtimePicker } from "./BedtimePicker.jsx";
 import {
   DEFAULT_BEDTIME,
   TRACKING_ROWS,
@@ -66,8 +67,9 @@ function trackingLabel(metric, unit) {
   return pct == null ? amount : `${amount} · ${pct}%`;
 }
 
-function ActivityRow({ index, activity, canEdit, busy, onToggle, onGoal, onToday }) {
+function ActivityRow({ index, activity, canEdit, canEditToday, busy, onToggle, onGoal, onToday }) {
   const locked = !canEdit;
+  const todayLocked = locked || !canEditToday;
 
   return (
     <div className={`ua-cp-reflect-question${activity.enabled ? "" : " is-off"}`}>
@@ -80,7 +82,7 @@ function ActivityRow({ index, activity, canEdit, busy, onToggle, onGoal, onToday
               <button
                 type="button"
                 className={`ua-cp-reflect-yesno__btn${activity.todayValue ? " is-on" : ""}`}
-                disabled={locked || busy}
+                disabled={todayLocked || busy}
                 onClick={() => onToday(1)}
               >
                 Yes
@@ -88,7 +90,7 @@ function ActivityRow({ index, activity, canEdit, busy, onToggle, onGoal, onToday
               <button
                 type="button"
                 className={`ua-cp-reflect-yesno__btn${!activity.todayValue ? " is-on" : ""}`}
-                disabled={locked || busy}
+                disabled={todayLocked || busy}
                 onClick={() => onToday(0)}
               >
                 No
@@ -115,11 +117,12 @@ function ActivityRow({ index, activity, canEdit, busy, onToggle, onGoal, onToday
               <label className="ua-cp-reflect-field">
                 Today
                 <input
-                  className="ua-cp-reflect-today"
+                  className={`ua-cp-reflect-today${!canEditToday && canEdit ? " ua-cp-reflect-today--readonly" : ""}`}
                   type="number"
                   min="0"
                   max="9999"
                   value={activity.todayValue}
+                  readOnly={canEdit && !canEditToday}
                   disabled={locked || busy}
                   onChange={(e) => onToday(e.target.value)}
                 />
@@ -148,6 +151,7 @@ function ReflectionSectionCard({
   index,
   expanded,
   canEdit,
+  canEditToday,
   busy,
   onToggle,
   onToggleActivity,
@@ -178,6 +182,7 @@ function ReflectionSectionCard({
               index={qIndex}
               activity={activity}
               canEdit={canEdit}
+              canEditToday={canEditToday}
               busy={busy}
               onToggle={() => onToggleActivity(activity.key)}
               onGoal={(value) => onGoal(activity.key, value)}
@@ -199,12 +204,15 @@ function snapshotKey(activities) {
 export function ReflectionSection({ user, onToast }) {
   const userId = String(user?.id || "").trim();
   const isHealClient = String(user?.userTier || "").toLowerCase() === "heal" || user?.tier === "Seek to Heal";
-  const { can, viewAs } = useViewAs();
+  const { can, viewAs, viewAsPersona, isAdminView } = useViewAs();
   const canEdit =
     can("console.diet.edit") ||
     viewAs === "wc" ||
     viewAs === "awc" ||
     viewAs === "admin";
+  const isWcView = viewAs === "wc" || viewAsPersona === "wc";
+  const canEditToday = canEdit && !isWcView;
+  const canSaveTodayScore = Boolean(isAdminView);
 
   const [activities, setActivities] = useState([]);
   const [savedSettingsKey, setSavedSettingsKey] = useState("");
@@ -373,7 +381,7 @@ export function ReflectionSection({ user, onToast }) {
   }
 
   async function saveTodayScore() {
-    if (!userId || !canEdit || scoring) return;
+    if (!userId || !canSaveTodayScore || scoring) return;
     const enabled = activities.filter((activity) => activity.enabled);
     const missingGoal = enabled.find((activity) => activity.unit !== "boolean" && !(Number(activity.goal) > 0));
     if (missingGoal) {
@@ -561,18 +569,12 @@ export function ReflectionSection({ user, onToast }) {
             </p>
           </div>
           <div className="ua-cp-reflect-callout__actions">
-            <label className="ua-cp-reflect-bedtime">
-              <span className="ua-cp-reflect-bedtime__label">Bedtime</span>
-              <span className="ua-cp-reflect-bedtime__value">{formatBedtime(bedtime)}</span>
-              <span className="ua-cp-reflect-bedtime__chev" aria-hidden="true" />
-              <input
-                type="time"
-                value={bedtime}
-                disabled={!canEdit || busy}
-                onChange={(e) => setBedtime(e.target.value)}
-                aria-label="Bedtime"
-              />
-            </label>
+            <BedtimePicker
+              value={bedtime}
+              disabled={!canEdit || busy}
+              onChange={setBedtime}
+              aria-label="Bedtime"
+            />
             <button
               type="button"
               className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
@@ -646,6 +648,7 @@ export function ReflectionSection({ user, onToast }) {
               index={index + 1}
               expanded={expanded.has(section.id)}
               canEdit={canEdit}
+              canEditToday={canEditToday}
               busy={busy}
               onToggle={() => toggleSection(section.id)}
               onToggleActivity={toggleActivity}
@@ -660,7 +663,8 @@ export function ReflectionSection({ user, onToast }) {
         <button
           type="button"
           className="ua-cp-btn ua-cp-btn--outline ua-cp-reflect-save"
-          disabled={!canEdit || scoring || loading}
+          disabled={!canSaveTodayScore || scoring || loading}
+          title={!canSaveTodayScore ? "Only admins can save a score on the client's behalf" : undefined}
           onClick={saveTodayScore}
         >
           {scoring ? "Saving score…" : (isViewingToday ? "Save today's score" : "Save score for this date")}

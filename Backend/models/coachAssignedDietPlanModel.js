@@ -67,9 +67,80 @@ function normalizePlans(plans) {
   }));
 }
 
-function toCoachAssignedDietPlanPublic(item) {
+function isLegacyPublishedAssignment(item) {
+  if (!item) return false;
+  if (String(item.pushedAt || "").trim()) return false;
+  const pdfKey = String(item.pdfKey || "").trim();
+  const plans = Array.isArray(item.plans) ? item.plans : [];
+  return Boolean(pdfKey && plans.length > 0);
+}
+
+function isVisibleInClientApp(item) {
+  return Boolean(String(item?.pushedAt || "").trim()) || isLegacyPublishedAssignment(item);
+}
+
+function draftDiffersFromPublished(item) {
+  if (!item) return false;
+  const draftPlans = Array.isArray(item.plans) ? item.plans : [];
+  if (!String(item.pushedAt || "").trim()) {
+    return draftPlans.length > 0;
+  }
+  const publishedPlans = Array.isArray(item.publishedPlans) ? item.publishedPlans : [];
+  if (!publishedPlans.length) return true;
+  return JSON.stringify(draftPlans) !== JSON.stringify(publishedPlans);
+}
+
+function resolvePublishedPlans(item) {
+  if (String(item?.pushedAt || "").trim()) {
+    const published = Array.isArray(item.publishedPlans) ? item.publishedPlans : [];
+    if (published.length) return published;
+    return Array.isArray(item.plans) ? item.plans : [];
+  }
+  if (isLegacyPublishedAssignment(item)) {
+    return Array.isArray(item.plans) ? item.plans : [];
+  }
+  return [];
+}
+
+function resolvePublishedPdfKey(item) {
+  if (String(item?.pushedAt || "").trim()) {
+    return String(item.publishedPdfKey || item.pdfKey || "").trim() || null;
+  }
+  if (isLegacyPublishedAssignment(item)) {
+    return String(item.pdfKey || "").trim() || null;
+  }
+  return null;
+}
+
+function toCoachAssignedDietPlanPublic(item, { audience = "admin" } = {}) {
   const row = withLegacyId(item);
   if (!row) return null;
+
+  const draftPlans = Array.isArray(row.plans) ? row.plans : [];
+  const pushedAt = row.pushedAt || null;
+  const publishedPdfKey = resolvePublishedPdfKey(row);
+
+  if (audience === "user") {
+    if (!isVisibleInClientApp(row)) return null;
+    const plans = resolvePublishedPlans(row);
+    return {
+      id: row.id,
+      _id: row._id,
+      userId: row.userId,
+      coachId: row.coachId,
+      startDate: row.startDate,
+      note: row.note ?? null,
+      plans,
+      pdfKey: publishedPdfKey,
+      pdfUrl: resolvePublicUrl(publishedPdfKey),
+      createdByRole: normalizeCreatedByRole(row.createdByRole),
+      createdById: row.createdById,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      pushedAt,
+    };
+  }
+
   return {
     id: row.id,
     _id: row._id,
@@ -77,9 +148,13 @@ function toCoachAssignedDietPlanPublic(item) {
     coachId: row.coachId,
     startDate: row.startDate,
     note: row.note ?? null,
-    plans: Array.isArray(row.plans) ? row.plans : [],
-    pdfKey: row.pdfKey,
-    pdfUrl: resolvePublicUrl(row.pdfKey),
+    plans: draftPlans,
+    pdfKey: row.pdfKey || null,
+    pdfUrl: row.pdfKey ? resolvePublicUrl(row.pdfKey) : null,
+    publishedPdfKey,
+    publishedPdfUrl: publishedPdfKey ? resolvePublicUrl(publishedPdfKey) : null,
+    pushedAt,
+    hasUnpublishedChanges: draftDiffersFromPublished(row),
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -105,11 +180,6 @@ async function createCoachAssignedDietPlan({
   if (!creatorId) throw new Error("createdById is required");
 
   const pdf = String(pdfKey || "").trim();
-  if (!pdf) {
-    const err = new Error("pdfKey is required");
-    err.name = "ValidationError";
-    throw err;
-  }
 
   const now = new Date().toISOString();
   const item = {
@@ -119,12 +189,12 @@ async function createCoachAssignedDietPlan({
     startDate: normalizeStartDate(startDate),
     note: normalizeNote(note),
     plans: normalizePlans(plans),
-    pdfKey: pdf,
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
     updatedAt: now,
   };
+  if (pdf) item.pdfKey = pdf;
 
   await docClient.send(
     new PutCommand({
@@ -176,12 +246,31 @@ async function queryCoachAssignedDietPlansByUserId(userId) {
   return items;
 }
 
-async function listCoachAssignedDietPlansByUserId(userId) {
+async function listCoachAssignedDietPlansByUserId(userId, options = {}) {
   const items = await queryCoachAssignedDietPlansByUserId(userId);
-  return items.map((row) => toCoachAssignedDietPlanPublic(row)).filter(Boolean);
+  const audience = options.audience === "user" ? "user" : "admin";
+  return items
+    .map((row) => toCoachAssignedDietPlanPublic(row, { audience }))
+    .filter(Boolean);
 }
 
-async function updateCoachAssignedDietPlan(id, { plans, pdfKey, note, startDate } = {}) {
+async function listClientVisibleCoachAssignedDietPlansByUserId(userId) {
+  const items = await queryCoachAssignedDietPlansByUserId(userId);
+  return items
+    .filter(isVisibleInClientApp)
+    .map((row) => toCoachAssignedDietPlanPublic(row, { audience: "user" }))
+    .filter(Boolean);
+}
+
+async function updateCoachAssignedDietPlan(id, {
+  plans,
+  pdfKey,
+  note,
+  startDate,
+  publishedPlans,
+  publishedPdfKey,
+  pushedAt,
+} = {}) {
   const assignmentId = String(id || "").trim();
   if (!assignmentId) throw new Error("id is required");
 
@@ -216,6 +305,21 @@ async function updateCoachAssignedDietPlan(id, { plans, pdfKey, note, startDate 
     values[":startDate"] = normalizeStartDate(startDate);
     sets.push("#startDate = :startDate");
   }
+  if (publishedPlans !== undefined) {
+    names["#publishedPlans"] = "publishedPlans";
+    values[":publishedPlans"] = normalizePlans(publishedPlans);
+    sets.push("#publishedPlans = :publishedPlans");
+  }
+  if (publishedPdfKey !== undefined) {
+    names["#publishedPdfKey"] = "publishedPdfKey";
+    values[":publishedPdfKey"] = String(publishedPdfKey || "").trim();
+    sets.push("#publishedPdfKey = :publishedPdfKey");
+  }
+  if (pushedAt !== undefined) {
+    names["#pushedAt"] = "pushedAt";
+    values[":pushedAt"] = pushedAt ? String(pushedAt).trim() : null;
+    sets.push("#pushedAt = :pushedAt");
+  }
 
   const { Attributes } = await docClient.send(
     new UpdateCommand({
@@ -242,6 +346,9 @@ async function deleteCoachAssignedDietPlan(id) {
 
   if (record.pdfKey) {
     await deleteStoredMedia(record.pdfKey);
+  }
+  if (record.publishedPdfKey && record.publishedPdfKey !== record.pdfKey) {
+    await deleteStoredMedia(record.publishedPdfKey);
   }
 
   await docClient.send(
@@ -285,10 +392,14 @@ module.exports = {
   getCoachAssignedDietPlanById,
   getCoachAssignedDietPlanRecordById,
   listCoachAssignedDietPlansByUserId,
+  listClientVisibleCoachAssignedDietPlansByUserId,
   deleteCoachAssignedDietPlan,
   updateCoachAssignedDietPlan,
   isDietPlanCatalogReferenced,
   toCoachAssignedDietPlanPublic,
+  isVisibleInClientApp,
+  draftDiffersFromPublished,
+  isLegacyPublishedAssignment,
   normalizeStartDate,
   normalizeCreatedByRole,
 };

@@ -52,7 +52,18 @@ export function mergeMeetingsWithOrphanTracks(meetings, tracks) {
     const initiatedByRole = (() => {
       const stored = String(track?.initiatedByRole || "").toLowerCase();
       if (stored === "client" || stored === "user") return "client";
-      if (stored === "coach" || stored === "staff") return "coach";
+      if (stored === "assistant_wellness_coach") return "assistant_wellness_coach";
+      if (stored === "admin") return "admin";
+      if (stored === "coach" || stored === "staff" || stored === "wellness_coach") return "coach";
+
+      const updatedBy = String(track?.statusUpdatedByRole || "").toLowerCase();
+      if (updatedBy === "assistant_wellness_coach") return "assistant_wellness_coach";
+      if (updatedBy === "admin") return "admin";
+      if (updatedBy === "wellness_coach" || updatedBy === "trainee") return "coach";
+
+      const assignedType = String(track?.assignedCoachType || "").toLowerCase();
+      if (assignedType === "assistant_wellness_coach") return "assistant_wellness_coach";
+
       if (Array.isArray(track?.periodOffers) && track.periodOffers.length) return "coach";
       if (track?.scheduledAt) return "coach";
       if (String(track?.status || "").toLowerCase() === "requested") return "client";
@@ -89,8 +100,32 @@ export function mergeMeetingsWithOrphanTracks(meetings, tracks) {
 }
 
 export function reviewScheduleByLabel(meeting) {
+  if (!meeting) return "—";
+
   const role = String(meeting?.initiatedByRole || "").toLowerCase();
-  return role === "client" ? "Client" : "You";
+  if (role === "client" || role === "user") return "Client";
+  if (role === "assistant_wellness_coach") return "AWC";
+  if (role === "admin") return "Admin";
+
+  const authorRole = String(meeting?.authorRole || meeting?.createdByRole || "").toLowerCase();
+  if (authorRole === "assistant_wellness_coach") return "AWC";
+  if (authorRole === "admin") return "Admin";
+  if (authorRole === "client" || authorRole === "user") return "Client";
+
+  if (
+    role === "coach"
+    || role === "wellness_coach"
+    || role === "trainee"
+    || role === "staff"
+    || authorRole === "wellness_coach"
+    || authorRole === "trainee"
+    || authorRole === "coach"
+    || authorRole === "staff"
+  ) {
+    return "Coach";
+  }
+
+  return "Coach";
 }
 
 export function reviewTrackingStatusLabel(meeting) {

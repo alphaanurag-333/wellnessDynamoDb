@@ -26,6 +26,7 @@ import {
   patchOnboardingStep,
   saveUserLaunchAssessment,
   saveUserPrakrutiAssessment,
+  publishUserPrakrutiAssessment,
   updateUserLaunchAssessment,
   publishUserLaunchFocusPoints,
 } from "../../api/onboardingApi.js";
@@ -1335,6 +1336,67 @@ function catalogTitlesForType(rows, type) {
     .filter(Boolean);
 }
 
+/** Saved per-client copy on the latest assessment, when it matches the live result type. */
+function guideTextsFromAssessment(assessment, resultType, textKey, titleKey) {
+  if (!assessment || !resultType) return null;
+  const savedType = String(assessment.prakrutiType || "").trim().toLowerCase();
+  const wanted = String(resultType || "").trim().toLowerCase();
+  if (!savedType || savedType !== wanted) return null;
+  const fromField = assessment[textKey];
+  if (Array.isArray(fromField)) {
+    const texts = fromField.map((t) => String(t || "").trim()).filter(Boolean);
+    if (texts.length) return texts;
+  }
+  const fromTitles = assessment[titleKey];
+  if (Array.isArray(fromTitles)) {
+    const texts = fromTitles.map((t) => String(t || "").trim()).filter(Boolean);
+    if (texts.length) return texts;
+  }
+  return null;
+}
+
+function prakritiTextList(items) {
+  return (Array.isArray(items) ? items : []).map((t) => String(t || "").trim()).filter(Boolean);
+}
+
+function samePrakritiTextList(a, b) {
+  const left = prakritiTextList(a);
+  const right = prakritiTextList(b);
+  return left.length === right.length && left.every((t, i) => t === right[i]);
+}
+
+function samePrakritiQuestionIds(checked, ids) {
+  const fromChecked = Object.keys(checked || {}).filter((id) => checked[id]).sort();
+  const fromSaved = (Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean).sort();
+  return fromChecked.length === fromSaved.length && fromChecked.every((id, i) => id === fromSaved[i]);
+}
+
+function samePrakritiScores(a, b) {
+  const sa = a || {};
+  const sb = b || {};
+  return (Number(sa.vata) || 0) === (Number(sb.vata) || 0)
+    && (Number(sa.pitta) || 0) === (Number(sb.pitta) || 0)
+    && (Number(sa.kapha) || 0) === (Number(sb.kapha) || 0);
+}
+
+function prakritiDraftMatchesSaved(draft, saved) {
+  if (!saved) return false;
+  return String(draft.prakrutiType || "") === String(saved.prakrutiType || "")
+    && samePrakritiQuestionIds(draft.checked, saved.selectedQuestionIds)
+    && samePrakritiScores(draft.scores, saved.scores)
+    && samePrakritiTextList(draft.recommendationTexts, saved.recommendationTexts)
+    && samePrakritiTextList(draft.avoidTexts, saved.avoidTexts);
+}
+
+function prakritiDraftMatchesPublished(draft, saved) {
+  if (!saved?.pushedAt) return false;
+  return String(draft.prakrutiType || "") === String(saved.pushedPrakrutiType || "")
+    && samePrakritiQuestionIds(draft.checked, saved.pushedSelectedQuestionIds)
+    && samePrakritiScores(draft.scores, saved.pushedScores)
+    && samePrakritiTextList(draft.recommendationTexts, saved.pushedRecommendationTexts)
+    && samePrakritiTextList(draft.avoidTexts, saved.pushedAvoidTexts);
+}
+
 function GuideTextField({ value, onChange, ariaLabel }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -1367,7 +1429,10 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [checked, setChecked] = useState({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingRec, setSavingRec] = useState(false);
   const [savingAvoid, setSavingAvoid] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [prakritiPushOpen, setPrakritiPushOpen] = useState(false);
   const [forceNew, setForceNew] = useState(false);
   const listsTouchedRef = useRef(false);
   const listsTypeRef = useRef("");
@@ -1458,6 +1523,15 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     listsTypeRef.current = resultType;
   }
 
+  function applySavedGuideLists(saved, type) {
+    const avoid = guideTextsFromAssessment(saved, type, "avoidTexts", "thingsToAvoidTitles");
+    if (avoid) setAvoidItems(avoid);
+    const rec = guideTextsFromAssessment(saved, type, "recommendationTexts", "recommendationTitles");
+    if (rec) setRecItems(rec);
+    listsTypeRef.current = type;
+    listsTouchedRef.current = false;
+  }
+
   useEffect(() => {
     if (loading) return undefined;
     const userId = user?.id;
@@ -1471,12 +1545,20 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
     if (listsTouchedRef.current && listsTypeRef.current === resultType) return undefined;
 
-    const avoidTitles = catalogTitlesForType(thingsToAvoid, resultType);
+    const savedAvoid = guideTextsFromAssessment(assessment, resultType, "avoidTexts", "thingsToAvoidTitles");
+    const savedRec = guideTextsFromAssessment(assessment, resultType, "recommendationTexts", "recommendationTitles");
+    const avoidTitles = savedAvoid ?? catalogTitlesForType(thingsToAvoid, resultType);
     const requestId = catalogRequestRef.current + 1;
     catalogRequestRef.current = requestId;
     listsTypeRef.current = resultType;
     listsTouchedRef.current = false;
     setAvoidItems(avoidTitles);
+
+    if (savedRec) {
+      setRecItems(savedRec);
+      return undefined;
+    }
+
     setRecItems([]);
 
     let cancelled = false;
@@ -1490,7 +1572,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         setRecItems([]);
       });
     return () => { cancelled = true; };
-  }, [loading, user?.id, resultType, thingsToAvoid]);
+  }, [loading, user?.id, resultType, thingsToAvoid, assessment]);
 
   const history = [...historyRows]
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
@@ -1513,6 +1595,46 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     setChecked((prev) => ({ ...prev, [statementId]: !prev[statementId] }));
   }
 
+  function buildPrakritiDraft() {
+    return {
+      prakrutiType: resultType,
+      checked,
+      scores,
+      recommendationTexts: prakritiTextList(recItems),
+      avoidTexts: prakritiTextList(avoidItems),
+    };
+  }
+
+  function buildPrakritiSavePayload() {
+    const prakrutiType = resultType;
+    const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
+    return {
+      prakrutiType,
+      thingToAvoidIds: [],
+      recommendationTexts: prakritiTextList(recItems),
+      avoidTexts: prakritiTextList(avoidItems),
+      selectedQuestionIds,
+      scores,
+      forceNew,
+    };
+  }
+
+  async function persistPrakritiDraft() {
+    const userId = user?.id;
+    if (!userId) return null;
+    const prakrutiType = resultType;
+    if (!prakrutiType) {
+      onToast("Tick statements to determine Prakriti type first");
+      return null;
+    }
+    const saved = await saveUserPrakrutiAssessment(userId, buildPrakritiSavePayload());
+    setAssessment(saved);
+    setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+    applySavedGuideLists(saved, prakrutiType);
+    setForceNew(false);
+    return saved;
+  }
+
   async function savePrakriti() {
     const userId = user?.id;
     if (!userId) return;
@@ -1523,21 +1645,8 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
     try {
       setSaving(true);
-      const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
-      const saved = await saveUserPrakrutiAssessment(userId, {
-        prakrutiType,
-        thingToAvoidIds: [],
-        recommendationTexts: recItems.map((t) => String(t || "").trim()).filter(Boolean),
-        avoidTexts: avoidItems.map((t) => String(t || "").trim()).filter(Boolean),
-        selectedQuestionIds,
-        scores,
-        forceNew,
-      });
-      setAssessment(saved);
-      setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      setForceNew(false);
-      markListsEdited();
-      onToast("Prakriti assessment saved");
+      await persistPrakritiDraft();
+      onToast("Prakriti saved (draft only — not in the client app until Push to App)");
     } catch (err) {
       onToast(err?.message || "Failed to save Prakriti assessment");
     } finally {
@@ -1545,16 +1654,19 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
   }
 
-  async function saveAvoidSection() {
+  async function saveGuideSection(which) {
     const userId = user?.id;
     if (!userId) return;
     const prakrutiType = resultType;
     if (!prakrutiType) {
-      onToast("Save the Prakriti assessment first");
+      onToast("Tick statements to determine Prakriti type first");
       return;
     }
+    const setBusy = which === "rec" ? setSavingRec : setSavingAvoid;
+    const successMessage = which === "rec" ? "Recommendations saved" : "Things to avoid saved";
+    const errorMessage = which === "rec" ? "Failed to save recommendations" : "Failed to save things to avoid";
     try {
-      setSavingAvoid(true);
+      setBusy(true);
       const selectedQuestionIds = Array.isArray(assessment?.selectedQuestionIds) && assessment.selectedQuestionIds.length
         ? assessment.selectedQuestionIds
         : Object.keys(checked).filter((id) => checked[id]);
@@ -1569,14 +1681,79 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       });
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      markListsEdited();
-      onToast("Things to avoid saved");
+      applySavedGuideLists(saved, prakrutiType);
+      onToast(`${successMessage} (draft only — use Push to App to publish)`);
     } catch (err) {
-      onToast(err?.message || "Failed to save things to avoid");
+      onToast(err?.message || errorMessage);
     } finally {
-      setSavingAvoid(false);
+      setBusy(false);
     }
   }
+
+  function requestPushPrakritiToApp() {
+    if (!resultType) {
+      onToast("Tick statements to determine Prakriti type first");
+      return;
+    }
+    if (!assessment?.id) {
+      onToast("Save Prakriti assessment first, then push to app");
+      return;
+    }
+    setPrakritiPushOpen(true);
+  }
+
+  async function pushPrakritiToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    if (!resultType) {
+      onToast("Tick statements to determine Prakriti type first");
+      setPrakritiPushOpen(false);
+      return;
+    }
+    try {
+      setPushing(true);
+      const draft = buildPrakritiDraft();
+      let saved = assessment;
+      if (!saved?.id || !prakritiDraftMatchesSaved(draft, saved)) {
+        saved = await persistPrakritiDraft();
+        if (!saved) return;
+      }
+      if (saved.pushedAt && prakritiDraftMatchesPublished(draft, saved)) {
+        onToast("Prakruti already matches what's in the client app");
+        return;
+      }
+      const result = await publishUserPrakrutiAssessment(userId);
+      const published = result?.assessment || saved;
+      if (!published?.pushedAt) {
+        onToast("Push did not complete — try again or check the network tab");
+        return;
+      }
+      setAssessment(published);
+      setHistoryRows((prev) => [published, ...prev.filter((row) => row.id !== published.id)]);
+      applySavedGuideLists(published, resultType);
+      onToast(result?.message || "Pushed Prakruti to client app");
+    } catch (err) {
+      onToast(err?.message || "Failed to push Prakruti to app");
+    } finally {
+      setPushing(false);
+      setPrakritiPushOpen(false);
+    }
+  }
+
+  const prakritiDraft = buildPrakritiDraft();
+  const hasUnsavedPrakriti = assessment?.id
+    ? !prakritiDraftMatchesSaved(prakritiDraft, assessment)
+    : Boolean(resultType);
+  const hasUnpushedPrakriti = !assessment?.pushedAt
+    || !prakritiDraftMatchesPublished(prakritiDraft, assessment);
+  const prakritiPushPending = hasUnsavedPrakriti || hasUnpushedPrakriti;
+  const prakritiPushHint = hasUnsavedPrakriti
+    ? "You have unsaved Prakriti changes — save first, then push to the client app."
+    : hasUnpushedPrakriti
+      ? "Saved changes are not in the client app yet — push when ready."
+      : "";
+  const clientFirstName = String(user?.name || "client").split(" ")[0];
+  const prakritiPushDisabled = saving || savingRec || savingAvoid || pushing || !resultType || !assessment?.id;
 
   if (loading) {
     return (
@@ -1669,6 +1846,10 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         </div>
       ) : null}
 
+      {showGuidance && canWrite && prakritiPushPending && prakritiPushHint ? (
+        <p className="ua-cp-launch-prakriti-hint ua-cp-launch-prakriti-hint--push">{prakritiPushHint}</p>
+      ) : null}
+
       {showGuidance ? (
       <div className="ua-cp-launch-guide-grid">
         <div className="ua-cp-launch-guide ua-cp-launch-guide--rec">
@@ -1717,16 +1898,34 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
             )}
           </div>
           {canWrite ? (
-            <button
-              type="button"
-              className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
-              onClick={() => {
-                markListsEdited();
-                setRecItems((prev) => [...prev, ""]);
-              }}
-            >
-              + Add recommendation
-            </button>
+            <div className="ua-cp-launch-guide__foot">
+              <button
+                type="button"
+                className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
+                onClick={() => {
+                  markListsEdited();
+                  setRecItems((prev) => [...prev, ""]);
+                }}
+              >
+                + Add recommendation
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--sm ua-cp-launch-guide__save ua-cp-launch-guide__save--rec"
+                disabled={savingRec || saving || savingAvoid || pushing}
+                onClick={() => saveGuideSection("rec")}
+              >
+                {savingRec ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm ua-cp-launch-guide__push"
+                disabled={prakritiPushDisabled}
+                onClick={requestPushPrakritiToApp}
+              >
+                {pushing ? "Pushing…" : "Push to App"}
+              </button>
+            </div>
           ) : null}
         </div>
 
@@ -1790,16 +1989,36 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
               <button
                 type="button"
                 className="ua-cp-btn ua-cp-btn--sm ua-cp-launch-guide__save"
-                disabled={savingAvoid || saving}
-                onClick={saveAvoidSection}
+                disabled={savingAvoid || saving || savingRec || pushing}
+                onClick={() => saveGuideSection("avoid")}
               >
                 {savingAvoid ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm ua-cp-launch-guide__push"
+                disabled={prakritiPushDisabled}
+                onClick={requestPushPrakritiToApp}
+              >
+                {pushing ? "Pushing…" : "Push to App"}
               </button>
             </div>
           ) : null}
         </div>
       </div>
       ) : null}
+      <ConfirmDialog
+        open={prakritiPushOpen}
+        tag="Prakriti type"
+        title={`Push Prakriti to ${clientFirstName}'s app?`}
+        body={`This publishes the Prakriti result, recommendations, and things to avoid for ${clientFirstName} in the app. Unsaved edits are saved first.`}
+        cancelLabel="Cancel"
+        confirmLabel={pushing ? "Pushing…" : "Push to App"}
+        onCancel={() => {
+          if (!pushing) setPrakritiPushOpen(false);
+        }}
+        onConfirm={pushPrakritiToApp}
+      />
     </div>
   );
 }

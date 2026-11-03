@@ -9,6 +9,15 @@ function tracksPath(userId, suffix = "") {
   return `/account/heal-users/${encodeURIComponent(userId)}/heal-consultancy-tracks${suffix}`;
 }
 
+export async function fetchCalendarCounsellingTracks() {
+  try {
+    const { data } = await api.get("/account/heal-consultancy-tracks/calendar", headers());
+    return data.tracks || [];
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchHealConsultancyTracks(userId, { page = 1, limit = 20 } = {}) {
   try {
     const { data } = await api.get(tracksPath(userId), {

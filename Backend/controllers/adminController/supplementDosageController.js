@@ -17,7 +17,7 @@ const {
   normalizeLogDate,
 } = require("../../models/userSupplementDosageLogModel");
 const {
-  dispatchSupplementDosageAssignedNotification,
+  dispatchSupplementDosagesPublishedNotification,
 } = require("../../services/notificationDispatchService");
 const {
   readUserIdParam,
@@ -142,16 +142,13 @@ exports.publishCoachUserSupplementDosagesController = asyncHandler(async (req, r
   }
 
   const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
-  for (const dosage of published) {
-    dispatchSupplementDosageAssignedNotification({
-      userId,
-      coachName: coach?.name || "Your coach",
-      dosageId: dosage?.id,
-      supplementName: dosage?.name || "Nutrition",
-    }).catch((err) => {
-      console.error("Supplement dosage notification failed:", err?.message || err);
-    });
-  }
+  dispatchSupplementDosagesPublishedNotification({
+    userId,
+    coachName: coach?.name || "Your coach",
+    dosages: published,
+  }).catch((err) => {
+    console.error("Supplement dosage notification failed:", err?.message || err);
+  });
 
   const hydrated = await hydrateDosagesWithProgress(
     await listUserSupplementDosagesByUserId(userId, { includeDraft: true }),

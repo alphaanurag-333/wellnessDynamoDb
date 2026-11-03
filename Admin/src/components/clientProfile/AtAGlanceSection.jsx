@@ -376,7 +376,11 @@ function SupplementsBlock({ supplements, onNavigate }) {
             <div className="ua-cp-supp-expiry">
               <span>{s.date}</span>
               {s.daysLeft != null ? (
-                <span className={`ua-cp-days-left${s.urgent ? " ua-cp-days-left--urgent" : ""}`}>{s.daysLeft}d left</span>
+                <span
+                  className={`ua-cp-days-left${Number(s.daysLeft) <= 7 ? " ua-cp-days-left--urgent" : ""}`}
+                >
+                  {s.daysLeft}d left
+                </span>
               ) : null}
             </div>
           </div>

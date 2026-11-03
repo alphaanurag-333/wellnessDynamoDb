@@ -637,6 +637,19 @@ export async function saveUserPrakrutiAssessment(userId, payload) {
   }
 }
 
+export async function publishUserPrakrutiAssessment(userId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/prakruti-assessment/publish`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 function liveCatalogRows(rows) {
   return (Array.isArray(rows) ? rows : [])
     .map((row) => ({

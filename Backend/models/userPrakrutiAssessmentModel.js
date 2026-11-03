@@ -13,6 +13,12 @@ const {
   validateActiveThingToAvoidIds,
 } = require("./prakrutiThingToAvoidModel");
 const { listActivePrakrutiRecommendationsByType } = require("./prakrutiRecommendationModel");
+const {
+  publishedPrakrutiRow,
+  readDraftRecommendationTexts,
+  readDraftAvoidTexts,
+  withAdminDraftGuideFields,
+} = require("../utils/prakrutiUserAppView");
 
 const TABLE = "UserPrakrutiAssessment";
 const CREATED_BY_ROLES = new Set(["wellness_coach", "assistant_wellness_coach"]);
@@ -42,7 +48,31 @@ function normalizeTextList(value) {
   return value.map((t) => String(t || "").trim()).filter(Boolean);
 }
 
-function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendations = null) {
+function normalizePushedAt(value) {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    const err = new Error("pushedAt must be a valid ISO date");
+    err.name = "ValidationError";
+    throw err;
+  }
+  return d.toISOString();
+}
+
+function normalizeScoresField(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    vata: Number(value.vata) || 0,
+    pitta: Number(value.pitta) || 0,
+    kapha: Number(value.kapha) || 0,
+  };
+}
+
+function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendations = null, options = {}) {
+  const { forUserApp = false } = options;
   const row = withLegacyId(item);
   if (!row) return null;
   const thingToAvoidIds = normalizeThingToAvoidIds(row.thingToAvoidIds);
@@ -59,6 +89,9 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
         kapha: Number(row.scores.kapha) || 0,
       }
     : null;
+
+  const pushedType = normalizePrakrutiType(row.pushedPrakrutiType) || row.pushedPrakrutiType || null;
+  const pushedAt = row.pushedAt ? normalizePushedAt(row.pushedAt) : null;
 
   const base = {
     id: row.id,
@@ -78,17 +111,34 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
     updatedAt: row.updatedAt,
   };
 
+  if (!forUserApp) {
+    base.pushedAt = pushedAt;
+    base.pushedPrakrutiType = pushedType;
+    base.pushedPrakrutiTypeLabel = pushedType ? prakrutiTypeLabel(pushedType) : null;
+    base.pushedThingToAvoidIds = normalizeThingToAvoidIds(row.pushedThingToAvoidIds);
+    base.pushedSelectedQuestionIds = Array.isArray(row.pushedSelectedQuestionIds)
+      ? row.pushedSelectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean)
+      : [];
+    base.pushedRecommendationTexts = normalizeTextList(row.pushedRecommendationTexts);
+    base.pushedAvoidTexts = normalizeTextList(row.pushedAvoidTexts);
+    base.pushedScores = normalizeScoresField(row.pushedScores);
+  }
+
   if (thingsToAvoid !== null) {
     base.thingsToAvoid = thingsToAvoid;
-    base.thingsToAvoidTitles = avoidTexts.length
+    base.thingsToAvoidTitles = forUserApp
       ? avoidTexts
-      : thingsToAvoid.map((t) => t.title);
+      : avoidTexts.length
+        ? avoidTexts
+        : thingsToAvoid.map((t) => t.title);
   }
   if (recommendations !== null) {
-    base.recommendations = recommendations;
-    base.recommendationTitles = recommendationTexts.length
+    base.recommendations = forUserApp ? [] : recommendations;
+    base.recommendationTitles = forUserApp
       ? recommendationTexts
-      : recommendations.map((r) => r.title);
+      : recommendationTexts.length
+        ? recommendationTexts
+        : recommendations.map((r) => r.title);
   }
 
   return base;
@@ -96,13 +146,82 @@ function toUserPrakrutiAssessmentPublic(item, thingsToAvoid = null, recommendati
 
 async function enrichAssessmentPublic(item) {
   if (!item) return null;
-  const thingToAvoidIds = normalizeThingToAvoidIds(item.thingToAvoidIds);
+  const draftRow = withAdminDraftGuideFields(item);
+  const thingToAvoidIds = normalizeThingToAvoidIds(draftRow.thingToAvoidIds);
   const thingsToAvoid = thingToAvoidIds.length
     ? await getActivePrakrutiThingsToAvoidByIds(thingToAvoidIds)
     : [];
-  const type = normalizePrakrutiType(item.prakrutiType);
+  const type = normalizePrakrutiType(draftRow.prakrutiType);
   const recommendations = type ? await listActivePrakrutiRecommendationsByType(type) : [];
-  return toUserPrakrutiAssessmentPublic(item, thingsToAvoid, recommendations);
+  return toUserPrakrutiAssessmentPublic(draftRow, thingsToAvoid, recommendations);
+}
+
+async function enrichAssessmentPublicForUser(item) {
+  if (!item) return null;
+  const published = publishedPrakrutiRow(item);
+  if (!published?.pushedAt || !published.prakrutiType) return null;
+
+  const thingToAvoidIds = normalizeThingToAvoidIds(published.thingToAvoidIds);
+  const thingsToAvoid = thingToAvoidIds.length
+    ? await getActivePrakrutiThingsToAvoidByIds(thingToAvoidIds)
+    : [];
+
+  return toUserPrakrutiAssessmentPublic(published, thingsToAvoid, [], { forUserApp: true });
+}
+
+async function pushUserPrakrutiAssessmentToApp(userId) {
+  const uid = String(userId || "").trim();
+  if (!uid) {
+    const err = new Error("userId is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const existing = await getLatestUserPrakrutiAssessmentByUserId(uid);
+  if (!existing) {
+    const err = new Error("Prakruti assessment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const type = normalizePrakrutiType(existing.prakrutiType) || existing.prakrutiType;
+  const thingToAvoidIds = normalizeThingToAvoidIds(existing.thingToAvoidIds);
+  const selectedQuestionIds = Array.isArray(existing.selectedQuestionIds)
+    ? existing.selectedQuestionIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  const recommendationTexts = readDraftRecommendationTexts(existing);
+  const avoidTexts = readDraftAvoidTexts(existing);
+  const scores = normalizeScoresField(existing.scores);
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: existing.id },
+      UpdateExpression:
+        "SET pushedPrakrutiType = :pushedPrakrutiType, pushedThingToAvoidIds = :pushedThingToAvoidIds, pushedSelectedQuestionIds = :pushedSelectedQuestionIds, pushedRecommendationTexts = :pushedRecommendationTexts, pushedAvoidTexts = :pushedAvoidTexts, pushedScores = :pushedScores, pushedAt = :pushedAt, #recommendationTexts = :recommendationTexts, #avoidTexts = :avoidTexts, updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#recommendationTexts": "recommendationTexts",
+        "#avoidTexts": "avoidTexts",
+      },
+      ExpressionAttributeValues: {
+        ":pushedPrakrutiType": type,
+        ":pushedThingToAvoidIds": thingToAvoidIds,
+        ":pushedSelectedQuestionIds": selectedQuestionIds,
+        ":pushedRecommendationTexts": recommendationTexts,
+        ":pushedAvoidTexts": avoidTexts,
+        ":pushedScores": scores,
+        ":pushedAt": now,
+        ":recommendationTexts": recommendationTexts,
+        ":avoidTexts": avoidTexts,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return enrichAssessmentPublic(Attributes);
 }
 
 async function queryAssessmentsByUserId(userId) {
@@ -185,12 +304,13 @@ async function upsertUserPrakrutiAssessment({
   const existing = forceNew ? null : await getLatestUserPrakrutiAssessmentByUserId(uid);
 
   if (existing) {
+    // Draft save only — guide lists go to draft* fields; app-visible recommendationTexts/avoidTexts update on Push only.
     const exprNames = {
       "#prakrutiType": "prakrutiType",
       "#thingToAvoidIds": "thingToAvoidIds",
       "#selectedQuestionIds": "selectedQuestionIds",
-      "#recommendationTexts": "recommendationTexts",
-      "#avoidTexts": "avoidTexts",
+      "#draftRecommendationTexts": "draftRecommendationTexts",
+      "#draftAvoidTexts": "draftAvoidTexts",
       "#scores": "scores",
       "#coachId": "coachId",
       "#createdByRole": "createdByRole",
@@ -201,8 +321,8 @@ async function upsertUserPrakrutiAssessment({
       ":prakrutiType": type,
       ":thingToAvoidIds": validatedIds,
       ":selectedQuestionIds": questionIds,
-      ":recommendationTexts": nextRecommendationTexts,
-      ":avoidTexts": nextAvoidTexts,
+      ":draftRecommendationTexts": nextRecommendationTexts,
+      ":draftAvoidTexts": nextAvoidTexts,
       ":scores": nextScores,
       ":coachId": String(coachId || "").trim(),
       ":createdByRole": normalizeCreatedByRole(createdByRole),
@@ -215,7 +335,7 @@ async function upsertUserPrakrutiAssessment({
         TableName: TABLE,
         Key: { id: existing.id },
         UpdateExpression:
-          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #selectedQuestionIds = :selectedQuestionIds, #recommendationTexts = :recommendationTexts, #avoidTexts = :avoidTexts, #scores = :scores, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
+          "SET #prakrutiType = :prakrutiType, #thingToAvoidIds = :thingToAvoidIds, #selectedQuestionIds = :selectedQuestionIds, #draftRecommendationTexts = :draftRecommendationTexts, #draftAvoidTexts = :draftAvoidTexts, #scores = :scores, #coachId = :coachId, #createdByRole = :createdByRole, #createdById = :createdById, #updatedAt = :updatedAt",
         ExpressionAttributeNames: exprNames,
         ExpressionAttributeValues: exprValues,
         ConditionExpression: "attribute_exists(id)",
@@ -232,8 +352,10 @@ async function upsertUserPrakrutiAssessment({
     prakrutiType: type,
     thingToAvoidIds: validatedIds,
     selectedQuestionIds: questionIds,
-    recommendationTexts: nextRecommendationTexts,
-    avoidTexts: nextAvoidTexts,
+    draftRecommendationTexts: nextRecommendationTexts,
+    draftAvoidTexts: nextAvoidTexts,
+    recommendationTexts: [],
+    avoidTexts: [],
     scores: nextScores,
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: String(createdById || "").trim(),
@@ -257,6 +379,8 @@ module.exports = {
   normalizePrakrutiTypeField,
   toUserPrakrutiAssessmentPublic,
   enrichAssessmentPublic,
+  enrichAssessmentPublicForUser,
+  pushUserPrakrutiAssessmentToApp,
   getLatestUserPrakrutiAssessmentByUserId,
   getUserPrakrutiAssessmentById,
   upsertUserPrakrutiAssessment,

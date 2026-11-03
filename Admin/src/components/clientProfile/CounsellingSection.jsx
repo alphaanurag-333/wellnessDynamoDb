@@ -17,7 +17,10 @@ import {
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
-import { mergeMeetingsWithOrphanTracks } from "../../utils/counsellingReviewHistory.js";
+import {
+  mergeMeetingsWithOrphanTracks,
+  reviewScheduleByLabel,
+} from "../../utils/counsellingReviewHistory.js";
 import { COUNSELLING_ACTIVITY_EVENT } from "../../utils/counsellingLiveRefresh.js";
 import { useInbox } from "../../context/InboxContext.jsx";
 
@@ -109,11 +112,6 @@ function formatReviewScheduledColumn(calendarDay, instant) {
   return "—";
 }
 
-function reviewScheduleByLabel(meeting) {
-  const role = String(meeting?.initiatedByRole || "").toLowerCase();
-  return role === "client" ? "Client" : "You";
-}
-
 function reviewTrackingStatusLabel(meeting) {
   const session = String(meeting?.sessionStatus || "").toLowerCase();
   if (session === "complete") return "Completed";
@@ -181,6 +179,7 @@ export function CounsellingSection({ user, onToast }) {
   const { loadInbox } = useInbox();
   const { canCreate, canEdit, canDelete } = useClientSectionPermissions("counselling");
   const canManage = canCreate || canEdit;
+  const canCancel = canEdit || canDelete;
   const userId = String(user?.id || user?._id || "").trim();
   const [meetings, setMeetings] = useState([]);
   const [meetingsLoading, setMeetingsLoading] = useState(Boolean(userId));
@@ -567,7 +566,7 @@ export function CounsellingSection({ user, onToast }) {
                     Mark completed
                   </button>
                 ) : null}
-                {canDelete ? (
+                {canCancel ? (
                   <button
                     type="button"
                     className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm"
@@ -743,7 +742,7 @@ export function CounsellingSection({ user, onToast }) {
                       Mark completed
                     </button>
                   ) : null}
-                  {canDelete ? (
+                  {canCancel ? (
                     <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={() => askCancel(activeTrack)} disabled={busy}>
                       Cancel
                     </button>
@@ -753,7 +752,7 @@ export function CounsellingSection({ user, onToast }) {
             </div>
           ) : null}
 
-          {canDelete && activeTrack.status !== "scheduled" && activeTrack.status !== "requested" ? (
+          {canCancel && activeTrack.status !== "scheduled" && activeTrack.status !== "requested" ? (
             <div className="ua-cp-counselling__foot">
               <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-btn--danger" onClick={() => askCancel(activeTrack)} disabled={busy}>
                 Cancel request

@@ -2065,26 +2065,6 @@ export function NutritionsSection({ user, onToast }) {
               </div>
 
               <div className="ua-cp-fulfil ua-cp-fulfil--nested">
-                <div className="ua-cp-fulfil__label">Fulfilment option (shown in user app)</div>
-                <div className="ua-cp-fulfil__options">
-                  <button
-                    type="button"
-                    disabled
-                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption !== "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
-                  >
-                    <strong>Send it to me</strong>
-                    <span>Request delivery from coach</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className={`ua-cp-fulfil__opt${currentRecommendation.deliveryOption === "self_billing" ? " ua-cp-fulfil__opt--active" : ""}`}
-                  >
-                    <strong>Self billing</strong>
-                    <span>Client buys &amp; uploads bill (PDF)</span>
-                  </button>
-                </div>
-
                 {currentRecommendation.deliveryOption !== "self_billing" ? (
                   <div className={`ua-cp-nut-place-order${clientConfirmedNutritionOrder ? "" : " ua-cp-nut-place-order--waiting"}`}>
                     <div className="ua-cp-rec-slot-label ua-cp-nut-place-order__label">3 · Place order</div>

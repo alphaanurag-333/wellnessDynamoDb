@@ -466,7 +466,7 @@ function buildSupplements(dosages, today) {
       })),
       date: endDate ? shortDateLabel(endDate) : EMPTY,
       daysLeft: daysLeft != null ? daysLeft : null,
-      urgent: daysLeft != null && daysLeft <= 3,
+      urgent: daysLeft != null && daysLeft <= 7,
     };
   });
   return {

@@ -163,6 +163,9 @@ export function mapDietAssignment(row) {
     plans: (Array.isArray(row.plans) ? row.plans : []).map(mapCatalogPlan).filter(Boolean),
     personalisedSections,
     pdfUrl: row.pdfUrl || "",
+    publishedPdfUrl: row.publishedPdfUrl || "",
+    pushedAt: row.pushedAt || null,
+    hasUnpublishedChanges: row.hasUnpublishedChanges === true,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -273,6 +276,26 @@ export async function deleteUserDietPlanAssignment(userId, assignmentId) {
     await api.delete(`${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}`, {
       headers: authHeader(tokenOrStored()),
     });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserPersonalisedDietPlan(userId, assignmentId) {
+  if (!assignmentId) {
+    throw new Error("assignmentId is required to push a diet plan");
+  }
+  try {
+    const { data } = await api.post(
+      `${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}/publish`,
+      {},
+      { headers: authHeader(tokenOrStored()) },
+    );
+    const assignment = mapDietAssignment(data.assignment);
+    if (assignment && data.personalisedSections) {
+      assignment.personalisedSections = mapPersonalisedSections(data.personalisedSections);
+    }
+    return { assignment, message: data.message };
   } catch (error) {
     normalizeApiError(error);
   }
