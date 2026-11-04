@@ -16,6 +16,7 @@ import {
 } from "../../api/supplementAssignmentApi.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
+import { formatSupplementQuantityLabel } from "../../utils/supplementUnitLabel.js";
 
 const MAX_TIMINGS = 1;
 const MAX_DAY_PARTS = 1;
@@ -141,8 +142,9 @@ function validatePeriodsAgainstPackSize(packSize, periods, unit = "") {
   const totalPerDay = totalQuantityPerDay(periods);
   if (size <= 0 || totalPerDay <= 0) return null;
   if (totalPerDay > size) {
-    const unitLabel = unit ? ` ${unit}` : "";
-    return `Daily total (${totalPerDay}${unitLabel}) exceeds pack size (${size}${unitLabel}). Lower the amount or remove a timing.`;
+    const dailyLabel = formatSupplementQuantityLabel(totalPerDay, unit);
+    const packLabel = formatSupplementQuantityLabel(size, unit);
+    return `Daily total (${dailyLabel}) exceeds pack size (${packLabel}). Lower the amount or remove a timing.`;
   }
   return null;
 }
@@ -437,7 +439,7 @@ function resolveDosageSchedule(dosage) {
 
   const unit = String(dosage?.unit || "").trim();
   const packMeta = packSize > 0 && durationDays > 0
-    ? `Pack ${packSize}${unit ? ` ${unit}` : ""} · ${durationDays}-day supply`
+    ? `Pack ${formatSupplementQuantityLabel(packSize, unit)} · ${durationDays}-day supply`
     : "";
 
   return {
@@ -543,7 +545,7 @@ function mapDosageToCard(dosage) {
   return {
     id: dosage.id,
     name: dosage.name,
-    daily: `${dosage.totalPerDay} ${dosage.unit}`.trim(),
+    daily: formatSupplementQuantityLabel(dosage.totalPerDay, dosage.unit),
     range: formatDateRange(schedule.startDate, schedule.endDate),
     packMeta: schedule.packMeta,
     pct,
@@ -552,7 +554,7 @@ function mapDosageToCard(dosage) {
     meals: (dosage.periods || []).map((period) => ({
       periodKey: period.period,
       label: formatPeriodCardLabel(period),
-      amount: `${period.quantity} ${dosage.unit}`.trim(),
+      amount: formatSupplementQuantityLabel(period.quantity, dosage.unit),
       done: Boolean(period.completed),
       count: period.quantity,
     })),

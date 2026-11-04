@@ -125,11 +125,26 @@ function buildPersonalisedPlanSnapshot(sections) {
   };
 }
 
-function sectionsFromAssignment(assignment) {
-  const plans = Array.isArray(assignment?.plans) ? assignment.plans : [];
+function resolveAssignmentPlansForSections(assignment, { published = false } = {}) {
+  if (published) {
+    const publishedPlans = Array.isArray(assignment?.publishedPlans) ? assignment.publishedPlans : [];
+    if (publishedPlans.length) return publishedPlans;
+  }
+  return Array.isArray(assignment?.plans) ? assignment.plans : [];
+}
+
+function sectionsFromPlansList(plans) {
   const personalised = plans.find((plan) => String(plan?.planId || "") === PERSONALISED_PLAN_ID) || plans[0];
   if (!personalised?.meals?.length) return [];
   return mealsToSections(personalised.meals);
+}
+
+function sectionsFromAssignment(assignment) {
+  return sectionsFromPlansList(resolveAssignmentPlansForSections(assignment));
+}
+
+function sectionsFromPublishedAssignment(assignment) {
+  return sectionsFromPlansList(resolveAssignmentPlansForSections(assignment, { published: true }));
 }
 
 module.exports = {
@@ -139,4 +154,5 @@ module.exports = {
   mealsToSections,
   buildPersonalisedPlanSnapshot,
   sectionsFromAssignment,
+  sectionsFromPublishedAssignment,
 };

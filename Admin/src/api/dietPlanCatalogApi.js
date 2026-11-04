@@ -166,6 +166,7 @@ export function mapDietAssignment(row) {
     publishedPdfUrl: row.publishedPdfUrl || "",
     pushedAt: row.pushedAt || null,
     hasUnpublishedChanges: row.hasUnpublishedChanges === true,
+    archived: row.archived === true,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -225,9 +226,13 @@ export async function saveUserPersonalisedDietPlan(userId, { sections, assignmen
   const payload = {
     personalised: true,
     sections: mapPersonalisedSections(sections),
-    startDate: startDate || todayIsoDate(),
     note: note || undefined,
   };
+  if (!assignmentId) {
+    payload.startDate = startDate || todayIsoDate();
+  } else if (startDate) {
+    payload.startDate = startDate;
+  }
   try {
     if (assignmentId) {
       const { data } = await api.patch(

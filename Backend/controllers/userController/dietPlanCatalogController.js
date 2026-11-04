@@ -1,7 +1,9 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
-  listClientVisibleCoachAssignedDietPlansByUserId,
+  getCoachAssignedDietPlanRecordById,
+  listUserAppDietPlanSplit,
+  toCoachAssignedDietPlanPublic,
 } = require("../../models/coachAssignedDietPlanModel");
 const { getUserById, isDietPlanEnabled } = require("../../models/userModel");
 const {
@@ -27,8 +29,8 @@ exports.getUserAssignedDietPlansController = asyncHandler(async (req, res) => {
     });
   }
 
-  const assignments = await listClientVisibleCoachAssignedDietPlansByUserId(userId);
-  const payload = buildUserDietPlansListPayload(assignments);
+  const { recommended, history } = await listUserAppDietPlanSplit(userId);
+  const payload = buildUserDietPlansListPayload(recommended, history);
 
   return res.status(200).json({
     status: true,
@@ -49,9 +51,15 @@ exports.getUserAssignedDietPlanByIdController = asyncHandler(async (req, res) =>
   }
 
   const assignmentId = String(req.params.id || "").trim();
-  const assignments = await listClientVisibleCoachAssignedDietPlansByUserId(userId);
-  const assignment = assignments.find((row) => String(row.id || row._id) === assignmentId);
+  const record = await getCoachAssignedDietPlanRecordById(assignmentId);
+  if (!record || String(record.userId || "") !== String(userId)) {
+    throw new AppError("Diet plan assignment not found", 404);
+  }
 
+  const assignment = toCoachAssignedDietPlanPublic(record, {
+    audience: "user",
+    includeArchivedHistory: true,
+  });
   if (!assignment) {
     throw new AppError("Diet plan assignment not found", 404);
   }

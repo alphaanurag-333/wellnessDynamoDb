@@ -27,19 +27,18 @@ function enrichDietPlanAssignmentForUserApp(assignment) {
   };
 }
 
-function buildUserDietPlansListPayload(assignments) {
-  const list = (Array.isArray(assignments) ? assignments : [])
+function buildUserDietPlansListPayload(recommended, history = []) {
+  const active = recommended ? enrichDietPlanAssignmentForUserApp(recommended) : null;
+  const historyList = (Array.isArray(history) ? history : [])
     .map(enrichDietPlanAssignmentForUserApp)
     .filter(Boolean);
-  const recommended = list[0] || null;
-  const personalisedSections = recommended?.personalisedSections || [];
 
   return {
-    recommended,
-    history: list.length > 1 ? list.slice(1) : [],
-    assignments: list,
-    assignment: recommended,
-    personalisedSections,
+    recommended: active,
+    history: historyList,
+    assignments: active ? [active, ...historyList] : historyList,
+    assignment: active,
+    personalisedSections: active?.personalisedSections || [],
   };
 }
 

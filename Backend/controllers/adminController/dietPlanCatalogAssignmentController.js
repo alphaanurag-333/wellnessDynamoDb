@@ -9,7 +9,11 @@ const {
   isLegacyPublishedAssignment,
 } = require("../../models/coachAssignedDietPlanModel");
 const { deleteStoredMedia } = require("../../utils/s3");
-const { sectionsFromAssignment } = require("../../utils/personalisedDietPlan");
+const {
+  sectionsFromAssignment,
+  sectionsFromPublishedAssignment,
+} = require("../../utils/personalisedDietPlan");
+const { splitCoachDietPlanAssignmentsForAdmin } = require("../../utils/dietPlanAdminList");
 const {
   updateUser,
   toPublicUser,
@@ -44,16 +48,20 @@ exports.listCoachUserDietPlanAssignmentsController = asyncHandler(async (req, re
   assertHealTierUser(user);
 
   const assignments = await listCoachAssignedDietPlansByUserId(userId);
-
-  const recommended = assignments[0] || null;
+  const { active, history } = splitCoachDietPlanAssignmentsForAdmin(assignments);
+  const recommended = active;
   const personalisedSections = recommended ? sectionsFromAssignment(recommended) : [];
+  const historyWithSections = history.map((entry) => ({
+    ...entry,
+    personalisedSections: sectionsFromPublishedAssignment(entry),
+  }));
 
   return res.status(200).json({
     status: true,
     message: "Diet plan assignments fetched successfully",
-    assignments,
+    assignments: recommended ? [recommended, ...historyWithSections] : historyWithSections,
     recommended,
-    history: assignments.length > 1 ? assignments.slice(1) : [],
+    history: historyWithSections,
     dietPlanEnabled: isDietPlanEnabled(user),
     personalisedSections,
   });
@@ -144,7 +152,7 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
   const existing = await loadAssignmentForUser(assignmentId, userId);
 
   const plans = await resolveAssignmentPlans(req.body);
-  const startDate = parseStartDate(req.body) || existing.startDate;
+  const startDateFromBody = parseStartDate(req.body);
   const note = parseNote(req.body);
 
   const legacyPublishedSnapshot = isLegacyPublishedAssignment(existing)
@@ -152,7 +160,6 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
     ? {
       publishedPlans: existing.plans,
       publishedPdfKey: existing.pdfKey,
-      pushedAt: existing.pushedAt || existing.updatedAt || existing.createdAt,
     }
     : null;
 
@@ -160,7 +167,7 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
   try {
     assignment = await updateCoachAssignedDietPlan(assignmentId, {
       plans,
-      startDate,
+      ...(startDateFromBody ? { startDate: startDateFromBody } : {}),
       ...(legacyPublishedSnapshot || {}),
       ...(note !== undefined ? { note } : {}),
     });
@@ -196,6 +203,33 @@ exports.publishCoachUserDietPlanAssignmentController = asyncHandler(async (req, 
     throw new AppError("Save a diet plan before pushing to the client app", 400);
   }
 
+  const previousPublishedPlans = Array.isArray(existing.publishedPlans) && existing.publishedPlans.length
+    ? existing.publishedPlans
+    : (isLegacyPublishedAssignment(existing) ? existing.plans : null);
+  const previousPushedAt = String(existing.pushedAt || "").trim();
+  const previousPdfKey = String(existing.publishedPdfKey || existing.pdfKey || "").trim();
+
+  if (previousPushedAt && previousPublishedPlans?.length && previousPdfKey) {
+    try {
+      await createCoachAssignedDietPlan({
+        userId,
+        coachId: resolveCoachIdForUser(user),
+        startDate: existing.startDate,
+        note: existing.note,
+        plans: previousPublishedPlans,
+        publishedPlans: previousPublishedPlans,
+        pdfKey: previousPdfKey,
+        publishedPdfKey: previousPdfKey,
+        pushedAt: previousPushedAt,
+        archived: true,
+        createdByRole: req.auth?.role || "wellness_coach",
+        createdById: actingCoachId,
+      });
+    } catch (err) {
+      handleValidationError(err);
+    }
+  }
+
   const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
   const startDate = existing.startDate;
   const note = existing.note;
@@ -214,12 +248,14 @@ exports.publishCoachUserDietPlanAssignmentController = asyncHandler(async (req, 
 
   let assignment;
   const pushedAt = new Date().toISOString();
+  const publishedStartDate = pushedAt.slice(0, 10);
   try {
     assignment = await updateCoachAssignedDietPlan(assignmentId, {
       publishedPlans: draftPlans,
       publishedPdfKey,
       pdfKey: publishedPdfKey,
       pushedAt,
+      startDate: publishedStartDate,
     });
   } catch (err) {
     if (publishedPdfKey) {

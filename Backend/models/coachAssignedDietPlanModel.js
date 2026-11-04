@@ -76,7 +76,16 @@ function isLegacyPublishedAssignment(item) {
 }
 
 function isVisibleInClientApp(item) {
+  if (item?.archived === true) return false;
   return Boolean(String(item?.pushedAt || "").trim()) || isLegacyPublishedAssignment(item);
+}
+
+function isUserAccessibleDietPlanRow(item) {
+  if (!item) return false;
+  if (item.archived === true) {
+    return Boolean(String(item.pushedAt || "").trim());
+  }
+  return isVisibleInClientApp(item);
 }
 
 function draftDiffersFromPublished(item) {
@@ -112,7 +121,7 @@ function resolvePublishedPdfKey(item) {
   return null;
 }
 
-function toCoachAssignedDietPlanPublic(item, { audience = "admin" } = {}) {
+function toCoachAssignedDietPlanPublic(item, { audience = "admin", includeArchivedHistory = false } = {}) {
   const row = withLegacyId(item);
   if (!row) return null;
 
@@ -121,14 +130,19 @@ function toCoachAssignedDietPlanPublic(item, { audience = "admin" } = {}) {
   const publishedPdfKey = resolvePublishedPdfKey(row);
 
   if (audience === "user") {
-    if (!isVisibleInClientApp(row)) return null;
+    const allowed = includeArchivedHistory
+      ? isUserAccessibleDietPlanRow(row)
+      : isVisibleInClientApp(row);
+    if (!allowed) return null;
     const plans = resolvePublishedPlans(row);
+    const legacyPublished = isLegacyPublishedAssignment(row);
+    const publishedToApp = Boolean(String(pushedAt || "").trim()) || legacyPublished;
     return {
       id: row.id,
       _id: row._id,
       userId: row.userId,
       coachId: row.coachId,
-      startDate: row.startDate,
+      startDate: publishedToApp ? row.startDate : null,
       note: row.note ?? null,
       plans,
       pdfKey: publishedPdfKey,
@@ -137,7 +151,7 @@ function toCoachAssignedDietPlanPublic(item, { audience = "admin" } = {}) {
       createdById: row.createdById,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      pushedAt,
+      pushedAt: String(pushedAt || "").trim() || null,
     };
   }
 
@@ -155,6 +169,7 @@ function toCoachAssignedDietPlanPublic(item, { audience = "admin" } = {}) {
     publishedPdfUrl: publishedPdfKey ? resolvePublicUrl(publishedPdfKey) : null,
     pushedAt,
     hasUnpublishedChanges: draftDiffersFromPublished(row),
+    archived: row.archived === true,
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -169,6 +184,10 @@ async function createCoachAssignedDietPlan({
   note,
   plans,
   pdfKey,
+  publishedPlans,
+  publishedPdfKey,
+  pushedAt,
+  archived = false,
   createdByRole = "wellness_coach",
   createdById,
 }) {
@@ -195,6 +214,13 @@ async function createCoachAssignedDietPlan({
     updatedAt: now,
   };
   if (pdf) item.pdfKey = pdf;
+  if (archived === true) item.archived = true;
+  if (publishedPlans !== undefined) {
+    item.publishedPlans = normalizePlans(publishedPlans);
+  }
+  const publishedPdf = String(publishedPdfKey || "").trim();
+  if (publishedPdf) item.publishedPdfKey = publishedPdf;
+  if (pushedAt) item.pushedAt = String(pushedAt).trim();
 
   await docClient.send(
     new PutCommand({
@@ -257,9 +283,41 @@ async function listCoachAssignedDietPlansByUserId(userId, options = {}) {
 async function listClientVisibleCoachAssignedDietPlansByUserId(userId) {
   const items = await queryCoachAssignedDietPlansByUserId(userId);
   return items
-    .filter(isVisibleInClientApp)
+    .filter((row) => isVisibleInClientApp(row) && row?.archived !== true)
     .map((row) => toCoachAssignedDietPlanPublic(row, { audience: "user" }))
     .filter(Boolean);
+}
+
+async function listUserAppDietPlanSplit(userId) {
+  const items = await queryCoachAssignedDietPlansByUserId(userId);
+  const hasArchivedRows = items.some((row) => row?.archived === true);
+
+  let activeRecord = null;
+  let historyRecords = [];
+
+  if (hasArchivedRows) {
+    activeRecord = items.find((row) => !row?.archived && isVisibleInClientApp(row)) || null;
+    historyRecords = items
+      .filter((row) => row?.archived === true && String(row?.pushedAt || "").trim())
+      .sort((a, b) => {
+        const aTime = new Date(a?.pushedAt || a?.createdAt || 0).getTime();
+        const bTime = new Date(b.pushedAt || b?.createdAt || 0).getTime();
+        return bTime - aTime;
+      });
+  } else {
+    const visible = items.filter((row) => isVisibleInClientApp(row));
+    activeRecord = visible[0] || null;
+    historyRecords = visible.slice(1);
+  }
+
+  const recommended = activeRecord
+    ? toCoachAssignedDietPlanPublic(activeRecord, { audience: "user" })
+    : null;
+  const history = historyRecords
+    .map((row) => toCoachAssignedDietPlanPublic(row, { audience: "user", includeArchivedHistory: true }))
+    .filter(Boolean);
+
+  return { recommended, history };
 }
 
 async function updateCoachAssignedDietPlan(id, {
@@ -393,11 +451,13 @@ module.exports = {
   getCoachAssignedDietPlanRecordById,
   listCoachAssignedDietPlansByUserId,
   listClientVisibleCoachAssignedDietPlansByUserId,
+  listUserAppDietPlanSplit,
   deleteCoachAssignedDietPlan,
   updateCoachAssignedDietPlan,
   isDietPlanCatalogReferenced,
   toCoachAssignedDietPlanPublic,
   isVisibleInClientApp,
+  isUserAccessibleDietPlanRow,
   draftDiffersFromPublished,
   isLegacyPublishedAssignment,
   normalizeStartDate,

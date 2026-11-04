@@ -15,6 +15,7 @@ const {
   normalizePeriod,
 } = require("../../models/userSupplementDosageLogModel");
 const { parseCompositePeriod } = require("../../models/userSupplementDosageModel");
+const { formatSupplementQuantityLabel } = require("../../utils/supplementUnitLabel");
 
 const PERIOD_COLORS = {
   morning: "#F5A623",
@@ -105,7 +106,7 @@ async function hydrateDosageForUser(dosage, todayLogs, logDate) {
   const logs = await queryLogsByDosageId(dosage.id);
   const progressPercent = computeProgressPercent(dosage, logs);
   const todayCompletion = buildTodayCompletionMap(dosage, todayLogs, logDate);
-  const dailyDosageLabel = `${dosage.totalPerDay} ${dosage.unit}`;
+  const dailyDosageLabel = formatSupplementQuantityLabel(dosage.totalPerDay, dosage.unit);
 
   return {
     ...dosage,

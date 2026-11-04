@@ -29412,6 +29412,13 @@ scrollbar-width: thin;
   color: #5a6b85;
 }
 
+.updated-admin .ua-cp-food-diet__empty--create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .updated-admin .ua-cp-food-diet__note {
   margin: 0;
   font-size: 13px;
@@ -29557,6 +29564,40 @@ scrollbar-width: thin;
   border-radius: 10px;
   font-size: 12px;
   color: #3a4a63;
+}
+
+.updated-admin .ua-cp-food-diet-history__block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.updated-admin .ua-cp-food-diet-history__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.updated-admin .ua-cp-food-diet-history__link {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1b7f5c;
+  text-decoration: none;
+}
+
+.updated-admin .ua-cp-food-diet-history__link--btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.updated-admin .ua-cp-food-diet-history__preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px 4px;
 }
 
 .updated-admin .ua-cp-modal--meal-photo {
@@ -34955,16 +34996,29 @@ scrollbar-width: thin;
 }
 
 .updated-admin .ua-cp-reflect-question__score {
-  flex: 0 1 320px;
-  max-width: 100%;
-  min-width: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 8px;
+  flex: 0 0 280px;
+  width: 280px;
+  max-width: 280px;
+  min-width: 280px;
+  display: grid;
+  grid-template-columns: 52px 52px 56px auto;
+  align-items: end;
+  justify-content: end;
+  column-gap: 8px;
+  row-gap: 4px;
   font-size: 12px;
   color: #8a97ac;
   white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.updated-admin .ua-cp-reflect-question__score:not(:has(.ua-cp-reflect-field)) {
+  display: flex;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 320px;
+  gap: 8px;
 }
 
 .updated-admin .ua-cp-reflect-question__score input {
@@ -34991,17 +35045,26 @@ scrollbar-width: thin;
   color: #16233f;
 }
 
-.updated-admin .ua-cp-reflect-question__score > span {
+.updated-admin .ua-cp-reflect-question__score > span:not(.ua-cp-reflect-field) {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   height: 32px;
   line-height: 1;
 }
 
+.updated-admin .ua-cp-reflect-unit {
+  justify-self: start;
+}
+
 .updated-admin .ua-cp-reflect-question__score .ua-toggle {
-  align-self: flex-end;
+  justify-self: end;
+  align-self: end;
   margin-bottom: 6px;
+}
+
+.updated-admin .ua-cp-reflect-question__score:not(:has(.ua-cp-reflect-field)) .ua-toggle {
+  align-self: flex-end;
 }
 
 .updated-admin .ua-cp-reflect-question__text--readonly {
@@ -35033,6 +35096,13 @@ scrollbar-width: thin;
   text-transform: uppercase;
   color: #9aa6b8;
   line-height: 1.2;
+  width: 52px;
+}
+
+.updated-admin .ua-cp-reflect-field--spacer {
+  visibility: hidden;
+  pointer-events: none;
+  min-height: 44px;
 }
 
 .updated-admin .ua-cp-reflect-tracking {
@@ -35273,17 +35343,28 @@ scrollbar-width: thin;
 
   .updated-admin .ua-cp-reflect-question__score,
   .updated-admin .ua-cp-reflect-question--tracking .ua-cp-reflect-question__score {
+    flex: 0 0 280px;
+    width: 280px;
+    max-width: 280px;
+    min-width: 280px;
+    align-items: end;
+    justify-content: end;
+    flex-wrap: nowrap;
+    column-gap: 8px;
+    padding-left: 0;
+    white-space: nowrap;
+    box-sizing: border-box;
+  }
+
+  .updated-admin .ua-cp-reflect-question__score:not(:has(.ua-cp-reflect-field)),
+  .updated-admin .ua-cp-reflect-question--tracking .ua-cp-reflect-question__score:not(:has(.ua-cp-reflect-field)) {
     flex: 0 1 320px;
     width: auto;
     max-width: 100%;
     min-width: 0;
+    display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: nowrap;
     gap: 8px;
-    padding-left: 0;
-    white-space: nowrap;
-    box-sizing: border-box;
   }
 
   .updated-admin .ua-cp-reflect-question--tracking .ua-cp-reflect-tracking {

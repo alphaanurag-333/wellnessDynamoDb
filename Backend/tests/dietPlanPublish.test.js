@@ -59,4 +59,26 @@ describe("diet plan draft vs publish", () => {
     assert.equal(userView.plans.length, 1);
     assert.equal(userView.plans[0].meals[0].title, "Option 1");
   });
+
+  it("includes archived pushes in the user payload when requested", () => {
+    const plan = { planId: "personalised-coach-plan", name: "Personalised diet plan", type: "GENERAL", category: "", description: "", meals: [{ mealId: "m1", day: "s1", slot: "snack", title: "Option 1", foods: "Food", notes: "1 cup", sequence: 1 }] };
+    const row = {
+      id: "h1",
+      userId: "u1",
+      coachId: "c1",
+      archived: true,
+      startDate: "2026-01-01",
+      plans: plan,
+      publishedPlans: [plan],
+      publishedPdfKey: "diet-plan-assignments/old.pdf",
+      pushedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    assert.equal(toCoachAssignedDietPlanPublic(row, { audience: "user" }), null);
+    const historyView = toCoachAssignedDietPlanPublic(row, { audience: "user", includeArchivedHistory: true });
+    assert.equal(historyView.id, "h1");
+    assert.equal(historyView.pdfKey, "diet-plan-assignments/old.pdf");
+    assert.equal(historyView.pushedAt, "2026-01-01T00:00:00.000Z");
+  });
 });

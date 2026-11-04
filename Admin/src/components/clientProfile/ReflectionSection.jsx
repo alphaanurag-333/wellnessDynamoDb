@@ -127,8 +127,10 @@ function ActivityRow({ index, activity, canEdit, canEditToday, busy, onToggle, o
                   onChange={(e) => onToday(e.target.value)}
                 />
               </label>
-            ) : null}
-            <span>{unitLabel(activity.unit)}</span>
+            ) : (
+              <span className="ua-cp-reflect-field ua-cp-reflect-field--spacer" aria-hidden="true" />
+            )}
+            <span className="ua-cp-reflect-unit">{unitLabel(activity.unit)}</span>
           </>
         )}
         <button

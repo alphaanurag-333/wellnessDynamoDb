@@ -3,6 +3,7 @@ import {
   resolveBodyMeasurementClientEnabled,
   resolveProgressPhotosInAppEnabled,
 } from "../api/usersApi.js";
+import { todayIsoDate } from "../utils/adminDateLimits.js";
 import { canDowngradeTier, nextTier, tierLabel, tierStyle, normalizeTier } from "./usersData.js";
 
 export const CLIENT_MENU = [
@@ -492,7 +493,7 @@ export function createDraftOrder(index) {
     id: `order-${Date.now()}-${index}`,
     number: index,
     items: [],
-    placedOn: "",
+    placedOn: todayIsoDate(),
     vendor: "",
     tracking: "",
     expectedDelivery: "",
