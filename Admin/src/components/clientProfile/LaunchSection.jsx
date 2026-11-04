@@ -29,6 +29,7 @@ import {
   publishUserPrakrutiAssessment,
   updateUserLaunchAssessment,
   publishUserLaunchFocusPoints,
+  publishUserLaunchAssessmentScore,
 } from "../../api/onboardingApi.js";
 
 const DOSHA_KEYS = ["vata", "pitta", "kapha"];
@@ -482,6 +483,48 @@ function sameFocusList(a, b) {
   return left.length === right.length && left.every((row, index) => row === right[index]);
 }
 
+function normalizeLaunchAnswers(list) {
+  return [...(list || [])]
+    .map((row) => ({
+      questionId: String(row?.questionId || "").trim(),
+      ratingId: String(row?.ratingId || "").trim(),
+      reply: String(row?.reply || "").trim(),
+    }))
+    .filter((row) => row.questionId)
+    .sort((a, b) => a.questionId.localeCompare(b.questionId));
+}
+
+function sameLaunchAnswers(a, b) {
+  return JSON.stringify(normalizeLaunchAnswers(a)) === JSON.stringify(normalizeLaunchAnswers(b));
+}
+
+function buildLaunchAssessmentPayload({ assessmentDate, totals, pointsToNote, ratings, replies }) {
+  return {
+    assessmentDate,
+    totalScore: Math.round(totals.overall),
+    pointsToNote,
+    answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
+      questionId,
+      ratingId: ratings[questionId] || "",
+      reply: replies[questionId] || "",
+    })),
+  };
+}
+
+function launchAssessmentDraftMatchesSaved(latest, payload) {
+  if (!latest || !payload) return false;
+  if (Math.round(Number(latest.totalScore)) !== payload.totalScore) return false;
+  if (String(latest.pointsToNote || "").trim() !== String(payload.pointsToNote || "").trim()) return false;
+  return sameLaunchAnswers(latest.answers, payload.answers);
+}
+
+function launchAssessmentSavedMatchesPublished(saved) {
+  if (!saved?.scorePushedAt) return false;
+  if (Math.round(Number(saved.totalScore)) !== Math.round(Number(saved.pushedTotalScore))) return false;
+  if (String(saved.pointsToNote || "").trim() !== String(saved.pushedPointsToNote || "").trim()) return false;
+  return sameLaunchAnswers(saved.answers, saved.pushedAnswers);
+}
+
 function buildVisibleFocusPoints({ autoPoints, hiddenFocusTitles, autoEdits, extraPoints }) {
   const hidden = new Set(
     hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean),
@@ -809,6 +852,8 @@ function LifestyleTab({
   const [savingFocus, setSavingFocus] = useState(false);
   const [pushingFocus, setPushingFocus] = useState(false);
   const [focusPushOpen, setFocusPushOpen] = useState(false);
+  const [pushingScore, setPushingScore] = useState(false);
+  const [assessmentPushOpen, setAssessmentPushOpen] = useState(false);
   const hydratedFocusRef = useRef(null);
   const hydratedNotesRef = useRef(null);
 
@@ -933,77 +978,118 @@ function LifestyleTab({
     onToast("New attempt started · previous result stays in history");
   }
 
+  async function persistLaunchAssessmentDraft() {
+    const userId = user?.id;
+    if (!userId) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = buildLaunchAssessmentPayload({
+      assessmentDate: today,
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    });
+    const existingToday = (assessments || []).find((row) => row.assessmentDate === today);
+    const saved = existingToday
+      ? await updateUserLaunchAssessment(userId, existingToday.id, payload)
+      : await saveUserLaunchAssessment(userId, payload);
+    const next = [
+      saved,
+      ...(assessments || []).filter((row) => row.id !== saved.id),
+    ];
+    onAssessmentsChange(next);
+    if (saved?.id) {
+      hydratedFocusRef.current = saved.id;
+      hydratedNotesRef.current = saved.id;
+      setPointsToNote(String(saved.pointsToNote || ""));
+    }
+
+    const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
+    const shouldCompleteLaunch =
+      !user?.paidOnboardingCompleted
+      && launchStatus !== "done"
+      && launchStatus !== "skipped"
+      && !/^\d+$/.test(String(userId));
+
+    if (shouldCompleteLaunch) {
+      const data = await patchOnboardingStep(userId, "launch", "done");
+      const nextStatus = data?.paidOnboardingStepStatus || {
+        ...user.paidOnboardingStepStatus,
+        launch: "done",
+      };
+      onUserUpdated?.({
+        ...user,
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+      });
+    }
+
+    return saved;
+  }
+
   async function saveAssessment() {
     const userId = user?.id;
     if (!userId) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const focusPoints = buildVisibleFocusPoints({
-      autoPoints,
-      hiddenFocusTitles,
-      autoEdits,
-      extraPoints,
-    });
-    const payload = {
-      assessmentDate: today,
-      totalScore: Math.round(totals.overall),
-      pointsToNote,
-      focusAreaIds: selectedFocus,
-      focusPoints,
-      hiddenFocusTitles,
-      answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
-        questionId,
-        ratingId: ratings[questionId] || "",
-        reply: replies[questionId] || "",
-      })),
-    };
     try {
       setSaving(true);
-      const existingToday = (assessments || []).find((row) => row.assessmentDate === today);
-      const saved = existingToday
-        ? await updateUserLaunchAssessment(userId, existingToday.id, payload)
-        : await saveUserLaunchAssessment(userId, payload);
+      await persistLaunchAssessmentDraft();
+      onToast("LAUNCH assessment saved (draft only — use Push to app to publish the score)");
+    } catch (err) {
+      onToast(err?.message || "Failed to save LAUNCH assessment");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function requestPushAssessmentToApp() {
+    setAssessmentPushOpen(true);
+  }
+
+  async function pushAssessmentToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = buildLaunchAssessmentPayload({
+      assessmentDate: today,
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    });
+    try {
+      setPushingScore(true);
+      let target = (assessments || []).find((row) => row.assessmentDate === today) || latest;
+      if (!target?.id) {
+        target = await persistLaunchAssessmentDraft();
+      } else if (!launchAssessmentDraftMatchesSaved(target, payload)) {
+        target = await updateUserLaunchAssessment(userId, target.id, payload);
+        const nextAfterSave = [
+          target,
+          ...(assessments || []).filter((row) => row.id !== target.id),
+        ];
+        onAssessmentsChange(nextAfterSave);
+      }
+      if (!target?.id) {
+        onToast("Save the assessment first, then push to app");
+        return;
+      }
+      if (launchAssessmentSavedMatchesPublished(target)) {
+        onToast("Assessment score already matches what's in the client app");
+        return;
+      }
+      const result = await publishUserLaunchAssessmentScore(userId, target.id);
+      const saved = result?.assessment || target;
       const next = [
         saved,
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
-      if (saved?.id) {
-        hydratedFocusRef.current = saved.id;
-        hydratedNotesRef.current = saved.id;
-        setPointsToNote(String(saved.pointsToNote || ""));
-      }
-
-      const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
-      const shouldCompleteLaunch =
-        !user?.paidOnboardingCompleted
-        && launchStatus !== "done"
-        && launchStatus !== "skipped"
-        && !/^\d+$/.test(String(userId));
-
-      if (shouldCompleteLaunch) {
-        try {
-          const data = await patchOnboardingStep(userId, "launch", "done");
-          const nextStatus = data?.paidOnboardingStepStatus || {
-            ...user.paidOnboardingStepStatus,
-            launch: "done",
-          };
-          onUserUpdated?.({
-            ...user,
-            paidOnboardingStepStatus: nextStatus,
-            paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
-          });
-        } catch (stepErr) {
-          onToast(stepErr?.message || "Assessment saved, but failed to mark LAUNCH complete");
-          setSaving(false);
-          return;
-        }
-      }
-
-      onToast("LAUNCH assessment saved");
+      onToast(result?.message || "Pushed LAUNCH assessment score to client app");
     } catch (err) {
-      onToast(err?.message || "Failed to save LAUNCH assessment");
+      onToast(err?.message || "Failed to push LAUNCH assessment to app");
     } finally {
-      setSaving(false);
+      setPushingScore(false);
+      setAssessmentPushOpen(false);
     }
   }
 
@@ -1135,6 +1221,27 @@ function LifestyleTab({
     ? !sameFocusList(savedFocusDraft, pushedFocusDraft)
     : savedFocusDraft.length > 0 || currentFocusDraft.length > 0;
   const focusPushPending = hasUnsavedFocus || hasUnpushedFocus;
+  const todayAssessmentPayload = useMemo(
+    () => buildLaunchAssessmentPayload({
+      assessmentDate: new Date().toISOString().slice(0, 10),
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    }),
+    [totals, pointsToNote, ratings, replies],
+  );
+  const hasUnsavedAssessment = latest
+    ? !launchAssessmentDraftMatchesSaved(latest, todayAssessmentPayload)
+    : true;
+  const hasUnpushedAssessment = !latest?.id
+    || hasUnsavedAssessment
+    || !launchAssessmentSavedMatchesPublished(latest);
+  const assessmentPushHint = hasUnsavedAssessment
+    ? "You have unsaved assessment changes — save first, then push the score to the client app."
+    : hasUnpushedAssessment
+      ? "Saved score is not in the client app yet — push when ready."
+      : "";
   const focusPushHint = hasUnsavedFocus
     ? "You have unsaved focus area changes — save first, then push to the client app."
     : hasUnpushedFocus
@@ -1236,16 +1343,36 @@ function LifestyleTab({
       <div className="ua-cp-launch-savebar">
         <div className="ua-cp-launch-savebar__copy">
           <span className="ua-cp-launch-savebar__label">Save this attempt</span>
-          {latest != null ? <span className="ua-cp-launch-savebar__meta">Latest score {latest.totalScore}</span> : null}
+          {latest != null ? (
+            <span className="ua-cp-launch-savebar__meta">
+              Latest score {latest.totalScore}
+              {latest.scorePushedAt
+                ? ` · in app as ${latest.pushedTotalScore ?? latest.totalScore}`
+                : " · not in client app yet"}
+            </span>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-          disabled={saving}
-          onClick={saveAssessment}
-        >
-          {saving ? "Saving…" : "Save assessment"}
-        </button>
+        {hasUnpushedAssessment && assessmentPushHint ? (
+          <p className="ua-cp-launch-savebar__hint">{assessmentPushHint}</p>
+        ) : null}
+        <div className="ua-cp-launch-savebar__actions">
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+            disabled={saving || pushingScore}
+            onClick={saveAssessment}
+          >
+            {saving ? "Saving…" : "Save assessment"}
+          </button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+            disabled={saving || pushingScore}
+            onClick={requestPushAssessmentToApp}
+          >
+            {pushingScore ? "Pushing…" : "Push to app"}
+          </button>
+        </div>
       </div>
       ) : null}
       <FocusAreas
@@ -1289,6 +1416,18 @@ function LifestyleTab({
         pushHint={focusPushHint}
         onToast={onToast}
         canWrite={canWrite}
+      />
+      <ConfirmDialog
+        open={assessmentPushOpen}
+        tag="LAUNCH score"
+        title={`Push LAUNCH score to ${clientFirstName}'s app?`}
+        body={`This publishes the latest saved score (${Math.round(totals.overall)}) for ${clientFirstName} in the mobile app. Unsaved edits are saved first.`}
+        cancelLabel="Cancel"
+        confirmLabel={pushingScore ? "Pushing…" : "Push to app"}
+        onCancel={() => {
+          if (!pushingScore) setAssessmentPushOpen(false);
+        }}
+        onConfirm={pushAssessmentToApp}
       />
       <ConfirmDialog
         open={focusPushOpen}

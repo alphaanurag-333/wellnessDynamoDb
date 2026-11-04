@@ -978,6 +978,25 @@ export async function patchUserMedicalConditionsInAppSettings(userId, { enabled 
   }
 }
 
+export async function approveUserMedicalConditions(userId) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(userId)}/medical-conditions/approve`,
+      {},
+      { headers: authHeader() },
+    );
+    return {
+      message: data.message,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(data.paidOnboardingCompleted),
+      completedStepsCount: data.completedStepsCount,
+      user: data.user,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserBodyAnalytics(id) {
   try {
     const { data } = await api.get(

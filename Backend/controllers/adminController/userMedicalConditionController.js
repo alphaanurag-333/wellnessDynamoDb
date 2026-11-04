@@ -13,10 +13,14 @@ const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAcce
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
   normalizePaidOnboardingStepStatus,
+  markStepDone,
   markStepSkipped,
   wizardStepAfterSkip,
+  countCompletedSteps,
   computePaidOnboardingCompleted,
+  buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
+const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
 
 exports.getUserMedicalConditionsAdminController = asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -30,6 +34,57 @@ exports.getUserMedicalConditionsAdminController = asyncHandler(async (req, res) 
     message: "User medical conditions fetched",
     medicalCondition: toPublicMedicalCondition(medical),
     medicalConditionsInAppEnabled: isMedicalConditionsInAppEnabled(user),
+  });
+});
+
+exports.approveUserMedicalConditionsController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = String(req.params.id || "").trim();
+  if (!userId) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const medical = await getLatestMedicalConditionForUser(userId);
+  if (!medical) {
+    throw new AppError("No medical condition answers to approve", 400);
+  }
+
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  if (currentStatus.medicalConditions === "done") {
+    return res.status(200).json({
+      status: true,
+      message: "Medical conditions already approved",
+      paidOnboardingStepStatus: currentStatus,
+      paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+      completedStepsCount: countCompletedSteps(currentStatus),
+      user: await enrichUser(user),
+    });
+  }
+
+  const nextStatus = markStepDone(currentStatus, "medicalConditions");
+  const updated = await updateUser(
+    userId,
+    buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
+  );
+
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus: currentStatus,
+    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
+  });
+
+  const paidOnboardingStepStatus =
+    updated?.paidOnboardingStepStatus || nextStatus;
+
+  return res.status(200).json({
+    status: true,
+    message: "Medical conditions approved",
+    paidOnboardingStepStatus,
+    paidOnboardingCompleted: Boolean(updated?.paidOnboardingCompleted),
+    completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
+    user: await enrichUser(updated || user),
   });
 });
 

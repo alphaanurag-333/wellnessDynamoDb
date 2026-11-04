@@ -12,6 +12,7 @@ const {
   listUserLaunchAssessmentsByUserId,
   updateUserLaunchAssessment,
   pushUserLaunchAssessmentFocusPoints,
+  pushUserLaunchAssessmentScore,
   deleteUserLaunchAssessment,
   SCORE_MIN,
   SCORE_MAX,
@@ -394,6 +395,31 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       return res.status(200).json({
         status: true,
         message: "LAUNCH score updated successfully",
+        assessment,
+      });
+    }),
+
+    pushScoreController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+      const assessmentId = String(req.params.assessmentId || "").trim();
+      if (!assessmentId) throw new AppError("assessmentId is required", 400);
+
+      const current = await getUserLaunchAssessmentById(assessmentId);
+      if (!current || String(current.userId) !== String(userId)) {
+        throw new AppError("LAUNCH assessment not found", 404);
+      }
+
+      let assessment;
+      try {
+        assessment = await pushUserLaunchAssessmentScore(assessmentId);
+      } catch (err) {
+        handleLaunchValidationError(err);
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Pushed LAUNCH assessment score to client app",
+        publishedScore: assessment?.pushedTotalScore ?? assessment?.totalScore ?? null,
         assessment,
       });
     }),

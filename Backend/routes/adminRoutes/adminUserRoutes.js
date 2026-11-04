@@ -32,6 +32,7 @@ const {
 } = require("../../controllers/adminController/userEnergyExchangeController");
 const {
   getUserMedicalConditionsAdminController,
+  approveUserMedicalConditionsController,
   patchMedicalConditionsInAppSettingsController,
 } = require("../../controllers/adminController/userMedicalConditionController");
 const {
@@ -137,6 +138,12 @@ router.patch(
   protectAccount,
   authorizeStaff("console.cl.edit", { admin: "users.edit" }),
   patchMedicalConditionsInAppSettingsController
+);
+router.post(
+  "/:id/medical-conditions/approve",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  approveUserMedicalConditionsController
 );
 router.patch(
   "/:id/onboarding-steps/:stepKey",

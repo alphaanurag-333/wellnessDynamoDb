@@ -172,6 +172,30 @@ function isProgressPhotosInAppEnabled(user) {
   return false;
 }
 
+/**
+ * Client onboarding step flags aligned with admin “Allowed in the app” on
+ * Body analytics (?section=body) and Medical conditions (?section=medical).
+ * true = coach allows this step in the app and the sub-step is done/skipped (or Body Analytics is complete).
+ * false = still open for the client (allowed but pending) or disabled in the app.
+ */
+function buildPaidOnboardingStepLocks(user) {
+  const status = normalizePaidOnboardingStepStatus(user?.paidOnboardingStepStatus);
+  if (status.bodyAnalytics === "done") {
+    return {
+      bodyMeasurement: true,
+      progressPhotos180: true,
+      medicalConditions: true,
+    };
+  }
+  const settled = (key) => status[key] === "done" || status[key] === "skipped";
+  const lockedIn = (key, isEnabled) => isEnabled(user) && settled(key);
+  return {
+    bodyMeasurement: lockedIn("bodyMeasurement", isBodyMeasurementEnabled),
+    progressPhotos180: lockedIn("progressPhotos180", isProgressPhotosInAppEnabled),
+    medicalConditions: lockedIn("medicalConditions", isMedicalConditionsInAppEnabled),
+  };
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -1813,6 +1837,7 @@ module.exports = {
   isBodyMeasurementEnabled,
   isMedicalConditionsInAppEnabled,
   isProgressPhotosInAppEnabled,
+  buildPaidOnboardingStepLocks,
   buildUserItem,
   toPublicUser,
   createUser,

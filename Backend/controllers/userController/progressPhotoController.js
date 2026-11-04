@@ -9,7 +9,6 @@ const {
 } = require("../../models/userModel");
 const { enrichUser } = require("./userProfileHelpers");
 const {
-  markStepDone,
   wizardStepAfterPhotosSaved,
   buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
@@ -66,7 +65,7 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-  const nextStatus = markStepDone(currentStatus, "progressPhotos180");
+  const nextStatus = currentStatus;
   const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
   const nextWizardStep = wizardStepAfterPhotosSaved(user.paidOnboardingStep, nextStatus);
 

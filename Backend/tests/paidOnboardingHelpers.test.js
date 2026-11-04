@@ -29,60 +29,61 @@ describe("buildPaidOnboardingResetUpdates", () => {
 });
 
 describe("bodyAnalytics derivation", () => {
-  it("does not auto-complete parent when a subkey is skipped", () => {
-    let status = normalizePaidOnboardingStepStatus({
+  it("does not auto-complete parent until 180 and medical are settled", () => {
+    const only180 = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyMeasurement: "skipped",
       progressPhotos180: "done",
+      medicalConditions: "pending",
+    });
+    assert.equal(only180.bodyAnalytics, "pending");
+
+    const onlyMedical = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      progressPhotos180: "pending",
       medicalConditions: "done",
     });
-    assert.equal(status.bodyAnalytics, "pending");
-
-    status = markStepDone(status, "progressPhotos180");
-    status = markStepDone(status, "medicalConditions");
-    status = markStepSkipped(status, "bodyMeasurement");
-    assert.equal(status.bodyAnalytics, "pending");
+    assert.equal(onlyMedical.bodyAnalytics, "pending");
   });
 
-  it("promotes parent when all three subkeys are done", () => {
+  it("promotes parent when 180 and medical are done (body measurement optional)", () => {
     const status = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyMeasurement: "done",
+      bodyMeasurement: "pending",
       progressPhotos180: "done",
       medicalConditions: "done",
     });
     assert.equal(status.bodyAnalytics, "done");
   });
 
-  it("lets admin mark bodyAnalytics done and keeps it after normalize", () => {
-    const seeded = normalizePaidOnboardingStepStatus({
+  it("promotes parent when medical is skipped and 180 is done", () => {
+    const status = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyMeasurement: "skipped",
       progressPhotos180: "done",
-      medicalConditions: "done",
+      medicalConditions: "skipped",
     });
-    assert.equal(seeded.bodyAnalytics, "pending");
-
-    const marked = setCanonicalStepStatus(seeded, "bodyAnalytics", "done");
-    assert.equal(marked.bodyAnalytics, "done");
-    for (const key of BODY_ANALYTICS_SUBKEYS) {
-      assert.equal(marked[key], "done");
-    }
-
-    const again = normalizePaidOnboardingStepStatus(marked);
-    assert.equal(again.bodyAnalytics, "done");
-    assert.equal(again.personalDetails, "done");
+    assert.equal(status.bodyAnalytics, "done");
   });
 
-  it("allows internalParameter after admin completes bodyAnalytics", () => {
+  it("rejects manual bodyAnalytics done from admin", () => {
     const seeded = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyMeasurement: "skipped",
+      progressPhotos180: "pending",
+      medicalConditions: "pending",
+    });
+    assert.throws(
+      () => setCanonicalStepStatus(seeded, "bodyAnalytics", "done"),
+      (err) => err.name === "BodyAnalyticsAutoCompleteError",
+    );
+  });
+
+  it("allows internalParameter after bodyAnalytics auto-completes", () => {
+    const seeded = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
     });
-    const withBody = setCanonicalStepStatus(seeded, "bodyAnalytics", "done");
-    const withInternal = setCanonicalStepStatus(withBody, "internalParameter", "done");
+    assert.equal(seeded.bodyAnalytics, "done");
+    const withInternal = setCanonicalStepStatus(seeded, "internalParameter", "done");
     assert.equal(withInternal.personalDetails, "done");
     assert.equal(withInternal.bodyAnalytics, "done");
     assert.equal(withInternal.internalParameter, "done");
@@ -124,10 +125,15 @@ describe("bodyAnalytics derivation", () => {
   });
 
   it("lets admin undo later canonical steps without re-promotion", () => {
-    let status = normalizePaidOnboardingStepStatus({});
+    let status = normalizePaidOnboardingStepStatus({
+      progressPhotos180: "done",
+      medicalConditions: "done",
+    });
     for (const key of PAID_ONBOARDING_STATUS_KEYS) {
+      if (key === "bodyAnalytics") continue;
       status = setCanonicalStepStatus(status, key, "done", { sequential: false });
     }
+    assert.equal(status.bodyAnalytics, "done");
     for (const key of PAID_ONBOARDING_STATUS_KEYS) {
       const undone = setCanonicalStepStatus(status, key, "pending", { sequential: false });
       assert.equal(undone[key], "pending", `${key} should reopen`);
@@ -196,7 +202,19 @@ describe("body analytics photo review", () => {
     assert.equal(later.bodyAnalytics, "pending");
   });
 
-  it("marks Body Analytics done only when front, right, and left are all accepted", () => {
+  it("marks progressPhotos180 done on approval but not Body Analytics until medical is settled", () => {
+    const pendingMedical = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      medicalConditions: "pending",
+    });
+    const photosOnly = applyBodyAnalyticsPhotoReview(pendingMedical, {
+      angle: "front",
+      action: "approved",
+      photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
+    });
+    assert.equal(photosOnly.progressPhotos180, "done");
+    assert.equal(photosOnly.bodyAnalytics, "pending");
+
     const opened = applyBodyAnalyticsPhotoReview(completed, {
       angle: "front",
       action: "rejected",
@@ -209,13 +227,6 @@ describe("body analytics photo review", () => {
     });
     assert.equal(partial, null);
 
-    const stillRejected = applyBodyAnalyticsPhotoReview(completed, {
-      angle: "right",
-      action: "approved",
-      photo: reviewedPhoto({ front: "rejected", right: "approved", left: "approved" }),
-    });
-    assert.equal(stillRejected.bodyAnalytics, "pending");
-
     const done = applyBodyAnalyticsPhotoReview(opened, {
       angle: "front",
       action: "approved",
@@ -223,8 +234,7 @@ describe("body analytics photo review", () => {
     });
     assert.equal(done.bodyAnalytics, "done");
     assert.equal(done.progressPhotos180, "done");
-    assert.equal(done.bodyMeasurement, "done");
-    assert.equal(done.internalParameter, "done");
+    assert.equal(done.medicalConditions, "done");
   });
 
   it("returns a finished client to the app after they resubmit 180 photos", () => {
@@ -304,8 +314,12 @@ describe("onboardingStepJustCompleted", () => {
   const { onboardingStepJustCompleted } = require("../utils/paidOnboardingHelpers");
 
   it("is true only on the pending-to-done transition", () => {
-    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
-    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const pending = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      progressPhotos180: "pending",
+      medicalConditions: "done",
+    });
+    const done = markStepDone(pending, "progressPhotos180");
     assert.equal(onboardingStepJustCompleted(pending, done, "bodyAnalytics"), true);
     assert.equal(onboardingStepJustCompleted(done, done, "bodyAnalytics"), false);
     assert.equal(onboardingStepJustCompleted(pending, done, "protocolSettings"), false);
@@ -319,8 +333,12 @@ describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
   } = require("../utils/paidOnboardingHelpers");
 
   it("persists app locks when Body Analytics first becomes done", () => {
-    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
-    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const pending = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      progressPhotos180: "pending",
+      medicalConditions: "done",
+    });
+    const done = markStepDone(pending, "progressPhotos180");
     const locks = buildBodyAnalyticsCompletionAppLockUpdates({}, pending, done);
     assert.deepEqual(locks, {
       progressPhotosInAppEnabled: false,
@@ -330,8 +348,12 @@ describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
   });
 
   it("does not override coach-enabled gates", () => {
-    const pending = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
-    const done = setCanonicalStepStatus(pending, "bodyAnalytics", "done");
+    const pending = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      progressPhotos180: "pending",
+      medicalConditions: "done",
+    });
+    const done = markStepDone(pending, "progressPhotos180");
     const locks = buildBodyAnalyticsCompletionAppLockUpdates(
       {
         progressPhotosInAppEnabled: true,
@@ -354,7 +376,8 @@ describe("programStartedAt", () => {
   it("persists programStartedAt when program initiation is newly marked done", () => {
     const previousStatus = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyAnalytics: "done",
+      progressPhotos180: "done",
+      medicalConditions: "done",
       internalParameter: "done",
       launch: "done",
       rca: "done",
@@ -395,7 +418,8 @@ describe("programStartedAt", () => {
   it("includes programStartedAt in onboarding persist updates", () => {
     const previousStatus = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
-      bodyAnalytics: "done",
+      progressPhotos180: "done",
+      medicalConditions: "done",
       internalParameter: "done",
       launch: "done",
       rca: "done",

@@ -68,7 +68,7 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
       sequential: status === "done",
     });
   } catch (err) {
-    if (err?.name === "SequentialStepError") {
+    if (err?.name === "SequentialStepError" || err?.name === "BodyAnalyticsAutoCompleteError") {
       throw new AppError(err.message, 400);
     }
     throw new AppError(err.message, 400);

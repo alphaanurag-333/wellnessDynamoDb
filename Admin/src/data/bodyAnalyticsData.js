@@ -454,6 +454,19 @@ function mapPhotoRows(records, angle) {
     }));
 }
 
+/** Coaches (WC/AWC) must not see rejected progress photos in the panel; admins still can. */
+export function filterRejectedBodyPhotosForStaff(photosByAngle, { showRejected = true } = {}) {
+  if (showRejected) return photosByAngle;
+  return Object.fromEntries(
+    Object.entries(photosByAngle || {}).map(([label, list]) => [
+      label,
+      (list || []).filter(
+        (photo) => normalizePhotoReviewStatus(photo?.reviewStatus) !== "rejected",
+      ),
+    ]),
+  );
+}
+
 export function buildPhotosByAngle(photos, measurements = []) {
   return Object.fromEntries(PHOTO_ANGLES.map((angle) => {
     const records = angle.source === "measurement" ? measurements : photos;

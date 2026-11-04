@@ -855,11 +855,11 @@ function RcaViewIcon({ onClick, disabled }) {
   );
 }
 
-function StepToggle({ done, current, onClick }) {
+function StepToggle({ done, current, onClick, title }) {
   const className = `ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`;
   if (!onClick) {
     return (
-      <span className={className} aria-hidden="true">
+      <span className={className} title={title} aria-hidden="true">
         {done ? (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
         ) : null}
@@ -870,7 +870,7 @@ function StepToggle({ done, current, onClick }) {
     <button
       type="button"
       className={className}
-      title={done ? "Mark as not done" : "Mark complete"}
+      title={title || (done ? "Mark as not done" : "Mark complete")}
       onClick={onClick}
       aria-label={done ? "Mark step not done" : "Mark step complete"}
     >
@@ -1197,11 +1197,20 @@ function OnboardingStatusCard({
                 <StepToggle
                   done={step.done}
                   current={isCurrent}
-                  onClick={canEdit ? () => {
-                    toggleStep(step.n).catch((err) => {
-                      onToast(err?.message || "Failed to update step");
-                    });
-                  } : undefined}
+                  onClick={
+                    canEdit && (step.done || step.key !== "bodyAnalytics")
+                      ? () => {
+                          toggleStep(step.n).catch((err) => {
+                            onToast(err?.message || "Failed to update step");
+                          });
+                        }
+                      : undefined
+                  }
+                  title={
+                    !step.done && step.key === "bodyAnalytics"
+                      ? "Completes automatically after 180° and medical approval"
+                      : undefined
+                  }
                 />
                 <div className="ua-cp-onboard-step__copy">
                   <span className="ua-cp-onboard-step__label-row">
@@ -1286,7 +1295,10 @@ function OnboardingStatusCard({
             );
           })}
         </div>
-        <p className="ua-cp-onboard-footnote">Client-side steps sync from the app. RCA, HAP, briefing, letter and initiation are yours to submit.</p>
+        <p className="ua-cp-onboard-footnote">
+          Client-side steps sync from the app. Body Analytics completes after coach approval of 180° photos and medical conditions.
+          RCA, HAP, briefing, letter and initiation are yours to submit.
+        </p>
       </div>
 
       {scheduleModal ? (

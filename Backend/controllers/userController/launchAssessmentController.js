@@ -5,6 +5,9 @@ const {
   getUserLaunchAssessmentByUserAndDate,
   normalizeAssessmentDate,
   resolvePublishedFocusTexts,
+  resolvePublishedTotalScore,
+  resolvePublishedAnswers,
+  resolvePublishedPointsToNote,
   SCORE_MIN,
   SCORE_MAX,
 } = require("../../models/userLaunchAssessmentModel");
@@ -58,14 +61,29 @@ function resolveAreasToFocus(assessment) {
 }
 
 function toHistoryItem(assessment, areasToFocus) {
+  const publishedScore = resolvePublishedTotalScore(assessment);
+  const scoreForZone = publishedScore ?? assessment.totalScore ?? 0;
   return {
     id: assessment.id,
     _id: assessment._id,
     assessmentDate: assessment.assessmentDate,
-    totalScore: assessment.totalScore,
-    zone: getScoreZone(assessment.totalScore),
+    totalScore: publishedScore,
+    zone: getScoreZone(scoreForZone),
     areasToFocus: areasToFocus || assessment.areasToFocus || [],
     focusAreas: assessment.focusAreas || [],
+  };
+}
+
+function toUserFacingAssessment(assessment) {
+  if (!assessment) return null;
+  const publishedScore = resolvePublishedTotalScore(assessment);
+  const scoreForZone = publishedScore ?? assessment.totalScore ?? 0;
+  return {
+    ...assessment,
+    totalScore: publishedScore,
+    answers: resolvePublishedAnswers(assessment),
+    pointsToNote: resolvePublishedPointsToNote(assessment),
+    zone: getScoreZone(scoreForZone),
   };
 }
 
@@ -90,6 +108,7 @@ exports.getMyLaunchScoresController = asyncHandler(async (req, res) => {
   );
   const latest = sorted[0] || null;
   const areasToFocus = resolveAreasToFocus(latest);
+  const publishedLatestScore = latest ? resolvePublishedTotalScore(latest) : null;
   const history = [...assessments]
     .sort((a, b) => String(a.assessmentDate || "").localeCompare(String(b.assessmentDate || "")))
     .map((row) => toHistoryItem(row, row === latest ? areasToFocus : row.areasToFocus));
@@ -97,8 +116,8 @@ exports.getMyLaunchScoresController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "LAUNCH scores fetched successfully",
-    currentScore: latest?.totalScore ?? null,
-    zone: latest ? getScoreZone(latest.totalScore) : null,
+    currentScore: publishedLatestScore,
+    zone: publishedLatestScore != null ? getScoreZone(publishedLatestScore) : null,
     areasToFocus,
     focusAreas: latest?.focusAreas ?? [],
     latest: latest ? toHistoryItem(latest, areasToFocus) : null,
@@ -125,12 +144,7 @@ exports.getMyLaunchAssessmentByDateController = asyncHandler(async (req, res) =>
   return res.status(200).json({
     status: true,
     message: assessment ? "LAUNCH assessment fetched successfully" : "No assessment for this date",
-    assessment: assessment
-      ? {
-          ...assessment,
-          zone: getScoreZone(assessment.totalScore),
-        }
-      : null,
+    assessment: toUserFacingAssessment(assessment),
     maxReferenceScore: LAUNCH_MAX_REFERENCE_SCORE,
     zones: LAUNCH_SCORE_ZONES,
   });
@@ -149,10 +163,7 @@ exports.getMyLaunchAssessmentByIdController = asyncHandler(async (req, res) => {
   return res.status(200).json({
     status: true,
     message: "LAUNCH assessment fetched successfully",
-    assessment: {
-      ...assessment,
-      zone: getScoreZone(assessment.totalScore),
-    },
+    assessment: toUserFacingAssessment(assessment),
     maxReferenceScore: LAUNCH_MAX_REFERENCE_SCORE,
     zones: LAUNCH_SCORE_ZONES,
   });

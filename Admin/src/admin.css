@@ -21099,6 +21099,22 @@ scrollbar-width: thin;
   margin-top: 2px;
 }
 
+.updated-admin .ua-cp-launch-savebar__hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #b45309;
+}
+
+.updated-admin .ua-cp-launch-savebar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .updated-admin .ua-cp-launch-notes {
   margin: 16px auto 0;
   max-width: 680px;

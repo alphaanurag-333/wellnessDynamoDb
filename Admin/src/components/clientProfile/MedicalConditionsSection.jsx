@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  approveUserMedicalConditions,
   fetchUserMedicalConditions,
   mapApiUserToRow,
   patchUserMedicalConditionsInAppSettings,
@@ -121,6 +122,13 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
   const [inAppEnabled, setInAppEnabled] = useState(() => resolveMedicalConditionsInAppEnabled(user));
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [inAppConfirm, setInAppConfirm] = useState(null);
+  const [approveBusy, setApproveBusy] = useState(false);
+
+  const medicalOnboardingStatus = String(
+    user?.paidOnboardingStepStatus?.medicalConditions || "",
+  ).toLowerCase();
+  const medicalApprovalPending = medicalOnboardingStatus === "pending";
+  const canApproveMedical = canEdit && Boolean(record) && medicalApprovalPending;
 
   useEffect(() => {
     setInAppEnabled(resolveMedicalConditionsInAppEnabled(user));
@@ -163,6 +171,37 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
   function requestToggleInApp() {
     if (settingsBusy || !canEdit) return;
     setInAppConfirm({ next: !inAppEnabled });
+  }
+
+  async function handleApproveMedical() {
+    if (!userId || approveBusy || !canApproveMedical) return;
+    setApproveBusy(true);
+    try {
+      const result = await approveUserMedicalConditions(userId);
+      if (result?.user) {
+        onUserUpdated?.(mapApiUserToRow(result.user));
+      } else if (result?.paidOnboardingStepStatus) {
+        onUserUpdated?.({
+          ...user,
+          paidOnboardingStepStatus: result.paidOnboardingStepStatus,
+          paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
+          onboardingDone: Number.isFinite(result.completedStepsCount)
+            ? result.completedStepsCount
+            : user?.onboardingDone,
+        });
+      }
+      const bodyDone =
+        String(result?.paidOnboardingStepStatus?.bodyAnalytics || "").toLowerCase() === "done";
+      onToast?.(
+        bodyDone
+          ? "Medical conditions approved · Body Analytics complete"
+          : result?.message || "Medical conditions approved",
+      );
+    } catch (error) {
+      onToast?.(error?.message || "Could not approve medical conditions");
+    } finally {
+      setApproveBusy(false);
+    }
   }
 
   async function applyInAppSetting(next) {
@@ -230,7 +269,19 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
             {!inAppEnabled ? " · hidden from client app" : ""}
           </p>
         </div>
-        {inAppToggle}
+        <div className="ua-cp-medical__head-actions">
+          {canApproveMedical ? (
+            <button
+              type="button"
+              className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+              disabled={approveBusy}
+              onClick={handleApproveMedical}
+            >
+              {approveBusy ? "Approving…" : "Approve"}
+            </button>
+          ) : null}
+          {inAppToggle}
+        </div>
       </div>
 
       {loading ? (

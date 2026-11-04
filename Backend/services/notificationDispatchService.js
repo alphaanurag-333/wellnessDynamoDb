@@ -1082,6 +1082,7 @@ async function dispatchProgressPhotoReviewedNotification({
   status,
   rejectionReason = "",
   rejectDay = false,
+  allAnglesApproved = false,
   coachName,
   actorUserId = null,
 }) {
@@ -1100,13 +1101,19 @@ async function dispatchProgressPhotoReviewedNotification({
     userId,
     kind: "progress_photo_reviewed",
     message: approved
-      ? `${name} accepted your ${label} progress photo.`
+      ? (allAnglesApproved
+        ? `${name} accepted your progress photos (front, right, and left).`
+        : `${name} accepted your ${label} progress photo.`)
       : rejectedMessage,
     referenceId: photoId ? String(photoId) : null,
     referenceType: "progress_photo",
     actorUserId,
-    title: approved ? "Progress photo accepted" : "Progress photo rejected",
-    comment: `${label}:${approved ? "approved" : "rejected"}`,
+    title: approved
+      ? (allAnglesApproved ? "Progress photos accepted" : "Progress photo accepted")
+      : "Progress photo rejected",
+    comment: approved && allAnglesApproved
+      ? "180_set:approved"
+      : `${label}:${approved ? "approved" : "rejected"}`,
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));

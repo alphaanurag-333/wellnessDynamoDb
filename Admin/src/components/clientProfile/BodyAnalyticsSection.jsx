@@ -16,6 +16,7 @@ import {
   BODY_ANALYTICS,
   PHOTO_ANGLES,
   buildPhotosByAngle,
+  filterRejectedBodyPhotosForStaff,
   buildMeasurementRows,
   buildMetabolicRows,
   formatHistoryColumns,
@@ -29,6 +30,7 @@ import {
   photoReviewSummary,
 } from "../../data/bodyAnalyticsData.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function getModalRoot() {
@@ -439,7 +441,9 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
         ? " Body Analytics is open again."
         : glance === "done"
           ? " Body Analytics marked done."
-          : "";
+          : action === "approved"
+            ? " Approve medical conditions to finish Body Analytics."
+            : "";
       onToast?.(
         action === "approved"
           ? `Accepted ${angle} photo (${photo.date}).${glanceNote}`
@@ -651,6 +655,7 @@ function applyReviewResult(current, result, angle) {
 }
 
 export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
+  const { isAdminView } = useViewAs();
   const { canEdit } = useClientSectionPermissions("body");
   const live = isLiveUserId(user?.id);
   const [historyMode, setHistoryMode] = useState("monthly");
@@ -867,8 +872,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   }
 
   const photosByAngle = useMemo(
-    () => buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
-    [bodyAnalytics?.measurements, bodyAnalytics?.photos],
+    () => filterRejectedBodyPhotosForStaff(
+      buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
+      { showRejected: isAdminView },
+    ),
+    [bodyAnalytics?.measurements, bodyAnalytics?.photos, isAdminView],
   );
   const latestPhotoDate = formatPhotoDate(
     latestPhotoStamp(bodyAnalytics?.photos, bodyAnalytics?.measurements),

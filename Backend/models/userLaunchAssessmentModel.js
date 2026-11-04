@@ -135,21 +135,6 @@ function normalizePointsToNote(value) {
   return text;
 }
 
-function mergeAreasToFocus(focusPoints = [], focusAreas = []) {
-  const seen = new Set();
-  const out = [];
-  const catalogTitles = (focusAreas || []).map((area) => String(area?.title || "").trim()).filter(Boolean);
-  for (const text of [...(focusPoints || []), ...catalogTitles]) {
-    const trimmed = String(text || "").trim();
-    if (!trimmed) continue;
-    const key = trimmed.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(trimmed);
-  }
-  return out;
-}
-
 function normalizeFocusPointsPushedAt(value) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
@@ -162,6 +147,39 @@ function normalizeFocusPointsPushedAt(value) {
     throw err;
   }
   return d.toISOString();
+}
+
+function usesScorePublishWorkflow(item) {
+  if (!item) return false;
+  return Object.prototype.hasOwnProperty.call(item, "scorePushedAt")
+    || Object.prototype.hasOwnProperty.call(item, "pushedTotalScore");
+}
+
+/** App-visible LAUNCH score — draft totalScore until coach pushes (legacy rows without publish fields unchanged). */
+function resolvePublishedTotalScore(item) {
+  if (!item) return null;
+  const totalScore = Number(item.totalScore) || 0;
+  if (!usesScorePublishWorkflow(item)) return totalScore;
+  if (!item.scorePushedAt) return null;
+  return Number(item.pushedTotalScore) || 0;
+}
+
+function resolvePublishedAnswers(item) {
+  if (!item) return [];
+  if (!usesScorePublishWorkflow(item)) {
+    return Array.isArray(item.answers) ? normalizeAnswers(item.answers) || [] : [];
+  }
+  if (!item.scorePushedAt) return [];
+  return Array.isArray(item.pushedAnswers) ? normalizeAnswers(item.pushedAnswers) || [] : [];
+}
+
+function resolvePublishedPointsToNote(item) {
+  if (!item) return "";
+  if (!usesScorePublishWorkflow(item)) {
+    return normalizePointsToNote(item.pointsToNote) || "";
+  }
+  if (!item.scorePushedAt) return "";
+  return normalizePointsToNote(item.pushedPointsToNote) || "";
 }
 
 /** App-visible focus list — only populated after an explicit push from admin. */
@@ -185,6 +203,13 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     ? normalizeFocusPointsPushedAt(row.focusPointsPushedAt)
     : null;
   const publishedTexts = resolvePublishedFocusTexts(focusPoints, pushedFocusPoints, focusPointsPushedAt);
+  const scorePushedAt = row.scorePushedAt ? normalizeFocusPointsPushedAt(row.scorePushedAt) : null;
+  const pushedTotalScore =
+    row.pushedTotalScore === undefined || row.pushedTotalScore === null
+      ? null
+      : Number(row.pushedTotalScore) || 0;
+  const pushedAnswers = Array.isArray(row.pushedAnswers) ? normalizeAnswers(row.pushedAnswers) || [] : [];
+  const pushedPointsToNote = normalizePointsToNote(row.pushedPointsToNote) || "";
   const resolved =
     focusAreas !== null
       ? focusAreas
@@ -205,6 +230,11 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
     focusPointsPushedAt,
     hiddenFocusTitles: normalizeHiddenFocusTitles(row.hiddenFocusTitles) || [],
     pointsToNote: normalizePointsToNote(row.pointsToNote) || "",
+    scorePushedAt,
+    pushedTotalScore,
+    pushedAnswers,
+    pushedPointsToNote,
+    publishedTotalScore: resolvePublishedTotalScore(row),
     createdByRole: normalizeCreatedByRole(row.createdByRole),
     createdById: row.createdById,
     createdAt: row.createdAt,
@@ -212,10 +242,9 @@ function toUserLaunchAssessmentPublic(item, focusAreas = null) {
   };
   if (resolved !== undefined) {
     base.focusAreas = resolved;
-    base.areasToFocus = mergeAreasToFocus(publishedTexts, resolved);
-  } else {
-    base.areasToFocus = publishedTexts;
   }
+  // Client app only sees focus text after an explicit push (not draft focusPoints / catalog ids).
+  base.areasToFocus = publishedTexts;
   return base;
 }
 
@@ -321,6 +350,10 @@ async function createUserLaunchAssessment({
     focusPoints: normalizedFocusPoints,
     hiddenFocusTitles: normalizedHiddenFocusTitles,
     pointsToNote: normalizePointsToNote(pointsToNote) || "",
+    scorePushedAt: null,
+    pushedTotalScore: null,
+    pushedAnswers: [],
+    pushedPointsToNote: "",
     createdByRole: normalizeCreatedByRole(createdByRole),
     createdById: creatorId,
     createdAt: now,
@@ -407,6 +440,39 @@ async function updateUserLaunchAssessment(id, { assessmentDate, totalScore, focu
   return enrichAssessmentPublic(Attributes);
 }
 
+async function pushUserLaunchAssessmentScore(id) {
+  const current = await getUserLaunchAssessmentRecordById(id);
+  if (!current) {
+    const err = new Error("Assessment not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const totalScore = normalizeTotalScore(current.totalScore);
+  const answers = normalizeAnswers(current.answers) || [];
+  const pointsToNote = normalizePointsToNote(current.pointsToNote) || "";
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression:
+        "SET pushedTotalScore = :pushedTotalScore, pushedAnswers = :pushedAnswers, pushedPointsToNote = :pushedPointsToNote, scorePushedAt = :scorePushedAt, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":pushedTotalScore": totalScore,
+        ":pushedAnswers": answers,
+        ":pushedPointsToNote": pointsToNote,
+        ":scorePushedAt": now,
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return enrichAssessmentPublic(Attributes);
+}
+
 async function pushUserLaunchAssessmentFocusPoints(id) {
   const current = await getUserLaunchAssessmentRecordById(id);
   if (!current) {
@@ -472,8 +538,13 @@ module.exports = {
   listUserLaunchAssessmentsByUserId,
   updateUserLaunchAssessment,
   pushUserLaunchAssessmentFocusPoints,
+  pushUserLaunchAssessmentScore,
   deleteUserLaunchAssessment,
   enrichAssessmentPublic,
   toUserLaunchAssessmentPublic,
   resolvePublishedFocusTexts,
+  resolvePublishedTotalScore,
+  resolvePublishedAnswers,
+  resolvePublishedPointsToNote,
+  usesScorePublishWorkflow,
 };

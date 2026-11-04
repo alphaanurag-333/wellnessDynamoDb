@@ -94,6 +94,7 @@ const {
   getCoachUserLaunchAssessmentByDateController,
   createCoachUserLaunchAssessmentController,
   updateCoachUserLaunchAssessmentController,
+  pushCoachUserLaunchAssessmentScoreController,
   pushCoachUserLaunchAssessmentFocusPointsController,
   deleteCoachUserLaunchAssessmentController,
   exportCoachUserLaunchQuestionsController,
@@ -383,6 +384,11 @@ router.get("/:userId/launch-assessment", launch, listCoachUserLaunchAssessmentsC
 router.get("/:userId/launch-assessment/by-date", launch, getCoachUserLaunchAssessmentByDateController);
 router.post("/:userId/launch-assessment", launchWrite, createCoachUserLaunchAssessmentController);
 router.patch("/:userId/launch-assessment/:assessmentId", launchWrite, updateCoachUserLaunchAssessmentController);
+router.post(
+  "/:userId/launch-assessment/:assessmentId/publish",
+  launchWrite,
+  pushCoachUserLaunchAssessmentScoreController,
+);
 router.post(
   "/:userId/launch-assessment/:assessmentId/focus-points/publish",
   launchWrite,
