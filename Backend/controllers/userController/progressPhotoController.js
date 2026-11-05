@@ -9,6 +9,7 @@ const {
 } = require("../../models/userModel");
 const { enrichUser } = require("./userProfileHelpers");
 const {
+  markStepDone,
   wizardStepAfterPhotosSaved,
   buildOnboardingPersistUpdates,
 } = require("../../utils/paidOnboardingHelpers");
@@ -65,7 +66,7 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-  const nextStatus = currentStatus;
+  const nextStatus = markStepDone(currentStatus, "progressPhotos180");
   const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
   const nextWizardStep = wizardStepAfterPhotosSaved(user.paidOnboardingStep, nextStatus);
 
@@ -77,7 +78,7 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,
     previousStatus: currentStatus,
-    nextStatus,
+    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
 
   return res.status(201).json({

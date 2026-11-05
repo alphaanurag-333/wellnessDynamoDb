@@ -5,6 +5,7 @@ import {
   fetchUser,
   fetchUserBodyAnalytics,
   mapApiUserToRow,
+  mapUserRowWithOnboardingSync,
   patchUserBodyMeasurementSettings,
   patchUserProgressPhotosInAppSettings,
   appGateUserFromProfileRow,
@@ -703,14 +704,22 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
         if (!cancelled) {
-          const { bodyMeasurementEnabled, ...analytics } = data || {};
+          const {
+            bodyMeasurementEnabled,
+            progressPhotosInAppEnabled,
+            paidOnboardingStepStatus,
+            paidOnboardingCompleted,
+            ...analytics
+          } = data || {};
           setBodyAnalytics(analytics);
           if (bodyMeasurementEnabled !== undefined) {
             setFeatureEnabled(Boolean(bodyMeasurementEnabled));
           }
-          if (data?.progressPhotosInAppEnabled !== undefined) {
-            setProgressPhotosInApp(Boolean(data.progressPhotosInAppEnabled));
+          if (progressPhotosInAppEnabled !== undefined) {
+            setProgressPhotosInApp(Boolean(progressPhotosInAppEnabled));
           }
+          const syncedRow = mapUserRowWithOnboardingSync(user, data);
+          if (syncedRow) onUserUpdated?.(syncedRow);
         }
       })
       .catch((error) => {
@@ -725,7 +734,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     setPeriod((current) => {

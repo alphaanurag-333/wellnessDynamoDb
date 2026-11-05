@@ -58,8 +58,8 @@ const BODY_ANALYTICS_SUBKEYS = [
   "medicalConditions",
 ];
 
-/** Coach-approved 180° + medical (or skipped medical) auto-complete At a Glance Body Analytics. */
-const BODY_ANALYTICS_AUTO_COMPLETE_KEYS = ["progressPhotos180", "medicalConditions"];
+/** Client body measurement + 180° upload + medical answers auto-complete At a Glance Body Analytics. */
+const BODY_ANALYTICS_AUTO_COMPLETE_KEYS = [...BODY_ANALYTICS_SUBKEYS];
 
 function isOnboardingSubkeySettled(value) {
   const normalized = String(value || "").toLowerCase().trim();
@@ -134,12 +134,7 @@ function photoAnglesAllApproved(photo) {
 }
 
 /**
- * Coach / admin / wellness-coach review of a progress photo drives the
- * At a Glance Body Analytics step.
- * Rejecting front, right, or left reopens the step.
- * Accepting the set marks progressPhotos180 done once every angle on that photo is approved.
- * At a Glance Body Analytics completes via syncDerived when medical is also settled.
- * Returns null when onboarding should stay as it is.
+ * Coach review can reopen 180° photos (client must resubmit). Approvals do not mark onboarding subkeys.
  */
 function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}) {
   const normalizedAngle = String(angle || "").toLowerCase().trim();
@@ -156,16 +151,6 @@ function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}
     return syncDerivedOnboardingSteps({
       ...current,
       progressPhotos180: "pending",
-    });
-  }
-
-  if (normalizedAction === "approved" && photoAnglesAllApproved(photo)) {
-    if (current.progressPhotos180 === "done") {
-      return null;
-    }
-    return syncDerivedOnboardingSteps({
-      ...current,
-      progressPhotos180: "done",
     });
   }
 
@@ -325,6 +310,37 @@ function priorCanonicalStepsDone(stepStatus, stepKey) {
   return PAID_ONBOARDING_STATUS_KEYS.slice(0, idx).every((key) => status[key] === "done");
 }
 
+/** Coach At a Glance toggle when client body / 180° / medical data exists. */
+function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataReady = false } = {}) {
+  const normalized = String(value || "").toLowerCase().trim() === "done" ? "done" : "pending";
+  if (normalized === "done" && !clientDataReady) {
+    const err = new Error(
+      "Add body measurements, 180° photos, and medical answers before marking Body Analytics done",
+    );
+    err.name = "BodyAnalyticsAutoCompleteError";
+    throw err;
+  }
+  let next = normalizePaidOnboardingStepStatus(stepStatus);
+  if (normalized === "pending") {
+    next.bodyAnalytics = "pending";
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      next[key] = "pending";
+    }
+    return {
+      stepStatus: syncDerivedOnboardingSteps(next),
+      bodyAnalyticsGlanceExcluded: true,
+    };
+  }
+  for (const key of BODY_ANALYTICS_SUBKEYS) {
+    next[key] = "done";
+  }
+  next = syncDerivedOnboardingSteps({ ...next, bodyAnalytics: "done" });
+  return {
+    stepStatus: next,
+    bodyAnalyticsGlanceExcluded: false,
+  };
+}
+
 function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true } = {}) {
   assertKnownStepKey(stepKey, { allowSubkeys: false });
   const normalized = String(value || "").toLowerCase().trim();
@@ -334,7 +350,7 @@ function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true 
   const next = normalizePaidOnboardingStepStatus(stepStatus);
   if (stepKey === "bodyAnalytics" && normalized === "done") {
     const err = new Error(
-      "Body Analytics completes automatically after 180° photos and medical conditions are approved"
+      "Body Analytics completes automatically after body measurements, 180° photos, and medical conditions are submitted"
     );
     err.name = "BodyAnalyticsAutoCompleteError";
     throw err;
@@ -512,6 +528,7 @@ module.exports = {
   markStepPending,
   priorCanonicalStepsDone,
   setCanonicalStepStatus,
+  setCoachBodyAnalyticsAtGlanceStatus,
   wizardStepAfterSkip,
   wizardStepAfterBodyComplete,
   wizardStepAfterPhotosComplete,

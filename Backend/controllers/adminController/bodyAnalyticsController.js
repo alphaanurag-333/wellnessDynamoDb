@@ -36,9 +36,6 @@ const {
   buildOnboardingPersistUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
-  markStepSkipped,
-  wizardStepAfterSkip,
-  computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
 const { progressPhotoCalendarDay, recordStamp, recordsOnSameDay } = require("../../utils/progressPhotoDay");
 const {
@@ -46,6 +43,10 @@ const {
   toPublicMetabolicMetricLog,
 } = require("../../models/healthProgressMetabolicMetricModel");
 const { sendStoredObjectAsAttachment } = require("../../utils/s3");
+const {
+  syncBodyAnalyticsOnboardingFromClientData,
+  attachBodyAnalyticsAdminMeta,
+} = require("../../services/bodyAnalyticsOnboardingSyncService");
 const {
   syncFattyLiverMetricFromLatestLabReport,
 } = require("../helpers/metabolicMetricsFattyLiverSync");
@@ -88,7 +89,7 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
   const userId = String(req.params.id || "").trim();
   if (!userId) throw new AppError("User id is required", 400);
 
-  const user = await getUserById(userId);
+  let user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
 
@@ -111,11 +112,19 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
 
   const metabolicLogsAfterSync = await listAllMetabolicMetricLogsByUser(userId, { limit: 200 });
 
+  user = await syncBodyAnalyticsOnboardingFromClientData(user);
+  user = await attachBodyAnalyticsAdminMeta(user);
+  const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+
   return res.status(200).json({
     status: true,
     message: "Body analytics fetched",
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
+    paidOnboardingStepStatus: stepStatus,
+    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    completedStepsCount: countCompletedSteps(stepStatus),
+    bodyAnalyticsClientDataReady: Boolean(user.bodyAnalyticsClientDataReady),
     bodyAnalytics: {
       measurements,
       metabolicMetrics: metabolicLogsAfterSync.map(toPublicMetabolicMetricLog),
@@ -185,22 +194,7 @@ exports.patchProgressPhotosInAppSettingsController = asyncHandler(async (req, re
   if (parsed.enabled == null) throw new AppError("enabled must be true or false", 400);
   const enabled = parsed.enabled;
 
-  const updates = { progressPhotosInAppEnabled: enabled };
-
-  if (!enabled) {
-    const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-    if (currentStatus.progressPhotos180 === "pending") {
-      const nextStatus = markStepSkipped(currentStatus, "progressPhotos180");
-      updates.paidOnboardingStepStatus = nextStatus;
-      const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, "progressPhotos180");
-      if (nextWizardStep && nextWizardStep !== user.paidOnboardingStep) {
-        updates.paidOnboardingStep = nextWizardStep;
-      }
-      updates.paidOnboardingCompleted = computePaidOnboardingCompleted(nextStatus);
-    }
-  }
-
-  const updated = await updateUser(userId, updates);
+  const updated = await updateUser(userId, { progressPhotosInAppEnabled: enabled });
 
   return res.status(200).json({
     status: true,

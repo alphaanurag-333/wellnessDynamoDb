@@ -29,9 +29,10 @@ describe("buildPaidOnboardingResetUpdates", () => {
 });
 
 describe("bodyAnalytics derivation", () => {
-  it("does not auto-complete parent until 180 and medical are settled", () => {
+  it("does not auto-complete parent until all three sub-steps are settled", () => {
     const only180 = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "pending",
     });
@@ -39,25 +40,35 @@ describe("bodyAnalytics derivation", () => {
 
     const onlyMedical = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "pending",
       medicalConditions: "done",
     });
     assert.equal(onlyMedical.bodyAnalytics, "pending");
-  });
 
-  it("promotes parent when 180 and medical are done (body measurement optional)", () => {
-    const status = normalizePaidOnboardingStepStatus({
+    const missingBody = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
       bodyMeasurement: "pending",
+      progressPhotos180: "done",
+      medicalConditions: "done",
+    });
+    assert.equal(missingBody.bodyAnalytics, "pending");
+  });
+
+  it("promotes parent when body measurement, 180, and medical are settled", () => {
+    const status = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
     });
     assert.equal(status.bodyAnalytics, "done");
   });
 
-  it("promotes parent when medical is skipped and 180 is done", () => {
+  it("promotes parent when medical is skipped and the other subkeys are done", () => {
     const status = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "skipped",
     });
@@ -79,6 +90,7 @@ describe("bodyAnalytics derivation", () => {
   it("allows internalParameter after bodyAnalytics auto-completes", () => {
     const seeded = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
     });
@@ -126,6 +138,7 @@ describe("bodyAnalytics derivation", () => {
 
   it("lets admin undo later canonical steps without re-promotion", () => {
     let status = normalizePaidOnboardingStepStatus({
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
     });
@@ -202,9 +215,11 @@ describe("body analytics photo review", () => {
     assert.equal(later.bodyAnalytics, "pending");
   });
 
-  it("marks progressPhotos180 done on approval but not Body Analytics until medical is settled", () => {
+  it("does not mark progressPhotos180 done on coach approval", () => {
     const pendingMedical = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
+      progressPhotos180: "pending",
       medicalConditions: "pending",
     });
     const photosOnly = applyBodyAnalyticsPhotoReview(pendingMedical, {
@@ -212,29 +227,7 @@ describe("body analytics photo review", () => {
       action: "approved",
       photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
     });
-    assert.equal(photosOnly.progressPhotos180, "done");
-    assert.equal(photosOnly.bodyAnalytics, "pending");
-
-    const opened = applyBodyAnalyticsPhotoReview(completed, {
-      angle: "front",
-      action: "rejected",
-      photo: reviewedPhoto({ front: "rejected", right: "approved", left: "approved" }),
-    });
-    const partial = applyBodyAnalyticsPhotoReview(opened, {
-      angle: "right",
-      action: "approved",
-      photo: reviewedPhoto({ front: "pending", right: "approved", left: "pending" }),
-    });
-    assert.equal(partial, null);
-
-    const done = applyBodyAnalyticsPhotoReview(opened, {
-      angle: "front",
-      action: "approved",
-      photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
-    });
-    assert.equal(done.bodyAnalytics, "done");
-    assert.equal(done.progressPhotos180, "done");
-    assert.equal(done.medicalConditions, "done");
+    assert.equal(photosOnly, null);
   });
 
   it("returns a finished client to the app after they resubmit 180 photos", () => {
@@ -316,6 +309,7 @@ describe("onboardingStepJustCompleted", () => {
   it("is true only on the pending-to-done transition", () => {
     const pending = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "pending",
       medicalConditions: "done",
     });
@@ -335,6 +329,7 @@ describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
   it("persists app locks when Body Analytics first becomes done", () => {
     const pending = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "pending",
       medicalConditions: "done",
     });
@@ -350,6 +345,7 @@ describe("buildBodyAnalyticsCompletionAppLockUpdates", () => {
   it("does not override coach-enabled gates", () => {
     const pending = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "pending",
       medicalConditions: "done",
     });
@@ -376,6 +372,7 @@ describe("programStartedAt", () => {
   it("persists programStartedAt when program initiation is newly marked done", () => {
     const previousStatus = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
       internalParameter: "done",
@@ -418,6 +415,7 @@ describe("programStartedAt", () => {
   it("includes programStartedAt in onboarding persist updates", () => {
     const previousStatus = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
+      bodyMeasurement: "done",
       progressPhotos180: "done",
       medicalConditions: "done",
       internalParameter: "done",

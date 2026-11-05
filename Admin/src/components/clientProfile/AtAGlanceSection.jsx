@@ -10,6 +10,7 @@ import {
   fetchUserCoachInsight,
   fetchUserReminders,
   getNextOnboardingStepLabel,
+  mapUserRowWithOnboardingSync,
   saveUserCoachInsight,
   deleteUserCoachInsight,
 } from "../../api/usersApi.js";
@@ -972,6 +973,8 @@ function OnboardingStatusCard({
     setStepNotes(buildInitialStepNotes(next));
   }, [user?.id, user?.paidOnboardingCompleted, user?.onboardingDone, user?.paidOnboardingStepStatus]);
 
+  const bodyAnalyticsClientDataReady = Boolean(user?.bodyAnalyticsClientDataReady);
+
   const steps = useMemo(
     () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
     [doneMap],
@@ -1029,12 +1032,23 @@ function OnboardingStatusCard({
         else delete next[n];
         return next;
       });
+      const apiUser = data?.user;
       onUserUpdated?.({
         ...user,
         paidOnboardingStepStatus: nextStatus,
         paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
         onboardingDone,
         onboardingPct: Math.round((onboardingDone / ONBOARDING_STEPS.length) * 100),
+        ...(data?.bodyAnalyticsClientDataReady !== undefined
+          ? { bodyAnalyticsClientDataReady: Boolean(data.bodyAnalyticsClientDataReady) }
+          : apiUser?.bodyAnalyticsClientDataReady !== undefined
+            ? { bodyAnalyticsClientDataReady: Boolean(apiUser.bodyAnalyticsClientDataReady) }
+            : {}),
+        ...(data?.bodyAnalyticsGlanceExcluded !== undefined
+          ? { bodyAnalyticsGlanceExcluded: Boolean(data.bodyAnalyticsGlanceExcluded) }
+          : apiUser?.bodyAnalyticsGlanceExcluded !== undefined
+            ? { bodyAnalyticsGlanceExcluded: Boolean(apiUser.bodyAnalyticsGlanceExcluded) }
+            : {}),
       });
     } finally {
       setBusy(false);
@@ -1198,7 +1212,8 @@ function OnboardingStatusCard({
                   done={step.done}
                   current={isCurrent}
                   onClick={
-                    canEdit && (step.done || step.key !== "bodyAnalytics")
+                    canEdit
+                    && (step.key !== "bodyAnalytics" || step.done || bodyAnalyticsClientDataReady)
                       ? () => {
                           toggleStep(step.n).catch((err) => {
                             onToast(err?.message || "Failed to update step");
@@ -1207,9 +1222,11 @@ function OnboardingStatusCard({
                       : undefined
                   }
                   title={
-                    !step.done && step.key === "bodyAnalytics"
-                      ? "Completes automatically after 180° and medical approval"
-                      : undefined
+                    !step.done && step.key === "bodyAnalytics" && !bodyAnalyticsClientDataReady
+                      ? "Add body measurements, 180° photos, and medical answers to enable this toggle"
+                      : !step.done && step.key === "bodyAnalytics"
+                        ? "Mark complete or leave open — client data is on file"
+                        : undefined
                   }
                 />
                 <div className="ua-cp-onboard-step__copy">
@@ -1296,7 +1313,7 @@ function OnboardingStatusCard({
           })}
         </div>
         <p className="ua-cp-onboard-footnote">
-          Client-side steps sync from the app. Body Analytics completes after coach approval of 180° photos and medical conditions.
+          Client-side steps sync from the app. When body measurements, 180° photos, and medical answers are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
           RCA, HAP, briefing, letter and initiation are yours to submit.
         </p>
       </div>
@@ -1674,7 +1691,10 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     setGlanceLoading(true);
     fetchUserAtAGlance(userId)
       .then((payload) => {
-        if (!cancelled) setGlance(payload);
+        if (cancelled) return;
+        setGlance(payload?.glance || null);
+        const syncedRow = mapUserRowWithOnboardingSync(user, payload);
+        if (syncedRow) onUserUpdated?.(syncedRow);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -1689,7 +1709,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, user?.id]);
+  }, [user?.id]);
 
   function handleWaterHover(active, tip) {
     setRainActive(active);

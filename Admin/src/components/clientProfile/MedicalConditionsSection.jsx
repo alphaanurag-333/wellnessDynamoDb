@@ -3,6 +3,7 @@ import {
   approveUserMedicalConditions,
   fetchUserMedicalConditions,
   mapApiUserToRow,
+  mapUserRowWithOnboardingSync,
   patchUserMedicalConditionsInAppSettings,
   resolveMedicalConditionsInAppEnabled,
 } from "../../api/usersApi.js";
@@ -150,6 +151,8 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
         if (data?.medicalConditionsInAppEnabled !== undefined) {
           setInAppEnabled(Boolean(data.medicalConditionsInAppEnabled));
         }
+        const syncedRow = mapUserRowWithOnboardingSync(user, data);
+        if (syncedRow) onUserUpdated?.(syncedRow);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -163,7 +166,7 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, userId]);
+  }, [userId]);
 
   const rows = useMemo(() => rowsFromRecord(record), [record]);
   const submittedAt = formatWhen(record?.updatedAt || record?.createdAt);

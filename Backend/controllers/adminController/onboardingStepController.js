@@ -10,7 +10,14 @@ const {
   countCompletedSteps,
   onboardingStepLabel,
   buildOnboardingPersistUpdates,
+  setCoachBodyAnalyticsAtGlanceStatus,
+  priorCanonicalStepsDone,
 } = require("../../utils/paidOnboardingHelpers");
+const {
+  loadBodyAnalyticsDataFlags,
+  isBodyAnalyticsClientDataReady,
+  attachBodyAnalyticsAdminMeta,
+} = require("../../services/bodyAnalyticsOnboardingSyncService");
 const {
   dispatchOnboardingReminderNotification,
 } = require("../../services/notificationDispatchService");
@@ -63,10 +70,30 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
   }
 
   let nextStatus;
+  let extraUserUpdates = {};
   try {
-    nextStatus = setCanonicalStepStatus(user.paidOnboardingStepStatus, stepKey, status, {
-      sequential: status === "done",
-    });
+    if (stepKey === "bodyAnalytics") {
+      const flags = await loadBodyAnalyticsDataFlags(user.id);
+      const clientDataReady = isBodyAnalyticsClientDataReady(flags);
+      if (
+        status === "done"
+        && !clientDataReady
+        && !priorCanonicalStepsDone(user.paidOnboardingStepStatus, stepKey)
+      ) {
+        const err = new Error("Complete prior onboarding steps first");
+        err.name = "SequentialStepError";
+        throw err;
+      }
+      const coachResult = setCoachBodyAnalyticsAtGlanceStatus(user.paidOnboardingStepStatus, status, {
+        clientDataReady,
+      });
+      nextStatus = coachResult.stepStatus;
+      extraUserUpdates = { bodyAnalyticsGlanceExcluded: coachResult.bodyAnalyticsGlanceExcluded };
+    } else {
+      nextStatus = setCanonicalStepStatus(user.paidOnboardingStepStatus, stepKey, status, {
+        sequential: status === "done",
+      });
+    }
   } catch (err) {
     if (err?.name === "SequentialStepError" || err?.name === "BodyAnalyticsAutoCompleteError") {
       throw new AppError(err.message, 400);
@@ -75,7 +102,10 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = user.paidOnboardingStepStatus;
-  const updated = await updateUser(user.id, buildOnboardingPersistUpdates(user, previousStatus, nextStatus));
+  const updated = await updateUser(user.id, {
+    ...buildOnboardingPersistUpdates(user, previousStatus, nextStatus),
+    ...extraUserUpdates,
+  });
 
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,
@@ -93,13 +123,17 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
     );
   }
 
+  const userForResponse = await attachBodyAnalyticsAdminMeta(updated || user);
+
   return res.status(200).json({
     status: true,
     message: status === "done" ? `${stepKey} marked done` : `${stepKey} reopened`,
     data: {
-      ...buildOnboardingPayload(updated),
+      ...buildOnboardingPayload(updated || user),
+      bodyAnalyticsClientDataReady: Boolean(userForResponse.bodyAnalyticsClientDataReady),
+      bodyAnalyticsGlanceExcluded: Boolean(userForResponse.bodyAnalyticsGlanceExcluded),
       updatedBy: { id: actor.id, role: actor.role, name: actor.displayName },
-      user: await enrichUser(updated),
+      user: await enrichUser(userForResponse),
     },
   });
 });

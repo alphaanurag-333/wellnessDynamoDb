@@ -74,45 +74,16 @@ describe("progress photos in app", () => {
 });
 
 describe("buildPaidOnboardingStepLocks", () => {
-  it("matches body/180 done with medical still open while admin allows all", () => {
-    const locks = buildPaidOnboardingStepLocks({
-      bodyMeasurementEnabled: true,
-      progressPhotosInAppEnabled: true,
-      paidOnboardingStepStatus: {
-        bodyMeasurement: "done",
-        progressPhotos180: "done",
-        medicalConditions: "pending",
-      },
-    });
-    assert.equal(locks.bodyMeasurement, true);
-    assert.equal(locks.progressPhotos180, true);
-    assert.equal(locks.medicalConditions, false);
-  });
-
-  it("stays false for allowed steps that are not yet done", () => {
-    const locks = buildPaidOnboardingStepLocks({
-      bodyMeasurementEnabled: true,
-      progressPhotosInAppEnabled: true,
-      paidOnboardingStepStatus: {
-        bodyMeasurement: "pending",
-        progressPhotos180: "pending",
-        medicalConditions: "pending",
-      },
-    });
-    assert.equal(locks.bodyMeasurement, false);
-    assert.equal(locks.progressPhotos180, false);
-    assert.equal(locks.medicalConditions, false);
-  });
-
-  it("reflects coach disable toggles from admin", () => {
+  it("follows coach Allowed-in-app toggles only, not At a Glance bodyAnalytics", () => {
     const locks = buildPaidOnboardingStepLocks({
       bodyMeasurementEnabled: false,
       progressPhotosInAppEnabled: false,
       medicalConditionsInAppEnabled: false,
       paidOnboardingStepStatus: {
+        bodyAnalytics: "pending",
         bodyMeasurement: "pending",
         progressPhotos180: "pending",
-        medicalConditions: "pending",
+        medicalConditions: "skipped",
       },
     });
     assert.deepEqual(locks, {
@@ -122,12 +93,16 @@ describe("buildPaidOnboardingStepLocks", () => {
     });
   });
 
-  it("marks all true when Body Analytics is complete", () => {
+  it("is true when each admin toggle is Allowed regardless of sub-step status", () => {
     const locks = buildPaidOnboardingStepLocks({
+      bodyMeasurementEnabled: true,
+      progressPhotosInAppEnabled: true,
+      medicalConditionsInAppEnabled: true,
       paidOnboardingStepStatus: {
-        bodyAnalytics: "done",
-        progressPhotos180: "done",
-        medicalConditions: "done",
+        bodyAnalytics: "pending",
+        bodyMeasurement: "pending",
+        progressPhotos180: "pending",
+        medicalConditions: "pending",
       },
     });
     assert.deepEqual(locks, {
@@ -135,6 +110,26 @@ describe("buildPaidOnboardingStepLocks", () => {
       progressPhotos180: true,
       medicalConditions: true,
     });
+  });
+
+  it("is false when coach flags are unset or disabled", () => {
+    assert.deepEqual(buildPaidOnboardingStepLocks({}), {
+      bodyMeasurement: false,
+      progressPhotos180: false,
+      medicalConditions: false,
+    });
+    assert.deepEqual(
+      buildPaidOnboardingStepLocks({
+        bodyMeasurementEnabled: false,
+        progressPhotosInAppEnabled: undefined,
+        medicalConditionsInAppEnabled: false,
+      }),
+      {
+        bodyMeasurement: false,
+        progressPhotos180: false,
+        medicalConditions: false,
+      },
+    );
   });
 });
 

@@ -531,6 +531,46 @@ function countOnboardingDone(stepStatus) {
   ).length;
 }
 
+const ONBOARDING_SYNC_SIGNATURE_KEYS = [
+  "bodyMeasurement",
+  "progressPhotos180",
+  "medicalConditions",
+  ...PAID_ONBOARDING_STATUS_KEYS,
+];
+
+/** Stable string for comparing onboarding payloads without triggering redundant parent updates. */
+export function onboardingStatusSyncSignature(stepStatus) {
+  if (!stepStatus || typeof stepStatus !== "object") return "";
+  return ONBOARDING_SYNC_SIGNATURE_KEYS.map(
+    (key) => `${key}:${String(stepStatus[key] || "pending").toLowerCase()}`,
+  ).join("|");
+}
+
+/** Returns a profile row when API onboarding fields differ from the current user; otherwise null. */
+export function mapUserRowWithOnboardingSync(user, apiPayload, index = 0) {
+  if (!apiPayload?.paidOnboardingStepStatus) return null;
+  const completed = Boolean(apiPayload.paidOnboardingCompleted);
+  const dataReady = apiPayload.bodyAnalyticsClientDataReady;
+  if (
+    onboardingStatusSyncSignature(user?.paidOnboardingStepStatus)
+      === onboardingStatusSyncSignature(apiPayload.paidOnboardingStepStatus)
+    && Boolean(user?.paidOnboardingCompleted) === completed
+    && (dataReady === undefined
+      || Boolean(user?.bodyAnalyticsClientDataReady) === Boolean(dataReady))
+  ) {
+    return null;
+  }
+  return mapApiUserToRow(
+    {
+      ...user,
+      paidOnboardingStepStatus: apiPayload.paidOnboardingStepStatus,
+      paidOnboardingCompleted: completed,
+      ...(dataReady !== undefined ? { bodyAnalyticsClientDataReady: Boolean(dataReady) } : {}),
+    },
+    user?.n ? user.n - 1 : index,
+  );
+}
+
 /** Next incomplete paid-onboarding step label, or empty when complete/unknown. */
 export function getNextOnboardingStepLabel(stepStatus) {
   if (!stepStatus || typeof stepStatus !== "object") return "";
@@ -748,6 +788,8 @@ export function mapApiUserToRow(user, index = 0) {
     onboardingDone,
     onboardingTotal,
     onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
+    bodyAnalyticsClientDataReady: Boolean(user?.bodyAnalyticsClientDataReady),
+    bodyAnalyticsGlanceExcluded: Boolean(user?.bodyAnalyticsGlanceExcluded),
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
     labReportSubmissionLocked: resolveLabReportSubmissionLocked(user),
     healPaidAt: user?.healPaidAt || "",
@@ -940,7 +982,13 @@ export async function fetchUserAtAGlance(id) {
     if (glance?.supplements) {
       glance.supplements = normalizeAtAGlanceSupplements(glance.supplements);
     }
-    return glance;
+    return {
+      glance,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
+      bodyAnalyticsClientDataReady: Boolean(data.bodyAnalyticsClientDataReady),
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -955,6 +1003,9 @@ export async function fetchUserMedicalConditions(id) {
     return {
       medicalCondition: data.medicalCondition || null,
       medicalConditionsInAppEnabled: data.medicalConditionsInAppEnabled !== false,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
     };
   } catch (error) {
     normalizeApiError(error);
@@ -1012,6 +1063,9 @@ export async function fetchUserBodyAnalytics(id) {
       ...analytics,
       bodyMeasurementEnabled: data.bodyMeasurementEnabled,
       progressPhotosInAppEnabled: data.progressPhotosInAppEnabled,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
     };
   } catch (error) {
     normalizeApiError(error);

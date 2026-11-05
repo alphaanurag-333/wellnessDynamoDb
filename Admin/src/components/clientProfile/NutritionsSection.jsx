@@ -460,21 +460,6 @@ function sameItems(a = [], b = []) {
   ));
 }
 
-function mapApiOrderToUi(order, index) {
-  return {
-    id: order.id,
-    number: index + 1,
-    items: (order.items || []).map((item) => ({ ...item })),
-    placedOn: order.placedOn || "",
-    vendor: order.vendor || "",
-    tracking: order.tracking || "",
-    expectedDelivery: order.expectedDelivery || "",
-    billName: order.billName || "",
-    billPdfUrl: order.billPdfUrl || "",
-    saved: true,
-  };
-}
-
 function coachOrderHasLocalEdits(order) {
   if (order.saved) return false;
   return (
@@ -487,15 +472,38 @@ function coachOrderHasLocalEdits(order) {
   );
 }
 
-/** True while silent polling must not overwrite in-progress coach fulfilment orders. */
+/** True while silent polling must not overwrite in-progress coach fulfilment drafts. */
 function coachOrdersNeedPollProtection(orders) {
   if (!Array.isArray(orders) || !orders.length) return false;
-  const unsaved = orders.filter((o) => !o.saved);
-  const saved = orders.filter((o) => o.saved);
-  if (unsaved.some(coachOrderHasLocalEdits)) return true;
-  if (saved.length > 0 && unsaved.length > 0) return true;
-  if (unsaved.length > 1) return true;
-  return false;
+  if (orders.some(coachOrderHasLocalEdits)) return true;
+  return orders.length > 1;
+}
+
+function fulfilmentOrderToHistoryRow(recId, order) {
+  const orderItems = Array.isArray(order.items) ? order.items : [];
+  const amount = order.billingTotal
+    || orderItems.reduce((sum, item) => sum + (Number(item.price) || 0) * item.qty, 0);
+  const items = orderItems.map((item) => `${item.name} × ${item.qty}`).join(" · ");
+  const billName = order.billName || order.billFileName || "";
+  return {
+    id: `${recId}-${order.id}`,
+    date: formatLongDate(order.placedOn) || "—",
+    items: items || "Nutritions",
+    type: order.vendor ? `Coach delivery · ${order.vendor}` : "Coach delivery",
+    amount,
+    status: billName || order.billPdfUrl ? "Bill uploaded" : "Order logged",
+    tone: billName || order.billPdfUrl ? "purple" : "green",
+  };
+}
+
+/** Coach fulfilment log holds drafts only; saved orders live on the recommendation + order history. */
+function resolveCoachDraftOrders(rec, prevOrders = []) {
+  if (rec?.deliveryOption === "self_billing") return [];
+  const drafts = (Array.isArray(prevOrders) ? prevOrders : []).filter((order) => !order.saved);
+  if (drafts.length) return drafts;
+  if (rec?.deliveryOption !== "coach_delivery" || !rec?.deliveryRequestedAt) return [];
+  if ((rec?.fulfilmentOrders || []).length > 0) return [];
+  return [createDraftOrder(1)];
 }
 
 function recommendationSummary(rec) {
@@ -918,6 +926,7 @@ function CoachOrderCard({
 
 function CoachFulfilmentLog({
   orders,
+  loggedOrderCount = 0,
   pool,
   selected,
   disabled,
@@ -930,23 +939,29 @@ function CoachFulfilmentLog({
 }) {
   const [billOrderId, setBillOrderId] = useState(null);
   const hasDraft = orders.some((o) => !o.saved);
-  const statusLabel = orders.length === 0 ? "Not ordered yet" : hasDraft ? "Draft order" : "Orders logged";
+  const statusLabel = loggedOrderCount === 0 && orders.length === 0
+    ? "Not ordered yet"
+    : hasDraft
+      ? "Draft order"
+      : "Orders logged";
 
   return (
     <div className="ua-cp-nut-log">
       <div className="ua-cp-nut-log__head">
         <strong>Coach fulfilment log</strong>
-        <span className={`ua-cp-nut-log__status ua-cp-nut-log__status--${orders.length === 0 ? "pending" : hasDraft ? "draft" : "saved"}`}>
+        <span className={`ua-cp-nut-log__status ua-cp-nut-log__status--${loggedOrderCount === 0 && orders.length === 0 ? "pending" : hasDraft ? "draft" : "saved"}`}>
           {statusLabel}
         </span>
       </div>
       <p className="ua-cp-nut-log__hint">
-        The client asked you to order it. Log each order you place — date, vendor and bill. Delivered orders move to the history below.
+        The client asked you to order it. Log each order you place — date, vendor and bill. After you save, the log moves to <strong>Order history</strong> below and this form clears.
       </p>
 
       {orders.length === 0 ? (
         <div className="ua-cp-nut-log__empty">
-          No order logged yet. Add one once you place it with the vendor.
+          {loggedOrderCount > 0
+            ? "No draft in progress. Saved logs are listed in Order history below — use + Add order to log another vendor order."
+            : "No order logged yet. Add one once you place it with the vendor."}
         </div>
       ) : (
         orders.map((order) => (
@@ -1253,17 +1268,7 @@ export function NutritionsSection({ user, onToast }) {
     localNutritionFormEditRef.current = false;
     setSelected((rec?.items || []).map((item) => ({ ...item })));
     setFulfilment(rec?.deliveryOption === "self_billing" ? "self" : "delivery");
-    const savedOrders = (rec?.deliveryOption === "coach_delivery"
-      ? (rec?.fulfilmentOrders || [])
-      : []
-    ).map(mapApiOrderToUi);
-    setCoachOrders(
-      savedOrders.length
-        ? savedOrders
-        : rec?.deliveryOption === "self_billing"
-          ? []
-          : [createDraftOrder(1)],
-    );
+    setCoachOrders((prev) => resolveCoachDraftOrders(rec, prev));
   }, []);
 
   function openRecommendationView(rec) {
@@ -1290,6 +1295,16 @@ export function NutritionsSection({ user, onToast }) {
   const clientConfirmedNutritionOrder = Boolean(
     recommended?.deliveryRequestedAt
     && recommended?.deliveryOption !== "self_billing",
+  );
+
+  const coachDraftOrders = useMemo(
+    () => coachOrders.filter((order) => !order.saved),
+    [coachOrders],
+  );
+
+  const loggedFulfilmentOrderCount = useMemo(
+    () => (recommended?.fulfilmentOrders || []).length,
+    [recommended],
   );
 
   const load = useCallback(async ({ silent = false } = {}) => {
@@ -1504,13 +1519,8 @@ export function NutritionsSection({ user, onToast }) {
         id: isLocalDraft ? undefined : order.id,
       });
       if (result?.recommendation) setRecommended(result.recommendation);
-      if (result?.order) {
-        setCoachOrders((list) => list.map((o, index) => (
-          o.id === id
-            ? mapApiOrderToUi(result.order, index)
-            : { ...o, number: index + 1 }
-        )));
-      }
+      localNutritionFormEditRef.current = false;
+      setCoachOrders([]);
       onToast("Order log saved & synced to user app");
     } catch (err) {
       onToast?.(err?.message || "Could not save order log");
@@ -1547,9 +1557,7 @@ export function NutritionsSection({ user, onToast }) {
         if (saved?.recommendation) setRecommended(saved.recommendation);
         serverOrderId = saved?.order?.id || "";
         if (saved?.order) {
-          setCoachOrders((list) => list.map((o, index) => (
-            o.id === orderId ? mapApiOrderToUi(saved.order, index) : { ...o, number: index + 1 }
-          )));
+          setCoachOrders((list) => list.filter((o) => o.id !== orderId));
         }
       }
       if (!serverOrderId) {
@@ -1564,13 +1572,8 @@ export function NutritionsSection({ user, onToast }) {
         file,
       );
       if (result?.recommendation) setRecommended(result.recommendation);
-      if (result?.order) {
-        setCoachOrders((list) => list.map((o, index) => (
-          String(o.id) === String(serverOrderId) || o.id === orderId
-            ? mapApiOrderToUi(result.order, index)
-            : { ...o, number: index + 1 }
-        )));
-      }
+      localNutritionFormEditRef.current = false;
+      setCoachOrders([]);
       onToast("Bill uploaded & synced to user app");
     } catch (err) {
       onToast?.(err?.message || "Could not upload bill");
@@ -1862,28 +1865,19 @@ export function NutritionsSection({ user, onToast }) {
     const rows = [];
     const pushOrderRows = (rec) => {
       (rec?.fulfilmentOrders || []).forEach((order) => {
-        const orderItems = Array.isArray(order.items) ? order.items : [];
-        const amount = order.billingTotal
-          || orderItems.reduce((sum, item) => sum + (Number(item.price) || 0) * item.qty, 0);
-        const items = orderItems.map((item) => `${item.name} × ${item.qty}`).join(" · ");
-        rows.push({
-          id: `${rec.id}-${order.id}`,
-          date: formatLongDate(order.placedOn) || "—",
-          items: items || "Nutritions",
-          type: order.vendor ? `Coach delivery · ${order.vendor}` : "Coach delivery",
-          amount,
-          status: order.billName || order.billPdfUrl ? "Bill uploaded" : "Order logged",
-          tone: order.billName || order.billPdfUrl ? "purple" : "green",
-        });
+        rows.push(fulfilmentOrderToHistoryRow(rec.id, order));
       });
     };
 
+    if (recommended?.id) {
+      pushOrderRows(recommended);
+    }
     history.forEach((entry) => {
       pushOrderRows(entry);
       rows.push(recommendationToHistoryRow(entry));
     });
     return rows;
-  }, [history]);
+  }, [history, recommended]);
 
   if (!userId) {
     return <p className="ua-page-head__sub">Client is required to load nutritions.</p>;
@@ -2072,7 +2066,8 @@ export function NutritionsSection({ user, onToast }) {
                     <div className="ua-cp-rec-slot-label ua-cp-nut-place-order__label">3 · Place order</div>
                     {clientConfirmedNutritionOrder ? (
                       <CoachFulfilmentLog
-                        orders={coachOrders}
+                        orders={coachDraftOrders}
+                        loggedOrderCount={loggedFulfilmentOrderCount}
                         pool={pool}
                         selected={currentRecommendation.items}
                         disabled={!canWrite || saving || !isHealClient}

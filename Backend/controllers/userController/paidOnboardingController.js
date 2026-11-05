@@ -423,13 +423,21 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   });
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+  const nextStatus = markStepDone(currentStatus, "medicalConditions");
   const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
   const nextWizardStep = alreadyCompleted
     ? user.paidOnboardingStep || "done"
     : wizardStepAfterMedicalComplete(user.paidOnboardingStep);
 
   const updated = await updateUser(userId, {
+    ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
+  });
+
+  notifyOnboardingWhatsAppTransitions({
+    user: updated || user,
+    previousStatus: currentStatus,
+    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
 
   return res.status(201).json({
