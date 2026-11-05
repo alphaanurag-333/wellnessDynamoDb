@@ -634,6 +634,75 @@ a.ua-org-card__name:hover {
   color: #94a3b8;
 }
 
+.updated-admin .ua-org-card__via-edit {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: #2563eb;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.updated-admin .ua-org-card__via-edit:hover {
+  color: #1d4ed8;
+}
+
+.updated-admin .ua-org-card__via-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.updated-admin .ua-org-card__via-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.updated-admin .ua-org-card__via-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.updated-admin .ua-org-card__via-save,
+.updated-admin .ua-org-card__via-cancel {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.updated-admin .ua-org-card__via-save {
+  color: #15803d;
+}
+
+.updated-admin .ua-org-card__via-cancel {
+  color: #64748b;
+}
+
+.updated-admin .ua-org-card__via-error {
+  font-size: 10px;
+  color: #b91c1c;
+  line-height: 1.3;
+}
+
 .updated-admin .ua-rt-tree,
 .updated-admin .ua-rt-children {
   list-style: none;

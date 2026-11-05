@@ -60,7 +60,8 @@
     "seed:test-users": "node --use-system-ca scripts/seedTestUsers.js --confirm",
     "seed:wellness-journey-samples": "node --use-system-ca scripts/seedWellnessJourneySamples.js",
     "backfill:staff-referral-codes": "node --use-system-ca scripts/backfillStaffReferralCodes.js",
-    "backfill:referral-user-assignments": "node --use-system-ca scripts/backfillReferralUserAssignments.js"
+    "backfill:referral-user-assignments": "node --use-system-ca scripts/backfillReferralUserAssignments.js",
+    "seed:referral-peer-demo": "node --use-system-ca scripts/seedReferralPeerDemo.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1041.0",

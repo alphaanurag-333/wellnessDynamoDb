@@ -3,6 +3,7 @@ const { docClient } = require("../config/db");
 const {
   getUserById,
   updateUser,
+  forceUpdateReferralAttribution,
 } = require("./userModel");
 const {
   getReferralCodeRecord,
@@ -461,9 +462,70 @@ async function ensureHealIfProgramPurchased(user) {
   }
 }
 
+/**
+ * Admin-only: replace which referral code a client joined with (updates referredBy* and tree placement).
+ */
+async function correctUserReferralAttribution(userId, referralCodeInput) {
+  const id = String(userId || "").trim();
+  if (!id) {
+    const err = new Error("User id is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const user = await getUserById(id);
+  if (!user || user.status === "deleted") {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const normalizedInput = referralCodeInput
+    ? String(referralCodeInput).trim().toUpperCase()
+    : "";
+  if (!normalizedInput) {
+    const err = new Error("Referral code is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const ownCode = String(user.referralCode || "")
+    .trim()
+    .toUpperCase();
+  if (ownCode && normalizedInput === ownCode) {
+    const err = new Error("A user cannot be referred by their own referral code");
+    err.name = "InvalidReferralCodeError";
+    throw err;
+  }
+
+  const referralRecord = await getReferralCodeRecord(normalizedInput);
+  if (!referralRecord) {
+    const err = new Error("Invalid referral code");
+    err.name = "InvalidReferralCodeError";
+    throw err;
+  }
+
+  if (referralRecord.entityType === "user" && String(referralRecord.entityId) === id) {
+    const err = new Error("A user cannot be referred by their own referral code");
+    err.name = "InvalidReferralCodeError";
+    throw err;
+  }
+
+  const context = await loadReferralContext(referralRecord);
+  const assignment = resolveConversionAssignment(referralRecord, context, normalizedInput);
+
+  return forceUpdateReferralAttribution(id, {
+    referredByUserId: assignment.referredByUserId,
+    referredByCode: assignment.referredByCode,
+    referredByEntityType: assignment.referredByEntityType,
+    referredByEntityId: assignment.referredByEntityId,
+  });
+}
+
 module.exports = {
   loadReferralContext,
   resolveReferralCodeInput,
+  correctUserReferralAttribution,
   completeConsultancyEnrollment,
   convertSeekToHeal,
   convertToSeek,

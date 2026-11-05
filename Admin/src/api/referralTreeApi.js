@@ -31,6 +31,23 @@ export async function fetchReferralOverview({ topLimit = 25, recentLimit = 40 } 
   }
 }
 
+export async function patchUserReferralUsed(userId, referralCode) {
+  const id = String(userId || "").trim();
+  const code = String(referralCode || "").trim();
+  if (!id || !code) {
+    throw new Error("User id and referral code are required");
+  }
+
+  try {
+    const { data } = await api.patch(`${referralTreeBase()}/users/${encodeURIComponent(id)}/referred-by`, {
+      referralCode: code.toUpperCase(),
+    });
+    return data?.user || null;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchReferralTree({
   rootUserId,
   rootEntityId,

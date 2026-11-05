@@ -34,11 +34,21 @@ const {
 const { getAppConfig, toPublicAppConfig } = require("../../models/appConfigModel");
 const { getRoleById, listRoles } = require("../../models/roleModel");
 const { normalizeRoleKey, ROLE_KEY_TO_UI } = require("../../config/accountRoles");
-const { normalizeEmail, normalizePhone, normalizeCountryCode, listUsersByParentCoachId, listUsersByAssignedCoachId } = require("../../models/userModel");
+const {
+  normalizeEmail,
+  normalizePhone,
+  normalizeCountryCode,
+  listUsersByParentCoachId,
+  listUsersByAssignedCoachId,
+  getUserById,
+} = require("../../models/userModel");
 const { UI_TO_ACCOUNT_ROLE } = require("../../config/consolePermissionCatalog");
 const {
   generateUniqueReferralCode,
   registerReferralCode,
+  getReferralCodeRecord,
+  normalizeReferralCode,
+  reassignReferralCodeEntity,
 } = require("../../models/referralCodeModel");
 const {
   assertValidPersonName,
@@ -322,6 +332,66 @@ function parseOptionalMobile({ phone, countryCode }) {
 }
 
 /**
+ * Reuse a client's referral code when the same person is created as WC/AWC.
+ * Moves the ReferralCode registry row from user → staff when applicable.
+ */
+async function adoptClientReferralCodeForStaff({
+  referralCode,
+  linkedClientUserId,
+  accountRoleKey,
+  accountId,
+  parentId,
+}) {
+  const code = normalizeReferralCode(referralCode);
+  if (!code) throw new AppError("Referral code is required", 400);
+
+  const linkedId = String(linkedClientUserId || "").trim();
+  if (!linkedId) {
+    throw new AppError("Select the client from search to reuse their referral code", 400);
+  }
+
+  const client = await getUserById(linkedId);
+  if (!client) throw new AppError("Selected client not found", 400);
+  const clientCode = normalizeReferralCode(client.referralCode);
+  if (!clientCode || clientCode !== code) {
+    throw new AppError("Referral code does not match the selected client", 400);
+  }
+
+  const ownerCoachId =
+    accountRoleKey === "wellness_coach" ? accountId : String(parentId || "").trim();
+  if (!ownerCoachId) throw new AppError("Parent coach is required for this role", 400);
+
+  const record = await getReferralCodeRecord(code);
+  if (!record) {
+    await registerReferralCode({
+      referralCode: code,
+      entityType: accountRoleKey,
+      entityId: accountId,
+      ownerCoachId,
+    });
+    return code;
+  }
+
+  if (record.entityType === accountRoleKey && record.entityId === accountId) {
+    return code;
+  }
+
+  if (record.entityType === "user") {
+    if (record.entityId !== linkedId) {
+      throw new AppError("This referral code belongs to a different client", 409);
+    }
+    await reassignReferralCodeEntity(code, {
+      entityType: accountRoleKey,
+      entityId: accountId,
+      ownerCoachId,
+    });
+    return code;
+  }
+
+  throw new AppError("This referral code is already assigned to another team member", 409);
+}
+
+/**
  * Create a staff Account (Teams page).
  * Body: name, email, whatsappPhone (or phone), whatsappCountryCode?, mobilePhone?, mobileCountryCode?, password?,
  *       roleKey (ui/account) and/or consoleRoleId (Access Control role id),
@@ -405,9 +475,33 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
     }
   }
 
+  const linkedClientUserId =
+    String(req.body?.linkedClientUserId || req.body?.linked_client_user_id || "").trim() || null;
+  const referralCodeInput = req.body?.referralCode ?? req.body?.referral_code ?? null;
+
   let referralCode = null;
+  let adoptClientReferral = false;
   if (REFERRAL_STAFF_ROLES.has(accountRoleKey)) {
-    referralCode = await generateUniqueReferralCode({ entityType: accountRoleKey });
+    const normalizedInput = referralCodeInput ? normalizeReferralCode(referralCodeInput) : "";
+    if (linkedClientUserId || normalizedInput) {
+      if (linkedClientUserId) {
+        adoptClientReferral = true;
+        if (normalizedInput) {
+          referralCode = normalizedInput;
+        } else {
+          const client = await getUserById(linkedClientUserId);
+          if (!client) throw new AppError("Selected client not found", 400);
+          referralCode = normalizeReferralCode(client.referralCode);
+          if (!referralCode) {
+            throw new AppError("Selected client has no referral code yet", 400);
+          }
+        }
+      } else {
+        throw new AppError("Select the client from search to reuse their referral code", 400);
+      }
+    } else {
+      referralCode = await generateUniqueReferralCode({ entityType: accountRoleKey });
+    }
   }
 
   const totpSecret = generateTotpSecret();
@@ -447,12 +541,22 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
   });
 
   if (referralCode) {
-    await registerReferralCode({
-      referralCode,
-      entityType: accountRoleKey,
-      entityId: account.id,
-      ownerCoachId: accountRoleKey === "wellness_coach" ? account.id : parentId,
-    });
+    if (adoptClientReferral) {
+      await adoptClientReferralCodeForStaff({
+        referralCode,
+        linkedClientUserId,
+        accountRoleKey,
+        accountId: account.id,
+        parentId,
+      });
+    } else {
+      await registerReferralCode({
+        referralCode,
+        entityType: accountRoleKey,
+        entityId: account.id,
+        ownerCoachId: accountRoleKey === "wellness_coach" ? account.id : parentId,
+      });
+    }
   }
 
   return res.status(201).json({

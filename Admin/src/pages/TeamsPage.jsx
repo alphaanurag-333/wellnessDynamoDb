@@ -521,6 +521,8 @@ function CreateMemberModal({
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [nameSearchBusy, setNameSearchBusy] = useState(false);
   const [nameMenuOpen, setNameMenuOpen] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [linkedClientUserId, setLinkedClientUserId] = useState("");
   const nameSearchRef = useRef(null);
   const nameSearchSeq = useRef(0);
   const skipNameSearchRef = useRef(false);
@@ -561,6 +563,8 @@ function CreateMemberModal({
     setState(String(user.stateRaw || "").trim());
     setCity(String(user.city || "").trim());
     setBio("");
+    setReferralCode(String(user.referralCode || "").trim().toUpperCase());
+    setLinkedClientUserId(String(user.id || "").trim());
     setErrors((prev) => {
       const next = { ...prev };
       delete next.name;
@@ -589,6 +593,8 @@ function CreateMemberModal({
     setState(member.state || "");
     setCity(member.city || "");
     setBio(String(member.bio || "").slice(0, TEAM_BIO_MAX_LEN));
+    setReferralCode(String(member.referralCode || "").trim().toUpperCase());
+    setLinkedClientUserId("");
     setConsoleRoleId(member.consoleRoleId || "");
     setParentAccountId(member.parentAccountId || "");
     setMemberStatus(memberUiStatus(member));
@@ -612,6 +618,8 @@ function CreateMemberModal({
     setState("");
     setCity("");
     setBio("");
+    setReferralCode("");
+    setLinkedClientUserId("");
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
@@ -686,6 +694,7 @@ function CreateMemberModal({
   const indiaSelected = country === "India";
   const cityOptions = useMemo(() => citiesForState(state), [state]);
   const needsParent = baseUiKey === "awc" || baseUiKey === "trainee";
+  const staffReferralRole = baseUiKey === "wc" || baseUiKey === "awc";
   const parentRoleKey =
     baseUiKey === "trainee" ? "assistant_wellness_coach" : "wellness_coach";
   const eligibleParents = useMemo(
@@ -816,6 +825,12 @@ function CreateMemberModal({
         roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
         totpRequired: isSuperAdmin ? totpRequired : false,
+        ...(staffReferralRole && linkedClientUserId
+          ? {
+              linkedClientUserId,
+              ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
+            }
+          : {}),
       });
       onToast(`Created ${result.account?.name || name.trim()}`);
       onSaved(result.account);
@@ -970,7 +985,11 @@ function CreateMemberModal({
                               >
                                 <span className="ua-teams-create__name-option-title">{user.name}</span>
                                 <span className="ua-teams-create__name-option-meta">
-                                  {[user.email, nationalPhoneDigits(user.phone) || null]
+                                  {[
+                                    user.email,
+                                    nationalPhoneDigits(user.phone) || null,
+                                    user.referralCode ? `Ref: ${user.referralCode}` : null,
+                                  ]
                                     .filter(Boolean)
                                     .join(" · ")}
                                 </span>
@@ -1086,6 +1105,32 @@ function CreateMemberModal({
                 />
                 {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
               </label>
+            {staffReferralRole || (isEdit && referralCode) ? (
+              <label className="ua-teams-create__field">
+                <span className="ua-teams-create__label">Referral code</span>
+                <input
+                  className={`ua-teams-create__input is-readonly${errors.referralCode ? " is-invalid" : ""}`}
+                  placeholder={
+                    isEdit
+                      ? "—"
+                      : linkedClientUserId
+                        ? "From selected client"
+                        : "Select a client by name to reuse their code"
+                  }
+                  value={referralCode}
+                  readOnly
+                  aria-readonly="true"
+                />
+                {!isEdit && linkedClientUserId ? (
+                  <span className="ua-teams-create__hint">
+                    This client&apos;s code will be assigned to the new coach profile.
+                  </span>
+                ) : null}
+                {errors.referralCode ? (
+                  <span className="ua-teams-create__error">{errors.referralCode}</span>
+                ) : null}
+              </label>
+            ) : null}
 
             {/* <div className="ua-teams-create__section">Location</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--location">

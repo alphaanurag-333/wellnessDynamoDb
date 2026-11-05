@@ -62,6 +62,38 @@ async function registerReferralCode({ referralCode, entityType, entityId, ownerC
   return item;
 }
 
+async function reassignReferralCodeEntity(
+  referralCode,
+  { entityType, entityId, ownerCoachId }
+) {
+  const code = normalizeReferralCode(referralCode);
+  const normalizedType = normalizeEntityType(entityType);
+  const normalizedEntityId = String(entityId || "").trim();
+  const normalizedOwnerCoachId = String(ownerCoachId || "").trim();
+  if (!code) throw new Error("referralCode is required");
+  if (!normalizedEntityId) throw new Error("entityId is required");
+  if (!normalizedOwnerCoachId) throw new Error("ownerCoachId is required");
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { referralCode: code },
+      UpdateExpression:
+        "SET entityType = :entityType, entityId = :entityId, ownerCoachId = :ownerCoachId, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":entityType": normalizedType,
+        ":entityId": normalizedEntityId,
+        ":ownerCoachId": normalizedOwnerCoachId,
+        ":updatedAt": new Date().toISOString(),
+      },
+      ConditionExpression: "attribute_exists(referralCode)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return Attributes || null;
+}
+
 async function updateReferralCodeOwnerCoachId(referralCode, ownerCoachId) {
   const code = normalizeReferralCode(referralCode);
   const normalizedOwnerCoachId = String(ownerCoachId || "").trim();
@@ -176,6 +208,7 @@ module.exports = {
   normalizeEntityType,
   getReferralCodeRecord,
   registerReferralCode,
+  reassignReferralCodeEntity,
   updateReferralCodeOwnerCoachId,
   deleteReferralCodeRecord,
   generateUniqueReferralCode,
