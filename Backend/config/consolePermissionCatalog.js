@@ -16,6 +16,7 @@ const PERM_CATALOG = [
   ["User Management", "Blood reports", "rep", ["view", "create", "upload", "edit", "export"], "users"],
   ["User Management", "Program assignment", "pg", ["view", "create", "edit", "delete", "toggle"], "users"],
   ["User Management", "Diet & protocol", "diet", ["view", "create", "edit", "delete"], "users"],
+  ["User Management", "Onboarding view", "ob", ["view", "edit"], "users"],
   ["Teams", "Team members", "tm", ["view", "create", "edit", "delete"], "teams"],
   ["Teams", "Coach reassignment", "ra", ["view", "edit", "toggle"], "teams"],
   ["Calendar", "Consultation slots", "cal", ["view", "create", "edit", "delete"], "calendar"],
@@ -118,6 +119,7 @@ const DEFAULT_CONSOLE_GRANTS = {
     avail: ["view", "edit", "toggle"],
     pt: ["view", "edit", "toggle"],
     sop: ["view"],
+    ob: ["view", "edit"],
     rt: ["view"],
   },
   awc: {
@@ -127,6 +129,7 @@ const DEFAULT_CONSOLE_GRANTS = {
     body: ["view"],
     rep: ["view"],
     diet: ["view"],
+    ob: ["view", "edit"],
     tm: ["view"],
     cal: ["view", "create", "edit"],
     avail: ["view"],
@@ -136,6 +139,7 @@ const DEFAULT_CONSOLE_GRANTS = {
   trainee: {
     dash: ["view"],
     cl: ["view"],
+    ob: ["view"],
     pt: ["view"],
     sop: ["view"],
     body: ["view"],
@@ -246,6 +250,36 @@ function navSectionsForUiRole(uiKey, role) {
  * Seeding only drops slugs those roles are not allowed to hold (Configs, and
  * Wellness Coach revenue). It must not put removed defaults such as Teams back.
  */
+const OB_PERM_MIGRATION_FLAG = "obPermissionsIntroduced";
+
+/** One-time migration: derive ob from cl when the feature was first added. */
+function backfillOnboardingViewPermissions(permissions) {
+  const set = new Set(Array.isArray(permissions) ? permissions.map(String) : []);
+  if (set.has("console.cl.view") && !set.has("console.ob.view")) {
+    set.add("console.ob.view");
+  }
+  if (set.has("console.cl.edit") && !set.has("console.ob.edit")) {
+    set.add("console.ob.edit");
+  }
+  return [...set];
+}
+
+/**
+ * Run once per role so admins can revoke Onboarding view without seed re-granting it.
+ * Returns update payload or null if already migrated.
+ */
+function migrateOnboardingViewPermissionsOnce(role) {
+  if (!role) return null;
+  const uiMeta = role.uiMeta && typeof role.uiMeta === "object" ? { ...role.uiMeta } : {};
+  if (uiMeta[OB_PERM_MIGRATION_FLAG]) return null;
+
+  const current = Array.isArray(role.permissions) ? role.permissions.map(String) : [];
+  const hasOb = current.some((slug) => slug.startsWith("console.ob."));
+  const permissions = hasOb ? current : backfillOnboardingViewPermissions(current);
+  uiMeta[OB_PERM_MIGRATION_FLAG] = true;
+  return { permissions, uiMeta };
+}
+
 function alignSeededConsoleRole(role, roleKey) {
   const currentPerms = Array.isArray(role?.permissions) ? role.permissions : [];
   const currentNav = Array.isArray(role?.navSections) ? role.navSections : [];
@@ -306,6 +340,7 @@ module.exports = {
   stripConfigPermissionSlugs,
   navSectionsForUiRole,
   alignSeededConsoleRole,
+  migrateOnboardingViewPermissionsOnce,
   sameStringSet,
   getConsolePermissionCatalog,
 };

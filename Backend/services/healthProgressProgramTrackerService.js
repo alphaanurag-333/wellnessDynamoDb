@@ -8,6 +8,8 @@ const {
   HEALTH_PROGRESS_FEATURE_KEYS,
   normalizeHealthProgressFeatures,
   applyPurchasedProgramTrackers,
+  isGeneralWellbeingConcernLabel,
+  isBroadWellnessProgramLabel,
 } = require("../utils/healthProgressHelpers");
 
 async function purchasedProgramLabels(userId) {
@@ -68,12 +70,30 @@ async function clientSelectionLabels(user) {
   return labels;
 }
 
+async function userHasGeneralWellbeingPrimary(user) {
+  const otherTitle = String(user?.primaryHealthConcernOther || "").trim();
+  const token = concernToken(user?.primaryHealthConcern);
+  const concern = await labelForConcernToken(token, otherTitle);
+  if (isGeneralWellbeingConcernLabel(concern)) return true;
+  return isGeneralWellbeingConcernLabel(token);
+}
+
+function programLabelsForTrackers(programLabels) {
+  return (programLabels || []).filter((label) => !isBroadWellnessProgramLabel(label));
+}
+
 async function trackerLabelsForUser(user) {
   const programLabels = user?.id ? await purchasedProgramLabels(user.id) : [];
   const purchased = programLabels.length > 0 || Boolean(user?.programPurchased);
-  if (!purchased) return programLabels;
+  if (!purchased) return programLabelsForTrackers(programLabels);
+
+  const diseaseProgramLabels = programLabelsForTrackers(programLabels);
+  if (await userHasGeneralWellbeingPrimary(user)) {
+    return diseaseProgramLabels;
+  }
+
   const selections = await clientSelectionLabels(user);
-  return [...programLabels, ...selections];
+  return [...diseaseProgramLabels, ...selections];
 }
 
 function reconcileHealthProgressFeatures(user, labels) {

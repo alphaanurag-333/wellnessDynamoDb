@@ -4,6 +4,7 @@ const {
   trackerFeatureKeysForProgramLabel,
   applyPurchasedProgramTrackers,
   normalizeHealthProgressFeatures,
+  isGeneralWellbeingConcernLabel,
 } = require("../utils/healthProgressHelpers");
 const { reconcileHealthProgressFeatures } = require("../services/healthProgressProgramTrackerService");
 
@@ -23,6 +24,26 @@ describe("purchased program health trackers", () => {
     assert.deepEqual(trackerFeatureKeysForProgramLabel("Thyroid Wellness Program"), []);
     assert.deepEqual(trackerFeatureKeysForProgramLabel("Gut Reset & Digestive Healing"), []);
     assert.deepEqual(trackerFeatureKeysForProgramLabel(""), []);
+  });
+
+  it("does not auto-enable trackers for Overall Wellbeing or Seek to Heal labels", () => {
+    assert.equal(isGeneralWellbeingConcernLabel("Overall Wellbeing"), true);
+    assert.equal(isGeneralWellbeingConcernLabel("Everyday Wellness"), true);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("Overall Wellbeing"), []);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("Everyday Wellness"), []);
+    assert.deepEqual(
+      trackerFeatureKeysForProgramLabel("Seek to Heal — 90-Day Transformation"),
+      []
+    );
+
+    const next = applyPurchasedProgramTrackers(
+      {},
+      ["Overall Wellbeing", "Seek to Heal — 90-Day Transformation", "diabetes_reversal"],
+      { gender: "male" }
+    );
+    assert.equal(next.glucose, true);
+    assert.equal(next.weightPic, false);
+    assert.equal(next.bloodPressure, false);
   });
 
   it("turns on the matching tracker and keeps other choices", () => {

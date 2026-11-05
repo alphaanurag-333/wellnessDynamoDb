@@ -4,6 +4,12 @@ import { clientHasHealthProgressSection } from "./healthProgressSection.js";
  * Client profile sidebar sections → Access Control console permissions.
  * Slugs mirror PERM_CATALOG in data/accessData.js.
  */
+/** At a Glance → Onboarding view tab (feature id `ob` in PERM_CATALOG). */
+export const ONBOARDING_VIEW_PERMS = {
+  view: "console.ob.view",
+  edit: "console.ob.edit",
+};
+
 export const CLIENT_PROFILE_SECTIONS = {
   glance: {
     view: "console.cl.view",

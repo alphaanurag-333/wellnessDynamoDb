@@ -125,8 +125,7 @@ async function resolveEnrollmentAssignment(user, referralCode) {
 /**
  * Record successful consultancy payment: consultancy_only tier + coach assignment.
  * Does not upgrade to Seek to Heal (subscription).
- * Unassigned consultancy_only clients (renewal / first pay without code) still get
- * assigned when a valid WC/AWC referral is present.
+ * Referral codes record attribution only; WC/AWC assignment is always manual (admin).
  */
 async function completeConsultancyEnrollment(userId, { referralCode } = {}) {
   const user = await getUserById(userId);

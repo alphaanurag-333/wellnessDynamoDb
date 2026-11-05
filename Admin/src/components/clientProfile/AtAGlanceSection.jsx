@@ -44,7 +44,11 @@ import {
 } from "../../utils/counsellingReviewHistory.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
-import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import {
+  ClientSectionDenied,
+  useClientSectionPermissions,
+} from "./ClientProfileSectionGate.jsx";
+import { ONBOARDING_VIEW_PERMS } from "../../utils/clientProfilePermissions.js";
 
 const EMPTY_SNAPSHOT = [
   { label: "Age", value: "—", tone: "default" },
@@ -210,11 +214,13 @@ function GlanceHeader({ user, lastCounselling, onOpenReview }) {
   );
 }
 
-function PreviewToggle({ mode, onChange }) {
+function PreviewToggle({ mode, onChange, showOnboardingTab = true }) {
   return (
     <div className="ua-cp-preview-bar">
       {/* <span className="ua-cp-preview-bar__label">Preview</span> */}
-      <button type="button" className={`ua-cp-preview-tab${mode === "onboarding" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarding")}>Onboarding view</button>
+      {showOnboardingTab ? (
+        <button type="button" className={`ua-cp-preview-tab${mode === "onboarding" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarding")}>Onboarding view</button>
+      ) : null}
       <button type="button" className={`ua-cp-preview-tab${mode === "onboarded" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarded")}>Onboarded view</button>
     </div>
   );
@@ -913,7 +919,6 @@ function OnboardingStatusCard({
   onProgressChange,
   onUserUpdated,
   canEdit = true,
-  canCalEdit = true,
   canRemind = true,
 }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
@@ -1088,7 +1093,7 @@ function OnboardingStatusCard({
       return;
     }
     if (step.action?.startsWith("schedule-")) {
-      if (!canCalEdit) {
+      if (!canEdit) {
         onToast("You do not have permission to schedule meetings");
         return;
       }
@@ -1241,7 +1246,7 @@ function OnboardingStatusCard({
                   {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
                   {meetingNote ? <div className="ua-cp-onboard-step__note">{meetingNote}</div> : null}
                 </div>
-                {canCalEdit && meeting?.status === "time_requested" ? (
+                {canEdit && meeting?.status === "time_requested" ? (
                   <div className="ua-cp-onboard-step__btns">
                     <button
                       type="button"
@@ -1277,7 +1282,7 @@ function OnboardingStatusCard({
                       Reject
                     </button>
                   </div>
-                ) : canCalEdit && meeting?.status === "slots_offered" ? (
+                ) : canEdit && meeting?.status === "slots_offered" ? (
                   <button
                     type="button"
                     className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
@@ -1293,7 +1298,7 @@ function OnboardingStatusCard({
                     disabled={
                       busy
                       || (step.done && !canEdit)
-                      || (!step.done && step.action?.startsWith("schedule-") && !canCalEdit && !canEdit)
+                      || (!step.done && step.action?.startsWith("schedule-") && !canEdit)
                       || (!step.done && step.action === "submit-rca" && !canEdit)
                       || (!step.done && !step.action && !canEdit && !step.section)
                     }
@@ -1596,15 +1601,22 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const archived = useClientProfileArchived();
   const { canDelete: canDeleteClientData } = useClientSectionPermissions("glance");
   const canEditClient = !archived && (isAdminView || can("console.cl.edit"));
-  const canCalEdit = !archived && (isAdminView || can("console.cal.edit") || can("console.cal.create"));
-  const canRemindClient = !archived && (canEditClient || canCalEdit || can("console.diet.edit"));
+  const canViewOnboarding = isAdminView || can(ONBOARDING_VIEW_PERMS.view);
+  const canEditOnboarding = !archived && (isAdminView || can(ONBOARDING_VIEW_PERMS.edit));
+  const canRemindClient = !archived && canEditOnboarding;
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
-  const [viewMode, setViewMode] = useState(inProgress ? "onboarding" : "onboarded");
+  const defaultViewMode = inProgress && canViewOnboarding ? "onboarding" : "onboarded";
+  const [viewMode, setViewMode] = useState(defaultViewMode);
   useEffect(() => {
-    setViewMode(inProgress ? "onboarding" : "onboarded");
-  }, [inProgress, user?.id]);
+    setViewMode(inProgress && canViewOnboarding ? "onboarding" : "onboarded");
+  }, [inProgress, user?.id, canViewOnboarding]);
+  useEffect(() => {
+    if (!canViewOnboarding && viewMode === "onboarding") {
+      setViewMode("onboarded");
+    }
+  }, [canViewOnboarding, viewMode]);
   const [reminders, setReminders] = useState([]);
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [deletingReminderId, setDeletingReminderId] = useState(null);
@@ -1723,7 +1735,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
       <GlanceHeader user={user} lastCounselling={lastCounselling} onOpenReview={() => setReviewOpen(true)} />
-      <PreviewToggle mode={viewMode} onChange={setViewMode} />
+      <PreviewToggle mode={viewMode} onChange={setViewMode} showOnboardingTab={canViewOnboarding} />
 
       {viewMode === "onboarded" ? (
         <>
@@ -1753,6 +1765,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             canDelete={canDeleteClientData}
           />
         </>
+      ) : !canViewOnboarding ? (
+        <ClientSectionDenied
+          title="Onboarding view"
+          subtitle="Your role does not include permission to view client onboarding progress."
+        />
       ) : (
         <>
           <OnboardingSummary user={user} progress={onboardingProgress} />
@@ -1762,8 +1779,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             onNavigate={onNavigate}
             onProgressChange={setOnboardingProgress}
             onUserUpdated={onUserUpdated}
-            canEdit={canEditClient}
-            canCalEdit={canCalEdit}
+            canEdit={canEditOnboarding}
             canRemind={canRemindClient}
           />
         </>

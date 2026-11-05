@@ -92,9 +92,34 @@ function programLookupText(value) {
     .trim();
 }
 
+/** Primary concerns that must not auto-enable Health Progress trackers. */
+function isGeneralWellbeingConcernLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return false;
+  return (
+    /\boverall wellbeing\b/.test(text) ||
+    /\beveryday wellness\b/.test(text) ||
+    text === "overall wellbeing" ||
+    text === "everyday wellness"
+  );
+}
+
+/** Flagship / general programs (e.g. Seek to Heal) — not disease-specific tracker sources. */
+function isBroadWellnessProgramLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return false;
+  if (isGeneralWellbeingConcernLabel(label)) return true;
+  if (/\bseek to heal\b/.test(text)) return true;
+  if (text === "general" || text === "seek to heal" || text === "seek_to_heal") return true;
+  return false;
+}
+
 function trackerFeatureKeysForProgramLabel(label) {
   const text = programLookupText(label);
   if (!text) return [];
+  if (isGeneralWellbeingConcernLabel(label) || isBroadWellnessProgramLabel(label)) {
+    return [];
+  }
 
   const keys = [];
   if (/\b(fat loss|weight loss|fatloss)\b/.test(text)) keys.push("weightPic");
@@ -107,7 +132,10 @@ function trackerFeatureKeysForProgramLabel(label) {
 function applyPurchasedProgramTrackers(settings, labels, user) {
   const next = normalizeHealthProgressFeatures(settings);
   const female = isFemaleUser(user);
-  for (const label of labels || []) {
+  const trackerLabels = (labels || []).filter(
+    (label) => !isBroadWellnessProgramLabel(label)
+  );
+  for (const label of trackerLabels) {
     for (const key of trackerFeatureKeysForProgramLabel(label)) {
       if (key === "menstrualCycle" && !female) continue;
       next[key] = true;
@@ -462,6 +490,8 @@ module.exports = {
   isHealthProgressSaturday,
   isFemaleUser,
   resolveHealthProgressSettings,
+  isGeneralWellbeingConcernLabel,
+  isBroadWellnessProgramLabel,
   trackerFeatureKeysForProgramLabel,
   applyPurchasedProgramTrackers,
   hasAnyHealthProgressFeature,

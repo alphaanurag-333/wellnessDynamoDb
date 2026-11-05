@@ -39,7 +39,7 @@ function healUser(id, parentCoachId) {
 }
 
 describe("resolveConversionAssignment", () => {
-  it("assigns directly to wellness coach when coach referral code is used", () => {
+  it("records wellness coach referral without auto-assigning coach fields", () => {
     const referralRecord = {
       referralCode: "COACH123",
       entityType: "wellness_coach",
@@ -53,17 +53,18 @@ describe("resolveConversionAssignment", () => {
       "COACH123"
     );
 
-    assert.equal(result.assignmentStatus, "assigned");
-    assert.equal(result.assignedCoachId, COACH_ID);
-    assert.equal(result.assignedCoachType, "wellness_coach");
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
+    assert.equal(result.assignedCoachType, null);
+    assert.equal(result.parentCoachId, null);
     assert.equal(result.referredByEntityType, "wellness_coach");
     assert.equal(result.referredByEntityId, COACH_ID);
     assert.equal(result.referredByUserId, null);
     assert.equal(result.referredByCode, "COACH123");
+    assert.equal(result.assignmentSource, "referral");
   });
 
-  it("assigns from ReferralCode entityId when the coach record is missing (IRW-WC staff codes)", () => {
+  it("records WC referral from entityId when coach record is missing (IRW-WC staff codes)", () => {
     const referralRecord = {
       referralCode: "IRW-WC-980",
       entityType: "wellness_coach",
@@ -73,10 +74,8 @@ describe("resolveConversionAssignment", () => {
 
     const result = resolveConversionAssignment(referralRecord, {}, "irw-wc-980");
 
-    assert.equal(result.assignmentStatus, "assigned");
-    assert.equal(result.assignedCoachId, COACH_ID);
-    assert.equal(result.assignedCoachType, "wellness_coach");
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
     assert.equal(result.referredByCode, "IRW-WC-980");
     assert.equal(result.assignmentSource, "referral");
   });
@@ -95,11 +94,11 @@ describe("resolveConversionAssignment", () => {
       "IRW-WC-980"
     );
 
-    assert.equal(result.assignmentStatus, "assigned");
-    assert.equal(result.assignedCoachId, COACH_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
   });
 
-  it("assigns to assistant and rolls up parent coach when assistant referral code is used", () => {
+  it("records assistant referral without auto-assigning WC or AWC", () => {
     const referralRecord = {
       referralCode: "ASST1234",
       entityType: "assistant_wellness_coach",
@@ -113,15 +112,15 @@ describe("resolveConversionAssignment", () => {
       "ASST1234"
     );
 
-    assert.equal(result.assignmentStatus, "assigned");
-    assert.equal(result.assignedCoachId, ASSISTANT_ID);
-    assert.equal(result.assignedCoachType, "assistant_wellness_coach");
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
+    assert.equal(result.assignedCoachType, null);
+    assert.equal(result.parentCoachId, null);
     assert.equal(result.referredByEntityType, "assistant_wellness_coach");
     assert.equal(result.referredByEntityId, ASSISTANT_ID);
   });
 
-  it("assigns to referring heal user's owning coach for peer referral", () => {
+  it("records peer referral without copying referer coach assignment", () => {
     const referralRecord = {
       referralCode: "PEER1111",
       entityType: "user",
@@ -135,15 +134,14 @@ describe("resolveConversionAssignment", () => {
       "PEER1111"
     );
 
-    assert.equal(result.assignedCoachId, COACH_ID);
-    assert.equal(result.assignedCoachType, "wellness_coach");
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignedCoachId, null);
+    assert.equal(result.parentCoachId, null);
+    assert.equal(result.assignmentStatus, "pending_admin");
     assert.equal(result.referredByUserId, USER_A_ID);
     assert.equal(result.referredByEntityType, "user");
-    assert.notEqual(result.assignedCoachId, USER_A_ID);
   });
 
-  it("resolves chained peer referral to the root wellness coach without walking the chain", () => {
+  it("records chained peer referral without walking coach inheritance", () => {
     const referralRecord = {
       referralCode: "PEER2222",
       entityType: "user",
@@ -160,13 +158,12 @@ describe("resolveConversionAssignment", () => {
       "PEER2222"
     );
 
-    assert.equal(result.assignedCoachId, COACH_ID);
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignedCoachId, null);
     assert.equal(result.referredByUserId, USER_B_ID);
-    assert.notEqual(result.assignedCoachId, USER_B_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
   });
 
-  it("resolves three-level peer chain (C referred by B referred by A) to stored owning coach", () => {
+  it("records three-level peer chain without coach auto-assign", () => {
     const referralRecord = {
       referralCode: "PEER3333",
       entityType: "user",
@@ -183,7 +180,7 @@ describe("resolveConversionAssignment", () => {
       "PEER3333"
     );
 
-    assert.equal(result.assignedCoachId, COACH_ID);
+    assert.equal(result.assignedCoachId, null);
     assert.equal(result.referredByUserId, USER_C_ID);
   });
 
@@ -281,7 +278,7 @@ describe("resolveConversionAssignment", () => {
     assert.equal(result.referredByEntityType, "user");
   });
 
-  it("inherits assistant assignment from referer when referer is assigned to an assistant", () => {
+  it("does not inherit assistant assignment from referer on peer referral", () => {
     const referralRecord = {
       referralCode: "PEER5555",
       entityType: "user",
@@ -304,10 +301,11 @@ describe("resolveConversionAssignment", () => {
       "PEER5555"
     );
 
-    assert.equal(result.assignmentStatus, "assigned");
-    assert.equal(result.assignedCoachId, ASSISTANT_ID);
-    assert.equal(result.assignedCoachType, "assistant_wellness_coach");
-    assert.equal(result.parentCoachId, COACH_ID);
+    assert.equal(result.assignmentStatus, "pending_admin");
+    assert.equal(result.assignedCoachId, null);
+    assert.equal(result.assignedCoachType, null);
+    assert.equal(result.parentCoachId, null);
+    assert.equal(result.referredByUserId, USER_A_ID);
   });
 });
 

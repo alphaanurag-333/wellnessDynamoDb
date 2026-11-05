@@ -34,6 +34,7 @@ const {
   DEFAULT_NAV_SECTIONS,
   ROLE_KEY_META,
   alignSeededConsoleRole,
+  migrateOnboardingViewPermissionsOnce,
   sameStringSet,
   UI_TO_ACCOUNT_ROLE,
   ACCOUNT_TO_UI_ROLE,
@@ -1779,6 +1780,10 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
         });
       }
     } else {
+      const migration = migrateOnboardingViewPermissionsOnce(role);
+      if (migration) {
+        role = await updateRole(role.id, migration);
+      }
       // WC / AWC / Trainee / Support keep the matrix an admin saved.
       // Only drop slugs those roles are not allowed to hold.
       const aligned = alignSeededConsoleRole(role, roleKey);

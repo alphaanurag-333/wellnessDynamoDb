@@ -437,24 +437,15 @@ router.post("/:userId/daily-reflection", requireAdmin, submitCoachUserDailyRefle
 router.post("/:userId/daily-reflection/bedtime-push", reflectionWrite, pushCoachUserDailyReflectionBedtimeController);
 router.get("/:userId/daily-reflection/history", reflection, getCoachUserDailyReflectionHistoryController);
 
-router.patch(
-  "/:userId/onboarding-steps/:stepKey",
-  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
-  patchUserOnboardingStepController
-);
-router.post(
-  "/:userId/onboarding-reminder",
-  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
-  pushUserOnboardingReminderController
-);
-
-const onboardMeet = staff("console.cal.view", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
-const onboardMeetWrite = staff("console.cal.edit", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
-router.get("/:userId/onboarding-meetings", onboardMeet, listStaffOnboardingMeetingsController);
-router.post("/:userId/onboarding-meetings", onboardMeetWrite, createStaffOnboardingMeetingController);
-router.post("/:userId/onboarding-meetings/:meetingId/accept-request", onboardMeetWrite, acceptOnboardingMeetingRequestController);
-router.post("/:userId/onboarding-meetings/:meetingId/reject-request", onboardMeetWrite, rejectOnboardingMeetingRequestController);
-router.post("/:userId/onboarding-meetings/:meetingId/cancel", onboardMeetWrite, cancelStaffOnboardingMeetingController);
+const onboardView = staff("console.ob.view", { admin: "users.view", coach: "clientTab.overview" });
+const onboardEdit = staff("console.ob.edit", { admin: "users.edit", coach: "clientTab.overview" });
+router.patch("/:userId/onboarding-steps/:stepKey", onboardEdit, patchUserOnboardingStepController);
+router.post("/:userId/onboarding-reminder", onboardEdit, pushUserOnboardingReminderController);
+router.get("/:userId/onboarding-meetings", onboardView, listStaffOnboardingMeetingsController);
+router.post("/:userId/onboarding-meetings", onboardEdit, createStaffOnboardingMeetingController);
+router.post("/:userId/onboarding-meetings/:meetingId/accept-request", onboardEdit, acceptOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/reject-request", onboardEdit, rejectOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/cancel", onboardEdit, cancelStaffOnboardingMeetingController);
 
 router.get("/:userId/rca", tests, listStaffUserRcaController);
 router.post("/:userId/rca", testsWrite, optionalUserFile, submitStaffUserRcaController);

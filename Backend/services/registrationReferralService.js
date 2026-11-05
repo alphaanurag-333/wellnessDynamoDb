@@ -3,7 +3,7 @@ const { loadReferralContext } = require("../models/userConversionModel");
 const { resolveConversionAssignment } = require("../models/userAssignmentLogic");
 
 /**
- * Resolve referral history and staff assignment for new Seek user registration.
+ * Resolve referral attribution for new Seek user registration (no coach auto-assign).
  * Invalid codes are ignored unless `strict` is true (admin create-user).
  */
 async function resolveRegistrationReferralFields(referralCodeInput, { strict = false } = {}) {
