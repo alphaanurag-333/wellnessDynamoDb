@@ -800,6 +800,12 @@ function buildInitialDone(user) {
     const seed = {};
     Object.entries(PAID_STATUS_TO_UI_STEP).forEach(([key, stepN]) => {
       if (status[key] === "done" || status[key] === "skipped") {
+        if (
+          key === "bodyAnalytics"
+          && !user.bodyAnalyticsClientDataReady
+        ) {
+          return;
+        }
         seed[stepN] = true;
       }
     });
@@ -976,13 +982,24 @@ function OnboardingStatusCard({
     const next = buildInitialDone(user);
     setDoneMap(next);
     setStepNotes(buildInitialStepNotes(next));
-  }, [user?.id, user?.paidOnboardingCompleted, user?.onboardingDone, user?.paidOnboardingStepStatus]);
+  }, [
+    user?.id,
+    user?.paidOnboardingCompleted,
+    user?.onboardingDone,
+    user?.paidOnboardingStepStatus,
+    user?.bodyAnalyticsClientDataReady,
+  ]);
 
   const bodyAnalyticsClientDataReady = Boolean(user?.bodyAnalyticsClientDataReady);
 
   const steps = useMemo(
-    () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
-    [doneMap],
+    () => ONBOARDING_STEPS.map((step) => ({
+      ...step,
+      done: step.key === "bodyAnalytics"
+        ? Boolean(doneMap[step.n] && bodyAnalyticsClientDataReady)
+        : Boolean(doneMap[step.n]),
+    })),
+    [doneMap, bodyAnalyticsClientDataReady],
   );
 
   const doneCount = steps.filter((s) => s.done).length;

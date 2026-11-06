@@ -6,27 +6,40 @@ const { listProgressPhotosByUser } = require("../models/userProgressPhotoModel")
 const { getLatestMedicalConditionForUser } = require("../models/userMedicalConditionModel");
 const {
   normalizePaidOnboardingStepStatus,
-  markStepDone,
   buildOnboardingPersistUpdates,
   BODY_ANALYTICS_SUBKEYS,
+  bodyAnalyticsAutoCompleteReady,
 } = require("../utils/paidOnboardingHelpers");
 
 function progressPhotoSubmissionComplete(photo) {
   return Boolean(photo?.frontPicKey && photo?.rightPicKey && photo?.leftPicKey);
 }
 
-function buildSyncedBodyAnalyticsStatus(stepStatus, flags) {
-  let next = normalizePaidOnboardingStepStatus(stepStatus);
-  if (flags.bodyMeasurement && next.bodyMeasurement === "pending") {
-    next = markStepDone(next, "bodyMeasurement");
+/**
+ * Align subkeys with stored client data. Demotes done/skipped subkeys when data is missing.
+ * When promoteFromClient is true (default), pending subkeys become done once client data exists.
+ */
+function reconcileBodyAnalyticsStatus(stepStatus, flags, { promoteFromClient = true } = {}) {
+  const next = normalizePaidOnboardingStepStatus(stepStatus);
+  for (const key of BODY_ANALYTICS_SUBKEYS) {
+    if (flags[key]) {
+      if (promoteFromClient && next[key] === "pending") {
+        next[key] = "done";
+      }
+    } else if (next[key] === "done" || next[key] === "skipped") {
+      next[key] = "pending";
+    }
   }
-  if (flags.progressPhotos180 && next.progressPhotos180 === "pending") {
-    next = markStepDone(next, "progressPhotos180");
-  }
-  if (flags.medicalConditions && next.medicalConditions === "pending") {
-    next = markStepDone(next, "medicalConditions");
+  if (bodyAnalyticsAutoCompleteReady(next)) {
+    next.bodyAnalytics = "done";
+  } else if (next.bodyAnalytics === "done") {
+    next.bodyAnalytics = "pending";
   }
   return next;
+}
+
+function buildSyncedBodyAnalyticsStatus(stepStatus, flags) {
+  return reconcileBodyAnalyticsStatus(stepStatus, flags, { promoteFromClient: true });
 }
 
 function bodyAnalyticsOnboardingStatusChanged(before, after) {
@@ -56,27 +69,27 @@ async function loadBodyAnalyticsDataFlags(userId) {
   };
 }
 
-/** Promote Body Analytics subkeys when Medical, 180°, and body measurement data exist. */
+/** Keep Body Analytics / subkeys in sync with client body measurement, 180°, and medical data. */
 async function syncBodyAnalyticsOnboardingFromClientData(user) {
   if (!user?.id) return user;
-  if (user.bodyAnalyticsGlanceExcluded) {
-    return user;
-  }
 
   const flags = await loadBodyAnalyticsDataFlags(user.id);
-  if (!isBodyAnalyticsClientDataReady(flags)) {
-    return user;
-  }
-
   const previousStatus = user.paidOnboardingStepStatus;
-  const nextStatus = buildSyncedBodyAnalyticsStatus(previousStatus, flags);
+  const nextStatus = reconcileBodyAnalyticsStatus(previousStatus, flags, {
+    promoteFromClient: !user.bodyAnalyticsGlanceExcluded,
+  });
   if (!bodyAnalyticsOnboardingStatusChanged(previousStatus, nextStatus)) {
     return user;
   }
 
+  const persistExtras = {};
+  if (isBodyAnalyticsClientDataReady(flags) && !user.bodyAnalyticsGlanceExcluded) {
+    persistExtras.bodyAnalyticsGlanceExcluded = false;
+  }
+
   const updated = await updateUser(user.id, {
     ...buildOnboardingPersistUpdates(user, previousStatus, nextStatus),
-    bodyAnalyticsGlanceExcluded: false,
+    ...persistExtras,
   });
   return updated || user;
 }
@@ -97,4 +110,5 @@ module.exports = {
   isBodyAnalyticsClientDataReady,
   progressPhotoSubmissionComplete,
   buildSyncedBodyAnalyticsStatus,
+  reconcileBodyAnalyticsStatus,
 };
