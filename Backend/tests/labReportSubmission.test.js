@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { isLabReportSubmissionLocked, labReportSubmissionState } = require("../utils/labReportSubmission");
 
 describe("isLabReportSubmissionLocked", () => {
-  it("is locked for new clients until a coach enables upload", () => {
+  it("treats a missing flag as locked (legacy / unset records)", () => {
     assert.equal(isLabReportSubmissionLocked({}, { hasReports: false }), true);
     assert.equal(isLabReportSubmissionLocked(null, { hasReports: false }), true);
   });

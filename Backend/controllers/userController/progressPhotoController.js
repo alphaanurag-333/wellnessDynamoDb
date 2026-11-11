@@ -78,7 +78,7 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,
     previousStatus: currentStatus,
-    nextStatus,
+    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
 
   return res.status(201).json({

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import { userTierBadgeFromApi } from "../data/usersData.js";
@@ -29,7 +29,12 @@ function initials(name) {
     .toUpperCase();
 }
 
-function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
+function OrgCard({ node, canOpenUser, canEditReferralUsed, onCorrectReferralUsed, collapsed, onToggle }) {
+  const [editingVia, setEditingVia] = useState(false);
+  const [viaDraft, setViaDraft] = useState("");
+  const [viaError, setViaError] = useState("");
+  const [viaSaving, setViaSaving] = useState(false);
+
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const isStaff = node.nodeKind === "coach" || node.nodeKind === "awc";
   const name = node.name || (isStaff ? "Staff referrer" : "Unnamed user");
@@ -39,7 +44,37 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
     node.userTier || node.tier || String(node.clientCategory || "").toLowerCase() === "eagle"
   );
   const tierBadge = !isStaff && hasTier ? userTierBadgeFromApi(node) : null;
-  const nameStyle = tierBadge ? { color: tierBadge.style.color } : undefined;
+  const tierTextStyle = tierBadge ? { color: tierBadge.style.color } : undefined;
+  const canEditVia = Boolean(canEditReferralUsed && onCorrectReferralUsed && !isStaff);
+
+  const startViaEdit = () => {
+    setViaDraft(String(via || "").trim());
+    setViaError("");
+    setEditingVia(true);
+  };
+
+  const cancelViaEdit = () => {
+    setEditingVia(false);
+    setViaError("");
+  };
+
+  const submitViaEdit = async () => {
+    const code = String(viaDraft || "").trim();
+    if (!code) {
+      setViaError("Enter a referral code");
+      return;
+    }
+    setViaSaving(true);
+    setViaError("");
+    try {
+      await onCorrectReferralUsed(node.id, code);
+      setEditingVia(false);
+    } catch (err) {
+      setViaError(err?.message || "Could not update referral code");
+    } finally {
+      setViaSaving(false);
+    }
+  };
 
   return (
     <div className={`ua-org-card${isStaff ? " ua-org-card--staff" : ""}`}>
@@ -52,17 +87,19 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
             className="ua-org-card__name"
             to={UPDATED_ADMIN_PATHS.userDetail(node.id)}
             title={name}
-            style={nameStyle}
+            style={tierTextStyle}
           >
             {shortLabel(name, 28)}
           </Link>
         ) : (
-          <span className="ua-org-card__name" title={name} style={nameStyle}>
+          <span className="ua-org-card__name" title={name} style={tierTextStyle}>
             {shortLabel(name, 28)}
           </span>
         )}
         <div className="ua-org-card__meta">
-          <span className="ua-rt-chip">{code}</span>
+          <span className="ua-rt-chip" style={tierTextStyle}>
+            {code}
+          </span>
           {tierBadge ? (
             <span
               className="ua-tier"
@@ -79,7 +116,39 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
               {kindLabel(node, tierBadge)}
             </span>
           )}
-          {via ? <span className="ua-rt-chip ua-rt-chip--via">via {via}</span> : null}
+          {canEditVia && editingVia ? (
+            <span className="ua-org-card__via-form">
+              <input
+                type="text"
+                className="ua-org-card__via-input"
+                value={viaDraft}
+                onChange={(event) => setViaDraft(event.target.value.toUpperCase())}
+                placeholder="Referral code"
+                autoCapitalize="characters"
+                spellCheck={false}
+                disabled={viaSaving}
+              />
+              <span className="ua-org-card__via-actions">
+                <button type="button" className="ua-org-card__via-save" disabled={viaSaving} onClick={submitViaEdit}>
+                  {viaSaving ? "…" : "Save"}
+                </button>
+                <button type="button" className="ua-org-card__via-cancel" disabled={viaSaving} onClick={cancelViaEdit}>
+                  Cancel
+                </button>
+              </span>
+              {viaError ? <span className="ua-org-card__via-error">{viaError}</span> : null}
+            </span>
+          ) : null}
+          {!editingVia && via ? (
+            <span className="ua-rt-chip ua-rt-chip--via" style={tierTextStyle}>
+              via {via}
+            </span>
+          ) : null}
+          {canEditVia && !editingVia ? (
+            <button type="button" className="ua-org-card__via-edit" onClick={startViaEdit}>
+              {via ? "Change" : "Set code used"}
+            </button>
+          ) : null}
         </div>
         {hasChildren ? (
           <button type="button" className="ua-org-card__toggle" onClick={() => onToggle(node.id)}>
@@ -93,13 +162,20 @@ function OrgCard({ node, canOpenUser, collapsed, onToggle }) {
   );
 }
 
-function OrgBranch({ node, collapsedMap, onToggle, canOpenUser }) {
+function OrgBranch({ node, collapsedMap, onToggle, canOpenUser, canEditReferralUsed, onCorrectReferralUsed }) {
   const hasChildren = Array.isArray(node.children) && node.children.length > 0;
   const collapsed = collapsedMap.has(node.id);
 
   return (
     <li className="ua-org-node">
-      <OrgCard node={node} canOpenUser={canOpenUser} collapsed={collapsed} onToggle={onToggle} />
+      <OrgCard
+        node={node}
+        canOpenUser={canOpenUser}
+        canEditReferralUsed={canEditReferralUsed}
+        onCorrectReferralUsed={onCorrectReferralUsed}
+        collapsed={collapsed}
+        onToggle={onToggle}
+      />
       {hasChildren && !collapsed ? (
         <ul className="ua-org-children">
           {node.children.map((child) => (
@@ -109,6 +185,8 @@ function OrgBranch({ node, collapsedMap, onToggle, canOpenUser }) {
               collapsedMap={collapsedMap}
               onToggle={onToggle}
               canOpenUser={canOpenUser}
+              canEditReferralUsed={canEditReferralUsed}
+              onCorrectReferralUsed={onCorrectReferralUsed}
             />
           ))}
         </ul>
@@ -118,7 +196,14 @@ function OrgBranch({ node, collapsedMap, onToggle, canOpenUser }) {
 }
 
 /** Classic top-down org chart with connector lines. */
-export function ReferralOrgTree({ root, collapsedMap, onToggle, canOpenUser }) {
+export function ReferralOrgTree({
+  root,
+  collapsedMap,
+  onToggle,
+  canOpenUser,
+  canEditReferralUsed = false,
+  onCorrectReferralUsed,
+}) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -146,6 +231,8 @@ export function ReferralOrgTree({ root, collapsedMap, onToggle, canOpenUser }) {
               collapsedMap={collapsedMap}
               onToggle={onToggle}
               canOpenUser={canOpenUser}
+              canEditReferralUsed={canEditReferralUsed}
+              onCorrectReferralUsed={onCorrectReferralUsed}
             />
           </ul>
         </li>

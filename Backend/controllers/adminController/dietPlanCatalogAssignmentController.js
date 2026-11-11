@@ -6,9 +6,14 @@ const {
   listCoachAssignedDietPlansByUserId,
   deleteCoachAssignedDietPlan,
   updateCoachAssignedDietPlan,
+  isLegacyPublishedAssignment,
 } = require("../../models/coachAssignedDietPlanModel");
 const { deleteStoredMedia } = require("../../utils/s3");
-const { sectionsFromAssignment } = require("../../utils/personalisedDietPlan");
+const {
+  sectionsFromAssignment,
+  sectionsFromPublishedAssignment,
+} = require("../../utils/personalisedDietPlan");
+const { splitCoachDietPlanAssignmentsForAdmin } = require("../../utils/dietPlanAdminList");
 const {
   updateUser,
   toPublicUser,
@@ -43,16 +48,20 @@ exports.listCoachUserDietPlanAssignmentsController = asyncHandler(async (req, re
   assertHealTierUser(user);
 
   const assignments = await listCoachAssignedDietPlansByUserId(userId);
-
-  const recommended = assignments[0] || null;
+  const { active, history } = splitCoachDietPlanAssignmentsForAdmin(assignments);
+  const recommended = active;
   const personalisedSections = recommended ? sectionsFromAssignment(recommended) : [];
+  const historyWithSections = history.map((entry) => ({
+    ...entry,
+    personalisedSections: sectionsFromPublishedAssignment(entry),
+  }));
 
   return res.status(200).json({
     status: true,
     message: "Diet plan assignments fetched successfully",
-    assignments,
+    assignments: recommended ? [recommended, ...historyWithSections] : historyWithSections,
     recommended,
-    history: assignments.length > 1 ? assignments.slice(1) : [],
+    history: historyWithSections,
     dietPlanEnabled: isDietPlanEnabled(user),
     personalisedSections,
   });
@@ -107,15 +116,6 @@ exports.createCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
 
   const note = parseNote(req.body);
   const plans = await resolveAssignmentPlans(req.body);
-  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
-
-  const pdfKey = await generateAndUploadAssignmentPdf({
-    user,
-    coach,
-    startDate,
-    note,
-    plans,
-  });
 
   let assignment;
   try {
@@ -125,7 +125,6 @@ exports.createCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
       startDate,
       note,
       plans,
-      pdfKey,
       createdByRole: req.auth?.role || "wellness_coach",
       createdById: actingCoachId,
     });
@@ -133,18 +132,9 @@ exports.createCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
     handleValidationError(err);
   }
 
-  const coachName = coach?.name || "Your coach";
-  dispatchDietPlanAssignmentNotification({
-    userId,
-    assignmentId: assignment?.id,
-    coachName,
-  }).catch((err) => {
-    console.error("Diet plan assignment notification failed:", err?.message || err);
-  });
-
   return res.status(201).json({
     status: true,
-    message: "Diet plan assigned successfully",
+    message: "Diet plan saved (draft — use Push to App to publish)",
     assignment,
     personalisedSections: sectionsFromAssignment(assignment),
   });
@@ -162,30 +152,114 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
   const existing = await loadAssignmentForUser(assignmentId, userId);
 
   const plans = await resolveAssignmentPlans(req.body);
-  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
-  const startDate = parseStartDate(req.body) || existing.startDate;
+  const startDateFromBody = parseStartDate(req.body);
   const note = parseNote(req.body);
 
-  const pdfKey = await generateAndUploadAssignmentPdf({
-    user,
-    coach,
-    startDate,
-    note: note !== undefined ? note : existing.note,
-    plans,
-  });
+  const legacyPublishedSnapshot = isLegacyPublishedAssignment(existing)
+    && !Array.isArray(existing.publishedPlans)?.length
+    ? {
+      publishedPlans: existing.plans,
+      publishedPdfKey: existing.pdfKey,
+    }
+    : null;
 
-  const previousPdfKey = existing.pdfKey;
   let assignment;
   try {
     assignment = await updateCoachAssignedDietPlan(assignmentId, {
       plans,
-      pdfKey,
-      startDate,
+      ...(startDateFromBody ? { startDate: startDateFromBody } : {}),
+      ...(legacyPublishedSnapshot || {}),
       ...(note !== undefined ? { note } : {}),
     });
   } catch (err) {
-    if (pdfKey && pdfKey !== previousPdfKey) {
-      await deleteStoredMedia(pdfKey).catch(() => {});
+    handleValidationError(err);
+    if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Diet plan assignment not found", 404);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({
+    status: true,
+    message: "Diet plan saved (draft — use Push to App to publish)",
+    assignment,
+    personalisedSections: sectionsFromAssignment(assignment),
+  });
+});
+
+exports.publishCoachUserDietPlanAssignmentController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const assignmentId = readAssignmentIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  const existing = await loadAssignmentForUser(assignmentId, userId);
+
+  const draftPlans = Array.isArray(existing.plans) ? existing.plans : [];
+  if (!draftPlans.length) {
+    throw new AppError("Save a diet plan before pushing to the client app", 400);
+  }
+
+  const previousPublishedPlans = Array.isArray(existing.publishedPlans) && existing.publishedPlans.length
+    ? existing.publishedPlans
+    : (isLegacyPublishedAssignment(existing) ? existing.plans : null);
+  const previousPushedAt = String(existing.pushedAt || "").trim();
+  const previousPdfKey = String(existing.publishedPdfKey || existing.pdfKey || "").trim();
+
+  if (previousPushedAt && previousPublishedPlans?.length && previousPdfKey) {
+    try {
+      await createCoachAssignedDietPlan({
+        userId,
+        coachId: resolveCoachIdForUser(user),
+        startDate: existing.startDate,
+        note: existing.note,
+        plans: previousPublishedPlans,
+        publishedPlans: previousPublishedPlans,
+        pdfKey: previousPdfKey,
+        publishedPdfKey: previousPdfKey,
+        pushedAt: previousPushedAt,
+        archived: true,
+        createdByRole: req.auth?.role || "wellness_coach",
+        createdById: actingCoachId,
+      });
+    } catch (err) {
+      handleValidationError(err);
+    }
+  }
+
+  const coach = { id: actingCoachId, name: resolveStaffActor(req).displayName };
+  const startDate = existing.startDate;
+  const note = existing.note;
+
+  const publishedPdfKey = await generateAndUploadAssignmentPdf({
+    user,
+    coach,
+    startDate,
+    note,
+    plans: draftPlans,
+  });
+
+  const previousPublishedPdfKey = existing.publishedPdfKey || (
+    existing.pushedAt ? null : existing.pdfKey
+  );
+
+  let assignment;
+  const pushedAt = new Date().toISOString();
+  const publishedStartDate = pushedAt.slice(0, 10);
+  try {
+    assignment = await updateCoachAssignedDietPlan(assignmentId, {
+      publishedPlans: draftPlans,
+      publishedPdfKey,
+      pdfKey: publishedPdfKey,
+      pushedAt,
+      startDate: publishedStartDate,
+    });
+  } catch (err) {
+    if (publishedPdfKey) {
+      await deleteStoredMedia(publishedPdfKey).catch(() => {});
     }
     handleValidationError(err);
     if (err?.name === "NotFoundError" || err?.name === "ConditionalCheckFailedException") {
@@ -194,8 +268,8 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
     throw err;
   }
 
-  if (previousPdfKey && previousPdfKey !== pdfKey) {
-    await deleteStoredMedia(previousPdfKey).catch(() => {});
+  if (previousPublishedPdfKey && previousPublishedPdfKey !== publishedPdfKey) {
+    await deleteStoredMedia(previousPublishedPdfKey).catch(() => {});
   }
 
   dispatchDietPlanAssignmentNotification({
@@ -208,7 +282,7 @@ exports.updateCoachUserDietPlanAssignmentController = asyncHandler(async (req, r
 
   return res.status(200).json({
     status: true,
-    message: "Diet plan saved successfully",
+    message: "Diet plan pushed to client app",
     assignment,
     personalisedSections: sectionsFromAssignment(assignment),
   });

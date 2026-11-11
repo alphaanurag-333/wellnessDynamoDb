@@ -113,6 +113,7 @@ import {
 } from "../data/configDetailData.js";
 import { configPermissionPrefix, findConfigItem, getConfigStateLabel, isLegalGuidelinesConfigId, isLegalPrivacyConfigId, isLegalTosConfigId } from "../data/configsData.js";
 import { formatRupee } from "../data/exchangeData.js";
+import { EXCHANGE_SUBSCRIPTION_DURATION_PRESETS } from "../data/exchangeSubscriptionDurationPresets.js";
 import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../data/usersData.js";
 import {
   getCoachCheckoutOptions,
@@ -362,6 +363,9 @@ function ClientLookupPanel({
       onSave={async (setup) => {
         setSaving(true);
         try {
+          const defaultDurationPresetId =
+            EXCHANGE_SUBSCRIPTION_DURATION_PRESETS.find((p) => p.id === "1y")?.id
+            || EXCHANGE_SUBSCRIPTION_DURATION_PRESETS[0]?.id;
           const result = await triggerCoachCheckout({
             userId: client.id,
             productType,
@@ -370,6 +374,8 @@ function ClientLookupPanel({
             discountLabel: setup.discount.label,
             linkValidity: setup.linkValidity,
             appHealValidity: setup.appHealValidity,
+            includeAppSubscription: true,
+            appSubscriptionDurationPresetId: defaultDurationPresetId,
             wellnessCoachId: setup.wellnessCoachId,
             assistantCoachId: setup.assistantCoachId,
           });

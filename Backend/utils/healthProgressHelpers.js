@@ -92,9 +92,34 @@ function programLookupText(value) {
     .trim();
 }
 
+/** Primary concerns that must not auto-enable Health Progress trackers. */
+function isGeneralWellbeingConcernLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return false;
+  return (
+    /\boverall wellbeing\b/.test(text) ||
+    /\beveryday wellness\b/.test(text) ||
+    text === "overall wellbeing" ||
+    text === "everyday wellness"
+  );
+}
+
+/** Flagship / general programs (e.g. Seek to Heal) — not disease-specific tracker sources. */
+function isBroadWellnessProgramLabel(label) {
+  const text = programLookupText(label);
+  if (!text) return false;
+  if (isGeneralWellbeingConcernLabel(label)) return true;
+  if (/\bseek to heal\b/.test(text)) return true;
+  if (text === "general" || text === "seek to heal" || text === "seek_to_heal") return true;
+  return false;
+}
+
 function trackerFeatureKeysForProgramLabel(label) {
   const text = programLookupText(label);
   if (!text) return [];
+  if (isGeneralWellbeingConcernLabel(label) || isBroadWellnessProgramLabel(label)) {
+    return [];
+  }
 
   const keys = [];
   if (/\b(fat loss|weight loss|fatloss)\b/.test(text)) keys.push("weightPic");
@@ -107,7 +132,10 @@ function trackerFeatureKeysForProgramLabel(label) {
 function applyPurchasedProgramTrackers(settings, labels, user) {
   const next = normalizeHealthProgressFeatures(settings);
   const female = isFemaleUser(user);
-  for (const label of labels || []) {
+  const trackerLabels = (labels || []).filter(
+    (label) => !isBroadWellnessProgramLabel(label)
+  );
+  for (const label of trackerLabels) {
     for (const key of trackerFeatureKeysForProgramLabel(label)) {
       if (key === "menstrualCycle" && !female) continue;
       next[key] = true;
@@ -405,6 +433,33 @@ function parseConditionBodyPart(body = {}) {
   return { bodyPart, bodyPartOther: other.slice(0, BODY_PART_OTHER_MAX_LEN) };
 }
 
+function isPhotoReviewChartPublished(item, picKey, picUrl, reviewStatusKey) {
+  const hasPhoto = Boolean(item?.[picKey] || item?.[picUrl]);
+  if (!hasPhoto) return true;
+  return String(item?.[reviewStatusKey] || "").toLowerCase() === "approved";
+}
+
+/** Journey charts include entries without a photo, or with a staff-accepted upload photo. */
+function isWeightLogChartPublished(item) {
+  if (item?.weightKg == null || !Number.isFinite(Number(item.weightKg))) return false;
+  return isPhotoReviewChartPublished(item, "weightPicKey", "weightPicUrl", "weightPicReviewStatus");
+}
+
+function isGlucoseLogChartPublished(item) {
+  if (item?.value == null || !Number.isFinite(Number(item.value))) return false;
+  return isPhotoReviewChartPublished(item, "glucosePicKey", "glucosePicUrl", "glucosePicReviewStatus");
+}
+
+function isBloodPressureLogChartPublished(item) {
+  if (!Number.isFinite(Number(item?.sys)) || !Number.isFinite(Number(item?.dia))) return false;
+  return isPhotoReviewChartPublished(item, "bpPicKey", "bpPicUrl", "bpPicReviewStatus");
+}
+
+function isConditionLogChartPublished(item) {
+  if (!item?.picKey && !item?.picUrl) return false;
+  return isPhotoReviewChartPublished(item, "picKey", "picUrl", "picReviewStatus");
+}
+
 function formatChartDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -435,6 +490,8 @@ module.exports = {
   isHealthProgressSaturday,
   isFemaleUser,
   resolveHealthProgressSettings,
+  isGeneralWellbeingConcernLabel,
+  isBroadWellnessProgramLabel,
   trackerFeatureKeysForProgramLabel,
   applyPurchasedProgramTrackers,
   hasAnyHealthProgressFeature,
@@ -459,6 +516,11 @@ module.exports = {
   healthProgressDateKey,
   alignWeightLogDates,
   healthProgressDayBounds,
+  isPhotoReviewChartPublished,
+  isWeightLogChartPublished,
+  isGlucoseLogChartPublished,
+  isBloodPressureLogChartPublished,
+  isConditionLogChartPublished,
   formatChartDate,
   formatSummaryDate,
 };

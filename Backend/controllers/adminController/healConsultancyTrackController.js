@@ -1,9 +1,12 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
+const { assertStaffCanMutate, resolveStaffActor, getStaffScopeCoachId } = require("../staffAccess");
+const { getUserById } = require("../../models/userModel");
 const {
   createHealConsultancyTrack,
   deleteHealConsultancyTrack,
   listHealConsultancyTracksByUserId,
+  listHealConsultancyTracksByParentCoachId,
   findActiveHealConsultancyTrackByUserId,
   findScheduledHealConsultancyTrackByUserId,
   updateHealConsultancyTrack,
@@ -43,6 +46,50 @@ function shouldNotifyCounsellingCancellation(previousStatus) {
   const status = String(previousStatus || "").toLowerCase().trim();
   return Boolean(status) && status !== "cancelled" && status !== "completed";
 }
+
+const CALENDAR_TRACK_STATUSES = new Set([
+  "scheduled",
+  "periods_offered",
+  "period_selected",
+  "time_requested",
+]);
+
+async function withCounsellingTrackUserNames(tracks) {
+  const ids = [...new Set((tracks || []).map((item) => item.userId).filter(Boolean))];
+  const names = {};
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const user = await getUserById(id);
+        names[id] = user?.name || user?.fullName || "";
+      } catch {
+        names[id] = "";
+      }
+    }),
+  );
+  return (tracks || []).map((item) => ({
+    ...toPublicHealConsultancyTrack(item),
+    userName: names[item.userId] || item.userId,
+  }));
+}
+
+exports.listStaffCalendarHealConsultancyTracksController = asyncHandler(async (req, res) => {
+  resolveStaffActor(req);
+  const coachId = getStaffScopeCoachId(req) || resolveStaffActor(req).id;
+  const data = await listHealConsultancyTracksByParentCoachId(coachId, {
+    page: req.query.page,
+    limit: req.query.limit || 200,
+  });
+  const items = (data.items || []).filter((track) =>
+    CALENDAR_TRACK_STATUSES.has(String(track.status || "").toLowerCase()),
+  );
+  return res.status(200).json({
+    status: true,
+    message: "Calendar counselling sessions fetched",
+    tracks: await withCounsellingTrackUserNames(items),
+    pagination: data.pagination,
+  });
+});
 
 exports.listCoachHealConsultancyTracksController = asyncHandler(async (req, res) => {
   const coachId = req.auth?.sub || req.user?.id;

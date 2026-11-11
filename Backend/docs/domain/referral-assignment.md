@@ -28,7 +28,7 @@ Every **Wellness Coach**, **Assistant Wellness Coach**, and **user** (from regis
 | `assignedCoachType` | Yes | `wellness_coach` \| `assistant_wellness_coach` |
 | `parentCoachId` | Yes | Owning wellness coach |
 | `assignmentStatus` | Yes | `assigned` \| `pending_admin` |
-| `referredBy*` | **Immutable** | Referral history at conversion |
+| `referredBy*` | Usually set at conversion | Admin may correct via `PATCH …/referral-tree/users/:userId/referred-by` (`console.cl.edit`) |
 
 ## Conversion rules (Seek → Heal / consultancy)
 
@@ -44,7 +44,7 @@ Every **Wellness Coach**, **Assistant Wellness Coach**, and **user** (from regis
 
 - **Admin:** `POST /api/admin/users/:id/reassign-coach`
 - **Coach:** `POST /api/coach/heal-users/:id/reassign` (within own team)
-- `referredBy*` fields never change on reassignment
+- `referredBy*` fields do not change on coach reassignment (use referral-tree patch to fix a wrong code)
 
 ## Related APIs
 

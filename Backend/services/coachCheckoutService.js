@@ -37,6 +37,7 @@ const {
 const {
   resolveSubscriptionPlanFromItem,
 } = require("./subscriptionCategoryService");
+const { getBundledSubscriptionPresetById } = require("../utils/exchangeSubscriptionDurationPresets");
 
 const HOURS_BY_UNIT = {
   hour: 1,
@@ -167,18 +168,10 @@ function isEnabledFlag(value) {
   return normalized === "true" || normalized === "1" || normalized === "yes";
 }
 
-function resolveBundledSubscription(config, {
-  includeAppSubscription,
-  fyYearCount,
-  fyOffsets,
-} = {}) {
-  // Complimentary FY app subscription is always bundled with program checkout unless explicitly off.
-  const enabled =
-    includeAppSubscription === undefined
-      ? true
-      : isEnabledFlag(includeAppSubscription);
-  if (!enabled) return null;
-
+/**
+ * Legacy FY-based bundle (tests / internal callers only).
+ */
+function resolveBundledFySubscription(config, { fyYearCount, fyOffsets } = {}) {
   const maxYears = 4;
   let offsets;
   if (Array.isArray(fyOffsets) && fyOffsets.length) {
@@ -207,6 +200,47 @@ function resolveBundledSubscription(config, {
   };
 }
 
+/**
+ * Duration-based bundled app subscription (purchase date = start, extend from current coverage end).
+ */
+function resolveBundledSubscription(config, {
+  includeAppSubscription,
+  appSubscriptionDurationPresetId,
+} = {}) {
+  const enabled =
+    includeAppSubscription === undefined
+      ? true
+      : isEnabledFlag(includeAppSubscription);
+  if (!enabled) return null;
+
+  const presetIdRaw = appSubscriptionDurationPresetId;
+  if (presetIdRaw == null || String(presetIdRaw).trim() === "") {
+    throw new AppError(
+      "appSubscriptionDurationPresetId is required when including complimentary app subscription",
+      400
+    );
+  }
+
+  const preset = getBundledSubscriptionPresetById(presetIdRaw);
+  if (!preset) {
+    throw new AppError("Choose a valid app subscription duration preset", 400);
+  }
+
+  const monthlyAmount = Number(config?.energy_exchange_monthly_amount) || 0;
+  const shortLabel = String(preset.label || "").replace(/\s*\(from payment\)\s*$/i, "").trim();
+  return {
+    enabled: true,
+    kind: "duration_energy_exchange",
+    itemId: `ee-duration-${preset.id}`,
+    itemName: `App subscription (${shortLabel || preset.label})`,
+    durationPresetId: preset.id,
+    durationUnit: preset.unit,
+    durationAmount: preset.amount,
+    monthlyAmount,
+    includedInProgramPrice: true,
+  };
+}
+
 function toPublicCoachProgramOffer(offer) {
   if (!offer || typeof offer !== "object") return null;
   const amount = Number(offer.amount) || 0;
@@ -230,14 +264,28 @@ function toPublicCoachProgramOffer(offer) {
     appHealValidity: offer.appHealValidity || null,
     catalogProgramType: offer.catalogProgramType || offer.programType || null,
     bundledSubscription: bundled
-      ? {
-          kind: bundled.kind || "fy_energy_exchange",
-          itemId: bundled.itemId || null,
-          itemName: bundled.itemName || "",
-          fyOffsets: Array.isArray(bundled.fyOffsets) ? bundled.fyOffsets : [0],
-          monthlyAmount: Number(bundled.monthlyAmount) || 0,
-          includedInProgramPrice: true,
-        }
+      ? (() => {
+          const common = {
+            kind: bundled.kind || "duration_energy_exchange",
+            itemId: bundled.itemId || null,
+            itemName: bundled.itemName || "",
+            monthlyAmount: Number(bundled.monthlyAmount) || 0,
+            includedInProgramPrice: true,
+          };
+          if (String(bundled.kind) === "fy_energy_exchange") {
+            return {
+              ...common,
+              kind: "fy_energy_exchange",
+              fyOffsets: Array.isArray(bundled.fyOffsets) ? bundled.fyOffsets : [0],
+            };
+          }
+          return {
+            ...common,
+            durationPresetId: bundled.durationPresetId || null,
+            durationUnit: bundled.durationUnit || null,
+            durationAmount: Number(bundled.durationAmount) || 0,
+          };
+        })()
       : null,
     transactionId: offer.transactionId || null,
     payable: true,
@@ -608,6 +656,7 @@ async function triggerCoachCheckout({
   appHealValidity,
   includeAppSubscription,
   subscriptionItemId,
+  appSubscriptionDurationPresetId,
   fyYearCount,
   fyOffsets,
   wellnessCoachId,
@@ -686,8 +735,7 @@ async function triggerCoachCheckout({
     type === "program"
       ? resolveBundledSubscription(config, {
           includeAppSubscription,
-          fyYearCount,
-          fyOffsets,
+          appSubscriptionDurationPresetId,
         })
       : null;
 
@@ -952,6 +1000,7 @@ module.exports = {
   getExpiredCoachCheckoutOffer,
   toPublicCoachProgramOffer,
   resolveBundledSubscription,
+  resolveBundledFySubscription,
   canActorTriggerCheckout,
   hasPaidProgramTransaction,
   deriveCheckoutCoachIds,

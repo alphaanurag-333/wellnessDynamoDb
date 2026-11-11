@@ -34,6 +34,7 @@ const {
   DEFAULT_NAV_SECTIONS,
   ROLE_KEY_META,
   alignSeededConsoleRole,
+  migrateOnboardingViewPermissionsOnce,
   sameStringSet,
   UI_TO_ACCOUNT_ROLE,
   ACCOUNT_TO_UI_ROLE,
@@ -1130,6 +1131,22 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       /* keep fallback meta */
     }
 
+    let referralCode = pub.referralCode || null;
+    if (!referralCode && REFERRAL_STAFF_ROLES.has(primaryAccountRole)) {
+      try {
+        referralCode = await ensureEntityReferralCode({
+          tableName: "Account",
+          entityType: primaryAccountRole,
+          entityId: pub.id,
+          ownerCoachId:
+            primaryAccountRole === "wellness_coach" ? pub.id : parentAccountId || "pending",
+          referralCode: null,
+        });
+      } catch (err) {
+        console.error("[fetchAccessMembers] ensure referral code failed", err.message);
+      }
+    }
+
     const approval = String(pub.approvalStatus || "").toLowerCase();
     const displayStatus =
       pub.status === "inactive"
@@ -1148,6 +1165,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       state: pub.state || null,
       city: pub.city || null,
       bio: pub.bio || null,
+      referralCode,
       phone: pub.phone || null,
       phoneCountryCode: pub.phoneCountryCode || null,
       whatsappPhone: pub.whatsappPhone || pub.phone || null,
@@ -1779,6 +1797,10 @@ exports.ensureConsoleRolesSeeded = async function ensureConsoleRolesSeeded() {
         });
       }
     } else {
+      const migration = migrateOnboardingViewPermissionsOnce(role);
+      if (migration) {
+        role = await updateRole(role.id, migration);
+      }
       // WC / AWC / Trainee / Support keep the matrix an admin saved.
       // Only drop slugs those roles are not allowed to hold.
       const aligned = alignSeededConsoleRole(role, roleKey);

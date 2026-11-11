@@ -32,6 +32,7 @@ const {
 } = require("../../controllers/adminController/userEnergyExchangeController");
 const {
   getUserMedicalConditionsAdminController,
+  approveUserMedicalConditionsController,
   patchMedicalConditionsInAppSettingsController,
 } = require("../../controllers/adminController/userMedicalConditionController");
 const {
@@ -138,46 +139,52 @@ router.patch(
   authorizeStaff("console.cl.edit", { admin: "users.edit" }),
   patchMedicalConditionsInAppSettingsController
 );
+router.post(
+  "/:id/medical-conditions/approve",
+  protectAccount,
+  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  approveUserMedicalConditionsController
+);
 router.patch(
   "/:id/onboarding-steps/:stepKey",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   patchUserOnboardingStepController
 );
 router.post(
   "/:id/onboarding-reminder",
   protectAccount,
-  authorizeStaff("console.cl.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   pushUserOnboardingReminderController
 );
 router.get(
   "/:id/onboarding-meetings",
   protectAccount,
-  authorizeStaff("console.cal.view", { admin: "users.view" }),
+  authorizeStaff("console.ob.view", { admin: "users.view" }),
   listStaffOnboardingMeetingsController
 );
 router.post(
   "/:id/onboarding-meetings",
   protectAccount,
-  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   createStaffOnboardingMeetingController
 );
 router.post(
   "/:id/onboarding-meetings/:meetingId/accept-request",
   protectAccount,
-  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   acceptOnboardingMeetingRequestController
 );
 router.post(
   "/:id/onboarding-meetings/:meetingId/reject-request",
   protectAccount,
-  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   rejectOnboardingMeetingRequestController
 );
 router.post(
   "/:id/onboarding-meetings/:meetingId/cancel",
   protectAccount,
-  authorizeStaff("console.cal.edit", { admin: "users.edit" }),
+  authorizeStaff("console.ob.edit", { admin: "users.edit" }),
   cancelStaffOnboardingMeetingController
 );
 router.get("/:id", protectAccount, clientView, getUserByIdController);

@@ -563,6 +563,19 @@ export async function updateUserLaunchAssessment(userId, assessmentId, payload) 
   }
 }
 
+export async function publishUserLaunchAssessmentScore(userId, assessmentId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/launch-assessment/${encodeURIComponent(assessmentId)}/publish`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function publishUserLaunchFocusPoints(userId, assessmentId) {
   try {
     const { data } = await api.post(
@@ -632,6 +645,19 @@ export async function saveUserPrakrutiAssessment(userId, payload) {
       { headers: authHeader() },
     );
     return data.assessment;
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserPrakrutiAssessment(userId) {
+  try {
+    const { data } = await api.post(
+      `/account/heal-users/${encodeURIComponent(userId)}/prakruti-assessment/publish`,
+      {},
+      { headers: authHeader() },
+    );
+    return data;
   } catch (error) {
     normalizeApiError(error);
   }

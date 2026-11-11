@@ -1,3 +1,8 @@
+const { addDaysDateOnly } = require("./dateOnly");
+
+const PROGRAM_START_TIMEZONE = "Asia/Kolkata";
+const PROGRAM_START_IST_OFFSET = "+05:30";
+
 const USER_ALLOWED_PAID_ONBOARDING_STEPS = [
   "register",
   "personal",
@@ -53,6 +58,18 @@ const BODY_ANALYTICS_SUBKEYS = [
   "medicalConditions",
 ];
 
+/** Client body measurement + 180° upload + medical answers auto-complete At a Glance Body Analytics. */
+const BODY_ANALYTICS_AUTO_COMPLETE_KEYS = [...BODY_ANALYTICS_SUBKEYS];
+
+function isOnboardingSubkeySettled(value) {
+  const normalized = String(value || "").toLowerCase().trim();
+  return normalized === "done" || normalized === "skipped";
+}
+
+function bodyAnalyticsAutoCompleteReady(status) {
+  return BODY_ANALYTICS_AUTO_COMPLETE_KEYS.every((key) => isOnboardingSubkeySettled(status[key]));
+}
+
 const STORED_ONBOARDING_STATUS_KEYS = [
   ...PAID_ONBOARDING_STATUS_KEYS,
   ...BODY_ANALYTICS_SUBKEYS,
@@ -92,12 +109,10 @@ function syncDerivedOnboardingSteps(status) {
   if (status.profileSetup === "done" && status.personalDetails !== "done") {
     status.personalDetails = "done";
   }
-  // Promote parent when every sub-screen is actually done.
-  // Do not demote here — admin may mark bodyAnalytics done from the panel,
-  // and skipped subkeys must not wipe that (or prior steps) on normalize.
-  const allBodyDone = BODY_ANALYTICS_SUBKEYS.every((key) => status[key] === "done");
-  if (allBodyDone) {
+  if (bodyAnalyticsAutoCompleteReady(status)) {
     status.bodyAnalytics = "done";
+  } else if (status.bodyAnalytics === "done") {
+    status.bodyAnalytics = "pending";
   }
   return status;
 }
@@ -119,11 +134,7 @@ function photoAnglesAllApproved(photo) {
 }
 
 /**
- * Coach / admin / wellness-coach review of a progress photo drives the
- * At a Glance Body Analytics step.
- * Rejecting front, right, or left reopens the step.
- * Accepting the set marks it done once every angle on that photo is approved.
- * Returns null when onboarding should stay as it is.
+ * Coach review can reopen 180° photos (client must resubmit). Approvals do not mark onboarding subkeys.
  */
 function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}) {
   const normalizedAngle = String(angle || "").toLowerCase().trim();
@@ -139,23 +150,38 @@ function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}
     }
     return syncDerivedOnboardingSteps({
       ...current,
-      bodyAnalytics: "pending",
       progressPhotos180: "pending",
     });
   }
 
-  if (normalizedAction === "approved" && photoAnglesAllApproved(photo)) {
-    if (current.bodyAnalytics === "done" && current.progressPhotos180 === "done") {
-      return null;
-    }
-    return syncDerivedOnboardingSteps({
-      ...current,
-      bodyAnalytics: "done",
-      progressPhotos180: "done",
-    });
-  }
-
   return null;
+}
+
+/**
+ * Rejecting the onboarding weight photo reopens body measurements in the client app
+ * when the coach has not disabled client fill (bodyMeasurementEnabled !== false).
+ * Also clears the At a Glance Body Analytics step until the client resubmits and
+ * the coach completes review again.
+ */
+function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) {
+  const normalizedAction = String(action || "").toLowerCase().trim();
+  if (normalizedAction !== "rejected") return null;
+  if (user?.bodyMeasurementEnabled === false) return null;
+
+  const current = normalizePaidOnboardingStepStatus(stepStatus);
+  const nextStatus = syncDerivedOnboardingSteps({
+    ...current,
+    bodyMeasurement: "pending",
+  });
+  nextStatus.bodyAnalytics = "pending";
+
+  return {
+    stepStatus: nextStatus,
+    extraUserUpdates: {
+      bodyMeasurementEnabled: true,
+      paidOnboardingStep: "body",
+    },
+  };
 }
 
 function normalizePaidOnboardingStepStatus(value) {
@@ -180,6 +206,46 @@ function onboardingStepJustCompleted(previousStatus, nextStatus, stepKey) {
   const prev = normalizePaidOnboardingStepStatus(previousStatus);
   const next = normalizePaidOnboardingStepStatus(nextStatus);
   return prev[stepKey] !== "done" && next[stepKey] === "done";
+}
+
+function onboardingStepReopened(previousStatus, nextStatus, stepKey) {
+  const prev = normalizePaidOnboardingStepStatus(previousStatus);
+  const next = normalizePaidOnboardingStepStatus(nextStatus);
+  return prev[stepKey] === "done" && next[stepKey] !== "done";
+}
+
+function calendarDateInTimezone(isoOrDate, timeZone = PROGRAM_START_TIMEZONE) {
+  const dt = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(dt);
+}
+
+/** Program day 1 begins at midnight IST on the calendar day after initiation is marked done. */
+function programStartedAtFromInitiationCompleted(completedAt = new Date(), timeZone = PROGRAM_START_TIMEZONE) {
+  const completionDay = calendarDateInTimezone(completedAt, timeZone);
+  if (!completionDay) return null;
+  const startDay = addDaysDateOnly(completionDay, 1);
+  if (!startDay) return null;
+  return new Date(`${startDay}T00:00:00.000${PROGRAM_START_IST_OFFSET}`).toISOString();
+}
+
+function buildProgramStartedAtUpdates(user, previousStatus, nextStatus, completedAt = new Date()) {
+  if (onboardingStepReopened(previousStatus, nextStatus, "programInitiation")) {
+    return { programStartedAt: null };
+  }
+  if (user?.programStartedAt) {
+    return {};
+  }
+  if (!onboardingStepJustCompleted(previousStatus, nextStatus, "programInitiation")) {
+    return {};
+  }
+  const programStartedAt = programStartedAtFromInitiationCompleted(completedAt);
+  return programStartedAt ? { programStartedAt } : {};
 }
 
 function getNextIncompleteStep(stepStatus) {
@@ -208,13 +274,6 @@ function markStepDone(stepStatus, stepKey) {
   const next = normalizePaidOnboardingStepStatus(stepStatus);
   assertKnownStepKey(stepKey);
   next[stepKey] = "done";
-  // Admin / coach completing the parent must also complete the three subkeys
-  // so later normalize/promote stays consistent.
-  if (stepKey === "bodyAnalytics") {
-    for (const key of BODY_ANALYTICS_SUBKEYS) {
-      next[key] = "done";
-    }
-  }
   return syncDerivedOnboardingSteps(next);
 }
 
@@ -251,6 +310,37 @@ function priorCanonicalStepsDone(stepStatus, stepKey) {
   return PAID_ONBOARDING_STATUS_KEYS.slice(0, idx).every((key) => status[key] === "done");
 }
 
+/** Coach At a Glance toggle when client body / 180° / medical data exists. */
+function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataReady = false } = {}) {
+  const normalized = String(value || "").toLowerCase().trim() === "done" ? "done" : "pending";
+  if (normalized === "done" && !clientDataReady) {
+    const err = new Error(
+      "Add body measurements, 180° photos, and medical answers before marking Body Analytics done",
+    );
+    err.name = "BodyAnalyticsAutoCompleteError";
+    throw err;
+  }
+  let next = normalizePaidOnboardingStepStatus(stepStatus);
+  if (normalized === "pending") {
+    next.bodyAnalytics = "pending";
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      next[key] = "pending";
+    }
+    return {
+      stepStatus: syncDerivedOnboardingSteps(next),
+      bodyAnalyticsGlanceExcluded: true,
+    };
+  }
+  for (const key of BODY_ANALYTICS_SUBKEYS) {
+    next[key] = "done";
+  }
+  next = syncDerivedOnboardingSteps({ ...next, bodyAnalytics: "done" });
+  return {
+    stepStatus: next,
+    bodyAnalyticsGlanceExcluded: false,
+  };
+}
+
 function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true } = {}) {
   assertKnownStepKey(stepKey, { allowSubkeys: false });
   const normalized = String(value || "").toLowerCase().trim();
@@ -258,6 +348,13 @@ function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true 
     throw new Error("status must be done or pending");
   }
   const next = normalizePaidOnboardingStepStatus(stepStatus);
+  if (stepKey === "bodyAnalytics" && normalized === "done") {
+    const err = new Error(
+      "Body Analytics completes automatically after body measurements, 180° photos, and medical conditions are submitted"
+    );
+    err.name = "BodyAnalyticsAutoCompleteError";
+    throw err;
+  }
   if (normalized === "done" && sequential && !priorCanonicalStepsDone(next, stepKey)) {
     const err = new Error("Complete prior onboarding steps first");
     err.name = "SequentialStepError";
@@ -268,16 +365,9 @@ function setCanonicalStepStatus(stepStatus, stepKey, value, { sequential = true 
     // profileSetup done ⇒ syncDerived re-promotes personalDetails; clear it on undo.
     next.profileSetup = "pending";
   }
-  if (stepKey === "bodyAnalytics") {
-    if (normalized === "done") {
-      for (const key of BODY_ANALYTICS_SUBKEYS) {
-        next[key] = "done";
-      }
-    } else {
-      // All three subkeys done ⇒ syncDerived re-promotes bodyAnalytics; clear on undo.
-      for (const key of BODY_ANALYTICS_SUBKEYS) {
-        next[key] = "pending";
-      }
+  if (stepKey === "bodyAnalytics" && normalized === "pending") {
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      next[key] = "pending";
     }
   }
   return syncDerivedOnboardingSteps(next);
@@ -385,6 +475,7 @@ function buildOnboardingPersistUpdates(user, previousStatus, nextStatus, extra =
   return {
     ...buildOnboardingStatusUpdates(nextStatus),
     ...buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus),
+    ...buildProgramStartedAtUpdates(user, previousStatus, nextStatus),
     ...extra,
   };
 }
@@ -395,6 +486,7 @@ function buildPaidOnboardingResetUpdates() {
     paidOnboardingCompleted: false,
     paidOnboardingStep: "register",
     paidOnboardingStepStatus: defaultPaidOnboardingStepStatus(),
+    programStartedAt: null,
   };
 }
 
@@ -407,6 +499,7 @@ function buildEaglePaidOnboardingCompleteUpdates() {
     paidOnboardingCompleted: true,
     paidOnboardingStep: "done",
     paidOnboardingStepStatus: status,
+    programStartedAt: programStartedAtFromInitiationCompleted(new Date()),
   };
 }
 
@@ -416,6 +509,9 @@ module.exports = {
   PAID_ONBOARDING_STATUS_LABELS,
   onboardingStepLabel,
   BODY_ANALYTICS_SUBKEYS,
+  BODY_ANALYTICS_AUTO_COMPLETE_KEYS,
+  isOnboardingSubkeySettled,
+  bodyAnalyticsAutoCompleteReady,
   STORED_ONBOARDING_STATUS_KEYS,
   SCHEDULE_STEP_KEYS,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
@@ -432,6 +528,7 @@ module.exports = {
   markStepPending,
   priorCanonicalStepsDone,
   setCanonicalStepStatus,
+  setCoachBodyAnalyticsAtGlanceStatus,
   wizardStepAfterSkip,
   wizardStepAfterBodyComplete,
   wizardStepAfterPhotosComplete,
@@ -445,5 +542,9 @@ module.exports = {
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,
+  programStartedAtFromInitiationCompleted,
+  buildProgramStartedAtUpdates,
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsWeightPhotoReview,
+  photoAnglesAllApproved,
 };

@@ -1,3 +1,9 @@
+import {
+  appGateUserFromProfileRow,
+  resolveBodyMeasurementClientEnabled,
+  resolveProgressPhotosInAppEnabled,
+} from "../api/usersApi.js";
+import { todayIsoDate } from "../utils/adminDateLimits.js";
 import { canDowngradeTier, nextTier, tierLabel, tierStyle, normalizeTier } from "./usersData.js";
 
 export const CLIENT_MENU = [
@@ -487,7 +493,7 @@ export function createDraftOrder(index) {
     id: `order-${Date.now()}-${index}`,
     number: index,
     items: [],
-    placedOn: "",
+    placedOn: todayIsoDate(),
     vendor: "",
     tracking: "",
     expectedDelivery: "",
@@ -535,7 +541,9 @@ function emptyProfileExtras(goal = "") {
     heartRateEnabled: true,
     sleepTrackingEnabled: true,
     bodyMeasurementEnabled: false,
-    bodyMeasurementEnabledRaw: false,
+    bodyMeasurementEnabledRaw: undefined,
+    progressPhotosInAppEnabled: false,
+    progressPhotosInAppEnabledRaw: undefined,
     referralCode: "",
     referredByCode: "",
     paidOnboardingCompleted: false,
@@ -612,11 +620,16 @@ export function profileFromListUser(row, userId) {
     dietPlanEnabled: base.dietPlanEnabled !== false,
     heartRateEnabled: base.heartRateEnabled !== false,
     sleepTrackingEnabled: base.sleepTrackingEnabled !== false,
-    bodyMeasurementEnabled: base.bodyMeasurementEnabled === true
-      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "done"
-      || String(base?.paidOnboardingStepStatus?.bodyMeasurement || "").toLowerCase() === "skipped",
-    bodyMeasurementEnabledRaw: base.bodyMeasurementEnabledRaw === true
-      || base.bodyMeasurementEnabled === true,
+    bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(appGateUserFromProfileRow(base)),
+    bodyMeasurementEnabledRaw:
+      base.bodyMeasurementEnabledRaw === true || base.bodyMeasurementEnabledRaw === false
+        ? base.bodyMeasurementEnabledRaw
+        : extra.bodyMeasurementEnabledRaw,
+    progressPhotosInAppEnabled: resolveProgressPhotosInAppEnabled(appGateUserFromProfileRow(base)),
+    progressPhotosInAppEnabledRaw:
+      base.progressPhotosInAppEnabledRaw === true || base.progressPhotosInAppEnabledRaw === false
+        ? base.progressPhotosInAppEnabledRaw
+        : extra.progressPhotosInAppEnabledRaw,
     referralCode: base.referralCode || extra.referralCode,
     referredByCode: base.referredByCode || extra.referredByCode || "",
     tags: Array.isArray(base.tags) && base.tags.length ? base.tags : extra.tags,

@@ -13,23 +13,58 @@ const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAcce
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
   normalizePaidOnboardingStepStatus,
-  markStepSkipped,
-  wizardStepAfterSkip,
-  computePaidOnboardingCompleted,
+  countCompletedSteps,
 } = require("../../utils/paidOnboardingHelpers");
+const {
+  syncBodyAnalyticsOnboardingFromClientData,
+  attachBodyAnalyticsAdminMeta,
+} = require("../../services/bodyAnalyticsOnboardingSyncService");
 
 exports.getUserMedicalConditionsAdminController = asyncHandler(async (req, res) => {
   const userId = req.params.id;
-  const user = await getUserById(userId);
+  let user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
 
   const medical = await getLatestMedicalConditionForUser(userId);
+  user = await syncBodyAnalyticsOnboardingFromClientData(user);
+  user = await attachBodyAnalyticsAdminMeta(user);
+  const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
 
   return res.status(200).json({
     status: true,
     message: "User medical conditions fetched",
     medicalCondition: toPublicMedicalCondition(medical),
     medicalConditionsInAppEnabled: isMedicalConditionsInAppEnabled(user),
+    paidOnboardingStepStatus: stepStatus,
+    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    completedStepsCount: countCompletedSteps(stepStatus),
+    bodyAnalyticsClientDataReady: Boolean(user.bodyAnalyticsClientDataReady),
+  });
+});
+
+exports.approveUserMedicalConditionsController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = String(req.params.id || "").trim();
+  if (!userId) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  const medical = await getLatestMedicalConditionForUser(userId);
+  if (!medical) {
+    throw new AppError("No medical condition answers to approve", 400);
+  }
+
+  const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+
+  return res.status(200).json({
+    status: true,
+    message: "Medical conditions reviewed",
+    paidOnboardingStepStatus: currentStatus,
+    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    completedStepsCount: countCompletedSteps(currentStatus),
+    user: await enrichUser(user),
   });
 });
 
@@ -62,22 +97,7 @@ exports.patchMedicalConditionsInAppSettingsController = asyncHandler(async (req,
     throw new AppError("enabled must be true or false", 400);
   }
 
-  const updates = { medicalConditionsInAppEnabled: enabled };
-
-  if (!enabled) {
-    const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-    if (currentStatus.medicalConditions === "pending") {
-      const nextStatus = markStepSkipped(currentStatus, "medicalConditions");
-      updates.paidOnboardingStepStatus = nextStatus;
-      const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, "medicalConditions");
-      if (nextWizardStep && nextWizardStep !== user.paidOnboardingStep) {
-        updates.paidOnboardingStep = nextWizardStep;
-      }
-      updates.paidOnboardingCompleted = computePaidOnboardingCompleted(nextStatus);
-    }
-  }
-
-  const updated = await updateUser(userId, updates);
+  const updated = await updateUser(userId, { medicalConditionsInAppEnabled: enabled });
 
   return res.status(200).json({
     status: true,

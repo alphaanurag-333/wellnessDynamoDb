@@ -163,6 +163,10 @@ export function mapDietAssignment(row) {
     plans: (Array.isArray(row.plans) ? row.plans : []).map(mapCatalogPlan).filter(Boolean),
     personalisedSections,
     pdfUrl: row.pdfUrl || "",
+    publishedPdfUrl: row.publishedPdfUrl || "",
+    pushedAt: row.pushedAt || null,
+    hasUnpublishedChanges: row.hasUnpublishedChanges === true,
+    archived: row.archived === true,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -222,9 +226,13 @@ export async function saveUserPersonalisedDietPlan(userId, { sections, assignmen
   const payload = {
     personalised: true,
     sections: mapPersonalisedSections(sections),
-    startDate: startDate || todayIsoDate(),
     note: note || undefined,
   };
+  if (!assignmentId) {
+    payload.startDate = startDate || todayIsoDate();
+  } else if (startDate) {
+    payload.startDate = startDate;
+  }
   try {
     if (assignmentId) {
       const { data } = await api.patch(
@@ -273,6 +281,26 @@ export async function deleteUserDietPlanAssignment(userId, assignmentId) {
     await api.delete(`${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}`, {
       headers: authHeader(tokenOrStored()),
     });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function publishUserPersonalisedDietPlan(userId, assignmentId) {
+  if (!assignmentId) {
+    throw new Error("assignmentId is required to push a diet plan");
+  }
+  try {
+    const { data } = await api.post(
+      `${assignmentsBase(userId)}/${encodeURIComponent(assignmentId)}/publish`,
+      {},
+      { headers: authHeader(tokenOrStored()) },
+    );
+    const assignment = mapDietAssignment(data.assignment);
+    if (assignment && data.personalisedSections) {
+      assignment.personalisedSections = mapPersonalisedSections(data.personalisedSections);
+    }
+    return { assignment, message: data.message };
   } catch (error) {
     normalizeApiError(error);
   }

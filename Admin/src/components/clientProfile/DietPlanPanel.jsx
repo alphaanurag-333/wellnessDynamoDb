@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DIET_PLAN_SECTIONS } from "../../data/foodData.js";
 import {
   listUserDietPlanAssignments,
+  publishUserPersonalisedDietPlan,
   saveUserPersonalisedDietPlan,
 } from "../../api/dietPlanCatalogApi.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { DietPlanBookPanel } from "./DietPlanBookPanel.jsx";
+import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function isLiveUserId(userId) {
@@ -21,6 +23,25 @@ function cloneSections(sections) {
 
 function sectionsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function formatPushedLabel(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function historyEntrySummary(entry) {
+  const sections = Array.isArray(entry?.personalisedSections) ? entry.personalisedSections : [];
+  if (sections.length) {
+    const rows = sections.reduce((count, section) => count + (section.rows?.length || 0), 0);
+    return `Personalised diet plan · ${sections.length} section${sections.length === 1 ? "" : "s"}, ${rows} option${rows === 1 ? "" : "s"}`;
+  }
+  const planName = entry?.plans?.[0]?.name || "Diet plan";
+  const meals = entry?.plans?.[0]?.meals?.length || 0;
+  return meals ? `${planName} · ${meals} item${meals === 1 ? "" : "s"}` : planName;
 }
 
 function defaultSections() {
@@ -135,12 +156,18 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
 
   const [loading, setLoading] = useState(Boolean(userId));
   const [saving, setSaving] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [pushOpen, setPushOpen] = useState(false);
   const [error, setError] = useState("");
   const [assignmentId, setAssignmentId] = useState("");
+  const [pushedAt, setPushedAt] = useState(null);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
   const [sections, setSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
   const [savedSections, setSavedSections] = useState(() => cloneSections(DIET_PLAN_SECTIONS));
   const [editing, setEditing] = useState(false);
   const [bookOpen, setBookOpen] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [expandedHistoryId, setExpandedHistoryId] = useState("");
 
   const dirty = useMemo(() => !sectionsEqual(sections, savedSections), [sections, savedSections]);
   const canManage = canEdit && (!live || isHealClient);
@@ -164,14 +191,17 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
         return;
       }
       const data = await listUserDietPlanAssignments(userId);
-      const nextAssignmentId = String(data?.recommended?.id || "").trim();
+      const recommended = data?.recommended || null;
+      const nextAssignmentId = String(recommended?.id || "").trim();
       const fromApi = Array.isArray(data?.personalisedSections) ? data.personalisedSections : [];
-      const nextSections = fromApi.length
-        ? cloneSections(fromApi)
-        : defaultSections();
+      const nextSections = fromApi.length ? cloneSections(fromApi) : [];
       setAssignmentId(nextAssignmentId);
+      setPushedAt(recommended?.pushedAt || null);
+      setHasUnpublishedChanges(recommended?.hasUnpublishedChanges === true);
+      setHistory(Array.isArray(data?.history) ? data.history : []);
       setSections(nextSections);
       setSavedSections(cloneSections(nextSections));
+      setEditing(false);
     } catch (err) {
       setError(err?.message || "Failed to load diet plan");
       onToast?.(err?.message || "Failed to load diet plan");
@@ -252,13 +282,22 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
     ]);
   }
 
+  function startCreate() {
+    setSections(defaultSections());
+    setEditing(true);
+  }
+
   function startEdit() {
     setSections(cloneSections(savedSections));
     setEditing(true);
   }
 
   function cancelEdit() {
-    setSections(cloneSections(savedSections));
+    if (live && isHealClient && !assignmentId) {
+      setSections([]);
+    } else {
+      setSections(cloneSections(savedSections));
+    }
     setEditing(false);
   }
 
@@ -290,14 +329,76 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
         ? cloneSections(assignment.personalisedSections)
         : cloneSections(sections);
       setAssignmentId(nextId);
+      setPushedAt(assignment?.pushedAt || pushedAt);
+      setHasUnpublishedChanges(assignment?.hasUnpublishedChanges === true);
       setSections(nextSections);
       setSavedSections(cloneSections(nextSections));
       setEditing(false);
-      onToast?.("Diet plan saved & synced to client app");
+      onToast?.("Diet plan saved (draft only — use Push to App to publish)");
     } catch (err) {
       onToast?.(err?.message || "Could not save diet plan");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pushPlanToApp() {
+    if (!live) {
+      onToast?.("Push to App is available for live clients only");
+      setPushOpen(false);
+      return;
+    }
+    if (!sections.length) {
+      onToast?.("Add at least one section before pushing");
+      setPushOpen(false);
+      return;
+    }
+
+    setPushing(true);
+    try {
+      let nextAssignmentId = assignmentId;
+      let lastPushedAt = pushedAt;
+      let unpublished = hasUnpublishedChanges || dirty || !pushedAt;
+
+      if (dirty || !nextAssignmentId) {
+        const saved = await saveUserPersonalisedDietPlan(userId, {
+          sections,
+          assignmentId: nextAssignmentId || undefined,
+        });
+        nextAssignmentId = String(saved?.id || "").trim();
+        const nextSections = saved?.personalisedSections?.length
+          ? cloneSections(saved.personalisedSections)
+          : cloneSections(sections);
+        setAssignmentId(nextAssignmentId);
+        setSections(nextSections);
+        setSavedSections(cloneSections(nextSections));
+        setEditing(false);
+        lastPushedAt = saved?.pushedAt || null;
+        unpublished = saved?.hasUnpublishedChanges === true || !lastPushedAt;
+      }
+      if (!nextAssignmentId) {
+        onToast?.("Save the diet plan first, then push to app");
+        return;
+      }
+      if (lastPushedAt && !unpublished) {
+        onToast?.("Diet plan already matches what's in the client app");
+        return;
+      }
+      const result = await publishUserPersonalisedDietPlan(userId, nextAssignmentId);
+      const published = result?.assignment;
+      if (!published?.pushedAt) {
+        onToast?.("Push did not complete — try again");
+        return;
+      }
+      setPushedAt(published.pushedAt);
+      setHasUnpublishedChanges(false);
+      onToast?.(result?.message || "Diet plan pushed to client app");
+      await load();
+    } catch (err) {
+      onToast?.(err?.message || "Could not push diet plan to app");
+    } finally {
+      setPushing(false);
+      setPushOpen(false);
     }
   }
 
@@ -306,6 +407,15 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
   }
 
   const showEditor = editing && canManage;
+  const hasSavedPlan = live && isHealClient
+    ? Boolean(assignmentId)
+    : savedSections.some((section) => (section.rows?.length || 0) > 0);
+  const clientFirstName = String(user?.name || "Client").trim().split(/\s+/)[0] || "Client";
+  const pushPending = dirty || hasUnpublishedChanges || !pushedAt;
+  const pushDisabled = saving || pushing || loading || !sections.length || !pushPending;
+  const saveLabel = hasSavedPlan
+    ? (saving ? "Saving…" : "✓ Save plan")
+    : (saving ? "Saving…" : "✓ Create plan");
 
   return (
     <div className="ua-cp-food-diet">
@@ -330,26 +440,53 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
           {canManage ? (
             showEditor ? (
               <>
-                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saving}>
+                <button type="button" className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm" onClick={cancelEdit} disabled={saving || pushing}>
                   Cancel
                 </button>
                 <button
                   type="button"
                   className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
                   onClick={savePlan}
-                  disabled={saving || !dirty}
+                  disabled={saving || pushing || !dirty}
                 >
-                  {saving ? "Saving…" : "✓ Save plan"}
+                  {saveLabel}
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+                  disabled={pushDisabled}
+                  onClick={() => setPushOpen(true)}
+                >
+                  {pushing ? "Pushing…" : "Push to App"}
+                </button>
+              </>
+            ) : hasSavedPlan ? (
+              <>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__edit"
+                  onClick={startEdit}
+                  disabled={saving || pushing || loading}
+                >
+                  ✎ Edit plan
+                </button>
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+                  disabled={pushDisabled}
+                  onClick={() => setPushOpen(true)}
+                >
+                  {pushing ? "Pushing…" : "Push to App"}
                 </button>
               </>
             ) : (
               <button
                 type="button"
-                className="ua-cp-btn ua-cp-btn--outline ua-cp-btn--sm ua-cp-food-diet__edit"
-                onClick={startEdit}
-                disabled={saving || loading}
+                className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                onClick={startCreate}
+                disabled={saving || pushing || loading}
               >
-                ✎ Edit plan
+                + Create diet plan
               </button>
             )
           ) : null}
@@ -365,9 +502,38 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
         <p className="ua-cp-food-diet__empty">Diet plans can only be managed for Heal (paid) clients.</p>
       ) : null}
 
+      {canManage && !loading && (live ? isHealClient : true) ? (
+        <p className="ua-cp-food-diet__sub ua-cp-food-diet__draft-note">
+          {pushPending
+            ? (pushedAt
+              ? "Unpublished edits — the app still shows the last pushed version until you Push to App again."
+              : "Saved as draft only — the mobile app will not show this until you Push to App.")
+            : (pushedAt
+              ? `Live in the client app (last pushed ${new Date(pushedAt).toLocaleString()}).`
+              : null)}
+        </p>
+      ) : null}
+
       {!loading && (live ? isHealClient : true) ? (
         <>
-          {sections.map((section) => (
+          {!hasSavedPlan && !showEditor ? (
+            <div className="ua-cp-food-diet__empty ua-cp-food-diet__empty--create">
+              <p>No personalised diet plan for this client yet.</p>
+              {canManage ? (
+                <button
+                  type="button"
+                  className="ua-cp-btn ua-cp-btn--primary ua-cp-btn--sm"
+                  onClick={startCreate}
+                  disabled={saving || pushing}
+                >
+                  + Create diet plan
+                </button>
+              ) : (
+                <p className="ua-cp-food-diet__sub">A coach can create a plan from the actions above.</p>
+              )}
+            </div>
+          ) : null}
+          {(hasSavedPlan || showEditor) ? sections.map((section) => (
             <DietPlanSection
               key={section.id}
               section={section}
@@ -378,17 +544,82 @@ export function DietPlanPanel({ user, onToast, appVisible = true }) {
               onAddRow={addRow}
               onRemoveSection={removeSection}
             />
-          ))}
+          )) : null}
           {showEditor ? (
             <button type="button" className="ua-cp-food-diet__add-section" onClick={addSection}>
               + Add section
             </button>
           ) : null}
-          {!sections.length && !showEditor ? (
-            <p className="ua-cp-food-diet__empty">No diet plan yet. Click Edit plan to build one for this client.</p>
-          ) : null}
         </>
       ) : null}
+
+      {!loading && (live ? isHealClient : true) && (hasSavedPlan || history.length > 0) ? (
+        <div className="ua-cp-food-diet-history">
+          <strong>Push history</strong>
+          <span className="ua-cp-food-diet__sub">Previous versions saved when you push an updated plan to the app.</span>
+          {!history.length ? (
+            <p className="ua-cp-food-diet__empty">No previous pushed diet plans yet. Push an updated plan to archive the current version here and in the mobile app.</p>
+          ) : null}
+          {history.map((entry) => {
+            const expanded = expandedHistoryId === entry.id;
+            const historySections = Array.isArray(entry.personalisedSections) ? entry.personalisedSections : [];
+            const pdfUrl = entry.publishedPdfUrl || entry.pdfUrl || "";
+            return (
+              <div key={entry.id} className="ua-cp-food-diet-history__block">
+                <div className="ua-cp-food-diet-history__row">
+                  <span>{formatPushedLabel(entry.pushedAt) || "—"}</span>
+                  <span>{historyEntrySummary(entry)}</span>
+                  <span className="ua-cp-food-diet-history__actions">
+                    {pdfUrl ? (
+                      <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="ua-cp-food-diet-history__link">
+                        PDF
+                      </a>
+                    ) : null}
+                    {historySections.length ? (
+                      <button
+                        type="button"
+                        className="ua-cp-food-diet-history__link ua-cp-food-diet-history__link--btn"
+                        onClick={() => setExpandedHistoryId(expanded ? "" : entry.id)}
+                      >
+                        {expanded ? "Hide" : "View"}
+                      </button>
+                    ) : null}
+                  </span>
+                </div>
+                {expanded && historySections.length ? (
+                  <div className="ua-cp-food-diet-history__preview">
+                    {historySections.map((section) => (
+                      <DietPlanSection
+                        key={`${entry.id}-${section.id}`}
+                        section={section}
+                        editing={false}
+                        onUpdateSectionTitle={() => {}}
+                        onUpdateRow={() => {}}
+                        onRemoveRow={() => {}}
+                        onAddRow={() => {}}
+                        onRemoveSection={() => {}}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <ConfirmDialog
+        open={pushOpen}
+        tag="Diet plan"
+        title={`Push diet plan to ${clientFirstName}'s app?`}
+        body={`This publishes the personalised diet plan and PDF for ${clientFirstName} in the mobile app. Unsaved edits are saved first.`}
+        cancelLabel="Cancel"
+        confirmLabel={pushing ? "Pushing…" : "Push to App"}
+        onCancel={() => {
+          if (!pushing) setPushOpen(false);
+        }}
+        onConfirm={pushPlanToApp}
+      />
     </div>
   );
 }

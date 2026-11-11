@@ -231,7 +231,13 @@ export function rolesToGrantsState(roles) {
   const out = {};
   for (const role of roles || []) {
     const key = role.roleKey || role.id;
-    out[key] = role.grants == null ? null : { ...role.grants };
+    if (role.grants == null) {
+      out[key] = null;
+    } else {
+      out[key] = Object.fromEntries(
+        Object.entries(role.grants).map(([featureId, acts]) => [featureId, [...(acts || [])]]),
+      );
+    }
   }
   return out;
 }

@@ -428,11 +428,13 @@ export function photoReviewSummary(photos) {
   const list = photos || [];
   if (!list.length) return null;
   const pending = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "pending").length;
-  const rejected = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "rejected").length;
-  const approved = list.length - pending - rejected;
   if (pending === list.length) return { label: "Pending", tone: "pending" };
   if (pending > 0) return { label: `${pending} pending`, tone: "pending" };
-  if (rejected && approved) return { label: "Reviewed", tone: "mixed" };
+
+  const latest = latestAnglePhoto(list);
+  if (latest) return photoReviewMeta(latest.reviewStatus);
+
+  const rejected = list.filter((photo) => normalizePhotoReviewStatus(photo.reviewStatus) === "rejected").length;
   if (rejected) return { label: "Rejected", tone: "rejected" };
   return { label: "Accepted", tone: "approved" };
 }
@@ -450,6 +452,19 @@ function mapPhotoRows(records, angle) {
       reviewStatus: normalizePhotoReviewStatus(row[`${angle.slug}ReviewStatus`]),
       rejectionReason: String(row[`${angle.slug}RejectionReason`] || "").trim(),
     }));
+}
+
+/** Coaches (WC/AWC) must not see rejected progress photos in the panel; admins still can. */
+export function filterRejectedBodyPhotosForStaff(photosByAngle, { showRejected = true } = {}) {
+  if (showRejected) return photosByAngle;
+  return Object.fromEntries(
+    Object.entries(photosByAngle || {}).map(([label, list]) => [
+      label,
+      (list || []).filter(
+        (photo) => normalizePhotoReviewStatus(photo?.reviewStatus) !== "rejected",
+      ),
+    ]),
+  );
 }
 
 export function buildPhotosByAngle(photos, measurements = []) {

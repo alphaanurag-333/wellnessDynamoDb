@@ -5,8 +5,10 @@ import {
   fetchUser,
   fetchUserBodyAnalytics,
   mapApiUserToRow,
+  mapUserRowWithOnboardingSync,
   patchUserBodyMeasurementSettings,
   patchUserProgressPhotosInAppSettings,
+  appGateUserFromProfileRow,
   resolveBodyMeasurementClientEnabled,
   resolveProgressPhotosInAppEnabled,
   reviewUserProgressPhoto,
@@ -15,6 +17,7 @@ import {
   BODY_ANALYTICS,
   PHOTO_ANGLES,
   buildPhotosByAngle,
+  filterRejectedBodyPhotosForStaff,
   buildMeasurementRows,
   buildMetabolicRows,
   formatHistoryColumns,
@@ -28,10 +31,11 @@ import {
   photoReviewSummary,
 } from "../../data/bodyAnalyticsData.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 
 function getModalRoot() {
-  return document.querySelector(".updated-admin .ua-cp-drawer") || document.querySelector(".updated-admin");
+  return document.querySelector(".updated-admin") || document.body;
 }
 
 function isLiveUserId(userId) {
@@ -327,7 +331,9 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
           {rejecting
             ? (rejectDayAngles
               ? "Front, Right, and Left from this day are rejected together. The weight photo stays as-is. The client is sent back to the 180° page to submit the three angles again."
-              : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
+              : angle === "Weight"
+                ? "If body measurements are allowed in the app (Disabled in the app is off), the client can open the body measurement form and upload a new weight photo."
+                : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
             : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
         </p>
         {rejecting ? (
@@ -436,13 +442,16 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
         ? " Body Analytics is open again."
         : glance === "done"
           ? " Body Analytics marked done."
-          : "";
+          : action === "approved"
+            ? " Approve medical conditions to finish Body Analytics."
+            : "";
       onToast?.(
         action === "approved"
           ? `Accepted ${angle} photo (${photo.date}).${glanceNote}`
-          : isSingle
-            ? `Rejected ${angle} photo (${photo.date}).`
-            : `Rejected Front, Right, and Left from ${photo.date}. Weight was not changed. The client can submit 180° photos again.${glanceNote}`,
+          : result?.message
+            || (isSingle
+              ? `Rejected ${angle} photo (${photo.date}).`
+              : `Rejected Front, Right, and Left from ${photo.date}. Weight was not changed. The client can submit 180° photos again.${glanceNote}`),
       );
       setReviewTarget(null);
       setRejectReason("");
@@ -495,6 +504,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 <button type="button" className="ua-cp-modal__close" onClick={onClose} aria-label="Close">×</button>
               </div>
             </div>
+            <div className="ua-cp-modal__body ua-cp-modal__body--photos">
             <div className="ua-cp-ba-photo-grid">
               {photos.map((p) => {
                 const review = photoReviewMeta(p.reviewStatus);
@@ -502,11 +512,15 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 <div key={p.id} className="ua-cp-ba-photo-card">
                   <button
                     type="button"
-                    className="ua-cp-ba-photo-card__img"
+                    className="ua-cp-ba-photo-card__media"
                     onClick={() => setPreview(p)}
                     aria-label={`Preview ${angle} photo from ${p.date}, ${review.label}`}
                   >
-                    <img src={p.url} alt={`${angle} progress from ${p.date}`} />
+                    <img
+                      className="ua-cp-ba-photo-card__photo"
+                      src={p.url}
+                      alt={`${angle} progress from ${p.date}`}
+                    />
                     <span className={`ua-cp-ba-photo-card__badge ua-cp-ba-photo__status ua-cp-ba-photo__status--${review.tone}`}>
                       {review.label}
                     </span>
@@ -534,6 +548,7 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                 );
               })}
             </div>
+            </div>
           </div>
         </div>
       )}
@@ -550,22 +565,19 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
             aria-labelledby="photo-preview-title"
           >
             <div className="ua-cp-ba-photo-preview__head">
-              <div>
-                <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
-                <div className="ua-cp-ba-photo-preview__sub">
-                  {isSingle ? `Onboarding · ${activePreview.date}` : activePreview.date}
-                  {` · ${photoReviewMeta(activePreview.reviewStatus).label}`}
+              <div className="ua-cp-ba-photo-preview__head-top">
+                <div className="ua-cp-ba-photo-preview__head-copy">
+                  <div id="photo-preview-title" className="ua-cp-ba-photo-preview__title">{angle} photo</div>
+                  <div className="ua-cp-ba-photo-preview__sub">
+                    {isSingle ? `Onboarding · ${activePreview.date}` : activePreview.date}
+                    {" · "}
+                    <span
+                      className={`ua-cp-ba-photo__status ua-cp-ba-photo__status--${photoReviewMeta(activePreview.reviewStatus).tone}`}
+                    >
+                      {photoReviewMeta(activePreview.reviewStatus).label}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="ua-cp-modal__actions">
-                <PhotoReviewActions
-                  photo={activePreview}
-                  canReview={canReview}
-                  busy={busy}
-                  onSave={handleSave}
-                  onAccept={(photo) => openReview(photo, "approved")}
-                  onReject={(photo) => openReview(photo, "rejected")}
-                />
                 <button
                   type="button"
                   className="ua-cp-modal__close"
@@ -575,8 +587,20 @@ function PhotoModal({ userId, angle, photos, canReview, onReviewed, onClose, onT
                   ×
                 </button>
               </div>
+              <div className="ua-cp-ba-photo-preview__toolbar">
+                <PhotoReviewActions
+                  photo={activePreview}
+                  canReview={canReview}
+                  busy={busy}
+                  onSave={handleSave}
+                  onAccept={(photo) => openReview(photo, "approved")}
+                  onReject={(photo) => openReview(photo, "rejected")}
+                />
+              </div>
             </div>
-            <img src={activePreview.url} alt={`${angle} from ${activePreview.date}`} />
+            <div className="ua-cp-ba-photo-preview__stage">
+              <img src={activePreview.url} alt={`${angle} from ${activePreview.date}`} />
+            </div>
           </div>
         </div>
       ) : null}
@@ -632,6 +656,7 @@ function applyReviewResult(current, result, angle) {
 }
 
 export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
+  const { isAdminView } = useViewAs();
   const { canEdit } = useClientSectionPermissions("body");
   const live = isLiveUserId(user?.id);
   const [historyMode, setHistoryMode] = useState("monthly");
@@ -657,12 +682,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   );
 
   useEffect(() => {
-    setFeatureEnabled(resolveBodyMeasurementClientEnabled(user));
-  }, [user?.bodyMeasurementEnabled, user?.paidOnboardingStepStatus]);
+    setFeatureEnabled(resolveBodyMeasurementClientEnabled(appGateUserFromProfileRow(user)));
+  }, [
+    user?.bodyMeasurementEnabledRaw,
+    user?.paidOnboardingStepStatus?.bodyAnalytics,
+    user?.paidOnboardingStepStatus?.bodyMeasurement,
+  ]);
 
   useEffect(() => {
-    setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(user));
-  }, [user?.progressPhotosInAppEnabled, user?.paidOnboardingStepStatus?.progressPhotos180]);
+    setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(appGateUserFromProfileRow(user)));
+  }, [
+    user?.progressPhotosInAppEnabledRaw,
+    user?.paidOnboardingStepStatus?.bodyAnalytics,
+    user?.paidOnboardingStepStatus?.progressPhotos180,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -671,14 +704,22 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
         if (!cancelled) {
-          const { bodyMeasurementEnabled, ...analytics } = data || {};
+          const {
+            bodyMeasurementEnabled,
+            progressPhotosInAppEnabled,
+            paidOnboardingStepStatus,
+            paidOnboardingCompleted,
+            ...analytics
+          } = data || {};
           setBodyAnalytics(analytics);
           if (bodyMeasurementEnabled !== undefined) {
             setFeatureEnabled(Boolean(bodyMeasurementEnabled));
           }
-          if (data?.progressPhotosInAppEnabled !== undefined) {
-            setProgressPhotosInApp(Boolean(data.progressPhotosInAppEnabled));
+          if (progressPhotosInAppEnabled !== undefined) {
+            setProgressPhotosInApp(Boolean(progressPhotosInAppEnabled));
           }
+          const syncedRow = mapUserRowWithOnboardingSync(user, data);
+          if (syncedRow) onUserUpdated?.(syncedRow);
         }
       })
       .catch((error) => {
@@ -693,7 +734,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, user?.id]);
+  }, [user?.id]);
 
   useEffect(() => {
     setPeriod((current) => {
@@ -775,7 +816,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         onUserUpdated?.({
           ...user,
           progressPhotosInAppEnabled: next,
-          progressPhotosInAppEnabledRaw: next,
+          progressPhotosInAppEnabledRaw: next === true ? true : next === false ? false : undefined,
         });
       }
       try {
@@ -817,7 +858,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         onUserUpdated?.({
           ...user,
           bodyMeasurementEnabled: next,
-          bodyMeasurementEnabledRaw: next,
+          bodyMeasurementEnabledRaw: next === true ? true : next === false ? false : undefined,
         });
       }
       try {
@@ -840,8 +881,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   }
 
   const photosByAngle = useMemo(
-    () => buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
-    [bodyAnalytics?.measurements, bodyAnalytics?.photos],
+    () => filterRejectedBodyPhotosForStaff(
+      buildPhotosByAngle(bodyAnalytics?.photos, bodyAnalytics?.measurements),
+      { showRejected: isAdminView },
+    ),
+    [bodyAnalytics?.measurements, bodyAnalytics?.photos, isAdminView],
   );
   const latestPhotoDate = formatPhotoDate(
     latestPhotoStamp(bodyAnalytics?.photos, bodyAnalytics?.measurements),
@@ -866,14 +910,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           : "Client can fill body measurements (height, weight, neck, etc.)"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
+      <span className="ua-cp-ba-client-entry__label">
+        {bodyMeasurementDisabledInApp ? "Disabled in the app" : "Allowed in the app"}
+      </span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${bodyMeasurementDisabledInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${bodyMeasurementDisabledInApp ? "" : " ua-toggle--on"}`}
         onClick={requestToggleBodyMeasurementClientFill}
         disabled={settingsBusy}
-        aria-pressed={bodyMeasurementDisabledInApp}
-        aria-label="Disable body measurements in client app"
+        aria-pressed={!bodyMeasurementDisabledInApp}
+        aria-label={
+          bodyMeasurementDisabledInApp
+            ? "Allow body measurements in client app"
+            : "Disable body measurements in client app"
+        }
       >
         <span className="ua-toggle__knob" />
       </button>
@@ -890,14 +940,20 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           : "Client can upload front, right, and left progress photos in the app"
       }
     >
-      <span className="ua-cp-ba-client-entry__label">Disabled in the app</span>
+      <span className="ua-cp-ba-client-entry__label">
+        {progressPhotosDisabledInApp ? "Disabled in the app" : "Allowed in the app"}
+      </span>
       <button
         type="button"
-        className={`ua-toggle ua-toggle--sm${progressPhotosDisabledInApp ? " ua-toggle--on" : ""}`}
+        className={`ua-toggle ua-toggle--sm${progressPhotosDisabledInApp ? "" : " ua-toggle--on"}`}
         onClick={requestToggleProgressPhotosInApp}
         disabled={progressPhotosBusy}
-        aria-pressed={progressPhotosDisabledInApp}
-        aria-label="Disable progress photos in client app"
+        aria-pressed={!progressPhotosDisabledInApp}
+        aria-label={
+          progressPhotosDisabledInApp
+            ? "Allow progress photos in client app"
+            : "Disable progress photos in client app"
+        }
       >
         <span className="ua-toggle__knob" />
       </button>
@@ -1006,7 +1062,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
             ? "This applies only to the Body measurements · history section. The client can enter height, weight, neck, and other measures in the app. Progress photos and metabolic metrics are not affected."
             : "The client will not be able to submit new body measurement data until you turn Client fill back on. Existing history in this section stays visible to you."
         }
-        confirmLabel={clientFillConfirm?.next ? "Enable client fill" : "Disable client fill"}
+        confirmLabel={clientFillConfirm?.next ? "Enable in app" : "Disable in app"}
         confirmTone={clientFillConfirm?.next ? "primary" : "danger"}
         onCancel={() => {
           if (!settingsBusy) setClientFillConfirm(null);
@@ -1025,8 +1081,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
           angle={photoAngle}
           photos={photosByAngle[photoAngle] || []}
           canReview={canEdit}
-          onReviewed={(record, angle, result) => {
-            setBodyAnalytics((current) => applyReviewResult(current, { ...result, photo: record }, angle));
+          onReviewed={(record, angleSlug, result) => {
+            setBodyAnalytics((current) => applyReviewResult(current, { ...result, photo: record }, angleSlug));
+            if (result?.bodyMeasurementEnabled !== undefined) {
+              setFeatureEnabled(Boolean(result.bodyMeasurementEnabled));
+            }
             const status = result?.paidOnboardingStepStatus;
             if (!status || !onUserUpdated) return;
             const done = Number(result.completedStepsCount);
@@ -1035,6 +1094,9 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
               paidOnboardingStepStatus: status,
               paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
               ...(result.paidOnboardingStep ? { paidOnboardingStep: result.paidOnboardingStep } : {}),
+              ...(result.bodyMeasurementEnabled === true
+                ? { bodyMeasurementEnabled: true, bodyMeasurementEnabledRaw: true }
+                : {}),
               ...(Number.isFinite(done) ? {
                 onboardingDone: done,
                 onboardingPct: Math.round((done / 10) * 100),

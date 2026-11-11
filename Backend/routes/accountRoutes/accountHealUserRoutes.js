@@ -46,6 +46,7 @@ const {
   updateCoachUserDietPlanAssignmentController,
   deleteCoachUserDietPlanAssignmentController,
   updateCoachUserDietPlanEnabledController,
+  publishCoachUserDietPlanAssignmentController,
 } = require("../../controllers/adminController/dietPlanCatalogAssignmentController");
 const {
   listCoachUserPhysicalExercisesController,
@@ -93,6 +94,7 @@ const {
   getCoachUserLaunchAssessmentByDateController,
   createCoachUserLaunchAssessmentController,
   updateCoachUserLaunchAssessmentController,
+  pushCoachUserLaunchAssessmentScoreController,
   pushCoachUserLaunchAssessmentFocusPointsController,
   deleteCoachUserLaunchAssessmentController,
   exportCoachUserLaunchQuestionsController,
@@ -103,6 +105,7 @@ const {
   listCoachUserPrakrutiRecommendationsController,
   getCoachUserPrakrutiAssessmentController,
   saveCoachUserPrakrutiAssessmentController,
+  pushCoachUserPrakrutiAssessmentController,
   exportCoachUserPrakrutiQuestionsController,
 } = require("../../controllers/adminController/prakrutiAssessmentController");
 const {
@@ -305,6 +308,7 @@ const dietWrite = staff("console.diet.create", { admin: "users.clientHub.care.di
 router.get("/:userId/diet-plan-assignments", diet, listCoachUserDietPlanAssignmentsController);
 router.post("/:userId/diet-plan-assignments", dietWrite, createCoachUserDietPlanAssignmentController);
 router.patch("/:userId/diet-plan-assignments/:assignmentId", dietWrite, updateCoachUserDietPlanAssignmentController);
+router.post("/:userId/diet-plan-assignments/:assignmentId/publish", dietWrite, publishCoachUserDietPlanAssignmentController);
 router.patch("/:userId/diet-plan-enabled", dietWrite, updateCoachUserDietPlanEnabledController);
 router.delete("/:userId/diet-plan-assignments/:assignmentId", requireAdmin, deleteCoachUserDietPlanAssignmentController);
 
@@ -381,6 +385,11 @@ router.get("/:userId/launch-assessment/by-date", launch, getCoachUserLaunchAsses
 router.post("/:userId/launch-assessment", launchWrite, createCoachUserLaunchAssessmentController);
 router.patch("/:userId/launch-assessment/:assessmentId", launchWrite, updateCoachUserLaunchAssessmentController);
 router.post(
+  "/:userId/launch-assessment/:assessmentId/publish",
+  launchWrite,
+  pushCoachUserLaunchAssessmentScoreController,
+);
+router.post(
   "/:userId/launch-assessment/:assessmentId/focus-points/publish",
   launchWrite,
   pushCoachUserLaunchAssessmentFocusPointsController,
@@ -395,6 +404,7 @@ router.get("/:userId/prakruti-assessment/recommendations", prakruti, listCoachUs
 router.get("/:userId/prakruti-assessment/export", staff("console.body.export", { admin: "users.clientHub.assessments.prakruti-assessment", coach: "clientTab.assessments.prakruti-assessment" }), exportCoachUserPrakrutiQuestionsController);
 router.get("/:userId/prakruti-assessment", prakruti, getCoachUserPrakrutiAssessmentController);
 router.post("/:userId/prakruti-assessment", prakrutiWrite, saveCoachUserPrakrutiAssessmentController);
+router.post("/:userId/prakruti-assessment/publish", prakrutiWrite, pushCoachUserPrakrutiAssessmentController);
 
 const hp = staff("console.body.view", { admin: "users.clientHub.tracking.health-progress", coach: "clientTab.tracking.health-progress" });
 const hpWrite = staff("console.body.edit", { admin: "users.clientHub.tracking.health-progress", coach: "clientTab.tracking.health-progress" });
@@ -423,28 +433,19 @@ const reflection = staff("console.diet.view", { admin: "users.clientHub.wellness
 const reflectionWrite = staff("console.diet.edit", { admin: "users.clientHub.wellness.daily-reflection", coach: "clientTab.wellness.daily-reflection" });
 router.get("/:userId/daily-reflection-settings", reflection, getCoachUserDailyReflectionSettingsController);
 router.patch("/:userId/daily-reflection-settings", reflectionWrite, updateCoachUserDailyReflectionSettingsController);
-router.post("/:userId/daily-reflection", reflectionWrite, submitCoachUserDailyReflectionController);
+router.post("/:userId/daily-reflection", requireAdmin, submitCoachUserDailyReflectionController);
 router.post("/:userId/daily-reflection/bedtime-push", reflectionWrite, pushCoachUserDailyReflectionBedtimeController);
 router.get("/:userId/daily-reflection/history", reflection, getCoachUserDailyReflectionHistoryController);
 
-router.patch(
-  "/:userId/onboarding-steps/:stepKey",
-  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
-  patchUserOnboardingStepController
-);
-router.post(
-  "/:userId/onboarding-reminder",
-  staff("console.cl.edit", { admin: "users.edit", coach: "clientTab.overview" }),
-  pushUserOnboardingReminderController
-);
-
-const onboardMeet = staff("console.cal.view", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
-const onboardMeetWrite = staff("console.cal.edit", { admin: "users.clientHub.care.consultancy", coach: "clientTab.care.consultancy" });
-router.get("/:userId/onboarding-meetings", onboardMeet, listStaffOnboardingMeetingsController);
-router.post("/:userId/onboarding-meetings", onboardMeetWrite, createStaffOnboardingMeetingController);
-router.post("/:userId/onboarding-meetings/:meetingId/accept-request", onboardMeetWrite, acceptOnboardingMeetingRequestController);
-router.post("/:userId/onboarding-meetings/:meetingId/reject-request", onboardMeetWrite, rejectOnboardingMeetingRequestController);
-router.post("/:userId/onboarding-meetings/:meetingId/cancel", onboardMeetWrite, cancelStaffOnboardingMeetingController);
+const onboardView = staff("console.ob.view", { admin: "users.view", coach: "clientTab.overview" });
+const onboardEdit = staff("console.ob.edit", { admin: "users.edit", coach: "clientTab.overview" });
+router.patch("/:userId/onboarding-steps/:stepKey", onboardEdit, patchUserOnboardingStepController);
+router.post("/:userId/onboarding-reminder", onboardEdit, pushUserOnboardingReminderController);
+router.get("/:userId/onboarding-meetings", onboardView, listStaffOnboardingMeetingsController);
+router.post("/:userId/onboarding-meetings", onboardEdit, createStaffOnboardingMeetingController);
+router.post("/:userId/onboarding-meetings/:meetingId/accept-request", onboardEdit, acceptOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/reject-request", onboardEdit, rejectOnboardingMeetingRequestController);
+router.post("/:userId/onboarding-meetings/:meetingId/cancel", onboardEdit, cancelStaffOnboardingMeetingController);
 
 router.get("/:userId/rca", tests, listStaffUserRcaController);
 router.post("/:userId/rca", testsWrite, optionalUserFile, submitStaffUserRcaController);

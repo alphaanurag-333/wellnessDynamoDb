@@ -85,6 +85,9 @@ function imageDownloadProxy() {
 
 export default defineConfig({
   plugins: [react(), imageDownloadProxy()],
+  test: {
+    environment: "jsdom",
+  },
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {

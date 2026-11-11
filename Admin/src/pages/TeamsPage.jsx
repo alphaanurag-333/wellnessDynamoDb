@@ -521,6 +521,8 @@ function CreateMemberModal({
   const [nameSuggestions, setNameSuggestions] = useState([]);
   const [nameSearchBusy, setNameSearchBusy] = useState(false);
   const [nameMenuOpen, setNameMenuOpen] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [linkedClientUserId, setLinkedClientUserId] = useState("");
   const nameSearchRef = useRef(null);
   const nameSearchSeq = useRef(0);
   const skipNameSearchRef = useRef(false);
@@ -537,6 +539,8 @@ function CreateMemberModal({
   const isEdit = Boolean(member?.id);
   // Coaches may open this dialog only to set a password. Profile fields stay with Admin.
   const profileLocked = isEdit && !canEditProfile;
+  // Primary login / OTP number — not editable from Admin after create (member flow only).
+  const whatsappLocked = isEdit && !profileLocked;
   // An email can be added later, but once set it cannot be changed here.
   const emailLocked = isEdit && Boolean(String(member?.email || "").trim());
   const memberId = member?.id || "";
@@ -561,6 +565,8 @@ function CreateMemberModal({
     setState(String(user.stateRaw || "").trim());
     setCity(String(user.city || "").trim());
     setBio("");
+    setReferralCode(String(user.referralCode || "").trim().toUpperCase());
+    setLinkedClientUserId(String(user.id || "").trim());
     setErrors((prev) => {
       const next = { ...prev };
       delete next.name;
@@ -589,6 +595,8 @@ function CreateMemberModal({
     setState(member.state || "");
     setCity(member.city || "");
     setBio(String(member.bio || "").slice(0, TEAM_BIO_MAX_LEN));
+    setReferralCode(String(member.referralCode || "").trim().toUpperCase());
+    setLinkedClientUserId("");
     setConsoleRoleId(member.consoleRoleId || "");
     setParentAccountId(member.parentAccountId || "");
     setMemberStatus(memberUiStatus(member));
@@ -612,6 +620,8 @@ function CreateMemberModal({
     setState("");
     setCity("");
     setBio("");
+    setReferralCode("");
+    setLinkedClientUserId("");
     const defaultRole = creatableRoles.find((r) => r.roleKey === "wc") || creatableRoles[0];
     setConsoleRoleId(defaultRole?.id || "");
     setParentAccountId("");
@@ -686,6 +696,8 @@ function CreateMemberModal({
   const indiaSelected = country === "India";
   const cityOptions = useMemo(() => citiesForState(state), [state]);
   const needsParent = baseUiKey === "awc" || baseUiKey === "trainee";
+  const staffReferralRole = baseUiKey === "wc" || baseUiKey === "awc";
+  const canEditReferralCodeField = !profileLocked && isEdit && staffReferralRole;
   const parentRoleKey =
     baseUiKey === "trainee" ? "assistant_wellness_coach" : "wellness_coach";
   const eligibleParents = useMemo(
@@ -743,6 +755,10 @@ function CreateMemberModal({
     if (needsParent && !parentAccountId) {
       next.parent = `Pick a ${baseUiKey === "trainee" ? "Assistant WC" : "Wellness Coach"} this person reports to.`;
     }
+    if (isEdit && staffReferralRole && !profileLocked) {
+      const rc = referralCode.trim().toUpperCase();
+      if (!rc) next.referralCode = "Referral code is required.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -754,10 +770,11 @@ function CreateMemberModal({
     setBusy(true);
     try {
       if (isEdit) {
+        const origReferral = String(member.referralCode || "").trim().toUpperCase();
+        const nextReferral = referralCode.trim().toUpperCase();
+        const referralChanged = staffReferralRole && nextReferral && nextReferral !== origReferral;
         const result = await updateTeamMember(member.id, {
           name: name.trim(),
-          whatsappPhone: whatsapp.trim(),
-          whatsappCountryCode: member.whatsappCountryCode || member.phoneCountryCode || "+91",
           mobilePhone: phone.trim() || null,
           mobileCountryCode: phone.trim() ? member.mobileCountryCode || "+91" : null,
           dateOfBirth: dob,
@@ -767,6 +784,12 @@ function CreateMemberModal({
           bio: String(bio || "").trim() || null,
           approvalStatus: approvalFromUiStatus(memberStatus),
           ...(!emailLocked && email.trim() ? { email: email.trim() } : {}),
+          ...(referralChanged
+            ? {
+                referralCode: nextReferral,
+                ...(needsParent && parentAccountId ? { parentAccountId } : {}),
+              }
+            : {}),
         });
         const roleChanged = consoleRoleId !== (member.consoleRoleId || "");
         const nextParent = needsParent ? parentAccountId : "";
@@ -816,6 +839,12 @@ function CreateMemberModal({
         roleKey: selectedRole?.roleKey || baseUiKey || undefined,
         parentAccountId: needsParent ? parentAccountId : undefined,
         totpRequired: isSuperAdmin ? totpRequired : false,
+        ...(staffReferralRole && linkedClientUserId
+          ? {
+              linkedClientUserId,
+              ...(referralCode.trim() ? { referralCode: referralCode.trim().toUpperCase() } : {}),
+            }
+          : {}),
       });
       onToast(`Created ${result.account?.name || name.trim()}`);
       onSaved(result.account);
@@ -970,7 +999,11 @@ function CreateMemberModal({
                               >
                                 <span className="ua-teams-create__name-option-title">{user.name}</span>
                                 <span className="ua-teams-create__name-option-meta">
-                                  {[user.email, nationalPhoneDigits(user.phone) || null]
+                                  {[
+                                    user.email,
+                                    nationalPhoneDigits(user.phone) || null,
+                                    user.referralCode ? `Ref: ${user.referralCode}` : null,
+                                  ]
                                     .filter(Boolean)
                                     .join(" · ")}
                                 </span>
@@ -1031,19 +1064,24 @@ function CreateMemberModal({
                   WhatsApp number <span aria-hidden="true">*</span>
                 </span>
                 <input
-                  className={`ua-teams-create__input${errors.whatsapp ? " is-invalid" : ""}${profileLocked ? " is-readonly" : ""}`}
+                  className={`ua-teams-create__input${errors.whatsapp ? " is-invalid" : ""}${profileLocked || whatsappLocked ? " is-readonly" : ""}`}
                   placeholder="10-digit WhatsApp number"
                   inputMode="numeric"
                   autoComplete="tel"
                   value={whatsapp}
                   maxLength={PHONE_NATIONAL_LEN}
-                  readOnly={profileLocked}
-                  onKeyDown={profileLocked ? undefined : blockIndianMobileFirstDigitKeyDown}
-                  onChange={profileLocked ? undefined : (event) => {
+                  readOnly={profileLocked || whatsappLocked}
+                  aria-readonly={profileLocked || whatsappLocked ? "true" : undefined}
+                  title={whatsappLocked ? "Primary number — change in app after OTP" : undefined}
+                  onKeyDown={profileLocked || whatsappLocked ? undefined : blockIndianMobileFirstDigitKeyDown}
+                  onChange={profileLocked || whatsappLocked ? undefined : (event) => {
                     setWhatsapp(sanitizePhoneDigits(event.target.value));
                     clearError("whatsapp");
                   }}
                 />
+                {whatsappLocked ? (
+                  <span className="ua-teams-create__hint">Primary login number — not editable here.</span>
+                ) : null}
                 {errors.whatsapp ? <span className="ua-teams-create__error">{errors.whatsapp}</span> : null}
               </label>
               <label className="ua-teams-create__field">
@@ -1065,7 +1103,69 @@ function CreateMemberModal({
                 {errors.phone ? <span className="ua-teams-create__error">{errors.phone}</span> : null}
               </label>
             </div>
-            <label className="ua-teams-create__field">
+            {staffReferralRole || (isEdit && referralCode) ? (
+              <div className="ua-teams-create__grid ua-teams-create__grid--contact">
+                <label className="ua-teams-create__field">
+                  <span className="ua-teams-create__label-row">
+                    <span className="ua-teams-create__label">Email address</span>
+                    <span className="ua-teams-create__count">{email.trim().length}/{EMAIL_MAX_LEN}</span>
+                  </span>
+                  <input
+                    className={`ua-teams-create__input${errors.email ? " is-invalid" : ""}${emailLocked || profileLocked ? " is-readonly" : ""}`}
+                    placeholder="name@company.com (optional)"
+                    type="email"
+                    autoComplete="email"
+                    value={email}
+                    maxLength={EMAIL_MAX_LEN}
+                    readOnly={emailLocked || profileLocked}
+                    aria-readonly={emailLocked || profileLocked ? "true" : undefined}
+                    onChange={emailLocked || profileLocked ? undefined : (event) => {
+                      setEmail(sanitizeEmailInput(event.target.value));
+                      clearError("email");
+                    }}
+                  />
+                  {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
+                </label>
+                <label className="ua-teams-create__field">
+                  <span className="ua-teams-create__label">Referral code</span>
+                  <input
+                    className={`ua-teams-create__input${canEditReferralCodeField ? "" : " is-readonly"}${errors.referralCode ? " is-invalid" : ""}`}
+                    placeholder={
+                      isEdit
+                        ? "e.g. 7WDW4JST"
+                        : linkedClientUserId
+                          ? "From selected client"
+                          : "Select a client by name to reuse their code"
+                    }
+                    value={referralCode}
+                    readOnly={!canEditReferralCodeField}
+                    aria-readonly={canEditReferralCodeField ? undefined : "true"}
+                    onChange={
+                      canEditReferralCodeField
+                        ? (event) => {
+                            setReferralCode(String(event.target.value || "").trim().toUpperCase());
+                            clearError("referralCode");
+                          }
+                        : undefined
+                    }
+                  />
+                  {canEditReferralCodeField ? (
+                    <span className="ua-teams-create__hint">
+                      Unique code for this coach. Save only if you changed it; old code stops working for new sign-ups.
+                    </span>
+                  ) : null}
+                  {!isEdit && linkedClientUserId ? (
+                    <span className="ua-teams-create__hint">
+                      This client&apos;s code will be assigned to the new coach profile.
+                    </span>
+                  ) : null}
+                  {errors.referralCode ? (
+                    <span className="ua-teams-create__error">{errors.referralCode}</span>
+                  ) : null}
+                </label>
+              </div>
+            ) : (
+              <label className="ua-teams-create__field">
                 <span className="ua-teams-create__label-row">
                   <span className="ua-teams-create__label">Email address</span>
                   <span className="ua-teams-create__count">{email.trim().length}/{EMAIL_MAX_LEN}</span>
@@ -1086,6 +1186,7 @@ function CreateMemberModal({
                 />
                 {errors.email ? <span className="ua-teams-create__error">{errors.email}</span> : null}
               </label>
+            )}
 
             {/* <div className="ua-teams-create__section">Location</div> */}
             <div className="ua-teams-create__grid ua-teams-create__grid--location">
@@ -1776,6 +1877,7 @@ export function TeamsPage() {
                         : String(account.approvalStatus || "").toLowerCase() === "pending"
                           ? "Pending"
                           : "Active",
+                    referralCode: account.referralCode ?? prev.referralCode,
                   }
                 : prev,
             );

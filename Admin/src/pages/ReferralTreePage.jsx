@@ -3,7 +3,11 @@ import { Link } from "react-router-dom";
 import { BrandLoader } from "../components/BrandLoader.jsx";
 import { PageHeader, PillTabs, TableScroll } from "../components/shared.jsx";
 import { ReferralOrgTree } from "../components/ReferralOrgTree.jsx";
-import { fetchReferralOverview, fetchReferralTree } from "../api/referralTreeApi.js";
+import {
+  fetchReferralOverview,
+  fetchReferralTree,
+  patchUserReferralUsed,
+} from "../api/referralTreeApi.js";
 import { fetchUsers } from "../api/usersApi.js";
 import { useViewAs } from "../context/ViewAsContext.jsx";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -88,6 +92,7 @@ export function ReferralTreePage() {
   const { can, isAdminView, account, sessionUi } = useViewAs();
   const canView = can("console.rt.view");
   const canOpenUser = can("console.cl.view");
+  const canEditReferralUsed = can("console.cl.edit");
   const canSearchUsers = can("console.cl.view");
   const isCoachScoped = !isAdminView && COACH_SCOPED_UI.has(sessionUi);
   const ownStaffEntityId =
@@ -110,6 +115,7 @@ export function ReferralTreePage() {
   const [suggestions, setSuggestions] = useState([]);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [treeQuery, setTreeQuery] = useState(null);
 
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
@@ -138,6 +144,7 @@ export function ReferralTreePage() {
     setSuggestOpen(false);
     try {
       const result = await fetchReferralTree(params);
+      setTreeQuery(params);
       setRoot(result.root);
       setMeta(result.meta);
       setCollapsed(defaultCollapsed(result.root));
@@ -191,9 +198,21 @@ export function ReferralTreePage() {
     };
   }, [canView, canSearchUsers, query, root, treeLoading, listTab, suggestOpen]);
 
+  const onCorrectReferralUsed = useCallback(
+    async (userId, referralCode) => {
+      await patchUserReferralUsed(userId, referralCode);
+      if (treeQuery) {
+        await loadTree(treeQuery);
+      }
+      await loadOverview();
+    },
+    [treeQuery, loadTree, loadOverview]
+  );
+
   const clearTree = useCallback(() => {
     setRoot(null);
     setMeta(null);
+    setTreeQuery(null);
     setCollapsed(new Set());
     setQuery("");
     setSuggestions([]);
@@ -444,6 +463,8 @@ export function ReferralTreePage() {
             collapsedMap={collapsed}
             onToggle={onToggleCollapse}
             canOpenUser={canOpenUser}
+            canEditReferralUsed={canEditReferralUsed}
+            onCorrectReferralUsed={onCorrectReferralUsed}
           />
         </div>
       ) : null}
@@ -624,9 +645,21 @@ export function ReferralTreePage() {
                     </div>
                     {recentReferrals.map((row) => {
                       const clientName = row.name || "Unnamed";
-                      const viaLabel = row.referredByUserId
-                        ? row.referrerName || row.referrerCode || "Peer"
-                        : row.referrerCode || row.referredByCode || "—";
+                      const viaCode = row.referrerCode || row.referredByCode || "";
+                      const viaLabel = row.referrerName
+                        ? row.referrerName
+                        : row.referrerMissing || viaCode
+                          ? "Unknown referrer"
+                          : row.referredByUserId
+                            ? "Peer"
+                            : "—";
+                      const viaTitle = row.referrerName
+                        ? viaCode
+                          ? `${row.referrerName} · ${viaCode}`
+                          : row.referrerName
+                        : row.referrerMissing && viaCode
+                          ? `Referrer not found (code ${viaCode}) — use Change on tree or reassign`
+                          : viaLabel;
                       return (
                         <div key={row.id} className="ua-table ua-table--rt-recent ua-table__row">
                           <div className="ua-rt-cell-name" data-label="Client">
@@ -657,9 +690,9 @@ export function ReferralTreePage() {
                               <button
                                 type="button"
                                 className="ua-rt-text-btn ua-rt-ellipsis"
-                                title={viaLabel}
+                                title={viaTitle}
                                 onClick={() => {
-                                  setQuery(row.referrerCode || row.referredByUserId);
+                                  setQuery(row.referrerName || row.referrerCode || row.referredByUserId);
                                   loadTree({ rootUserId: row.referredByUserId, mode: "user" });
                                 }}
                               >
@@ -670,21 +703,26 @@ export function ReferralTreePage() {
                                 <button
                                   type="button"
                                   className="ua-rt-text-btn ua-rt-ellipsis"
-                                  title={viaLabel}
+                                  title={viaTitle}
                                   onClick={() => {
-                                    setQuery(row.referrerCode || row.referredByCode || row.referredByEntityId);
+                                    setQuery(
+                                      row.referrerName ||
+                                        row.referrerCode ||
+                                        row.referredByCode ||
+                                        row.referredByEntityId
+                                    );
                                     loadTree({ rootEntityId: row.referredByEntityId, mode: "coach" });
                                   }}
                                 >
                                   {shortLabel(viaLabel, 24)}
                                 </button>
                               ) : (
-                                <span className="ua-rt-ellipsis" title={viaLabel}>
+                                <span className="ua-rt-ellipsis" title={viaTitle}>
                                   {shortLabel(viaLabel, 24)}
                                 </span>
                               )
                             ) : (
-                              <span className="ua-rt-ellipsis" title={viaLabel}>
+                              <span className="ua-rt-ellipsis" title={viaTitle}>
                                 {shortLabel(viaLabel, 24)}
                               </span>
                             )}

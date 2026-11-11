@@ -176,6 +176,31 @@ function collapseWeightLogsByDate(logs) {
   return collapseLogsByDate(logs);
 }
 
+function isPhotoBackedChartPublished(row, photoUrlKey, reviewStatusKey) {
+  if (!row?.[photoUrlKey]) return true;
+  return String(row[reviewStatusKey] || "pending").toLowerCase() === "approved";
+}
+
+function isWeightLogChartPublished(row) {
+  if (!Number.isFinite(Number(row?.weightKg))) return false;
+  return isPhotoBackedChartPublished(row, "weightPicUrl", "weightPicReviewStatus");
+}
+
+function isGlucoseLogChartPublished(row) {
+  if (!Number.isFinite(Number(row?.value))) return false;
+  return isPhotoBackedChartPublished(row, "glucosePicUrl", "glucosePicReviewStatus");
+}
+
+function isBloodPressureLogChartPublished(row) {
+  if (!Number.isFinite(Number(row?.sys)) || !Number.isFinite(Number(row?.dia))) return false;
+  return isPhotoBackedChartPublished(row, "bpPicUrl", "bpPicReviewStatus");
+}
+
+function isConditionPhotoPublished(row) {
+  if (!row?.picUrl) return false;
+  return isPhotoBackedChartPublished(row, "picUrl", "picReviewStatus");
+}
+
 function sortByDateDesc(items, key = "recordedAt") {
   return [...items].sort((a, b) => new Date(b[key] || 0).getTime() - new Date(a[key] || 0).getTime());
 }
@@ -1075,7 +1100,7 @@ function FatLossPanel({ logs, userId, isMock, canReview, canDeletePhoto, onToast
   }, [latestPhoto?.url]);
 
   const series = useMemo(() => {
-    const filtered = applyRange(sortByDateAsc(dailyLogs), range).filter((row) => Number.isFinite(Number(row.weightKg)));
+    const filtered = applyRange(sortByDateAsc(dailyLogs), range).filter(isWeightLogChartPublished);
     const dates = filtered.map((row) => formatChartDate(row.recordedAt));
     const values = filtered.map((row) => Number(Number(row.weightKg).toFixed(1)));
     const first = filtered[0];
@@ -1531,9 +1556,10 @@ function GlucosePanel({
 
   const view = useMemo(() => {
     const daily = collapseLogsByDate(sortByDateAsc(logs), "type", "glucosePicUrl");
-    const ranged = applyRange(daily, range);
-    const fbs = daily.filter((row) => row.type === "fbs" && Number.isFinite(Number(row.value)));
-    const ppbs = daily.filter((row) => row.type === "ppbs" && Number.isFinite(Number(row.value)));
+    const chartDaily = daily.filter(isGlucoseLogChartPublished);
+    const ranged = applyRange(chartDaily, range);
+    const fbs = chartDaily.filter((row) => row.type === "fbs" && Number.isFinite(Number(row.value)));
+    const ppbs = chartDaily.filter((row) => row.type === "ppbs" && Number.isFinite(Number(row.value)));
     const latestFbs = fbs[fbs.length - 1];
     const firstFbs = fbs[0];
     const latestPpbs = ppbs[ppbs.length - 1];
@@ -1743,9 +1769,9 @@ function BpPanel({ logs, userId, isMock, canReview, onToast, onLogsRefresh, onCl
     await onLogsRefresh?.();
   }
   const view = useMemo(() => {
-    const filtered = collapseLogsByDate(applyRange(sortByDateAsc(logs), range), "", "bpPicUrl").filter((row) => (
-      Number.isFinite(Number(row.sys)) && Number.isFinite(Number(row.dia))
-    ));
+    const filtered = collapseLogsByDate(applyRange(sortByDateAsc(logs), range), "", "bpPicUrl").filter(
+      isBloodPressureLogChartPublished,
+    );
     const latest = filtered[filtered.length - 1];
     const first = filtered[0];
     const photoRow = [...filtered].reverse().find((row) => row.bpPicUrl);
@@ -1866,7 +1892,7 @@ function ConditionPanel({ logs, userId, isMock, canReview, onToast, onLogsRefres
 
   const groups = useMemo(() => {
     const map = new Map();
-    for (const row of dailyLogs) {
+    for (const row of dailyLogs.filter(isConditionPhotoPublished)) {
       const key = String(row.bodyPart || "other").toLowerCase();
       const label = bodyPartLabel(row);
       const group = map.get(key) || { id: key, name: label, photos: [] };
@@ -1918,6 +1944,15 @@ function ConditionPanel({ logs, userId, isMock, canReview, onToast, onLogsRefres
       <div className="ua-cp-hptrack-condition">
         {reviewBlock}
         <EmptyLogs label="condition photos" />
+      </div>
+    );
+  }
+
+  if (!groups.length) {
+    return (
+      <div className="ua-cp-hptrack-condition">
+        {reviewBlock}
+        <EmptyLogs label="accepted condition photos" />
       </div>
     );
   }

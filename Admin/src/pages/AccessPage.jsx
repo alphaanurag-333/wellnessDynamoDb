@@ -967,7 +967,13 @@ function RolesPermissionsTab({ onToast }) {
       onToast("Admin permissions are locked");
       return;
     }
-    const nextGrants = toggleGrant(stateRef.current.grants, parents, role.id, featureId, action);
+    const nextGrants = toggleGrant(
+      stateRef.current.grants,
+      stateRef.current.parents,
+      role.id,
+      featureId,
+      action,
+    );
     stateRef.current.grants = nextGrants;
     setGrants(nextGrants);
     const sectionId = sectionIdForFeature(featureId);

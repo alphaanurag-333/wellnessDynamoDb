@@ -3,7 +3,10 @@ const assert = require("node:assert/strict");
 const {
   trackerFeatureKeysForProgramLabel,
   applyPurchasedProgramTrackers,
+  normalizeHealthProgressFeatures,
+  isGeneralWellbeingConcernLabel,
 } = require("../utils/healthProgressHelpers");
+const { reconcileHealthProgressFeatures } = require("../services/healthProgressProgramTrackerService");
 
 describe("purchased program health trackers", () => {
   it("maps fat loss, diabetes, pcos, and hypertension programs", () => {
@@ -21,6 +24,26 @@ describe("purchased program health trackers", () => {
     assert.deepEqual(trackerFeatureKeysForProgramLabel("Thyroid Wellness Program"), []);
     assert.deepEqual(trackerFeatureKeysForProgramLabel("Gut Reset & Digestive Healing"), []);
     assert.deepEqual(trackerFeatureKeysForProgramLabel(""), []);
+  });
+
+  it("does not auto-enable trackers for Overall Wellbeing or Seek to Heal labels", () => {
+    assert.equal(isGeneralWellbeingConcernLabel("Overall Wellbeing"), true);
+    assert.equal(isGeneralWellbeingConcernLabel("Everyday Wellness"), true);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("Overall Wellbeing"), []);
+    assert.deepEqual(trackerFeatureKeysForProgramLabel("Everyday Wellness"), []);
+    assert.deepEqual(
+      trackerFeatureKeysForProgramLabel("Seek to Heal — 90-Day Transformation"),
+      []
+    );
+
+    const next = applyPurchasedProgramTrackers(
+      {},
+      ["Overall Wellbeing", "Seek to Heal — 90-Day Transformation", "diabetes_reversal"],
+      { gender: "male" }
+    );
+    assert.equal(next.glucose, true);
+    assert.equal(next.weightPic, false);
+    assert.equal(next.bloodPressure, false);
   });
 
   it("turns on the matching tracker and keeps other choices", () => {
@@ -52,6 +75,28 @@ describe("purchased program health trackers", () => {
       { gender: "female" }
     );
     assert.equal(next.menstrualCycle, true);
+  });
+
+  it("reconciles auto trackers from labels and keeps condition comparison manual toggle", () => {
+    const user = { gender: "female", healthProgressFeatures: { conditionComparison: true, weightPic: true } };
+    const next = reconcileHealthProgressFeatures(user, ["Fat Loss"]);
+    assert.equal(next.weightPic, true);
+    assert.equal(next.glucose, false);
+    assert.equal(next.conditionComparison, true);
+  });
+
+  it("drops auto trackers when wellness journey labels no longer match", () => {
+    const user = {
+      gender: "male",
+      healthProgressFeatures: normalizeHealthProgressFeatures({
+        weightPic: true,
+        glucose: true,
+        conditionComparison: false,
+      }),
+    };
+    const next = reconcileHealthProgressFeatures(user, ["Thyroid Care"]);
+    assert.equal(next.weightPic, false);
+    assert.equal(next.glucose, false);
   });
 
   it("turns on the concern and matching wellness-journey trackers after purchase", () => {

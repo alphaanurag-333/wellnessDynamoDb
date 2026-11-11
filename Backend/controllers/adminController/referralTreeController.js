@@ -6,7 +6,9 @@ const {
   buildReferralTree,
   getUserById,
 } = require("../../models/userModel");
+const { correctUserReferralAttribution } = require("../../models/userConversionModel");
 const { getReferralCodeRecord } = require("../../models/referralCodeModel");
+const { scanTable, tableExists } = require("../../migration/lib/helpers");
 const { getAccountById } = require("../../models/accountModel");
 const {
   getAssistantWellnessCoachByIdResolved,
@@ -134,6 +136,143 @@ async function enrichStaffReferrers(rows) {
   return out;
 }
 
+async function buildPeerReferralCodeNameMap() {
+  const map = new Map();
+  if (!(await tableExists("User"))) return map;
+
+  const users = await scanTable("User");
+  for (const row of users) {
+    if (String(row.status || "").toLowerCase() === "deleted") continue;
+    const code = String(row.referralCode || "")
+      .trim()
+      .toUpperCase();
+    const name = row.name ? String(row.name).trim() : "";
+    if (code && name) map.set(code, name);
+  }
+  return map;
+}
+
+async function enrichRecentReferrals(rows) {
+  const peerCodeNames = await buildPeerReferralCodeNameMap();
+  const userNameCache = new Map();
+  const staffCache = new Map();
+  const codeCache = new Map();
+
+  async function lookupUserName(userId) {
+    const id = String(userId || "").trim();
+    if (!id) return null;
+    if (userNameCache.has(id)) return userNameCache.get(id);
+    const user = await getUserById(id);
+    if (!user || user.status === "deleted") {
+      userNameCache.set(id, null);
+      return null;
+    }
+    const name = user.name ? String(user.name).trim() : null;
+    userNameCache.set(id, name);
+    return name;
+  }
+
+  async function lookupStaff(entityId) {
+    const id = String(entityId || "").trim();
+    if (!id) return null;
+    if (staffCache.has(id)) return staffCache.get(id);
+    const staff = await resolveStaffEntity(id);
+    const entry = staff
+      ? {
+          name: staff.name ? String(staff.name).trim() : null,
+          referralCode: staff.referralCode ? String(staff.referralCode).trim() : null,
+        }
+      : null;
+    staffCache.set(id, entry);
+    return entry;
+  }
+
+  async function lookupReferrerByCode(code) {
+    const normalized = String(code || "")
+      .trim()
+      .toUpperCase();
+    if (!normalized) return null;
+    if (codeCache.has(normalized)) return codeCache.get(normalized);
+
+    const record = await getReferralCodeRecord(normalized);
+    if (!record) {
+      codeCache.set(normalized, null);
+      return null;
+    }
+
+    const entityType = String(record.entityType || "").toLowerCase();
+    const entityId = String(record.entityId || "").trim();
+    let name = null;
+    let referralCode = record.referralCode || normalized;
+
+    if (entityType === "user" && entityId) {
+      name = await lookupUserName(entityId);
+    } else if (
+      (entityType === "wellness_coach" || entityType === "assistant_wellness_coach") &&
+      entityId
+    ) {
+      const staff = await lookupStaff(entityId);
+      name = staff?.name || null;
+      if (staff?.referralCode) referralCode = staff.referralCode;
+    }
+
+    const entry = name ? { name, referralCode } : null;
+    codeCache.set(normalized, entry);
+    return entry;
+  }
+
+  const out = [];
+  for (const row of rows || []) {
+    let referrerName = row.referrerName ? String(row.referrerName).trim() : null;
+    let referrerCode = row.referrerCode || row.referredByCode || null;
+
+    if (!referrerName && row.referredByUserId) {
+      referrerName = await lookupUserName(row.referredByUserId);
+    }
+
+    const entityType = String(row.referredByEntityType || "").toLowerCase();
+    const entityId = row.referredByEntityId ? String(row.referredByEntityId).trim() : "";
+
+    if (!referrerName && entityId) {
+      if (entityType === "user") {
+        referrerName = await lookupUserName(entityId);
+      } else if (entityType === "wellness_coach" || entityType === "assistant_wellness_coach") {
+        const staff = await lookupStaff(entityId);
+        referrerName = staff?.name || referrerName;
+        if (staff?.referralCode) referrerCode = staff.referralCode;
+      }
+    }
+
+    if (!referrerName && referrerCode) {
+      const fromCode = await lookupReferrerByCode(referrerCode);
+      if (fromCode?.name) {
+        referrerName = fromCode.name;
+        referrerCode = fromCode.referralCode || referrerCode;
+      }
+    }
+
+    if (!referrerName && referrerCode) {
+      const codeKey = String(referrerCode).trim().toUpperCase();
+      if (peerCodeNames.has(codeKey)) {
+        referrerName = peerCodeNames.get(codeKey);
+      }
+    }
+
+    const hasReferrerLink = Boolean(
+      row.referredByUserId || row.referredByEntityId || row.referredByCode || referrerCode
+    );
+    const referrerMissing = hasReferrerLink && !referrerName;
+
+    out.push({
+      ...row,
+      referrerName: referrerName || null,
+      referrerCode: referrerCode || null,
+      referrerMissing,
+    });
+  }
+  return out;
+}
+
 function isGlobalReferralViewer(req) {
   if (req.auth?.isSuperAdmin) return true;
   const actor = resolveStaffActor(req);
@@ -162,6 +301,24 @@ async function resolveReferralTreeScope(req) {
   }
 
   throw new AppError("Forbidden", 403);
+}
+
+async function assertUserReferralEditAllowed(req, userId) {
+  const id = String(userId || "").trim();
+  if (!id) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(id);
+  if (!user || user.status === "deleted") {
+    throw new AppError("User not found", 404);
+  }
+
+  const scope = await resolveReferralTreeScope(req);
+  if (!scope) return user;
+
+  if (!scope.rosterUserIds?.has(id)) {
+    throw new AppError("You can only update referral attribution for your clients", 403);
+  }
+  return user;
 }
 
 async function assertReferralTreeTargetAllowed(req, target, scope) {
@@ -209,7 +366,8 @@ exports.getReferralOverviewController = asyncHandler(async (req, res) => {
       }
     }
   }
-  return res.status(200).json({ status: true, ...data, topStaffReferrers });
+  const recentReferrals = await enrichRecentReferrals(data.recentReferrals);
+  return res.status(200).json({ status: true, ...data, topStaffReferrers, recentReferrals });
 });
 
 exports.getReferralTreeController = asyncHandler(async (req, res) => {
@@ -245,4 +403,30 @@ exports.getReferralTreeController = asyncHandler(async (req, res) => {
   const { root, meta } = await buildReferralTree(target.userId, { maxDepth, maxNodes });
   if (!root) throw new AppError("Root user not found", 404);
   return res.status(200).json({ status: true, root, meta });
+});
+
+exports.patchUserReferralUsedController = asyncHandler(async (req, res) => {
+  const userId = String(req.params.userId || "").trim();
+  const referralCode = req.body?.referralCode ?? req.body?.referral_code ?? "";
+
+  await assertUserReferralEditAllowed(req, userId);
+
+  try {
+    const user = await correctUserReferralAttribution(userId, referralCode);
+    return res.status(200).json({
+      status: true,
+      user: {
+        id: user.id,
+        referredByUserId: user.referredByUserId || null,
+        referredByCode: user.referredByCode || null,
+        referredByEntityType: user.referredByEntityType || null,
+        referredByEntityId: user.referredByEntityId || null,
+      },
+    });
+  } catch (err) {
+    if (err?.name === "NotFoundError") throw new AppError("User not found", 404);
+    if (err?.name === "ValidationError") throw new AppError(err.message, 400);
+    if (err?.name === "InvalidReferralCodeError") throw new AppError(err.message, 400);
+    throw err;
+  }
 });

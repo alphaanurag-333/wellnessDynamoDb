@@ -10,6 +10,7 @@ const {
   isBodyMeasurementEnabled,
   isMedicalConditionsInAppEnabled,
   isProgressPhotosInAppEnabled,
+  buildPaidOnboardingStepLocks,
   USER_ALLOWED_DIETARY_PREFERENCES,
 } = require("../../models/userModel");
 const {
@@ -189,9 +190,7 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
   const paidOnboardingCompleted = Boolean(user.paidOnboardingCompleted);
   return {
     paidOnboardingCompleted,
-    ...(paidOnboardingCompleted
-      ? { programInitiationCompletedAt: new Date().toISOString() }
-      : {}),
+    programStartedAt: user.programStartedAt || null,
     paidOnboardingStep:
       user.paidOnboardingStep || (user.paidOnboardingCompleted ? "done" : "register"),
     paidOnboardingStepStatus: stepStatus,
@@ -202,6 +201,7 @@ function buildStatePayload(user, bodyMeasurement, medicalCondition, meetingsBySt
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     medicalConditionsInAppEnabled: isMedicalConditionsInAppEnabled(user),
     progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
+    stepLocks: buildPaidOnboardingStepLocks(user),
     healPaidAt: user.healPaidAt || null,
     meetingsByStep,
     prefill: {
@@ -437,7 +437,7 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
   notifyOnboardingWhatsAppTransitions({
     user: updated || user,
     previousStatus: currentStatus,
-    nextStatus,
+    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
 
   return res.status(201).json({

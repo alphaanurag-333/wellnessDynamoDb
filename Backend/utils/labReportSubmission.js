@@ -2,8 +2,8 @@ const LAB_REPORT_SUBMISSION_LOCKED_MESSAGE =
   "Your wellness coach can enable it.";
 
 /**
- * Locked by default for new clients until a coach enables upload in Internal parameters.
- * An explicit false means the coach allowed a new report in the app.
+ * Open when labReportSubmissionLocked is explicitly false (new clients default to open).
+ * Missing/true means locked — coach can re-enable in Internal parameters after an upload auto-locks.
  */
 function isLabReportSubmissionLocked(user, { hasReports = false } = {}) {
   if (user?.labReportSubmissionLocked === false) return false;

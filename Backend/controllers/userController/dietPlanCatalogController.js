@@ -1,9 +1,15 @@
 const AppError = require("../../utils/AppError");
 const { asyncHandler } = require("../../utils/asyncHandler");
 const {
-  listCoachAssignedDietPlansByUserId,
+  getCoachAssignedDietPlanRecordById,
+  listUserAppDietPlanSplit,
+  toCoachAssignedDietPlanPublic,
 } = require("../../models/coachAssignedDietPlanModel");
 const { getUserById, isDietPlanEnabled } = require("../../models/userModel");
+const {
+  enrichDietPlanAssignmentForUserApp,
+  buildUserDietPlansListPayload,
+} = require("../../utils/dietPlanUserAppView");
 
 exports.getUserAssignedDietPlansController = asyncHandler(async (req, res) => {
   const userId = req.auth?.sub || req.user?.id;
@@ -23,14 +29,13 @@ exports.getUserAssignedDietPlansController = asyncHandler(async (req, res) => {
     });
   }
 
-  const assignments = await listCoachAssignedDietPlansByUserId(userId);
+  const { recommended, history } = await listUserAppDietPlanSplit(userId);
+  const payload = buildUserDietPlansListPayload(recommended, history);
 
   return res.status(200).json({
     status: true,
     message: "Assigned diet plans fetched successfully",
-    recommended: assignments[0] || null,
-    history: assignments.length > 1 ? assignments.slice(1) : [],
-    assignments,
+    ...payload,
     dietPlanEnabled: true,
   });
 });
@@ -46,16 +51,26 @@ exports.getUserAssignedDietPlanByIdController = asyncHandler(async (req, res) =>
   }
 
   const assignmentId = String(req.params.id || "").trim();
-  const assignments = await listCoachAssignedDietPlansByUserId(userId);
-  const assignment = assignments.find((row) => String(row.id || row._id) === assignmentId);
+  const record = await getCoachAssignedDietPlanRecordById(assignmentId);
+  if (!record || String(record.userId || "") !== String(userId)) {
+    throw new AppError("Diet plan assignment not found", 404);
+  }
 
+  const assignment = toCoachAssignedDietPlanPublic(record, {
+    audience: "user",
+    includeArchivedHistory: true,
+  });
   if (!assignment) {
     throw new AppError("Diet plan assignment not found", 404);
   }
 
+  const enriched = enrichDietPlanAssignmentForUserApp(assignment);
+
   return res.status(200).json({
     status: true,
     message: "Diet plan assignment fetched successfully",
-    assignment,
+    assignment: enriched,
+    recommended: enriched,
+    personalisedSections: enriched?.personalisedSections || [],
   });
 });

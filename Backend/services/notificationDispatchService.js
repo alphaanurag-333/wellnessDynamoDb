@@ -802,27 +802,58 @@ async function dispatchSupplementRecommendedNotification({
   return notification;
 }
 
+async function dispatchSupplementDosagesPublishedNotification({
+  userId,
+  coachName,
+  dosages,
+}) {
+  const rows = (Array.isArray(dosages) ? dosages : []).filter(Boolean);
+  if (!rows.length) return null;
+
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const count = rows.length;
+  let message;
+  let title = "New nutrition dosage";
+
+  if (count === 1) {
+    const supplement = String(rows[0].name || "a nutrition").trim() || "a nutrition";
+    message = `${name} set a dosage schedule for ${supplement}.`;
+  } else {
+    const uniqueNames = [
+      ...new Set(rows.map((row) => String(row.name || "").trim()).filter(Boolean)),
+    ];
+    if (uniqueNames.length <= 3) {
+      message = `${name} set dosage schedules for ${uniqueNames.join(", ")}.`;
+    } else {
+      message = `${name} updated your nutrition dosage schedule (${count} items).`;
+    }
+    title = "Nutrition dosage schedule updated";
+  }
+
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "supplement_dosage_assigned",
+    message,
+    referenceId: rows[0]?.id ? String(rows[0].id) : null,
+    referenceType: "user_supplement_dosage",
+    title,
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchSupplementDosageAssignedNotification({
   userId,
   coachName,
   dosageId,
   supplementName,
 }) {
-  const name = String(coachName || "Your coach").trim() || "Your coach";
-  const supplement = String(supplementName || "a nutrition").trim() || "a nutrition";
-  const message = `${name} set a dosage schedule for ${supplement}.`;
-
-  const notification = await createTargetedNotification({
+  return dispatchSupplementDosagesPublishedNotification({
     userId,
-    kind: "supplement_dosage_assigned",
-    message,
-    referenceId: dosageId ? String(dosageId) : null,
-    referenceType: "user_supplement_dosage",
-    title: "New nutrition dosage",
+    coachName,
+    dosages: [{ id: dosageId, name: supplementName }],
   });
-
-  runPushSafely(deliverTargetedPush(userId, notification));
-  return notification;
 }
 
 async function dispatchSupplementOrderLoggedNotification({
@@ -1051,6 +1082,7 @@ async function dispatchProgressPhotoReviewedNotification({
   status,
   rejectionReason = "",
   rejectDay = false,
+  allAnglesApproved = false,
   coachName,
   actorUserId = null,
 }) {
@@ -1069,13 +1101,19 @@ async function dispatchProgressPhotoReviewedNotification({
     userId,
     kind: "progress_photo_reviewed",
     message: approved
-      ? `${name} accepted your ${label} progress photo.`
+      ? (allAnglesApproved
+        ? `${name} accepted your progress photos (front, right, and left).`
+        : `${name} accepted your ${label} progress photo.`)
       : rejectedMessage,
     referenceId: photoId ? String(photoId) : null,
     referenceType: "progress_photo",
     actorUserId,
-    title: approved ? "Progress photo accepted" : "Progress photo rejected",
-    comment: `${label}:${approved ? "approved" : "rejected"}`,
+    title: approved
+      ? (allAnglesApproved ? "Progress photos accepted" : "Progress photo accepted")
+      : "Progress photo rejected",
+    comment: approved && allAnglesApproved
+      ? "180_set:approved"
+      : `${label}:${approved ? "approved" : "rejected"}`,
   });
 
   runPushSafely(deliverTargetedPush(userId, notification));
@@ -1326,6 +1364,7 @@ module.exports = {
   dispatchWellnessYogaAssignedNotification,
   dispatchSupplementRecommendedNotification,
   dispatchSupplementDosageAssignedNotification,
+  dispatchSupplementDosagesPublishedNotification,
   dispatchSupplementOrderLoggedNotification,
   dispatchSupplementDeliveryRequestedCoachNotification,
   dispatchSupplementDeliveryRequestedCoachNotificationAsync,

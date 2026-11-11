@@ -16,6 +16,9 @@ const accountCoachCheckoutRoutes = require("./accountCoachCheckoutRoutes");
 const {
   listStaffCalendarOnboardingMeetingsController,
 } = require("../../controllers/adminController/onboardingMeetingController");
+const {
+  listStaffCalendarHealConsultancyTracksController,
+} = require("../../controllers/adminController/healConsultancyTrackController");
 const accountPortalClientTestimonialRoutes = require("./accountPortalClientTestimonialRoutes");
 const accountActiveSpecializationRoutes = require("./accountActiveSpecializationRoutes");
 const {
@@ -94,6 +97,12 @@ router.get(
   protectAccount,
   requireActiveRole("admin", "wellness_coach", "assistant_wellness_coach", "trainee"),
   listStaffCalendarOnboardingMeetingsController
+);
+router.get(
+  "/heal-consultancy-tracks/calendar",
+  protectAccount,
+  requireActiveRole("admin", "wellness_coach", "assistant_wellness_coach", "trainee"),
+  listStaffCalendarHealConsultancyTracksController
 );
 router.use("/access", accountAccessRoutes);
 router.use("/dashboard", accountDashboardRoutes);

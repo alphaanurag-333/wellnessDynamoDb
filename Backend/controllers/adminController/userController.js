@@ -17,6 +17,14 @@ const {
 } = require("../../models/userModel");
 const { getAccountById, getMembership } = require("../../models/accountModel");
 const {
+  syncHealthProgressAfterProfileSelections,
+  updatesAffectHealthProgressSelections,
+} = require("../../services/healthProgressProgramTrackerService");
+const {
+  syncBodyAnalyticsOnboardingFromClientData,
+  attachBodyAnalyticsAdminMeta,
+} = require("../../services/bodyAnalyticsOnboardingSyncService");
+const {
   parseUserFields,
   enrichUser,
   assertUniqueEmail,
@@ -148,9 +156,11 @@ exports.listArchivedUsersController = asyncHandler(async (req, res) => {
 });
 
 exports.getUserByIdController = asyncHandler(async (req, res) => {
-  const user = await getUserById(req.params.id);
+  let user = await getUserById(req.params.id);
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
+  user = await syncBodyAnalyticsOnboardingFromClientData(user);
+  user = await attachBodyAnalyticsAdminMeta(user);
   return res.status(200).json({
     status: true,
     user: await enrichUser(user, { includeCoachMeetings: true }),
@@ -282,6 +292,10 @@ exports.updateUserController = asyncHandler(async (req, res) => {
       throw new AppError("User not found", 404);
     }
     throw err;
+  }
+
+  if (updatesAffectHealthProgressSelections(updates)) {
+    user = await syncHealthProgressAfterProfileSelections(user);
   }
 
   return res.status(200).json({

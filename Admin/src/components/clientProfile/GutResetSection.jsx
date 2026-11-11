@@ -36,7 +36,7 @@ function PresetSelect({ value, onChange, disabled }) {
         aria-expanded={open}
         disabled={disabled}
       >
-        {value || "Load preset…"}
+        {value || "Gut reset"}
         <span className="ua-cp-gut-preset__chev" aria-hidden="true" />
       </button>
       {open ? (

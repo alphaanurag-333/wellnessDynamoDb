@@ -103,6 +103,8 @@ describe("counselling review history", () => {
           summary: "Protocol",
           completedDate: "2026-09-01",
           authorName: "Dr. Ankit",
+          authorRole: "wellness_coach",
+          createdByRole: "wellness_coach",
         },
       ],
       meetings: [],
@@ -125,5 +127,40 @@ describe("counselling review history", () => {
     const pending = history.sessions.find((row) => row.id === "track-open");
     assert.equal(pending.initiatedBy, "Self");
     assert.equal(pending.initiatedByRole, "client");
+  });
+
+  it("uses Admin, Coach, and AWC labels from prescription author roles", () => {
+    const base = {
+      date: "2026-09-01",
+      reviewStatus: "active",
+      summary: "Protocol",
+      completedDate: "2026-09-01",
+    };
+    const initiatorContext = { genericInitiatorLabels: true };
+
+    const adminHistory = buildUserCounsellingReviewHistory({
+      assignments: [{ id: "rx-admin", ...base, authorRole: "admin", createdByRole: "admin" }],
+      meetings: [],
+      tracks: [],
+      initiatorContext,
+    });
+    assert.equal(adminHistory.reviews[0].initiatedBy, "Admin");
+    assert.equal(adminHistory.reviews[0].initiatedByRole, "admin");
+
+    const awcHistory = buildUserCounsellingReviewHistory({
+      assignments: [
+        {
+          id: "rx-awc",
+          ...base,
+          authorRole: "assistant_wellness_coach",
+          createdByRole: "assistant_wellness_coach",
+        },
+      ],
+      meetings: [],
+      tracks: [],
+      initiatorContext,
+    });
+    assert.equal(awcHistory.reviews[0].initiatedBy, "AWC");
+    assert.equal(awcHistory.reviews[0].initiatedByRole, "assistant_wellness_coach");
   });
 });

@@ -13,6 +13,14 @@ import {
   rejectOnboardingMeetingRequest,
 } from "../api/onboardingApi.js";
 import {
+  acceptHealConsultancyRequest,
+  fetchCalendarCounsellingTracks,
+  offerHealConsultancyPeriods,
+  rejectHealConsultancyRequest,
+  updateHealConsultancyTrack,
+} from "../api/counsellingApi.js";
+import { mapCounsellingTracksToMeetings } from "../utils/mapCounsellingTracksForCalendar.js";
+import {
   CAL_HOUR_END,
   CAL_HOUR_PX,
   CAL_HOUR_START,
@@ -71,7 +79,12 @@ const STEP_LABELS = {
   reportsBriefing: "Reports Briefing",
   hap: "HAP",
   programInitiation: "Program Initiation",
+  counselling: "Counselling",
 };
+
+function isCounsellingEntry(entry) {
+  return entry?.stepKey === "counselling" || entry?.meetingKind === "counselling";
+}
 
 function initialsFromName(name) {
   return String(name || "")
@@ -193,6 +206,7 @@ function mapCalendarMeetings(meetings) {
         || (requestedSlots.length > 1
           ? `Client requested ${requestedSlots.length} times`
           : "Client requested another time"),
+      meetingKind: meeting.meetingKind || null,
       meeting,
     };
 
@@ -236,8 +250,12 @@ export function CalendarPage() {
   const [blockDraft, setBlockDraft] = useState(null);
 
   const loadMeetings = () => {
-    fetchCalendarOnboardingMeetings()
-      .then((meetings) => {
+    Promise.all([fetchCalendarOnboardingMeetings(), fetchCalendarCounsellingTracks()])
+      .then(([onboardingMeetings, counsellingTracks]) => {
+        const meetings = [
+          ...(onboardingMeetings || []),
+          ...mapCounsellingTracksToMeetings(counsellingTracks),
+        ];
         const mapped = mapCalendarMeetings(meetings);
         setEvents(mapped.events);
         setConfirmed(mapped.confirmed);
@@ -554,7 +572,11 @@ export function CalendarPage() {
                     className="ua-cfg-btn ua-cfg-btn--outline ua-cfg-btn--sm"
                     onClick={async () => {
                       try {
-                        await cancelOnboardingMeeting(entry.userId, entry.id);
+                        if (isCounsellingEntry(entry)) {
+                          await updateHealConsultancyTrack(entry.userId, entry.id, { status: "cancelled" });
+                        } else {
+                          await cancelOnboardingMeeting(entry.userId, entry.id);
+                        }
                         onToast(`${entry.name} cancelled`);
                         loadMeetings();
                       } catch (err) {
@@ -594,7 +616,11 @@ export function CalendarPage() {
                       className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                       onClick={async () => {
                         try {
-                          await cancelOnboardingMeeting(entry.userId, entry.id);
+                          if (isCounsellingEntry(entry)) {
+                            await updateHealConsultancyTrack(entry.userId, entry.id, { status: "cancelled" });
+                          } else {
+                            await cancelOnboardingMeeting(entry.userId, entry.id);
+                          }
                           onToast("Offer released");
                           loadMeetings();
                         } catch (err) {
@@ -653,6 +679,7 @@ export function CalendarPage() {
                     setReviewRequest({
                       userId: entry.userId,
                       meetingId: entry.id,
+                      meetingKind: entry.meetingKind || (isCounsellingEntry(entry) ? "counselling" : "onboarding"),
                       userName: entry.name,
                       stepLabel: entry.kind,
                       slots: (entry.meeting?.requestedSlots?.length
@@ -677,7 +704,11 @@ export function CalendarPage() {
                   className="ua-cfg-btn ua-cfg-btn--ghost ua-cfg-btn--sm"
                   onClick={async () => {
                     try {
-                      await rejectOnboardingMeetingRequest(entry.userId, entry.id);
+                      if (isCounsellingEntry(entry)) {
+                        await rejectHealConsultancyRequest(entry.userId, entry.id);
+                      } else {
+                        await rejectOnboardingMeetingRequest(entry.userId, entry.id);
+                      }
                       onToast("Request rejected. Existing slots remain.");
                       loadMeetings();
                     } catch (err) {
@@ -734,11 +765,19 @@ export function CalendarPage() {
           onAccept={async (slot) => {
             try {
               setReviewBusy(true);
-              await acceptOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId, {
-                requestedSlotId: slot.id,
-                startAt: slot.startAt,
-                endAt: slot.endAt,
-              });
+              if (reviewRequest.meetingKind === "counselling") {
+                await acceptHealConsultancyRequest(reviewRequest.userId, reviewRequest.meetingId, {
+                  requestedSlotId: slot.id,
+                  startAt: slot.startAt,
+                  endAt: slot.endAt,
+                });
+              } else {
+                await acceptOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId, {
+                  requestedSlotId: slot.id,
+                  startAt: slot.startAt,
+                  endAt: slot.endAt,
+                });
+              }
               onToast(`Accepted ${reviewRequest.userName}'s requested time`);
               setReviewRequest(null);
               loadMeetings();
@@ -751,7 +790,11 @@ export function CalendarPage() {
           onReject={async () => {
             try {
               setReviewBusy(true);
-              await rejectOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId);
+              if (reviewRequest.meetingKind === "counselling") {
+                await rejectHealConsultancyRequest(reviewRequest.userId, reviewRequest.meetingId);
+              } else {
+                await rejectOnboardingMeetingRequest(reviewRequest.userId, reviewRequest.meetingId);
+              }
               onToast("Request rejected. Existing slots remain.");
               setReviewRequest(null);
               loadMeetings();
@@ -766,23 +809,34 @@ export function CalendarPage() {
       {scheduleFor ? (
         <ScheduleMeetingModal
           user={{ name: scheduleFor.name }}
-          title={`Schedule ${STEP_LABELS[scheduleFor.stepKey] || "meeting"}`}
+          title={isCounsellingEntry(scheduleFor)
+            ? "Schedule Counselling"
+            : `Schedule ${STEP_LABELS[scheduleFor.stepKey] || "meeting"}`}
           defaultNote={scheduleFor.kind === "change" ? "New slots after your change request" : (scheduleFor.meeting?.coachNote || "")}
           defaultDuration={scheduleFor.duration ? Number(String(scheduleFor.duration).replace(/\D/g, "")) || 45 : 45}
           existingMeeting={scheduleFor.meeting}
           onClose={() => setScheduleFor(null)}
           onSend={async (payload) => {
             try {
-              await createOnboardingMeetingSlots(scheduleFor.userId, {
-                stepKey: scheduleFor.stepKey,
-                slots: (payload?.slots || []).map((s) => ({
-                  startAt: s.startAt,
-                  endAt: s.endAt,
-                })),
-                note: payload?.note || "",
-                hold: payload?.hold || "24 hours",
-                durationMinutes: payload?.duration,
-              });
+              const slots = (payload?.slots || []).map((s) => ({
+                startAt: s.startAt,
+                endAt: s.endAt,
+              }));
+              if (isCounsellingEntry(scheduleFor)) {
+                await offerHealConsultancyPeriods(scheduleFor.userId, scheduleFor.id, {
+                  slots,
+                  coachNotes: payload?.note || undefined,
+                  durationMinutes: payload?.duration,
+                });
+              } else {
+                await createOnboardingMeetingSlots(scheduleFor.userId, {
+                  stepKey: scheduleFor.stepKey,
+                  slots,
+                  note: payload?.note || "",
+                  hold: payload?.hold || "24 hours",
+                  durationMinutes: payload?.duration,
+                });
+              }
               onToast(`Slots sent to ${scheduleFor.name}`);
               setScheduleFor(null);
               loadMeetings();

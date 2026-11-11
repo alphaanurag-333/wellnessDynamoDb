@@ -26,7 +26,7 @@ export function InboxProvider({ children, onToast }) {
   const loadInbox = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setInboxLoading(true);
     try {
-      const data = await fetchAdminInbox({ page: 1, limit: 40 });
+      const data = await fetchAdminInbox({ page: 1, limit: 40, unreadOnly: true });
       const list = data?.notifications || [];
       if (inboxInitializedRef.current) {
         for (const item of list) {

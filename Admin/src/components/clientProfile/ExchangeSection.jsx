@@ -23,6 +23,7 @@ import {
   paymentSummary,
   programLabel,
 } from "../../data/exchangeData.js";
+import { EXCHANGE_SUBSCRIPTION_DURATION_PRESETS } from "../../data/exchangeSubscriptionDurationPresets.js";
 import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../../data/usersData.js";
 
 function mapCatalog(rows) {
@@ -394,17 +395,9 @@ function PaymentRow({ row, onToast }) {
   );
 }
 
-/** Bundled complimentary FY app subscription — always included; pick how many FYs. */
-const FY_YEAR_OPTIONS = [
-  { id: 1, label: "1 FY · current (pro-rata)" },
-  { id: 2, label: "2 FYs · current + next" },
-  { id: 3, label: "3 FYs" },
-  { id: 4, label: "4 FYs" },
-];
-
-function fyYearOptionLabel(years) {
-  const opt = FY_YEAR_OPTIONS.find((o) => o.id === Number(years));
-  return opt?.label || FY_YEAR_OPTIONS[0].label;
+function subscriptionDurationLabel(preset) {
+  if (!preset) return EXCHANGE_SUBSCRIPTION_DURATION_PRESETS[0]?.label || "";
+  return preset.label;
 }
 
 export function ExchangeSection({ user, onToast }) {
@@ -415,7 +408,9 @@ export function ExchangeSection({ user, onToast }) {
   const [program, setProgram] = useState(null);
   const [discount, setDiscount] = useState(null);
   const [validity, setValidity] = useState(null);
-  const [fyYearCount, setFyYearCount] = useState(1);
+  const [subscriptionDurationPreset, setSubscriptionDurationPreset] = useState(
+    () => EXCHANGE_SUBSCRIPTION_DURATION_PRESETS[0] || null,
+  );
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -581,7 +576,7 @@ export function ExchangeSection({ user, onToast }) {
         discountLabel: discount.label,
         linkValidity: validity.label,
         includeAppSubscription: true,
-        fyYearCount,
+        appSubscriptionDurationPresetId: subscriptionDurationPreset?.id,
       });
       setConfirmOpen(false);
       onToast?.(result.message || `${program.name} triggered in app`);
@@ -600,13 +595,13 @@ export function ExchangeSection({ user, onToast }) {
   }
 
   const emptyConfig = !loading && !loadError && (!programs.length || !discounts.length || !validityPeriods.length);
-  const fyYearsLabel = fyYearOptionLabel(fyYearCount);
+  const durationLabel = subscriptionDurationLabel(subscriptionDurationPreset);
 
   return (
     <div className="ua-cp-section ua-cp-ex">
       <div className="ua-cp-ex__head">
         <h2 className="ua-cp-ex__title">Energy Exchange</h2>
-        <p className="ua-cp-ex__sub">Program payments and FY app subscription for this client.</p>
+        <p className="ua-cp-ex__sub">Program payments and duration-based app subscription for this client.</p>
       </div>
 
       <div className="ua-cp-ex-panel">
@@ -644,7 +639,7 @@ export function ExchangeSection({ user, onToast }) {
           <>
         <div className="ua-cp-ex-panel__head">
           <strong>Trigger a payment</strong>
-          <p>Pick a program and a discount slab. Complimentary FY app subscription is always included in the same program price — choose how many financial years to grant.</p>
+          <p>Pick a program and a discount slab. Complimentary app subscription (Energy Exchange) is included in the same program price — choose the length; access starts when they pay (or after current access ends).</p>
         </div>
         <div className="ua-cp-ex-form__grid">
           <FieldSelect
@@ -682,14 +677,14 @@ export function ExchangeSection({ user, onToast }) {
             <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
           <FieldSelect
-            label="App subscription (FY)"
-            value={fyYearsLabel}
-            options={FY_YEAR_OPTIONS}
+            label="App subscription (duration)"
+            value={durationLabel}
+            options={EXCHANGE_SUBSCRIPTION_DURATION_PRESETS}
             open={openField === "subscription"}
             disabled={loading}
             onToggle={(next) => setOpenField(next ? "subscription" : null)}
             onSelect={(next) => {
-              setFyYearCount(Number(next.id) || 1);
+              setSubscriptionDurationPreset(next);
               closeMenus();
             }}
             getLabel={(option) => option.label}
@@ -712,7 +707,7 @@ export function ExchangeSection({ user, onToast }) {
                 : emptyConfig
                   ? "Publish Program, Discount, and Link validity on Configs → App Program before triggering a payment."
                   : program && discount && validity
-                    ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · ${fyYearsLabel} app subscription included in the same price · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
+                    ? `Listed at ${formatRupee(program.price)} · ${discount.pct}% discount applied · ${durationLabel} app subscription included in the same price · the payment link expires in ${validity.label.toLowerCase()} if unpaid; the invoice generates on success.`
                     : "Loading published App Program options…"}
           </p>
         </div>
@@ -753,7 +748,7 @@ export function ExchangeSection({ user, onToast }) {
         open={confirmOpen}
         title={`Send this payment to ${firstName}'s app?`}
         body={program && discount
-          ? `${program.name} + ${fyYearsLabel} app subscription · ${formatRupee(value)} after ${discount.pct}% discount, with FY subscription included in the same price. They get a notification straight away and the invoice generates when they pay.`
+          ? `${program.name} + ${durationLabel} app subscription · ${formatRupee(value)} after ${discount.pct}% discount, with app subscription included in the same price. They get a notification straight away and the invoice generates when they pay.`
           : null}
         confirming={triggering}
         onClose={() => !triggering && setConfirmOpen(false)}

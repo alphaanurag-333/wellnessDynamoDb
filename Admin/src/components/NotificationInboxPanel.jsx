@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
@@ -7,11 +7,11 @@ import { useInbox } from "../context/InboxContext.jsx";
 import "./notificationInbox.css";
 
 const ROLE_NOTIF_SUBTITLES = {
-  admin: "All console activity",
-  wc: "Your assigned clients",
-  awc: "Your team's activity",
-  support: "Content & feedback",
-  trainee: "Learning activities",
+  admin: "Unread console activity",
+  wc: "Unread — your assigned clients",
+  awc: "Unread — your team's activity",
+  support: "Unread — content & feedback",
+  trainee: "Unread — learning activities",
 };
 
 const COMPACT_MQ = "(max-width: 960px)";
@@ -28,6 +28,11 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
     handleMarkAllRead,
     handleDismissNotif,
   } = useInbox();
+
+  const unreadNotifications = useMemo(
+    () => notifications.filter((item) => item.unread),
+    [notifications],
+  );
 
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 12 });
@@ -106,13 +111,13 @@ export function NotificationInboxPanel({ wrapClassName = "header__notif-wrap", b
 
   const list = (
     <>
-      {inboxLoading && notifications.length === 0 ? (
+      {inboxLoading && unreadNotifications.length === 0 ? (
         <div className="header__notif-empty">Loading notifications…</div>
       ) : null}
-      {!inboxLoading && notifications.length === 0 ? (
-        <div className="header__notif-empty">No console events yet</div>
+      {!inboxLoading && unreadNotifications.length === 0 ? (
+        <div className="header__notif-empty">You're all caught up — no unread notifications</div>
       ) : null}
-      {notifications.map((n) => (
+      {unreadNotifications.map((n) => (
         <div
           key={n.id}
           className={`header__notif-item${n.unread ? " is-unread" : ""}`}

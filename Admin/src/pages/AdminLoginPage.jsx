@@ -78,7 +78,6 @@ export function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(() => {
     const reason = consumePanelSessionNotice();
-    if (reason === "day") return "Your session ended because the date changed. Please sign in again.";
     if (reason === "idle") return "Your session ended after 30 minutes of inactivity. Please sign in again.";
     return "";
   });

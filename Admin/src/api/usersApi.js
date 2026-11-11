@@ -1,6 +1,7 @@
 import api, { normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
 import { UNASSIGNED_COACH, tierLabel } from "../data/usersData.js";
+import { normalizeAtAGlanceSupplements } from "../utils/supplementPeriodLabels.js";
 
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -27,6 +28,36 @@ function mapApiStatusToUi(status) {
   if (normalized === "deleted") return "Archived";
   if (normalized === "active") return "Active";
   return "Disabled";
+}
+
+/** Tri-state coach flag from API user or profile row (undefined = not stored on user). */
+export function readBodyMeasurementCoachFlag(source) {
+  if (!source) return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, "bodyMeasurementEnabledRaw")) {
+    const raw = source.bodyMeasurementEnabledRaw;
+    return raw === true || raw === false ? raw : undefined;
+  }
+  const stored = source.bodyMeasurementEnabled;
+  return stored === true || stored === false ? stored : undefined;
+}
+
+export function readProgressPhotosInAppCoachFlag(source) {
+  if (!source) return undefined;
+  if (Object.prototype.hasOwnProperty.call(source, "progressPhotosInAppEnabledRaw")) {
+    const raw = source.progressPhotosInAppEnabledRaw;
+    return raw === true || raw === false ? raw : undefined;
+  }
+  const stored = source.progressPhotosInAppEnabled;
+  return stored === true || stored === false ? stored : undefined;
+}
+
+/** Build API-shaped user for app-gate resolvers from a profile list row. */
+export function appGateUserFromProfileRow(row) {
+  return {
+    bodyMeasurementEnabled: readBodyMeasurementCoachFlag(row),
+    progressPhotosInAppEnabled: readProgressPhotosInAppCoachFlag(row),
+    paidOnboardingStepStatus: row?.paidOnboardingStepStatus,
+  };
 }
 
 /** Matches Backend/models/userModel isBodyMeasurementEnabled. */
@@ -500,6 +531,46 @@ function countOnboardingDone(stepStatus) {
   ).length;
 }
 
+const ONBOARDING_SYNC_SIGNATURE_KEYS = [
+  "bodyMeasurement",
+  "progressPhotos180",
+  "medicalConditions",
+  ...PAID_ONBOARDING_STATUS_KEYS,
+];
+
+/** Stable string for comparing onboarding payloads without triggering redundant parent updates. */
+export function onboardingStatusSyncSignature(stepStatus) {
+  if (!stepStatus || typeof stepStatus !== "object") return "";
+  return ONBOARDING_SYNC_SIGNATURE_KEYS.map(
+    (key) => `${key}:${String(stepStatus[key] || "pending").toLowerCase()}`,
+  ).join("|");
+}
+
+/** Returns a profile row when API onboarding fields differ from the current user; otherwise null. */
+export function mapUserRowWithOnboardingSync(user, apiPayload, index = 0) {
+  if (!apiPayload?.paidOnboardingStepStatus) return null;
+  const completed = Boolean(apiPayload.paidOnboardingCompleted);
+  const dataReady = apiPayload.bodyAnalyticsClientDataReady;
+  if (
+    onboardingStatusSyncSignature(user?.paidOnboardingStepStatus)
+      === onboardingStatusSyncSignature(apiPayload.paidOnboardingStepStatus)
+    && Boolean(user?.paidOnboardingCompleted) === completed
+    && (dataReady === undefined
+      || Boolean(user?.bodyAnalyticsClientDataReady) === Boolean(dataReady))
+  ) {
+    return null;
+  }
+  return mapApiUserToRow(
+    {
+      ...user,
+      paidOnboardingStepStatus: apiPayload.paidOnboardingStepStatus,
+      paidOnboardingCompleted: completed,
+      ...(dataReady !== undefined ? { bodyAnalyticsClientDataReady: Boolean(dataReady) } : {}),
+    },
+    user?.n ? user.n - 1 : index,
+  );
+}
+
 /** Next incomplete paid-onboarding step label, or empty when complete/unknown. */
 export function getNextOnboardingStepLabel(stepStatus) {
   if (!stepStatus || typeof stepStatus !== "object") return "";
@@ -684,9 +755,19 @@ export function mapApiUserToRow(user, index = 0) {
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
     bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
-    bodyMeasurementEnabledRaw: user?.bodyMeasurementEnabled === true,
+    bodyMeasurementEnabledRaw:
+      user?.bodyMeasurementEnabled === true
+        ? true
+        : user?.bodyMeasurementEnabled === false
+          ? false
+          : undefined,
     progressPhotosInAppEnabled: resolveProgressPhotosInAppEnabled(user),
-    progressPhotosInAppEnabledRaw: user?.progressPhotosInAppEnabled === true,
+    progressPhotosInAppEnabledRaw:
+      user?.progressPhotosInAppEnabled === true
+        ? true
+        : user?.progressPhotosInAppEnabled === false
+          ? false
+          : undefined,
     medicalConditionsInAppEnabled: resolveMedicalConditionsInAppEnabled(user),
     referralCode: String(user?.referralCode || "").trim(),
     referredByCode: String(user?.referredByCode || "").trim(),
@@ -707,10 +788,16 @@ export function mapApiUserToRow(user, index = 0) {
     onboardingDone,
     onboardingTotal,
     onboardingPct: Math.round((onboardingDone / onboardingTotal) * 100),
+    bodyAnalyticsClientDataReady: Boolean(user?.bodyAnalyticsClientDataReady),
+    bodyAnalyticsGlanceExcluded: Boolean(user?.bodyAnalyticsGlanceExcluded),
     energyExchangeEnabled: Boolean(user?.energyExchangeEnabled),
     labReportSubmissionLocked: resolveLabReportSubmissionLocked(user),
     healPaidAt: user?.healPaidAt || "",
     whatsappSameAsMobile: Boolean(user?.whatsappSameAsMobile),
+    healthProgressFeatures:
+      user?.healthProgressFeatures && typeof user.healthProgressFeatures === "object"
+        ? { ...user.healthProgressFeatures }
+        : undefined,
   };
 }
 
@@ -891,7 +978,17 @@ export async function fetchUserAtAGlance(id) {
       `/account/users/${encodeURIComponent(id)}/at-a-glance`,
       { headers: authHeader() },
     );
-    return data.glance || null;
+    const glance = data.glance || null;
+    if (glance?.supplements) {
+      glance.supplements = normalizeAtAGlanceSupplements(glance.supplements);
+    }
+    return {
+      glance,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
+      bodyAnalyticsClientDataReady: Boolean(data.bodyAnalyticsClientDataReady),
+    };
   } catch (error) {
     normalizeApiError(error);
   }
@@ -906,6 +1003,9 @@ export async function fetchUserMedicalConditions(id) {
     return {
       medicalCondition: data.medicalCondition || null,
       medicalConditionsInAppEnabled: data.medicalConditionsInAppEnabled !== false,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
     };
   } catch (error) {
     normalizeApiError(error);
@@ -929,6 +1029,25 @@ export async function patchUserMedicalConditionsInAppSettings(userId, { enabled 
   }
 }
 
+export async function approveUserMedicalConditions(userId) {
+  try {
+    const { data } = await api.post(
+      `/account/users/${encodeURIComponent(userId)}/medical-conditions/approve`,
+      {},
+      { headers: authHeader() },
+    );
+    return {
+      message: data.message,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: Boolean(data.paidOnboardingCompleted),
+      completedStepsCount: data.completedStepsCount,
+      user: data.user,
+    };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function fetchUserBodyAnalytics(id) {
   try {
     const { data } = await api.get(
@@ -944,6 +1063,9 @@ export async function fetchUserBodyAnalytics(id) {
       ...analytics,
       bodyMeasurementEnabled: data.bodyMeasurementEnabled,
       progressPhotosInAppEnabled: data.progressPhotosInAppEnabled,
+      paidOnboardingStepStatus: data.paidOnboardingStepStatus,
+      paidOnboardingCompleted: data.paidOnboardingCompleted,
+      completedStepsCount: data.completedStepsCount,
     };
   } catch (error) {
     normalizeApiError(error);

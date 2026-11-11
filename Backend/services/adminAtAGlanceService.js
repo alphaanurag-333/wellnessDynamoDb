@@ -14,7 +14,7 @@ const {
   ageFromDob,
   deriveMetricsFromBodyMeasurement,
 } = require("../utils/metabolicMetricsCalculations");
-const { formatChartDate } = require("../utils/healthProgressHelpers");
+const { formatChartDate, isWeightLogChartPublished } = require("../utils/healthProgressHelpers");
 const { getUserWaterHistory } = require("../models/waterTrackingModel");
 const { getUserStepsHistory } = require("../models/stepsTrackingModel");
 const { getUserMealSummary } = require("../models/mealTrackingModel");
@@ -466,7 +466,7 @@ function buildSupplements(dosages, today) {
       })),
       date: endDate ? shortDateLabel(endDate) : EMPTY,
       daysLeft: daysLeft != null ? daysLeft : null,
-      urgent: daysLeft != null && daysLeft <= 3,
+      urgent: daysLeft != null && daysLeft <= 7,
     };
   });
   return {
@@ -481,7 +481,10 @@ function shouldSplitWeightTitle(goalLabel) {
 }
 
 function buildHealthProgress(weightLogs, goalLabel) {
-  const logs = (weightLogs || []).map(toPublicWeightLog).filter(Boolean);
+  const logs = (weightLogs || [])
+    .map(toPublicWeightLog)
+    .filter(Boolean)
+    .filter(isWeightLogChartPublished);
   if (!logs.length) return null;
   const sorted = [...logs].sort((a, b) =>
     String(b.recordedAt || "").localeCompare(String(a.recordedAt || ""))

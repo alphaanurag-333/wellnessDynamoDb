@@ -8,6 +8,7 @@ const {
   getLatestUserPrakrutiAssessmentByUserId,
   upsertUserPrakrutiAssessment,
   enrichAssessmentPublic,
+  pushUserPrakrutiAssessmentToApp,
   queryAssessmentsByUserId,
 } = require("../../models/userPrakrutiAssessmentModel");
 const {
@@ -210,8 +211,29 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
 
       return res.status(200).json({
         status: true,
-        message: "Prakruti assessment saved successfully",
+        message: "Prakruti assessment saved (draft — use Push to App to publish)",
         assessment,
+        publishedToApp: Boolean(assessment?.pushedAt),
+      });
+    }),
+
+    pushAssessmentController: asyncHandler(async (req, res) => {
+      const { userId } = await assertHealUserAccess(req);
+
+      let assessment;
+      try {
+        assessment = await pushUserPrakrutiAssessmentToApp(userId);
+      } catch (err) {
+        if (err?.name === "NotFoundError") throw new AppError("Save Prakruti assessment first", 404);
+        handlePrakrutiValidationError(err);
+      }
+
+      return res.status(200).json({
+        status: true,
+        message: "Pushed Prakruti assessment to client app",
+        assessment,
+        publishedToApp: true,
+        pushedAt: assessment?.pushedAt || null,
       });
     }),
 

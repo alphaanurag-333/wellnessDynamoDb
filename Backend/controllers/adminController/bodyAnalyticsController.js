@@ -6,6 +6,7 @@ const {
   isBodyMeasurementEnabled,
   isProgressPhotosInAppEnabled,
 } = require("../../models/userModel");
+const { normalizeRoleKey } = require("../../config/accountRoles");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
 const { enrichUser } = require("../userController/userProfileHelpers");
 const {
@@ -30,12 +31,11 @@ const {
 } = require("../../services/whatsappJourneyService");
 const {
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsWeightPhotoReview,
+  photoAnglesAllApproved,
   buildOnboardingPersistUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
-  markStepSkipped,
-  wizardStepAfterSkip,
-  computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
 const { progressPhotoCalendarDay, recordStamp, recordsOnSameDay } = require("../../utils/progressPhotoDay");
 const {
@@ -44,14 +44,52 @@ const {
 } = require("../../models/healthProgressMetabolicMetricModel");
 const { sendStoredObjectAsAttachment } = require("../../utils/s3");
 const {
+  syncBodyAnalyticsOnboardingFromClientData,
+  attachBodyAnalyticsAdminMeta,
+} = require("../../services/bodyAnalyticsOnboardingSyncService");
+const {
   syncFattyLiverMetricFromLatestLabReport,
 } = require("../helpers/metabolicMetricsFattyLiverSync");
+
+function staffCanViewRejectedBodyPhotos(role) {
+  return normalizeRoleKey(role) === "admin";
+}
+
+function publicProgressPhotoForStaff(item, includeRejected) {
+  const photo = toPublicProgressPhoto(item);
+  if (includeRejected) return photo;
+  for (const angle of ["front", "right", "left"]) {
+    if (normalizeReviewStatus(photo[`${angle}ReviewStatus`]) !== "rejected") continue;
+    photo[`${angle}PicKey`] = null;
+    photo[`${angle}PicUrl`] = null;
+    photo[`${angle}ReviewStatus`] = null;
+    photo[`${angle}ReviewedAt`] = null;
+    photo[`${angle}ReviewedById`] = null;
+    photo[`${angle}RejectionReason`] = null;
+  }
+  return photo;
+}
+
+function publicBodyMeasurementForStaff(item, includeRejected) {
+  const row = toPublicBodyMeasurement(item);
+  if (includeRejected) return row;
+  if (normalizeReviewStatus(row.weightReviewStatus) !== "rejected") return row;
+  return {
+    ...row,
+    weightPicKey: null,
+    weightPicUrl: null,
+    weightReviewStatus: null,
+    weightReviewedAt: null,
+    weightReviewedById: null,
+    weightRejectionReason: null,
+  };
+}
 
 exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
   const userId = String(req.params.id || "").trim();
   if (!userId) throw new AppError("User id is required", 400);
 
-  const user = await getUserById(userId);
+  let user = await getUserById(userId);
   if (!user) throw new AppError("User not found", 404);
   await assertStaffCanAccessUser(req, user);
 
@@ -61,7 +99,10 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
     listAllMetabolicMetricLogsByUser(userId, { limit: 200 }),
   ]);
 
-  const measurements = measurementResult.items.map(toPublicBodyMeasurement);
+  const includeRejected = staffCanViewRejectedBodyPhotos(req.auth?.role);
+  const measurements = measurementResult.items.map((item) => (
+    publicBodyMeasurementForStaff(item, includeRejected)
+  ));
   await syncFattyLiverMetricFromLatestLabReport(userId, {
     metabolicLogs,
     measurements,
@@ -71,15 +112,23 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
 
   const metabolicLogsAfterSync = await listAllMetabolicMetricLogsByUser(userId, { limit: 200 });
 
+  user = await syncBodyAnalyticsOnboardingFromClientData(user);
+  user = await attachBodyAnalyticsAdminMeta(user);
+  const stepStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
+
   return res.status(200).json({
     status: true,
     message: "Body analytics fetched",
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
+    paidOnboardingStepStatus: stepStatus,
+    paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
+    completedStepsCount: countCompletedSteps(stepStatus),
+    bodyAnalyticsClientDataReady: Boolean(user.bodyAnalyticsClientDataReady),
     bodyAnalytics: {
       measurements,
       metabolicMetrics: metabolicLogsAfterSync.map(toPublicMetabolicMetricLog),
-      photos: photoResult.items.map(toPublicProgressPhoto),
+      photos: photoResult.items.map((item) => publicProgressPhotoForStaff(item, includeRejected)),
     },
   });
 });
@@ -145,22 +194,7 @@ exports.patchProgressPhotosInAppSettingsController = asyncHandler(async (req, re
   if (parsed.enabled == null) throw new AppError("enabled must be true or false", 400);
   const enabled = parsed.enabled;
 
-  const updates = { progressPhotosInAppEnabled: enabled };
-
-  if (!enabled) {
-    const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-    if (currentStatus.progressPhotos180 === "pending") {
-      const nextStatus = markStepSkipped(currentStatus, "progressPhotos180");
-      updates.paidOnboardingStepStatus = nextStatus;
-      const nextWizardStep = wizardStepAfterSkip(user.paidOnboardingStep, "progressPhotos180");
-      if (nextWizardStep && nextWizardStep !== user.paidOnboardingStep) {
-        updates.paidOnboardingStep = nextWizardStep;
-      }
-      updates.paidOnboardingCompleted = computePaidOnboardingCompleted(nextStatus);
-    }
-  }
-
-  const updated = await updateUser(userId, updates);
+  const updated = await updateUser(userId, { progressPhotosInAppEnabled: enabled });
 
   return res.status(200).json({
     status: true,
@@ -230,9 +264,17 @@ exports.downloadUserProgressPhotoController = asyncHandler(async (req, res) => {
   await assertStaffCanAccessUser(req, user);
 
   let objectKey = "";
+  const includeRejected = staffCanViewRejectedBodyPhotos(req.auth?.role);
+
   if (angle === "weight") {
     const measurement = await getBodyMeasurementById(photoId);
     if (!measurement || String(measurement.userId || "") !== userId) {
+      throw new AppError("Weight photo not found", 404);
+    }
+    if (
+      !includeRejected
+      && normalizeReviewStatus(measurement.weightReviewStatus) === "rejected"
+    ) {
       throw new AppError("Weight photo not found", 404);
     }
     objectKey = String(measurement.weightPicKey || "").trim();
@@ -242,6 +284,12 @@ exports.downloadUserProgressPhotoController = asyncHandler(async (req, res) => {
 
     const photo = await getProgressPhotoById(photoId);
     if (!photo || String(photo.userId || "") !== userId) {
+      throw new AppError("Progress photo not found", 404);
+    }
+    if (
+      !includeRejected
+      && normalizeReviewStatus(photo[`${angle}ReviewStatus`]) === "rejected"
+    ) {
       throw new AppError("Progress photo not found", 404);
     }
     objectKey = String(photo[keyField] || "").trim();
@@ -326,23 +374,46 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   if (action === "rejected") {
     notifyProgressPhotos180ReshareToUserAsync(user);
   }
-  dispatchProgressPhotoReviewedNotification({
-    userId,
-    photoId,
-    angle,
-    status: action,
-    rejectionReason,
-    rejectDay: rejectedAngleDay,
-    coachName: actor.displayName || "Your coach",
-    actorUserId: actor.id,
-  }).catch((err) => {
-    console.error("Progress photo review notification failed:", err?.message || err);
-  });
+
+  const allAnglesApproved = action === "approved"
+    && angle !== "weight"
+    && photoAnglesAllApproved(updated);
+  const shouldNotifyProgressPhotoReview = action === "rejected"
+    || angle === "weight"
+    || allAnglesApproved;
+
+  if (shouldNotifyProgressPhotoReview) {
+    dispatchProgressPhotoReviewedNotification({
+      userId,
+      photoId,
+      angle,
+      status: action,
+      rejectionReason,
+      rejectDay: rejectedAngleDay,
+      allAnglesApproved,
+      coachName: actor.displayName || "Your coach",
+      actorUserId: actor.id,
+    }).catch((err) => {
+      console.error("Progress photo review notification failed:", err?.message || err);
+    });
+  }
 
   let onboarding = null;
+  let weightResubmitOpened = false;
   try {
-    const nextStatus = rejectedAngleDay
-      ? applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+    let nextStatus = null;
+    let persistExtra = {};
+    if (action === "rejected" && angle === "weight") {
+      const weightReview = applyBodyAnalyticsWeightPhotoReview(user, user.paidOnboardingStepStatus, {
+        action,
+      });
+      if (weightReview) {
+        nextStatus = weightReview.stepStatus;
+        persistExtra = weightReview.extraUserUpdates;
+        weightResubmitOpened = true;
+      }
+    } else if (rejectedAngleDay) {
+      nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
         action: "rejected",
         photo: rejectedPhotos[0] || updated,
@@ -350,16 +421,17 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         ...user.paidOnboardingStepStatus,
         bodyAnalytics: "pending",
         progressPhotos180: "pending",
-      })
-      : (angle === "weight" ? null : applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
+      });
+      persistExtra = { paidOnboardingStep: "photos180" };
+    } else if (angle !== "weight") {
+      nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
         action,
         photo: updated,
-      }));
-    if (nextStatus) {
-      const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, {
-        ...(rejectedAngleDay ? { paidOnboardingStep: "photos180" } : {}),
       });
+    }
+    if (nextStatus) {
+      const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, persistExtra);
       const saved = await updateUser(userId, updates);
       const paidOnboardingStepStatus = saved?.paidOnboardingStepStatus || updates.paidOnboardingStepStatus;
       onboarding = {
@@ -367,6 +439,7 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         paidOnboardingStepStatus,
         paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
         completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
+        bodyMeasurementEnabled: isBodyMeasurementEnabled(saved || user),
       };
       notifyOnboardingWhatsAppTransitions({
         user: saved || user,
@@ -383,9 +456,13 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
     status: true,
     message: rejectedAngleDay
       ? "This day's 180° photos were rejected. The client can submit Front, Right, and Left again."
-      : action === "rejected"
-        ? `${label} photo rejected`
-        : `${label} photo accepted`,
+      : action === "rejected" && angle === "weight"
+        ? (weightResubmitOpened
+          ? "Weight photo rejected. The client can submit body measurements again in the app."
+          : "Weight photo rejected. Body measurements stay hidden in the app until you turn off “Disabled in the app”.")
+        : action === "rejected"
+          ? `${label} photo rejected`
+          : `${label} photo accepted`,
     angle,
     photo: updated,
     ...(rejectedAngleDay ? { rejectedPhotos, rejectedMeasurements } : {}),

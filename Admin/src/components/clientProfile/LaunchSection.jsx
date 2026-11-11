@@ -26,8 +26,10 @@ import {
   patchOnboardingStep,
   saveUserLaunchAssessment,
   saveUserPrakrutiAssessment,
+  publishUserPrakrutiAssessment,
   updateUserLaunchAssessment,
   publishUserLaunchFocusPoints,
+  publishUserLaunchAssessmentScore,
 } from "../../api/onboardingApi.js";
 
 const DOSHA_KEYS = ["vata", "pitta", "kapha"];
@@ -481,6 +483,48 @@ function sameFocusList(a, b) {
   return left.length === right.length && left.every((row, index) => row === right[index]);
 }
 
+function normalizeLaunchAnswers(list) {
+  return [...(list || [])]
+    .map((row) => ({
+      questionId: String(row?.questionId || "").trim(),
+      ratingId: String(row?.ratingId || "").trim(),
+      reply: String(row?.reply || "").trim(),
+    }))
+    .filter((row) => row.questionId)
+    .sort((a, b) => a.questionId.localeCompare(b.questionId));
+}
+
+function sameLaunchAnswers(a, b) {
+  return JSON.stringify(normalizeLaunchAnswers(a)) === JSON.stringify(normalizeLaunchAnswers(b));
+}
+
+function buildLaunchAssessmentPayload({ assessmentDate, totals, pointsToNote, ratings, replies }) {
+  return {
+    assessmentDate,
+    totalScore: Math.round(totals.overall),
+    pointsToNote,
+    answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
+      questionId,
+      ratingId: ratings[questionId] || "",
+      reply: replies[questionId] || "",
+    })),
+  };
+}
+
+function launchAssessmentDraftMatchesSaved(latest, payload) {
+  if (!latest || !payload) return false;
+  if (Math.round(Number(latest.totalScore)) !== payload.totalScore) return false;
+  if (String(latest.pointsToNote || "").trim() !== String(payload.pointsToNote || "").trim()) return false;
+  return sameLaunchAnswers(latest.answers, payload.answers);
+}
+
+function launchAssessmentSavedMatchesPublished(saved) {
+  if (!saved?.scorePushedAt) return false;
+  if (Math.round(Number(saved.totalScore)) !== Math.round(Number(saved.pushedTotalScore))) return false;
+  if (String(saved.pointsToNote || "").trim() !== String(saved.pushedPointsToNote || "").trim()) return false;
+  return sameLaunchAnswers(saved.answers, saved.pushedAnswers);
+}
+
 function buildVisibleFocusPoints({ autoPoints, hiddenFocusTitles, autoEdits, extraPoints }) {
   const hidden = new Set(
     hiddenFocusTitles.map((title) => String(title || "").trim().toLowerCase()).filter(Boolean),
@@ -808,6 +852,8 @@ function LifestyleTab({
   const [savingFocus, setSavingFocus] = useState(false);
   const [pushingFocus, setPushingFocus] = useState(false);
   const [focusPushOpen, setFocusPushOpen] = useState(false);
+  const [pushingScore, setPushingScore] = useState(false);
+  const [assessmentPushOpen, setAssessmentPushOpen] = useState(false);
   const hydratedFocusRef = useRef(null);
   const hydratedNotesRef = useRef(null);
 
@@ -932,77 +978,118 @@ function LifestyleTab({
     onToast("New attempt started · previous result stays in history");
   }
 
+  async function persistLaunchAssessmentDraft() {
+    const userId = user?.id;
+    if (!userId) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = buildLaunchAssessmentPayload({
+      assessmentDate: today,
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    });
+    const existingToday = (assessments || []).find((row) => row.assessmentDate === today);
+    const saved = existingToday
+      ? await updateUserLaunchAssessment(userId, existingToday.id, payload)
+      : await saveUserLaunchAssessment(userId, payload);
+    const next = [
+      saved,
+      ...(assessments || []).filter((row) => row.id !== saved.id),
+    ];
+    onAssessmentsChange(next);
+    if (saved?.id) {
+      hydratedFocusRef.current = saved.id;
+      hydratedNotesRef.current = saved.id;
+      setPointsToNote(String(saved.pointsToNote || ""));
+    }
+
+    const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
+    const shouldCompleteLaunch =
+      !user?.paidOnboardingCompleted
+      && launchStatus !== "done"
+      && launchStatus !== "skipped"
+      && !/^\d+$/.test(String(userId));
+
+    if (shouldCompleteLaunch) {
+      const data = await patchOnboardingStep(userId, "launch", "done");
+      const nextStatus = data?.paidOnboardingStepStatus || {
+        ...user.paidOnboardingStepStatus,
+        launch: "done",
+      };
+      onUserUpdated?.({
+        ...user,
+        paidOnboardingStepStatus: nextStatus,
+        paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
+      });
+    }
+
+    return saved;
+  }
+
   async function saveAssessment() {
     const userId = user?.id;
     if (!userId) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const focusPoints = buildVisibleFocusPoints({
-      autoPoints,
-      hiddenFocusTitles,
-      autoEdits,
-      extraPoints,
-    });
-    const payload = {
-      assessmentDate: today,
-      totalScore: Math.round(totals.overall),
-      pointsToNote,
-      focusAreaIds: selectedFocus,
-      focusPoints,
-      hiddenFocusTitles,
-      answers: Object.keys({ ...ratings, ...replies }).map((questionId) => ({
-        questionId,
-        ratingId: ratings[questionId] || "",
-        reply: replies[questionId] || "",
-      })),
-    };
     try {
       setSaving(true);
-      const existingToday = (assessments || []).find((row) => row.assessmentDate === today);
-      const saved = existingToday
-        ? await updateUserLaunchAssessment(userId, existingToday.id, payload)
-        : await saveUserLaunchAssessment(userId, payload);
+      await persistLaunchAssessmentDraft();
+      onToast("LAUNCH assessment saved (draft only — use Push to app to publish the score)");
+    } catch (err) {
+      onToast(err?.message || "Failed to save LAUNCH assessment");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function requestPushAssessmentToApp() {
+    setAssessmentPushOpen(true);
+  }
+
+  async function pushAssessmentToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = buildLaunchAssessmentPayload({
+      assessmentDate: today,
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    });
+    try {
+      setPushingScore(true);
+      let target = (assessments || []).find((row) => row.assessmentDate === today) || latest;
+      if (!target?.id) {
+        target = await persistLaunchAssessmentDraft();
+      } else if (!launchAssessmentDraftMatchesSaved(target, payload)) {
+        target = await updateUserLaunchAssessment(userId, target.id, payload);
+        const nextAfterSave = [
+          target,
+          ...(assessments || []).filter((row) => row.id !== target.id),
+        ];
+        onAssessmentsChange(nextAfterSave);
+      }
+      if (!target?.id) {
+        onToast("Save the assessment first, then push to app");
+        return;
+      }
+      if (launchAssessmentSavedMatchesPublished(target)) {
+        onToast("Assessment score already matches what's in the client app");
+        return;
+      }
+      const result = await publishUserLaunchAssessmentScore(userId, target.id);
+      const saved = result?.assessment || target;
       const next = [
         saved,
         ...(assessments || []).filter((row) => row.id !== saved.id),
       ];
       onAssessmentsChange(next);
-      if (saved?.id) {
-        hydratedFocusRef.current = saved.id;
-        hydratedNotesRef.current = saved.id;
-        setPointsToNote(String(saved.pointsToNote || ""));
-      }
-
-      const launchStatus = String(user?.paidOnboardingStepStatus?.launch || "").toLowerCase();
-      const shouldCompleteLaunch =
-        !user?.paidOnboardingCompleted
-        && launchStatus !== "done"
-        && launchStatus !== "skipped"
-        && !/^\d+$/.test(String(userId));
-
-      if (shouldCompleteLaunch) {
-        try {
-          const data = await patchOnboardingStep(userId, "launch", "done");
-          const nextStatus = data?.paidOnboardingStepStatus || {
-            ...user.paidOnboardingStepStatus,
-            launch: "done",
-          };
-          onUserUpdated?.({
-            ...user,
-            paidOnboardingStepStatus: nextStatus,
-            paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
-          });
-        } catch (stepErr) {
-          onToast(stepErr?.message || "Assessment saved, but failed to mark LAUNCH complete");
-          setSaving(false);
-          return;
-        }
-      }
-
-      onToast("LAUNCH assessment saved");
+      onToast(result?.message || "Pushed LAUNCH assessment score to client app");
     } catch (err) {
-      onToast(err?.message || "Failed to save LAUNCH assessment");
+      onToast(err?.message || "Failed to push LAUNCH assessment to app");
     } finally {
-      setSaving(false);
+      setPushingScore(false);
+      setAssessmentPushOpen(false);
     }
   }
 
@@ -1134,6 +1221,27 @@ function LifestyleTab({
     ? !sameFocusList(savedFocusDraft, pushedFocusDraft)
     : savedFocusDraft.length > 0 || currentFocusDraft.length > 0;
   const focusPushPending = hasUnsavedFocus || hasUnpushedFocus;
+  const todayAssessmentPayload = useMemo(
+    () => buildLaunchAssessmentPayload({
+      assessmentDate: new Date().toISOString().slice(0, 10),
+      totals,
+      pointsToNote,
+      ratings,
+      replies,
+    }),
+    [totals, pointsToNote, ratings, replies],
+  );
+  const hasUnsavedAssessment = latest
+    ? !launchAssessmentDraftMatchesSaved(latest, todayAssessmentPayload)
+    : true;
+  const hasUnpushedAssessment = !latest?.id
+    || hasUnsavedAssessment
+    || !launchAssessmentSavedMatchesPublished(latest);
+  const assessmentPushHint = hasUnsavedAssessment
+    ? "You have unsaved assessment changes — save first, then push the score to the client app."
+    : hasUnpushedAssessment
+      ? "Saved score is not in the client app yet — push when ready."
+      : "";
   const focusPushHint = hasUnsavedFocus
     ? "You have unsaved focus area changes — save first, then push to the client app."
     : hasUnpushedFocus
@@ -1235,16 +1343,36 @@ function LifestyleTab({
       <div className="ua-cp-launch-savebar">
         <div className="ua-cp-launch-savebar__copy">
           <span className="ua-cp-launch-savebar__label">Save this attempt</span>
-          {latest != null ? <span className="ua-cp-launch-savebar__meta">Latest score {latest.totalScore}</span> : null}
+          {latest != null ? (
+            <span className="ua-cp-launch-savebar__meta">
+              Latest score {latest.totalScore}
+              {latest.scorePushedAt
+                ? ` · in app as ${latest.pushedTotalScore ?? latest.totalScore}`
+                : " · not in client app yet"}
+            </span>
+          ) : null}
         </div>
-        <button
-          type="button"
-          className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
-          disabled={saving}
-          onClick={saveAssessment}
-        >
-          {saving ? "Saving…" : "Save assessment"}
-        </button>
+        {hasUnpushedAssessment && assessmentPushHint ? (
+          <p className="ua-cp-launch-savebar__hint">{assessmentPushHint}</p>
+        ) : null}
+        <div className="ua-cp-launch-savebar__actions">
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--green ua-cp-btn--sm"
+            disabled={saving || pushingScore}
+            onClick={saveAssessment}
+          >
+            {saving ? "Saving…" : "Save assessment"}
+          </button>
+          <button
+            type="button"
+            className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm"
+            disabled={saving || pushingScore}
+            onClick={requestPushAssessmentToApp}
+          >
+            {pushingScore ? "Pushing…" : "Push to app"}
+          </button>
+        </div>
       </div>
       ) : null}
       <FocusAreas
@@ -1288,6 +1416,18 @@ function LifestyleTab({
         pushHint={focusPushHint}
         onToast={onToast}
         canWrite={canWrite}
+      />
+      <ConfirmDialog
+        open={assessmentPushOpen}
+        tag="LAUNCH score"
+        title={`Push LAUNCH score to ${clientFirstName}'s app?`}
+        body={`This publishes the latest saved score (${Math.round(totals.overall)}) for ${clientFirstName} in the mobile app. Unsaved edits are saved first.`}
+        cancelLabel="Cancel"
+        confirmLabel={pushingScore ? "Pushing…" : "Push to app"}
+        onCancel={() => {
+          if (!pushingScore) setAssessmentPushOpen(false);
+        }}
+        onConfirm={pushAssessmentToApp}
       />
       <ConfirmDialog
         open={focusPushOpen}
@@ -1335,6 +1475,67 @@ function catalogTitlesForType(rows, type) {
     .filter(Boolean);
 }
 
+/** Saved per-client copy on the latest assessment, when it matches the live result type. */
+function guideTextsFromAssessment(assessment, resultType, textKey, titleKey) {
+  if (!assessment || !resultType) return null;
+  const savedType = String(assessment.prakrutiType || "").trim().toLowerCase();
+  const wanted = String(resultType || "").trim().toLowerCase();
+  if (!savedType || savedType !== wanted) return null;
+  const fromField = assessment[textKey];
+  if (Array.isArray(fromField)) {
+    const texts = fromField.map((t) => String(t || "").trim()).filter(Boolean);
+    if (texts.length) return texts;
+  }
+  const fromTitles = assessment[titleKey];
+  if (Array.isArray(fromTitles)) {
+    const texts = fromTitles.map((t) => String(t || "").trim()).filter(Boolean);
+    if (texts.length) return texts;
+  }
+  return null;
+}
+
+function prakritiTextList(items) {
+  return (Array.isArray(items) ? items : []).map((t) => String(t || "").trim()).filter(Boolean);
+}
+
+function samePrakritiTextList(a, b) {
+  const left = prakritiTextList(a);
+  const right = prakritiTextList(b);
+  return left.length === right.length && left.every((t, i) => t === right[i]);
+}
+
+function samePrakritiQuestionIds(checked, ids) {
+  const fromChecked = Object.keys(checked || {}).filter((id) => checked[id]).sort();
+  const fromSaved = (Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean).sort();
+  return fromChecked.length === fromSaved.length && fromChecked.every((id, i) => id === fromSaved[i]);
+}
+
+function samePrakritiScores(a, b) {
+  const sa = a || {};
+  const sb = b || {};
+  return (Number(sa.vata) || 0) === (Number(sb.vata) || 0)
+    && (Number(sa.pitta) || 0) === (Number(sb.pitta) || 0)
+    && (Number(sa.kapha) || 0) === (Number(sb.kapha) || 0);
+}
+
+function prakritiDraftMatchesSaved(draft, saved) {
+  if (!saved) return false;
+  return String(draft.prakrutiType || "") === String(saved.prakrutiType || "")
+    && samePrakritiQuestionIds(draft.checked, saved.selectedQuestionIds)
+    && samePrakritiScores(draft.scores, saved.scores)
+    && samePrakritiTextList(draft.recommendationTexts, saved.recommendationTexts)
+    && samePrakritiTextList(draft.avoidTexts, saved.avoidTexts);
+}
+
+function prakritiDraftMatchesPublished(draft, saved) {
+  if (!saved?.pushedAt) return false;
+  return String(draft.prakrutiType || "") === String(saved.pushedPrakrutiType || "")
+    && samePrakritiQuestionIds(draft.checked, saved.pushedSelectedQuestionIds)
+    && samePrakritiScores(draft.scores, saved.pushedScores)
+    && samePrakritiTextList(draft.recommendationTexts, saved.pushedRecommendationTexts)
+    && samePrakritiTextList(draft.avoidTexts, saved.pushedAvoidTexts);
+}
+
 function GuideTextField({ value, onChange, ariaLabel }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -1367,7 +1568,10 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const [checked, setChecked] = useState({});
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingRec, setSavingRec] = useState(false);
   const [savingAvoid, setSavingAvoid] = useState(false);
+  const [pushing, setPushing] = useState(false);
+  const [prakritiPushOpen, setPrakritiPushOpen] = useState(false);
   const [forceNew, setForceNew] = useState(false);
   const listsTouchedRef = useRef(false);
   const listsTypeRef = useRef("");
@@ -1458,6 +1662,15 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     listsTypeRef.current = resultType;
   }
 
+  function applySavedGuideLists(saved, type) {
+    const avoid = guideTextsFromAssessment(saved, type, "avoidTexts", "thingsToAvoidTitles");
+    if (avoid) setAvoidItems(avoid);
+    const rec = guideTextsFromAssessment(saved, type, "recommendationTexts", "recommendationTitles");
+    if (rec) setRecItems(rec);
+    listsTypeRef.current = type;
+    listsTouchedRef.current = false;
+  }
+
   useEffect(() => {
     if (loading) return undefined;
     const userId = user?.id;
@@ -1471,12 +1684,20 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
     if (listsTouchedRef.current && listsTypeRef.current === resultType) return undefined;
 
-    const avoidTitles = catalogTitlesForType(thingsToAvoid, resultType);
+    const savedAvoid = guideTextsFromAssessment(assessment, resultType, "avoidTexts", "thingsToAvoidTitles");
+    const savedRec = guideTextsFromAssessment(assessment, resultType, "recommendationTexts", "recommendationTitles");
+    const avoidTitles = savedAvoid ?? catalogTitlesForType(thingsToAvoid, resultType);
     const requestId = catalogRequestRef.current + 1;
     catalogRequestRef.current = requestId;
     listsTypeRef.current = resultType;
     listsTouchedRef.current = false;
     setAvoidItems(avoidTitles);
+
+    if (savedRec) {
+      setRecItems(savedRec);
+      return undefined;
+    }
+
     setRecItems([]);
 
     let cancelled = false;
@@ -1490,7 +1711,7 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         setRecItems([]);
       });
     return () => { cancelled = true; };
-  }, [loading, user?.id, resultType, thingsToAvoid]);
+  }, [loading, user?.id, resultType, thingsToAvoid, assessment]);
 
   const history = [...historyRows]
     .sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))
@@ -1513,6 +1734,46 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     setChecked((prev) => ({ ...prev, [statementId]: !prev[statementId] }));
   }
 
+  function buildPrakritiDraft() {
+    return {
+      prakrutiType: resultType,
+      checked,
+      scores,
+      recommendationTexts: prakritiTextList(recItems),
+      avoidTexts: prakritiTextList(avoidItems),
+    };
+  }
+
+  function buildPrakritiSavePayload() {
+    const prakrutiType = resultType;
+    const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
+    return {
+      prakrutiType,
+      thingToAvoidIds: [],
+      recommendationTexts: prakritiTextList(recItems),
+      avoidTexts: prakritiTextList(avoidItems),
+      selectedQuestionIds,
+      scores,
+      forceNew,
+    };
+  }
+
+  async function persistPrakritiDraft() {
+    const userId = user?.id;
+    if (!userId) return null;
+    const prakrutiType = resultType;
+    if (!prakrutiType) {
+      onToast("Tick statements to determine Prakriti type first");
+      return null;
+    }
+    const saved = await saveUserPrakrutiAssessment(userId, buildPrakritiSavePayload());
+    setAssessment(saved);
+    setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
+    applySavedGuideLists(saved, prakrutiType);
+    setForceNew(false);
+    return saved;
+  }
+
   async function savePrakriti() {
     const userId = user?.id;
     if (!userId) return;
@@ -1523,21 +1784,8 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
     try {
       setSaving(true);
-      const selectedQuestionIds = Object.keys(checked).filter((id) => checked[id]);
-      const saved = await saveUserPrakrutiAssessment(userId, {
-        prakrutiType,
-        thingToAvoidIds: [],
-        recommendationTexts: recItems.map((t) => String(t || "").trim()).filter(Boolean),
-        avoidTexts: avoidItems.map((t) => String(t || "").trim()).filter(Boolean),
-        selectedQuestionIds,
-        scores,
-        forceNew,
-      });
-      setAssessment(saved);
-      setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      setForceNew(false);
-      markListsEdited();
-      onToast("Prakriti assessment saved");
+      await persistPrakritiDraft();
+      onToast("Prakriti saved (draft only — not in the client app until Push to App)");
     } catch (err) {
       onToast(err?.message || "Failed to save Prakriti assessment");
     } finally {
@@ -1545,16 +1793,19 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
     }
   }
 
-  async function saveAvoidSection() {
+  async function saveGuideSection(which) {
     const userId = user?.id;
     if (!userId) return;
     const prakrutiType = resultType;
     if (!prakrutiType) {
-      onToast("Save the Prakriti assessment first");
+      onToast("Tick statements to determine Prakriti type first");
       return;
     }
+    const setBusy = which === "rec" ? setSavingRec : setSavingAvoid;
+    const successMessage = which === "rec" ? "Recommendations saved" : "Things to avoid saved";
+    const errorMessage = which === "rec" ? "Failed to save recommendations" : "Failed to save things to avoid";
     try {
-      setSavingAvoid(true);
+      setBusy(true);
       const selectedQuestionIds = Array.isArray(assessment?.selectedQuestionIds) && assessment.selectedQuestionIds.length
         ? assessment.selectedQuestionIds
         : Object.keys(checked).filter((id) => checked[id]);
@@ -1569,14 +1820,79 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
       });
       setAssessment(saved);
       setHistoryRows((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)]);
-      markListsEdited();
-      onToast("Things to avoid saved");
+      applySavedGuideLists(saved, prakrutiType);
+      onToast(`${successMessage} (draft only — use Push to App to publish)`);
     } catch (err) {
-      onToast(err?.message || "Failed to save things to avoid");
+      onToast(err?.message || errorMessage);
     } finally {
-      setSavingAvoid(false);
+      setBusy(false);
     }
   }
+
+  function requestPushPrakritiToApp() {
+    if (!resultType) {
+      onToast("Tick statements to determine Prakriti type first");
+      return;
+    }
+    if (!assessment?.id) {
+      onToast("Save Prakriti assessment first, then push to app");
+      return;
+    }
+    setPrakritiPushOpen(true);
+  }
+
+  async function pushPrakritiToApp() {
+    const userId = user?.id;
+    if (!userId) return;
+    if (!resultType) {
+      onToast("Tick statements to determine Prakriti type first");
+      setPrakritiPushOpen(false);
+      return;
+    }
+    try {
+      setPushing(true);
+      const draft = buildPrakritiDraft();
+      let saved = assessment;
+      if (!saved?.id || !prakritiDraftMatchesSaved(draft, saved)) {
+        saved = await persistPrakritiDraft();
+        if (!saved) return;
+      }
+      if (saved.pushedAt && prakritiDraftMatchesPublished(draft, saved)) {
+        onToast("Prakruti already matches what's in the client app");
+        return;
+      }
+      const result = await publishUserPrakrutiAssessment(userId);
+      const published = result?.assessment || saved;
+      if (!published?.pushedAt) {
+        onToast("Push did not complete — try again or check the network tab");
+        return;
+      }
+      setAssessment(published);
+      setHistoryRows((prev) => [published, ...prev.filter((row) => row.id !== published.id)]);
+      applySavedGuideLists(published, resultType);
+      onToast(result?.message || "Pushed Prakruti to client app");
+    } catch (err) {
+      onToast(err?.message || "Failed to push Prakruti to app");
+    } finally {
+      setPushing(false);
+      setPrakritiPushOpen(false);
+    }
+  }
+
+  const prakritiDraft = buildPrakritiDraft();
+  const hasUnsavedPrakriti = assessment?.id
+    ? !prakritiDraftMatchesSaved(prakritiDraft, assessment)
+    : Boolean(resultType);
+  const hasUnpushedPrakriti = !assessment?.pushedAt
+    || !prakritiDraftMatchesPublished(prakritiDraft, assessment);
+  const prakritiPushPending = hasUnsavedPrakriti || hasUnpushedPrakriti;
+  const prakritiPushHint = hasUnsavedPrakriti
+    ? "You have unsaved Prakriti changes — save first, then push to the client app."
+    : hasUnpushedPrakriti
+      ? "Saved changes are not in the client app yet — push when ready."
+      : "";
+  const clientFirstName = String(user?.name || "client").split(" ")[0];
+  const prakritiPushDisabled = saving || savingRec || savingAvoid || pushing || !resultType || !assessment?.id;
 
   if (loading) {
     return (
@@ -1669,6 +1985,10 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         </div>
       ) : null}
 
+      {showGuidance && canWrite && prakritiPushPending && prakritiPushHint ? (
+        <p className="ua-cp-launch-prakriti-hint ua-cp-launch-prakriti-hint--push">{prakritiPushHint}</p>
+      ) : null}
+
       {showGuidance ? (
       <div className="ua-cp-launch-guide-grid">
         <div className="ua-cp-launch-guide ua-cp-launch-guide--rec">
@@ -1717,16 +2037,34 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
             )}
           </div>
           {canWrite ? (
-            <button
-              type="button"
-              className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
-              onClick={() => {
-                markListsEdited();
-                setRecItems((prev) => [...prev, ""]);
-              }}
-            >
-              + Add recommendation
-            </button>
+            <div className="ua-cp-launch-guide__foot">
+              <button
+                type="button"
+                className="ua-cp-launch-guide__add ua-cp-launch-guide__add--rec"
+                onClick={() => {
+                  markListsEdited();
+                  setRecItems((prev) => [...prev, ""]);
+                }}
+              >
+                + Add recommendation
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--sm ua-cp-launch-guide__save ua-cp-launch-guide__save--rec"
+                disabled={savingRec || saving || savingAvoid || pushing}
+                onClick={() => saveGuideSection("rec")}
+              >
+                {savingRec ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm ua-cp-launch-guide__push"
+                disabled={prakritiPushDisabled}
+                onClick={requestPushPrakritiToApp}
+              >
+                {pushing ? "Pushing…" : "Push to App"}
+              </button>
+            </div>
           ) : null}
         </div>
 
@@ -1790,16 +2128,36 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
               <button
                 type="button"
                 className="ua-cp-btn ua-cp-btn--sm ua-cp-launch-guide__save"
-                disabled={savingAvoid || saving}
-                onClick={saveAvoidSection}
+                disabled={savingAvoid || saving || savingRec || pushing}
+                onClick={() => saveGuideSection("avoid")}
               >
                 {savingAvoid ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                className="ua-cp-btn ua-cp-btn--orange ua-cp-btn--sm ua-cp-launch-guide__push"
+                disabled={prakritiPushDisabled}
+                onClick={requestPushPrakritiToApp}
+              >
+                {pushing ? "Pushing…" : "Push to App"}
               </button>
             </div>
           ) : null}
         </div>
       </div>
       ) : null}
+      <ConfirmDialog
+        open={prakritiPushOpen}
+        tag="Prakriti type"
+        title={`Push Prakriti to ${clientFirstName}'s app?`}
+        body={`This publishes the Prakriti result, recommendations, and things to avoid for ${clientFirstName} in the app. Unsaved edits are saved first.`}
+        cancelLabel="Cancel"
+        confirmLabel={pushing ? "Pushing…" : "Push to App"}
+        onCancel={() => {
+          if (!pushing) setPrakritiPushOpen(false);
+        }}
+        onConfirm={pushPrakritiToApp}
+      />
     </div>
   );
 }

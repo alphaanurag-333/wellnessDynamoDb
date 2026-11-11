@@ -5,4 +5,5 @@ exports.listCoachUserPrakrutiQuestionsController = coachHandlers.listQuestionsCo
 exports.listCoachUserPrakrutiRecommendationsController = coachHandlers.listRecommendationsController;
 exports.getCoachUserPrakrutiAssessmentController = coachHandlers.getAssessmentController;
 exports.saveCoachUserPrakrutiAssessmentController = coachHandlers.saveAssessmentController;
+exports.pushCoachUserPrakrutiAssessmentController = coachHandlers.pushAssessmentController;
 exports.exportCoachUserPrakrutiQuestionsController = coachHandlers.exportQuestionsController;

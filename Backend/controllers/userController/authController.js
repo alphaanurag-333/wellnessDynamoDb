@@ -49,6 +49,7 @@ const { uploadFileFromRequest } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
 const { ensureHealIfProgramPurchased } = require("../../models/userConversionModel");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
+const { syncHealthProgressAfterProfileSelections } = require("../../services/healthProgressProgramTrackerService");
 const { clearOtpSendState } = require("../../utils/otpSendGuard");
 
 function getSessionVersion(user) {
@@ -330,10 +331,11 @@ exports.registerUser = asyncHandler(async (req, res) => {
   const referralFields = await resolveRegistrationReferralFields(referralCodeInput);
   Object.assign(fields, referralFields);
 
-  const user = await createUser({
+  let user = await createUser({
     ...fields,
     sessionVersion: 1,
   });
+  user = (await syncHealthProgressAfterProfileSelections(user)) || user;
 
   await clearRegistrationOtp({
     email: fields.email,

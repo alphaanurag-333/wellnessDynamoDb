@@ -162,8 +162,29 @@ function matchesAssignedClientTier(value, filter = "client") {
   return tier === normalizeUserTier(normalizedFilter, "");
 }
 
+/** Coach/AWC fields for referral flows — attribution only; admin assigns coaches manually. */
+function referralAttributionResult({
+  referredByUserId = null,
+  referredByCode,
+  referredByEntityType = null,
+  referredByEntityId = null,
+}) {
+  return {
+    referredByUserId,
+    referredByCode,
+    referredByEntityType,
+    referredByEntityId,
+    assignedCoachId: null,
+    assignedCoachType: null,
+    parentCoachId: null,
+    assignmentStatus: "pending_admin",
+    assignmentSource: "referral",
+  };
+}
+
 /**
- * Resolve assignment fields at Seek → Heal conversion time (write-time resolution).
+ * Resolve referral attribution (referredBy*) for registration and tier conversion.
+ * Referral codes never auto-assign wellness coach or assistant wellness coach.
  * @param {object|null} referralRecord - ReferralCode registry row
  * @param {object} context - Loaded entities keyed by type
  * @param {string|null} referralCodeInput - Raw referral code from request
@@ -207,17 +228,11 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       throw err;
     }
 
-    return {
-      referredByUserId: null,
+    return referralAttributionResult({
       referredByCode,
       referredByEntityType: "wellness_coach",
       referredByEntityId: coachId,
-      assignedCoachId: coachId,
-      assignedCoachType: "wellness_coach",
-      parentCoachId: coachId,
-      assignmentStatus: "assigned",
-      assignmentSource: "referral",
-    };
+    });
   }
 
   if (referralRecord.entityType === "assistant_wellness_coach") {
@@ -243,17 +258,11 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       throw err;
     }
 
-    return {
-      referredByUserId: null,
+    return referralAttributionResult({
       referredByCode,
       referredByEntityType: "assistant_wellness_coach",
       referredByEntityId: assistantId,
-      assignedCoachId: assistantId,
-      assignedCoachType: "assistant_wellness_coach",
-      parentCoachId,
-      assignmentStatus: "assigned",
-      assignmentSource: "referral",
-    };
+    });
   }
 
   if (referralRecord.entityType === "user") {
@@ -269,55 +278,12 @@ function resolveConversionAssignment(referralRecord, context, referralCodeInput)
       throw err;
     }
 
-    const referredBy = {
+    return referralAttributionResult({
       referredByUserId: referer.id,
       referredByCode,
       referredByEntityType: "user",
       referredByEntityId: referer.id,
-    };
-
-    const assignedCoachId = String(referer.assignedCoachId || "").trim();
-    const assignedCoachType = normalizeAssignedCoachType(referer.assignedCoachType);
-    const parentCoachId = String(referer.parentCoachId || "").trim();
-    const refererAssigned =
-      normalizeAssignmentStatus(referer.assignmentStatus, "") === "assigned" &&
-      Boolean(assignedCoachId) &&
-      Boolean(assignedCoachType) &&
-      Boolean(parentCoachId);
-
-    // Referrer has a coach/assistant → inherit that assignment.
-    if (refererAssigned) {
-      return {
-        ...referredBy,
-        assignedCoachId,
-        assignedCoachType,
-        parentCoachId,
-        assignmentStatus: "assigned",
-        assignmentSource: "referral",
-      };
-    }
-
-    // Legacy / parent-only: roll up to owning wellness coach when present.
-    if (parentCoachId) {
-      return {
-        ...referredBy,
-        assignedCoachId: parentCoachId,
-        assignedCoachType: "wellness_coach",
-        parentCoachId,
-        assignmentStatus: "assigned",
-        assignmentSource: "referral",
-      };
-    }
-
-    // Referrer has no coach yet → admin must assign the new client.
-    return {
-      ...referredBy,
-      assignedCoachId: null,
-      assignedCoachType: null,
-      parentCoachId: null,
-      assignmentStatus: "pending_admin",
-      assignmentSource: "referral",
-    };
+    });
   }
 
   const err = new Error("Unsupported referral entity type");

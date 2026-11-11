@@ -10,6 +10,7 @@ import {
   fetchUserCoachInsight,
   fetchUserReminders,
   getNextOnboardingStepLabel,
+  mapUserRowWithOnboardingSync,
   saveUserCoachInsight,
   deleteUserCoachInsight,
 } from "../../api/usersApi.js";
@@ -43,7 +44,11 @@ import {
 } from "../../utils/counsellingReviewHistory.js";
 import { DailyMetricModal } from "./DailyMetricModal.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
-import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import {
+  ClientSectionDenied,
+  useClientSectionPermissions,
+} from "./ClientProfileSectionGate.jsx";
+import { ONBOARDING_VIEW_PERMS } from "../../utils/clientProfilePermissions.js";
 
 const EMPTY_SNAPSHOT = [
   { label: "Age", value: "—", tone: "default" },
@@ -209,11 +214,13 @@ function GlanceHeader({ user, lastCounselling, onOpenReview }) {
   );
 }
 
-function PreviewToggle({ mode, onChange }) {
+function PreviewToggle({ mode, onChange, showOnboardingTab = true }) {
   return (
     <div className="ua-cp-preview-bar">
       {/* <span className="ua-cp-preview-bar__label">Preview</span> */}
-      <button type="button" className={`ua-cp-preview-tab${mode === "onboarding" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarding")}>Onboarding view</button>
+      {showOnboardingTab ? (
+        <button type="button" className={`ua-cp-preview-tab${mode === "onboarding" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarding")}>Onboarding view</button>
+      ) : null}
       <button type="button" className={`ua-cp-preview-tab${mode === "onboarded" ? " ua-cp-preview-tab--active" : ""}`} onClick={() => onChange("onboarded")}>Onboarded view</button>
     </div>
   );
@@ -376,7 +383,11 @@ function SupplementsBlock({ supplements, onNavigate }) {
             <div className="ua-cp-supp-expiry">
               <span>{s.date}</span>
               {s.daysLeft != null ? (
-                <span className={`ua-cp-days-left${s.urgent ? " ua-cp-days-left--urgent" : ""}`}>{s.daysLeft}d left</span>
+                <span
+                  className={`ua-cp-days-left${Number(s.daysLeft) <= 7 ? " ua-cp-days-left--urgent" : ""}`}
+                >
+                  {s.daysLeft}d left
+                </span>
               ) : null}
             </div>
           </div>
@@ -789,6 +800,12 @@ function buildInitialDone(user) {
     const seed = {};
     Object.entries(PAID_STATUS_TO_UI_STEP).forEach(([key, stepN]) => {
       if (status[key] === "done" || status[key] === "skipped") {
+        if (
+          key === "bodyAnalytics"
+          && !user.bodyAnalyticsClientDataReady
+        ) {
+          return;
+        }
         seed[stepN] = true;
       }
     });
@@ -851,11 +868,11 @@ function RcaViewIcon({ onClick, disabled }) {
   );
 }
 
-function StepToggle({ done, current, onClick }) {
+function StepToggle({ done, current, onClick, title }) {
   const className = `ua-cp-onboard-step__toggle${done ? " ua-cp-onboard-step__toggle--done" : current ? " ua-cp-onboard-step__toggle--current" : ""}`;
   if (!onClick) {
     return (
-      <span className={className} aria-hidden="true">
+      <span className={className} title={title} aria-hidden="true">
         {done ? (
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
         ) : null}
@@ -866,7 +883,7 @@ function StepToggle({ done, current, onClick }) {
     <button
       type="button"
       className={className}
-      title={done ? "Mark as not done" : "Mark complete"}
+      title={title || (done ? "Mark as not done" : "Mark complete")}
       onClick={onClick}
       aria-label={done ? "Mark step not done" : "Mark step complete"}
     >
@@ -908,7 +925,6 @@ function OnboardingStatusCard({
   onProgressChange,
   onUserUpdated,
   canEdit = true,
-  canCalEdit = true,
   canRemind = true,
 }) {
   const [doneMap, setDoneMap] = useState(() => buildInitialDone(user));
@@ -966,11 +982,24 @@ function OnboardingStatusCard({
     const next = buildInitialDone(user);
     setDoneMap(next);
     setStepNotes(buildInitialStepNotes(next));
-  }, [user?.id, user?.paidOnboardingCompleted, user?.onboardingDone, user?.paidOnboardingStepStatus]);
+  }, [
+    user?.id,
+    user?.paidOnboardingCompleted,
+    user?.onboardingDone,
+    user?.paidOnboardingStepStatus,
+    user?.bodyAnalyticsClientDataReady,
+  ]);
+
+  const bodyAnalyticsClientDataReady = Boolean(user?.bodyAnalyticsClientDataReady);
 
   const steps = useMemo(
-    () => ONBOARDING_STEPS.map((step) => ({ ...step, done: !!doneMap[step.n] })),
-    [doneMap],
+    () => ONBOARDING_STEPS.map((step) => ({
+      ...step,
+      done: step.key === "bodyAnalytics"
+        ? Boolean(doneMap[step.n] && bodyAnalyticsClientDataReady)
+        : Boolean(doneMap[step.n]),
+    })),
+    [doneMap, bodyAnalyticsClientDataReady],
   );
 
   const doneCount = steps.filter((s) => s.done).length;
@@ -1025,12 +1054,23 @@ function OnboardingStatusCard({
         else delete next[n];
         return next;
       });
+      const apiUser = data?.user;
       onUserUpdated?.({
         ...user,
         paidOnboardingStepStatus: nextStatus,
         paidOnboardingCompleted: Boolean(data?.paidOnboardingCompleted),
         onboardingDone,
         onboardingPct: Math.round((onboardingDone / ONBOARDING_STEPS.length) * 100),
+        ...(data?.bodyAnalyticsClientDataReady !== undefined
+          ? { bodyAnalyticsClientDataReady: Boolean(data.bodyAnalyticsClientDataReady) }
+          : apiUser?.bodyAnalyticsClientDataReady !== undefined
+            ? { bodyAnalyticsClientDataReady: Boolean(apiUser.bodyAnalyticsClientDataReady) }
+            : {}),
+        ...(data?.bodyAnalyticsGlanceExcluded !== undefined
+          ? { bodyAnalyticsGlanceExcluded: Boolean(data.bodyAnalyticsGlanceExcluded) }
+          : apiUser?.bodyAnalyticsGlanceExcluded !== undefined
+            ? { bodyAnalyticsGlanceExcluded: Boolean(apiUser.bodyAnalyticsGlanceExcluded) }
+            : {}),
       });
     } finally {
       setBusy(false);
@@ -1070,7 +1110,7 @@ function OnboardingStatusCard({
       return;
     }
     if (step.action?.startsWith("schedule-")) {
-      if (!canCalEdit) {
+      if (!canEdit) {
         onToast("You do not have permission to schedule meetings");
         return;
       }
@@ -1193,11 +1233,23 @@ function OnboardingStatusCard({
                 <StepToggle
                   done={step.done}
                   current={isCurrent}
-                  onClick={canEdit ? () => {
-                    toggleStep(step.n).catch((err) => {
-                      onToast(err?.message || "Failed to update step");
-                    });
-                  } : undefined}
+                  onClick={
+                    canEdit
+                    && (step.key !== "bodyAnalytics" || step.done || bodyAnalyticsClientDataReady)
+                      ? () => {
+                          toggleStep(step.n).catch((err) => {
+                            onToast(err?.message || "Failed to update step");
+                          });
+                        }
+                      : undefined
+                  }
+                  title={
+                    !step.done && step.key === "bodyAnalytics" && !bodyAnalyticsClientDataReady
+                      ? "Add body measurements, 180° photos, and medical answers to enable this toggle"
+                      : !step.done && step.key === "bodyAnalytics"
+                        ? "Mark complete or leave open — client data is on file"
+                        : undefined
+                  }
                 />
                 <div className="ua-cp-onboard-step__copy">
                   <span className="ua-cp-onboard-step__label-row">
@@ -1211,7 +1263,7 @@ function OnboardingStatusCard({
                   {note ? <div className="ua-cp-onboard-step__note">{note}</div> : null}
                   {meetingNote ? <div className="ua-cp-onboard-step__note">{meetingNote}</div> : null}
                 </div>
-                {canCalEdit && meeting?.status === "time_requested" ? (
+                {canEdit && meeting?.status === "time_requested" ? (
                   <div className="ua-cp-onboard-step__btns">
                     <button
                       type="button"
@@ -1247,7 +1299,7 @@ function OnboardingStatusCard({
                       Reject
                     </button>
                   </div>
-                ) : canCalEdit && meeting?.status === "slots_offered" ? (
+                ) : canEdit && meeting?.status === "slots_offered" ? (
                   <button
                     type="button"
                     className="ua-cp-onboard-step__btn ua-cp-onboard-step__btn--green"
@@ -1263,7 +1315,7 @@ function OnboardingStatusCard({
                     disabled={
                       busy
                       || (step.done && !canEdit)
-                      || (!step.done && step.action?.startsWith("schedule-") && !canCalEdit && !canEdit)
+                      || (!step.done && step.action?.startsWith("schedule-") && !canEdit)
                       || (!step.done && step.action === "submit-rca" && !canEdit)
                       || (!step.done && !step.action && !canEdit && !step.section)
                     }
@@ -1282,7 +1334,10 @@ function OnboardingStatusCard({
             );
           })}
         </div>
-        <p className="ua-cp-onboard-footnote">Client-side steps sync from the app. RCA, HAP, briefing, letter and initiation are yours to submit.</p>
+        <p className="ua-cp-onboard-footnote">
+          Client-side steps sync from the app. When body measurements, 180° photos, and medical answers are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
+          RCA, HAP, briefing, letter and initiation are yours to submit.
+        </p>
       </div>
 
       {scheduleModal ? (
@@ -1563,15 +1618,22 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const archived = useClientProfileArchived();
   const { canDelete: canDeleteClientData } = useClientSectionPermissions("glance");
   const canEditClient = !archived && (isAdminView || can("console.cl.edit"));
-  const canCalEdit = !archived && (isAdminView || can("console.cal.edit") || can("console.cal.create"));
-  const canRemindClient = !archived && (canEditClient || canCalEdit || can("console.diet.edit"));
+  const canViewOnboarding = isAdminView || can(ONBOARDING_VIEW_PERMS.view);
+  const canEditOnboarding = !archived && (isAdminView || can(ONBOARDING_VIEW_PERMS.edit));
+  const canRemindClient = !archived && canEditOnboarding;
   const inProgress = user.paidOnboardingCompleted
     ? false
     : (user.onboardingDone ?? 0) < (user.onboardingTotal ?? 7);
-  const [viewMode, setViewMode] = useState(inProgress ? "onboarding" : "onboarded");
+  const defaultViewMode = inProgress && canViewOnboarding ? "onboarding" : "onboarded";
+  const [viewMode, setViewMode] = useState(defaultViewMode);
   useEffect(() => {
-    setViewMode(inProgress ? "onboarding" : "onboarded");
-  }, [inProgress, user?.id]);
+    setViewMode(inProgress && canViewOnboarding ? "onboarding" : "onboarded");
+  }, [inProgress, user?.id, canViewOnboarding]);
+  useEffect(() => {
+    if (!canViewOnboarding && viewMode === "onboarding") {
+      setViewMode("onboarded");
+    }
+  }, [canViewOnboarding, viewMode]);
   const [reminders, setReminders] = useState([]);
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [deletingReminderId, setDeletingReminderId] = useState(null);
@@ -1658,7 +1720,10 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     setGlanceLoading(true);
     fetchUserAtAGlance(userId)
       .then((payload) => {
-        if (!cancelled) setGlance(payload);
+        if (cancelled) return;
+        setGlance(payload?.glance || null);
+        const syncedRow = mapUserRowWithOnboardingSync(user, payload);
+        if (syncedRow) onUserUpdated?.(syncedRow);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -1673,7 +1738,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, user?.id]);
+  }, [user?.id]);
 
   function handleWaterHover(active, tip) {
     setRainActive(active);
@@ -1687,7 +1752,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
         <div className="ua-cp-glance-rain-tip" role="status">{rainTip}</div>
       ) : null}
       <GlanceHeader user={user} lastCounselling={lastCounselling} onOpenReview={() => setReviewOpen(true)} />
-      <PreviewToggle mode={viewMode} onChange={setViewMode} />
+      <PreviewToggle mode={viewMode} onChange={setViewMode} showOnboardingTab={canViewOnboarding} />
 
       {viewMode === "onboarded" ? (
         <>
@@ -1717,6 +1782,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             canDelete={canDeleteClientData}
           />
         </>
+      ) : !canViewOnboarding ? (
+        <ClientSectionDenied
+          title="Onboarding view"
+          subtitle="Your role does not include permission to view client onboarding progress."
+        />
       ) : (
         <>
           <OnboardingSummary user={user} progress={onboardingProgress} />
@@ -1726,8 +1796,7 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             onNavigate={onNavigate}
             onProgressChange={setOnboardingProgress}
             onUserUpdated={onUserUpdated}
-            canEdit={canEditClient}
-            canCalEdit={canCalEdit}
+            canEdit={canEditOnboarding}
             canRemind={canRemindClient}
           />
         </>

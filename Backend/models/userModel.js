@@ -172,6 +172,15 @@ function isProgressPhotosInAppEnabled(user) {
   return false;
 }
 
+/** Admin “Allowed in the app” toggles only: enabled → true, otherwise false. */
+function buildPaidOnboardingStepLocks(user) {
+  return {
+    bodyMeasurement: user?.bodyMeasurementEnabled === true,
+    progressPhotos180: user?.progressPhotosInAppEnabled === true,
+    medicalConditions: user?.medicalConditionsInAppEnabled === true,
+  };
+}
+
 function normalizeDietaryPreference(value) {
   if (value == null || value === "") return null;
   const next = String(value).toLowerCase().trim();
@@ -454,7 +463,9 @@ function sanitizeUpdateField(key, value) {
   if (key === "assignmentSource") return normalizeAssignmentSource(value);
   if (key === "referralCode" || key === "referredByCode") return normalizeReferralCodeField(value);
   if (key === "convertedAt" || key === "assignedAt" || key === "consultancyPaidAt") return normalizeDob(value);
-  if (key === "healPaidAt" || key === "lastActiveAt") return normalizeDob(value);
+  if (key === "healPaidAt" || key === "lastActiveAt" || key === "programStartedAt") {
+    return normalizeDob(value);
+  }
   if (
     key === "paidOnboardingCompleted" ||
     key === "energyExchangeEnabled" ||
@@ -467,7 +478,8 @@ function sanitizeUpdateField(key, value) {
     key === "bodyMeasurementEnabled" ||
     key === "medicalConditionsInAppEnabled" ||
     key === "progressPhotosInAppEnabled" ||
-    key === "labReportSubmissionLocked"
+    key === "labReportSubmissionLocked" ||
+    key === "bodyAnalyticsGlanceExcluded"
   ) {
     return Boolean(value);
   }
@@ -605,7 +617,8 @@ function buildUserItem(input, { id, now } = {}) {
     bodyMeasurementEnabled: input.bodyMeasurementEnabled !== false,
     medicalConditionsInAppEnabled: input.medicalConditionsInAppEnabled !== false,
     progressPhotosInAppEnabled: input.progressPhotosInAppEnabled !== false,
-    labReportSubmissionLocked: input.labReportSubmissionLocked !== false,
+    // Default unlocked so new clients can upload a report; coach can still lock, and upload auto-locks after submit.
+    labReportSubmissionLocked: input.labReportSubmissionLocked === true,
     fcm_id: input.fcm_id != null ? String(input.fcm_id).trim() || null : null,
     status: normalizeStatus(input.status),
     otp: input.otp != null ? String(input.otp) : null,
@@ -658,6 +671,7 @@ function buildUserItem(input, { id, now } = {}) {
     ),
     wellnessJourneyFor: normalizeWellnessJourneyFor(input.wellnessJourneyFor),
     healPaidAt: input.healPaidAt ? normalizeDob(input.healPaidAt) : null,
+    programStartedAt: input.programStartedAt ? normalizeDob(input.programStartedAt) : null,
     lastActiveAt: input.lastActiveAt ? normalizeDob(input.lastActiveAt) : now,
     createdAt: now,
     updatedAt: now,
@@ -902,6 +916,86 @@ async function updateUser(id, updates) {
     new UpdateCommand({
       TableName: TABLE,
       Key: { id },
+      UpdateExpression: updateExpr,
+      ExpressionAttributeNames: exprNames,
+      ExpressionAttributeValues: exprValues,
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return withLegacyId(Attributes || null);
+}
+
+/** Admin correction of referral attribution (bypasses immutable referredBy* guard on updateUser). */
+async function forceUpdateReferralAttribution(id, attribution = {}) {
+  const userId = String(id || "").trim();
+  if (!userId) {
+    const err = new Error("User id is required");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const current = await getUserById(userId);
+  if (!current) {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (current.status === "deleted") {
+    const err = new Error("User not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+
+  const merged = {
+    referredByUserId:
+      attribution.referredByUserId != null
+        ? String(attribution.referredByUserId).trim() || null
+        : null,
+    referredByCode: normalizeReferralCodeField(attribution.referredByCode),
+    referredByEntityType:
+      attribution.referredByEntityType != null
+        ? String(attribution.referredByEntityType).trim() || null
+        : null,
+    referredByEntityId:
+      attribution.referredByEntityId != null
+        ? String(attribution.referredByEntityId).trim() || null
+        : null,
+  };
+
+  const keys = [
+    "referredByUserId",
+    "referredByCode",
+    "referredByEntityType",
+    "referredByEntityId",
+  ];
+  const removeKeys = keys.filter(
+    (key) => SPARSE_GSI_ATTRIBUTES.has(key) && (merged[key] == null || merged[key] === "")
+  );
+  const setKeys = keys.filter((key) => !removeKeys.includes(key));
+
+  const exprNames = {};
+  const exprValues = { ":updatedAt": new Date().toISOString() };
+  let updateExpr = "SET updatedAt = :updatedAt";
+
+  for (const key of setKeys) {
+    exprNames[`#${key}`] = key;
+    exprValues[`:${key}`] = merged[key];
+    updateExpr += `, #${key} = :${key}`;
+  }
+
+  if (removeKeys.length) {
+    for (const key of removeKeys) {
+      exprNames[`#${key}`] = key;
+    }
+    updateExpr += ` REMOVE ${removeKeys.map((key) => `#${key}`).join(", ")}`;
+  }
+
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id: userId },
       UpdateExpression: updateExpr,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
@@ -1321,6 +1415,13 @@ async function buildReferralOverview({
   const users = items.map(withLegacyId).filter((row) => row && row.status !== "deleted");
   const pool = userIdScope ? users.filter((row) => userIdScope.has(row.id)) : users;
   const byId = new Map(users.map((row) => [row.id, row]));
+  const byReferralCode = new Map();
+  for (const row of users) {
+    const code = String(row.referralCode || "")
+      .trim()
+      .toUpperCase();
+    if (code && !byReferralCode.has(code)) byReferralCode.set(code, row);
+  }
 
   let totalWithReferral = 0;
   let peerReferred = 0;
@@ -1404,6 +1505,10 @@ async function buildReferralOverview({
   const recentReferrals = attributed.slice(0, safeRecent).map((user) => {
     const referrerId = user.referredByUserId ? String(user.referredByUserId).trim() : "";
     const referrer = referrerId ? byId.get(referrerId) : null;
+    const referredByCodeKey = user.referredByCode
+      ? String(user.referredByCode).trim().toUpperCase()
+      : "";
+    const referrerFromCode = referredByCodeKey ? byReferralCode.get(referredByCodeKey) : null;
     return {
       id: user.id,
       name: user.name || null,
@@ -1416,7 +1521,7 @@ async function buildReferralOverview({
       referredByCode: user.referredByCode || null,
       referredByEntityType: user.referredByEntityType || null,
       createdAt: user.createdAt || null,
-      referrerName: referrer?.name || null,
+      referrerName: referrer?.name || referrerFromCode?.name || null,
       referrerCode: referrer?.referralCode || user.referredByCode || null,
     };
   });
@@ -1809,6 +1914,7 @@ module.exports = {
   isBodyMeasurementEnabled,
   isMedicalConditionsInAppEnabled,
   isProgressPhotosInAppEnabled,
+  buildPaidOnboardingStepLocks,
   buildUserItem,
   toPublicUser,
   createUser,
@@ -1819,6 +1925,7 @@ module.exports = {
   listUsersByWhatsapp,
   resolveEffectiveWhatsappKey,
   updateUser,
+  forceUpdateReferralAttribution,
   deleteUser,
   listDeletedUserIds,
   listUsersByParentCoachId,
