@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   downloadUserProgressPhoto,
@@ -8,6 +8,7 @@ import {
   mapUserRowWithOnboardingSync,
   patchUserBodyMeasurementSettings,
   patchUserProgressPhotosInAppSettings,
+  patchUserTargetWeight,
   appGateUserFromProfileRow,
   resolveBodyMeasurementClientEnabled,
   resolveProgressPhotosInAppEnabled,
@@ -33,6 +34,8 @@ import {
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { bodyAnalyticsClientPollSignature } from "../../utils/clientProfileAppSync.js";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin") || document.body;
@@ -85,6 +88,114 @@ function clientAgeYears(user) {
   if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < parts.day)) age -= 1;
   if (!Number.isFinite(age) || age < 0 || age > 120) return null;
   return age;
+}
+
+function latestWeightKgFromMeasurements(measurements) {
+  if (!Array.isArray(measurements) || !measurements.length) return null;
+  let best = null;
+  let bestTs = -Infinity;
+  for (const row of measurements) {
+    const w = Number(row?.weightKg);
+    if (!Number.isFinite(w)) continue;
+    const ts = Date.parse(row?.recordedAt || row?.createdAt || row?.updatedAt || "") || 0;
+    if (ts >= bestTs) {
+      bestTs = ts;
+      best = w;
+    }
+  }
+  return best;
+}
+
+function formatTargetWeightDraft(value) {
+  if (value == null || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  return String(n);
+}
+
+function parseTargetWeightInput(raw) {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return { ok: true, value: null };
+  const n = Number(trimmed);
+  if (!Number.isFinite(n)) return { ok: false, message: "Enter a valid weight in kg" };
+  const rounded = Math.round(n * 10) / 10;
+  if (rounded < 25 || rounded > 300) return { ok: false, message: "Weight must be between 25 and 300 kg" };
+  return { ok: true, value: rounded };
+}
+
+function targetWeightDraftIsDirty(savedKg, draft) {
+  const parsed = parseTargetWeightInput(draft);
+  if (!parsed.ok) {
+    return String(draft || "").trim() !== formatTargetWeightDraft(savedKg);
+  }
+  const next = parsed.value;
+  const prev = savedKg ?? null;
+  return !(next === prev || (next == null && prev == null));
+}
+
+function TargetWeightField({
+  savedKg,
+  draft,
+  onDraftChange,
+  onCommit,
+  onEditFocus,
+  saving,
+  canEdit,
+  currentKg,
+}) {
+  const savedLabel = savedKg == null ? "—" : `${Number(savedKg).toFixed(1)} kg`;
+  let hint = "";
+  if (savedKg != null && currentKg != null) {
+    const delta = Number((currentKg - savedKg).toFixed(1));
+    if (delta > 0) hint = `${delta.toFixed(1)} kg to lose`;
+    else if (delta < 0) hint = `${Math.abs(delta).toFixed(1)} kg to gain`;
+    else hint = "At target weight";
+  }
+
+  if (!canEdit) {
+    return (
+      <div className="ua-cp-ba-target-weight" title={hint || undefined}>
+        <span className="ua-cp-ba-target-weight__label">Target Weight</span>
+        <span className="ua-cp-ba-target-weight__value">{savedLabel}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="ua-cp-ba-target-weight ua-cp-ba-target-weight--edit"
+      title={
+        hint
+          ? `Current ${currentKg != null ? `${Number(currentKg).toFixed(1)} kg` : "—"} · ${hint}`
+          : "Set the client’s goal weight in kg (e.g. current 80 kg → target 60 kg)"
+      }
+    >
+      <span className="ua-cp-ba-target-weight__label">Target Weight</span>
+      <span className="ua-cp-ba-target-weight__input-wrap">
+        <input
+          type="text"
+          inputMode="decimal"
+          className="ua-cp-ba-target-weight__input"
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onFocus={() => onEditFocus?.()}
+          onBlur={() => onCommit()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onCommit();
+              e.currentTarget.blur();
+            }
+          }}
+          disabled={saving}
+          aria-label="Target weight in kilograms"
+          placeholder="kg"
+        />
+        <span className="ua-cp-ba-target-weight__unit">kg</span>
+      </span>
+      {saving ? <span className="ua-cp-ba-target-weight__saving">Saving…</span> : null}
+    </div>
+  );
 }
 
 function ClientAgeGender({ user }) {
@@ -672,6 +783,60 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const [progressPhotosBusy, setProgressPhotosBusy] = useState(false);
   const [clientFillConfirm, setClientFillConfirm] = useState(null);
   const [progressPhotosConfirm, setProgressPhotosConfirm] = useState(null);
+  const [targetWeightKg, setTargetWeightKg] = useState(() => user?.targetWeightKg ?? null);
+  const [targetWeightDraft, setTargetWeightDraft] = useState(() =>
+    formatTargetWeightDraft(user?.targetWeightKg),
+  );
+  const [targetWeightBusy, setTargetWeightBusy] = useState(false);
+
+  const remoteSigRef = useRef("");
+  const targetWeightEditingRef = useRef(false);
+  const settingsBusyRef = useRef(settingsBusy);
+  const progressPhotosBusyRef = useRef(progressPhotosBusy);
+  const targetWeightBusyRef = useRef(targetWeightBusy);
+  const targetWeightKgRef = useRef(targetWeightKg);
+  const targetWeightDraftRef = useRef(targetWeightDraft);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  const userRef = useRef(user);
+  settingsBusyRef.current = settingsBusy;
+  progressPhotosBusyRef.current = progressPhotosBusy;
+  targetWeightBusyRef.current = targetWeightBusy;
+  targetWeightKgRef.current = targetWeightKg;
+  targetWeightDraftRef.current = targetWeightDraft;
+  onUserUpdatedRef.current = onUserUpdated;
+  userRef.current = user;
+
+  const mayApplyServerTargetWeight = useCallback(() => (
+    !targetWeightEditingRef.current
+    && !targetWeightBusyRef.current
+    && !targetWeightDraftIsDirty(targetWeightKgRef.current, targetWeightDraftRef.current)
+  ), []);
+
+  const applyBodyAnalyticsPayload = useCallback((data) => {
+    if (!data) return;
+    const {
+      bodyMeasurementEnabled,
+      progressPhotosInAppEnabled,
+      targetWeightKg: loadedTargetKg,
+      paidOnboardingStepStatus: _pos,
+      paidOnboardingCompleted: _poc,
+      completedStepsCount: _csc,
+      ...analytics
+    } = data;
+    setBodyAnalytics(analytics);
+    if (bodyMeasurementEnabled !== undefined && !settingsBusyRef.current) {
+      setFeatureEnabled(Boolean(bodyMeasurementEnabled));
+    }
+    if (progressPhotosInAppEnabled !== undefined && !progressPhotosBusyRef.current) {
+      setProgressPhotosInApp(Boolean(progressPhotosInAppEnabled));
+    }
+    if (loadedTargetKg !== undefined && mayApplyServerTargetWeight()) {
+      setTargetWeightKg(loadedTargetKg ?? null);
+      setTargetWeightDraft(formatTargetWeightDraft(loadedTargetKg));
+    }
+    const syncedRow = mapUserRowWithOnboardingSync(userRef.current, data);
+    if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
+  }, [mayApplyServerTargetWeight]);
 
   const clientFirstName = user?.name?.split(/\s+/)[0] || "Client";
 
@@ -698,28 +863,22 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   ]);
 
   useEffect(() => {
+    if (!mayApplyServerTargetWeight()) return;
+    const saved = user?.targetWeightKg ?? null;
+    setTargetWeightKg(saved);
+    setTargetWeightDraft(formatTargetWeightDraft(saved));
+  }, [mayApplyServerTargetWeight, user?.id, user?.targetWeightKg]);
+
+  useEffect(() => {
+    remoteSigRef.current = "";
     let cancelled = false;
     setLoading(true);
     setLoadError("");
     fetchUserBodyAnalytics(user?.id)
       .then((data) => {
-        if (!cancelled) {
-          const {
-            bodyMeasurementEnabled,
-            progressPhotosInAppEnabled,
-            paidOnboardingStepStatus,
-            paidOnboardingCompleted,
-            ...analytics
-          } = data || {};
-          setBodyAnalytics(analytics);
-          if (bodyMeasurementEnabled !== undefined) {
-            setFeatureEnabled(Boolean(bodyMeasurementEnabled));
-          }
-          if (progressPhotosInAppEnabled !== undefined) {
-            setProgressPhotosInApp(Boolean(progressPhotosInAppEnabled));
-          }
-          const syncedRow = mapUserRowWithOnboardingSync(user, data);
-          if (syncedRow) onUserUpdated?.(syncedRow);
+        if (!cancelled && data) {
+          remoteSigRef.current = bodyAnalyticsClientPollSignature(data);
+          applyBodyAnalyticsPayload(data);
         }
       })
       .catch((error) => {
@@ -734,7 +893,24 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [applyBodyAnalyticsPayload, onToast, user?.id]);
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      const userId = String(user?.id || "").trim();
+      if (!live || !userId) return;
+      if (settingsBusyRef.current || progressPhotosBusyRef.current) {
+        return;
+      }
+      const data = await fetchUserBodyAnalytics(userId);
+      if (!data) return;
+      const signature = bodyAnalyticsClientPollSignature(data);
+      if (signature === remoteSigRef.current) return;
+      remoteSigRef.current = signature;
+      applyBodyAnalyticsPayload(data);
+    }, [applyBodyAnalyticsPayload, live, user?.id]),
+    { enabled: live && Boolean(user?.id) },
+  );
 
   useEffect(() => {
     setPeriod((current) => {
@@ -900,6 +1076,68 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     />
   );
 
+  const currentWeightKg = useMemo(
+    () => latestWeightKgFromMeasurements(bodyAnalytics?.measurements),
+    [bodyAnalytics?.measurements],
+  );
+
+  function endTargetWeightEdit() {
+    targetWeightEditingRef.current = false;
+  }
+
+  async function commitTargetWeight() {
+    if (!live || !canEdit || targetWeightBusy) {
+      endTargetWeightEdit();
+      return;
+    }
+    const parsed = parseTargetWeightInput(targetWeightDraft);
+    if (!parsed.ok) {
+      onToast?.(parsed.message);
+      setTargetWeightDraft(formatTargetWeightDraft(targetWeightKg));
+      endTargetWeightEdit();
+      return;
+    }
+    const next = parsed.value;
+    const prev = targetWeightKg ?? null;
+    if (next === prev || (next == null && prev == null)) {
+      setTargetWeightDraft(formatTargetWeightDraft(prev));
+      endTargetWeightEdit();
+      return;
+    }
+    setTargetWeightBusy(true);
+    try {
+      const result = await patchUserTargetWeight(user.id, { targetWeightKg: next });
+      const saved = result?.targetWeightKg ?? next;
+      setTargetWeightKg(saved);
+      setTargetWeightDraft(formatTargetWeightDraft(saved));
+      onToast?.(result?.message || "Target weight saved");
+      if (result?.user) {
+        onUserUpdated?.({ ...mapApiUserToRow(result.user), targetWeightKg: saved });
+      } else {
+        onUserUpdated?.({ ...user, targetWeightKg: saved });
+      }
+    } catch (error) {
+      onToast?.(error?.message || "Failed to save target weight");
+      setTargetWeightDraft(formatTargetWeightDraft(targetWeightKg));
+    } finally {
+      setTargetWeightBusy(false);
+      endTargetWeightEdit();
+    }
+  }
+
+  const targetWeightControl = (
+    <TargetWeightField
+      savedKg={targetWeightKg}
+      draft={targetWeightDraft}
+      onDraftChange={setTargetWeightDraft}
+      onCommit={commitTargetWeight}
+      onEditFocus={() => { targetWeightEditingRef.current = true; }}
+      saving={targetWeightBusy}
+      canEdit={canEdit && live}
+      currentKg={currentWeightKg}
+    />
+  );
+
   const bodyMeasurementDisabledInApp = !featureEnabled;
   const bodyMeasurementClientToggle = canEdit ? (
     <div
@@ -1011,7 +1249,12 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
         labelCol="Measure"
         columns={historyColumns}
         rows={measureRows}
-        sectionTools={bodyMeasurementClientToggle}
+        sectionTools={
+          <>
+            {targetWeightControl}
+            {bodyMeasurementClientToggle}
+          </>
+        }
         unitToggle={unitToggle}
         clientFacts={<ClientAgeGender user={user} />}
       />

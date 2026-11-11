@@ -5,6 +5,7 @@ const {
   updateUser,
   isBodyMeasurementEnabled,
   isProgressPhotosInAppEnabled,
+  normalizeTargetWeightKg,
 } = require("../../models/userModel");
 const { normalizeRoleKey } = require("../../config/accountRoles");
 const { assertStaffCanAccessUser, assertStaffCanMutate } = require("../staffAccess");
@@ -121,6 +122,7 @@ exports.getUserBodyAnalyticsController = asyncHandler(async (req, res) => {
     message: "Body analytics fetched",
     bodyMeasurementEnabled: isBodyMeasurementEnabled(user),
     progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(user),
+    targetWeightKg: user.targetWeightKg ?? null,
     paidOnboardingStepStatus: stepStatus,
     paidOnboardingCompleted: Boolean(user.paidOnboardingCompleted),
     completedStepsCount: countCompletedSteps(stepStatus),
@@ -146,6 +148,42 @@ function parseEnabledBodyFlag(body = {}) {
   if (normalized === "false") return { missing: false, enabled: false };
   return { missing: false, enabled: null };
 }
+
+exports.patchTargetWeightController = asyncHandler(async (req, res) => {
+  assertStaffCanMutate(req);
+  const userId = String(req.params.id || "").trim();
+  if (!userId) throw new AppError("User id is required", 400);
+
+  const user = await getUserById(userId);
+  if (!user) throw new AppError("User not found", 404);
+  await assertStaffCanAccessUser(req, user);
+
+  if (
+    !Object.prototype.hasOwnProperty.call(req.body || {}, "targetWeightKg") &&
+    req.body?.targetWeight == null
+  ) {
+    throw new AppError("targetWeightKg is required", 400);
+  }
+
+  const raw =
+    req.body?.targetWeightKg !== undefined ? req.body.targetWeightKg : req.body.targetWeight;
+
+  let targetWeightKg;
+  try {
+    targetWeightKg = normalizeTargetWeightKg(raw);
+  } catch (err) {
+    throw new AppError(err?.message || "Invalid target weight", 400);
+  }
+
+  const updated = await updateUser(userId, { targetWeightKg });
+
+  return res.status(200).json({
+    status: true,
+    message: targetWeightKg == null ? "Target weight cleared" : "Target weight saved",
+    targetWeightKg: updated?.targetWeightKg ?? null,
+    user: await enrichUser(updated),
+  });
+});
 
 exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) => {
   assertStaffCanMutate(req);

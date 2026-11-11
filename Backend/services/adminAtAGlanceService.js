@@ -39,6 +39,7 @@ const {
 const { todayDateOnly, addDaysDateOnly, isValidDateOnly } = require("../utils/dateOnly");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { prakrutiTypeLabel } = require("../utils/prakrutiConstants");
+const { resolveProteinGoalInputs } = require("../utils/proteinGoalCalculations");
 
 const EMPTY = "—";
 
@@ -235,6 +236,8 @@ function buildDailyMetrics({
   stepsHistory,
   drfSettings,
   drfLogs,
+  bodyMeasurement,
+  metabolicLogs,
 }) {
   const mealHistory = (mealSummary?.macroSummary || []).slice(-5).map((row) => ({
     date: row.date,
@@ -242,8 +245,13 @@ function buildDailyMetrics({
   }));
   const mealByDate = new Map(mealHistory.map((row) => [row.date, row]));
   const todayProtein = Number(mealByDate.get(today)?.value) || 0;
-  const proteinGoal = null;
+  const { proteinGoalGm: proteinGoal } = resolveProteinGoalInputs(
+    bodyMeasurement,
+    metabolicLogs,
+    latestLogWithField
+  );
   const hasMealActivity = (mealSummary?.logs || []).length > 0 || mealHistory.some((r) => r.value > 0);
+  const showProteinValue = hasMealActivity || proteinGoal != null;
 
   const waterDays = (waterHistory?.history || []).slice(-5);
   const todayWater = waterDays.find((d) => d.date === today) || waterDays[waterDays.length - 1];
@@ -306,9 +314,9 @@ function buildDailyMetrics({
       id: "protein",
       label: "Protein",
       icon: "🥄",
-      value: hasMealActivity ? `${formatNumber(todayProtein, 1)} g` : EMPTY,
-      goal: proteinGoal != null ? `${proteinGoal} g` : EMPTY,
-      pct: hasMealActivity ? pctOf(todayProtein, proteinGoal) : 0,
+      value: showProteinValue ? `${formatNumber(todayProtein, 1)} g` : EMPTY,
+      goal: proteinGoal != null ? `${formatNumber(proteinGoal, 1)} g` : EMPTY,
+      pct: proteinGoal != null && proteinGoal > 0 ? pctOf(todayProtein, proteinGoal) : 0,
       bars: buildMetricBars(mealHistory.map((r) => r.value)),
       tone: "blue",
       modal: {
@@ -628,6 +636,8 @@ async function buildAtAGlanceForUser(userId) {
       stepsHistory,
       drfSettings,
       drfLogs: drfLogs.filter((row) => row.date >= historyStart),
+      bodyMeasurement,
+      metabolicLogs,
     }),
     supplements: buildSupplements(dosages, today),
     healthProgressPrograms: (() => {

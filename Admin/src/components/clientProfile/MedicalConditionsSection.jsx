@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   approveUserMedicalConditions,
   fetchUserMedicalConditions,
@@ -9,6 +9,9 @@ import {
 } from "../../api/usersApi.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { medicalConditionsPollSignature } from "../../utils/clientProfileAppSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 
 function formatWhen(value) {
   const raw = String(value || "").trim();
@@ -125,6 +128,28 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
   const [inAppConfirm, setInAppConfirm] = useState(null);
   const [approveBusy, setApproveBusy] = useState(false);
 
+  const remoteSigRef = useRef("");
+  const settingsBusyRef = useRef(settingsBusy);
+  const approveBusyRef = useRef(approveBusy);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  const userRef = useRef(user);
+  settingsBusyRef.current = settingsBusy;
+  approveBusyRef.current = approveBusy;
+  onUserUpdatedRef.current = onUserUpdated;
+  userRef.current = user;
+
+  const applyMedicalPayload = useCallback((data) => {
+    if (!data) return;
+    setRecord(data.medicalCondition || null);
+    if (data.medicalConditionsInAppEnabled !== undefined && !settingsBusyRef.current) {
+      setInAppEnabled(Boolean(data.medicalConditionsInAppEnabled));
+    }
+    const syncedRow = mapUserRowWithOnboardingSync(userRef.current, data);
+    if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
+  }, []);
+
+  const live = Boolean(userId) && !isMockNumericId(userId);
+
   const medicalOnboardingStatus = String(
     user?.paidOnboardingStepStatus?.medicalConditions || "",
   ).toLowerCase();
@@ -143,16 +168,13 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
       return undefined;
     }
 
+    remoteSigRef.current = "";
     setLoading(true);
     fetchUserMedicalConditions(userId)
       .then((data) => {
-        if (cancelled) return;
-        setRecord(data?.medicalCondition || null);
-        if (data?.medicalConditionsInAppEnabled !== undefined) {
-          setInAppEnabled(Boolean(data.medicalConditionsInAppEnabled));
-        }
-        const syncedRow = mapUserRowWithOnboardingSync(user, data);
-        if (syncedRow) onUserUpdated?.(syncedRow);
+        if (cancelled || !data) return;
+        remoteSigRef.current = medicalConditionsPollSignature(data);
+        applyMedicalPayload(data);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -166,7 +188,21 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [applyMedicalPayload, onToast, userId]);
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      if (!live || !userId) return;
+      if (settingsBusyRef.current || approveBusyRef.current) return;
+      const data = await fetchUserMedicalConditions(userId);
+      if (!data) return;
+      const signature = medicalConditionsPollSignature(data);
+      if (signature === remoteSigRef.current) return;
+      remoteSigRef.current = signature;
+      applyMedicalPayload(data);
+    }, [applyMedicalPayload, live, userId]),
+    { enabled: live && Boolean(userId) },
+  );
 
   const rows = useMemo(() => rowsFromRecord(record), [record]);
   const submittedAt = formatWhen(record?.updatedAt || record?.createdAt);

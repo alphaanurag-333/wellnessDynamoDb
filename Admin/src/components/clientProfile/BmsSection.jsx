@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
@@ -35,6 +35,11 @@ import {
   saveUserDailyReflectionSettings,
 } from "../../api/dailyReflectionApi.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import {
+  bmsLibraryPollSignature,
+  bmsTrackingPollSignature,
+} from "../../utils/clientProfileAppSync.js";
 
 function isLiveUserId(userId) {
   return Boolean(userId) && !isMockNumericId(userId);
@@ -598,9 +603,56 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [exerciseFilter, setExerciseFilter] = useState("all");
   const [pendingConfirm, setPendingConfirm] = useState(null);
 
+  const metricSigRef = useRef("");
+  const librarySigRef = useRef("");
+  const userBmsSigRef = useRef("");
+  const toggleBusyRef = useRef(toggleBusy);
+  const stepsGoalEditingRef = useRef(stepsGoalEditing);
+  const stepsGoalSavingRef = useRef(stepsGoalSaving);
+  const stepsGoalUnlockBusyRef = useRef(stepsGoalUnlockBusy);
+  const libraryBusyRef = useRef(libraryBusy);
+  const pendingConfirmRef = useRef(pendingConfirm);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  toggleBusyRef.current = toggleBusy;
+  stepsGoalEditingRef.current = stepsGoalEditing;
+  stepsGoalSavingRef.current = stepsGoalSaving;
+  stepsGoalUnlockBusyRef.current = stepsGoalUnlockBusy;
+  libraryBusyRef.current = libraryBusy;
+  pendingConfirmRef.current = pendingConfirm;
+  onUserUpdatedRef.current = onUserUpdated;
+
+  const applyMetricTabData = useCallback((activeTab, data) => {
+    const history = data?.history || [];
+    if (activeTab === "steps") {
+      setStepsHistory(history);
+      const goal = Number(data?.settings?.goalSteps);
+      if (
+        Number.isFinite(goal)
+        && goal > 0
+        && !stepsGoalEditingRef.current
+        && !stepsGoalSavingRef.current
+      ) {
+        setStepsGoal(goal);
+        setStepsGoalDraft(goal);
+      }
+      if (!stepsGoalUnlockBusyRef.current) {
+        setStepsGoalLocked(Boolean(data?.settings?.goalLocked));
+      }
+    } else if (activeTab === "heart") {
+      setHeartHistory(history);
+    } else if (activeTab === "sleep") {
+      setSleepHistory(history);
+      setSleepToday(data?.today || history[history.length - 1] || null);
+    }
+  }, []);
+
   useEffect(() => {
     setHeartRateOn(user?.heartRateEnabled !== false);
     setSleepTrackingOn(user?.sleepTrackingEnabled !== false);
+    userBmsSigRef.current = [
+      user?.heartRateEnabled === false ? "0" : "1",
+      user?.sleepTrackingEnabled === false ? "0" : "1",
+    ].join(":");
   }, [user?.heartRateEnabled, user?.sleepTrackingEnabled]);
 
   useEffect(() => {
@@ -613,6 +665,9 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     setHeartHistory(null);
     setSleepHistory(null);
     setSleepToday(null);
+    metricSigRef.current = "";
+    librarySigRef.current = "";
+    userBmsSigRef.current = "";
   }, [live, today, userId]);
 
   const stepsChart = useMemo(() => (
@@ -659,21 +714,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     request
       .then((data) => {
         if (cancelled) return;
-        const history = data?.history || [];
-        if (tab === "steps") {
-          setStepsHistory(history);
-          const goal = Number(data?.settings?.goalSteps);
-          if (Number.isFinite(goal) && goal > 0) {
-            setStepsGoal(goal);
-            setStepsGoalDraft(goal);
-          }
-          setStepsGoalLocked(Boolean(data?.settings?.goalLocked));
-        } else if (tab === "heart") {
-          setHeartHistory(history);
-        } else {
-          setSleepHistory(history);
-          setSleepToday(data?.today || history[history.length - 1] || null);
-        }
+        metricSigRef.current = bmsTrackingPollSignature(tab, data, range);
+        applyMetricTabData(tab, data);
       })
       .catch((error) => {
         if (cancelled) return;
@@ -692,7 +734,98 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [live, onToast, tab, userId, historyRange.from, historyRange.to]);
+  }, [applyMetricTabData, live, onToast, tab, userId, historyRange.from, historyRange.to]);
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      if (!live || !userId) return;
+      if (toggleBusyRef.current) return;
+
+      try {
+        const row = await fetchUser(userId);
+        if (row) {
+          const remoteSig = [
+            row.heartRateEnabled === false ? "0" : "1",
+            row.sleepTrackingEnabled === false ? "0" : "1",
+          ].join(":");
+          if (remoteSig !== userBmsSigRef.current) {
+            userBmsSigRef.current = remoteSig;
+            onUserUpdatedRef.current?.(row);
+          }
+        }
+      } catch {
+        /* silent poll */
+      }
+
+      if (tab === "steps" || tab === "heart" || tab === "sleep") {
+        if (
+          stepsGoalEditingRef.current
+          || stepsGoalSavingRef.current
+          || stepsGoalUnlockBusyRef.current
+        ) {
+          return;
+        }
+        const range = {
+          from: formatFoodDateInput(historyRange.from),
+          to: formatFoodDateInput(historyRange.to),
+        };
+        const request = tab === "steps"
+          ? fetchUserStepsTracking(userId, range)
+          : tab === "heart"
+            ? fetchUserHeartRateTracking(userId, range)
+            : fetchUserSleepTracking(userId, range);
+        const data = await request;
+        const signature = bmsTrackingPollSignature(tab, data, range);
+        if (signature !== metricSigRef.current) {
+          metricSigRef.current = signature;
+          applyMetricTabData(tab, data);
+        }
+        return;
+      }
+
+      const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
+      const kind = kindByTab[tab];
+      if (!kind || libraryBusyRef.current || pendingConfirmRef.current) return;
+
+      const [{ items }, assignments, reflectionSettings] = await Promise.all([
+        adminListWellnessLibrary(kind, null, { page: 1, limit: 200, status: "active" }),
+        canAssign ? listUserWellnessAssignments(kind, userId) : Promise.resolve([]),
+        kind === "mental" && canAssign
+          ? fetchUserDailyReflectionSettings(userId).catch(() => null)
+          : Promise.resolve(null),
+      ]);
+      const assigned = new Map((assignments || []).map((row) => [row.itemId, row.assignmentId]));
+      const reflectionAudioId = reflectionSettings?.dailyReflectionAudioId
+        ? String(reflectionSettings.dailyReflectionAudioId)
+        : null;
+      const mapped = (items || []).map((item) => ({
+        id: item.id,
+        inApp: assigned.has(item.id),
+        assignmentId: assigned.get(item.id) || "",
+        forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
+      }));
+      const signature = bmsLibraryPollSignature(kind, mapped, reflectionAudioId);
+      if (signature === librarySigRef.current) return;
+      librarySigRef.current = signature;
+      if (kind === "mental") setDailyReflectionAudioId(reflectionAudioId);
+      const setters = { mental: setMentalItems, yoga: setYogaItems, exercise: setExerciseItems };
+      setters[kind]((items || []).map((item) => ({
+        ...item,
+        inApp: assigned.has(item.id),
+        assignmentId: assigned.get(item.id) || "",
+        forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
+      })));
+    }, [
+      applyMetricTabData,
+      canAssign,
+      historyRange.from,
+      historyRange.to,
+      live,
+      tab,
+      userId,
+    ]),
+    { enabled: live && Boolean(userId) },
+  );
 
   useEffect(() => {
     const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
@@ -718,12 +851,23 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           ? String(reflectionSettings.dailyReflectionAudioId)
           : null;
         if (kind === "mental") setDailyReflectionAudioId(reflectionAudioId);
-        setters[kind]((items || []).map((item) => ({
+        const mapped = (items || []).map((item) => ({
           ...item,
           inApp: assigned.has(item.id),
           assignmentId: assigned.get(item.id) || "",
           forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
-        })));
+        }));
+        librarySigRef.current = bmsLibraryPollSignature(
+          kind,
+          mapped.map((item) => ({
+            id: item.id,
+            inApp: item.inApp,
+            assignmentId: item.assignmentId,
+            forDailyReflection: item.forDailyReflection,
+          })),
+          reflectionAudioId,
+        );
+        setters[kind](mapped);
       } catch (error) {
         if (!cancelled) onToast(error?.message || "Failed to load library");
       } finally {

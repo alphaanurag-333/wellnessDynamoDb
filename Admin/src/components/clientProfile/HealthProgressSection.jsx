@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   createCoachWeightLog,
@@ -25,6 +25,11 @@ import {
 import { fetchUserLabReports } from "../../api/onboardingApi.js";
 import { todayIsoDate } from "../../utils/adminDateLimits.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import {
+  healthProgressLogsPollSignature,
+  healthProgressSettingsPollSignature,
+} from "../../utils/clientProfileAppSync.js";
 
 const CLIENT_UPLOAD_FEATURE_KEYS = ["weightPic", "glucose", "bloodPressure", "conditionComparison"];
 
@@ -2092,6 +2097,20 @@ export function HealthProgressSection({ user, onToast }) {
   const [clientUploadBusyKey, setClientUploadBusyKey] = useState("");
   const [bulkClientUploadBusy, setBulkClientUploadBusy] = useState("");
   const loadedLogKeysRef = useRef(new Set());
+  const logsSigRef = useRef("");
+  const settingsSigRef = useRef("");
+  const logsRef = useRef(logs);
+  const hba1cReadingsRef = useRef(hba1cReadings);
+  logsRef.current = logs;
+  hba1cReadingsRef.current = hba1cReadings;
+  const savingIdRef = useRef(savingId);
+  const clientUploadBusyKeyRef = useRef(clientUploadBusyKey);
+  const bulkClientUploadBusyRef = useRef(bulkClientUploadBusy);
+  const loadingRef = useRef(loading);
+  savingIdRef.current = savingId;
+  clientUploadBusyKeyRef.current = clientUploadBusyKey;
+  bulkClientUploadBusyRef.current = bulkClientUploadBusy;
+  loadingRef.current = loading;
   const { canEdit: canReviewUploads, canDelete: canDeleteClientPhoto } = useClientSectionPermissions("health-progress");
   const canOpenClientUpload = canReviewUploads;
 
@@ -2128,6 +2147,8 @@ export function HealthProgressSection({ user, onToast }) {
       setLogs(EMPTY_LOGS);
       setHba1cReadings([]);
       loadedLogKeysRef.current = new Set();
+      logsSigRef.current = "";
+      settingsSigRef.current = "";
       return undefined;
     }
 
@@ -2135,11 +2156,14 @@ export function HealthProgressSection({ user, onToast }) {
     setLoading(true);
     setError("");
     loadedLogKeysRef.current = new Set();
+    logsSigRef.current = "";
+    settingsSigRef.current = "";
     setLogs(EMPTY_LOGS);
     setHba1cReadings([]);
     fetchHealthProgressSettings(userId)
       .then((result) => {
         if (cancelled || !result) return;
+        settingsSigRef.current = healthProgressSettingsPollSignature(result);
         setIsFemale(result.isFemale);
         setClientUpload(result.clientUpload || {});
         setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({
@@ -2221,6 +2245,10 @@ export function HealthProgressSection({ user, onToast }) {
           results.forEach((row) => {
             next[row.logKey] = row.rows;
           });
+          logsSigRef.current = healthProgressLogsPollSignature(
+            next,
+            glucose?.hba1cReadings ?? hba1cReadings,
+          );
           return next;
         });
       })
@@ -2236,6 +2264,78 @@ export function HealthProgressSection({ user, onToast }) {
       cancelled = true;
     };
   }, [userId, isMock, loading, enabledKey, onToast]);
+
+  const syncHealthProgressFromApp = useCallback(async () => {
+    if (!userId || isMock || loadingRef.current) return;
+    if (savingIdRef.current || clientUploadBusyKeyRef.current || bulkClientUploadBusyRef.current) {
+      return;
+    }
+
+    const settings = await fetchHealthProgressSettings(userId);
+    if (!settings) return;
+
+    const settingsSig = healthProgressSettingsPollSignature(settings);
+    if (settingsSig !== settingsSigRef.current) {
+      settingsSigRef.current = settingsSig;
+      setIsFemale(settings.isFemale);
+      setClientUpload(settings.clientUpload || {});
+      setTrackers(CLIENT_HEALTH_TRACKERS.map((row) => ({
+        ...row,
+        enabled: Boolean(settings.settings[row.featureKey]),
+      })));
+    }
+
+    const enabledSet = new Set(
+      CLIENT_HEALTH_TRACKERS
+        .filter((row) => Boolean(settings.settings?.[row.featureKey]))
+        .map((row) => row.featureKey),
+    );
+
+    const fetchers = [
+      { key: "weightPic", logKey: "weight", enabled: enabledSet.has("weightPic"), load: () => fetchWeightLogs(userId) },
+      { key: "glucose", logKey: "glucose", enabled: enabledSet.has("glucose"), load: () => fetchGlucoseLogs(userId) },
+      { key: "bloodPressure", logKey: "bp", enabled: enabledSet.has("bloodPressure"), load: () => fetchBloodPressureLogs(userId) },
+      { key: "menstrualCycle", logKey: "menstrual", enabled: enabledSet.has("menstrualCycle"), load: () => fetchMenstrualCycleLogs(userId) },
+      { key: "conditionComparison", logKey: "condition", enabled: enabledSet.has("conditionComparison"), load: () => fetchConditionLogs(userId) },
+    ];
+    const enabledFetchers = fetchers.filter((row) => row.enabled);
+    if (!enabledFetchers.length) return;
+
+    const results = await Promise.all(enabledFetchers.map((row) => {
+      const requests = [row.load().then((rows) => rows || [])];
+      if (row.logKey === "glucose") {
+        requests.push(
+          fetchUserLabReports(userId)
+            .then((result) => hba1cReadingsFromReports(result?.reports))
+            .catch(() => []),
+        );
+      }
+      return Promise.all(requests).then(([rows, readings]) => ({
+        logKey: row.logKey,
+        rows,
+        hba1cReadings: readings ?? null,
+      }));
+    }));
+
+    const glucose = results.find((row) => row.logKey === "glucose" && row.hba1cReadings);
+    let nextHba1c = hba1cReadingsRef.current;
+    if (glucose) nextHba1c = glucose.hba1cReadings;
+
+    const next = { ...logsRef.current };
+    results.forEach((row) => {
+      next[row.logKey] = row.rows;
+    });
+    const sig = healthProgressLogsPollSignature(next, nextHba1c);
+    if (sig === logsSigRef.current) return;
+    logsSigRef.current = sig;
+    setLogs(next);
+    if (glucose) setHba1cReadings(glucose.hba1cReadings);
+  }, [isMock, userId]);
+
+  useVisibilityAwarePoll(
+    syncHealthProgressFromApp,
+    { enabled: Boolean(userId) && !isMock && !loading },
+  );
 
   useEffect(() => {
     if (trackingFilter === "all") return undefined;
@@ -2284,6 +2384,7 @@ export function HealthProgressSection({ user, onToast }) {
     try {
       const result = await updateHealthProgressSettings(userId, { [tracker.featureKey]: nextEnabled });
       if (result?.settings) {
+        settingsSigRef.current = healthProgressSettingsPollSignature(result);
         setIsFemale(result.isFemale);
         if (result.clientUpload) setClientUpload(result.clientUpload);
         setTrackers((list) => list.map((row) => ({
@@ -2310,6 +2411,7 @@ export function HealthProgressSection({ user, onToast }) {
     }
     const result = await patchHealthProgressClientUpload(userId, updates);
     if (result?.clientUpload) {
+      settingsSigRef.current = healthProgressSettingsPollSignature(result);
       setClientUpload(result.clientUpload);
       onToast?.(successMessage);
     } else {
@@ -2394,7 +2496,11 @@ export function HealthProgressSection({ user, onToast }) {
     if (!userId || isMock) return;
     try {
       const rows = await fetchWeightLogs(userId);
-      setLogs((prev) => ({ ...prev, weight: rows || [] }));
+      setLogs((prev) => {
+        const next = { ...prev, weight: rows || [] };
+        logsSigRef.current = healthProgressLogsPollSignature(next, hba1cReadingsRef.current);
+        return next;
+      });
     } catch (err) {
       onToast?.(err.message || "Could not refresh weight logs");
     }
@@ -2411,7 +2517,11 @@ export function HealthProgressSection({ user, onToast }) {
     if (!load) return;
     try {
       const { logKey, rows } = await load();
-      setLogs((prev) => ({ ...prev, [logKey]: rows }));
+      setLogs((prev) => {
+        const next = { ...prev, [logKey]: rows };
+        logsSigRef.current = healthProgressLogsPollSignature(next, hba1cReadingsRef.current);
+        return next;
+      });
     } catch (err) {
       onToast?.(err.message || "Could not refresh health progress logs");
     }

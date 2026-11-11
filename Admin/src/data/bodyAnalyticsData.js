@@ -25,6 +25,26 @@ const ACTIVITY_MULTIPLIERS = {
   extra_active: 1.9,
 };
 
+/** Matches client app Body Measurement activity options (stored as snake_case in DynamoDB). */
+const ACTIVITY_LEVEL_LABELS = {
+  sedentary: "Sedentary",
+  lightly_active: "Lightly Active",
+  moderately_active: "Moderately Active",
+  highly_active: "Highly Active",
+};
+
+function normalizeActivityLevelKey(value) {
+  if (value == null || value === "") return null;
+  const key = String(value).toLowerCase().trim().replace(/[\s-]+/g, "_");
+  return Object.prototype.hasOwnProperty.call(ACTIVITY_LEVEL_LABELS, key) ? key : null;
+}
+
+export function formatActivityLevelLabel(value) {
+  const key = normalizeActivityLevelKey(value);
+  if (!key) return null;
+  return ACTIVITY_LEVEL_LABELS[key];
+}
+
 const MEASURE_FIELDS = [
   { label: "Height", field: "heightCm" },
   { label: "Weight", field: "weightKg", kind: "weight" },
@@ -34,6 +54,7 @@ const MEASURE_FIELDS = [
   { label: "Waist", field: "waistCm" },
   { label: "Hip", field: "hipCm" },
   { label: "Thighs", field: "thighsCm" },
+  { label: "Active Level", field: "activityLevel", kind: "activity" },
 ];
 
 const METABOLIC_FIELDS = [
@@ -299,11 +320,33 @@ function latestMetricValueByPeriod(records, mode, field, readValue = (row) => ro
   return values;
 }
 
+function latestStringValueByPeriod(records, mode, field, readValue = (row) => row?.[field]) {
+  const values = {};
+  const sorted = [...(records || [])].sort((a, b) =>
+    String(b.recordedAt || b.createdAt || "").localeCompare(String(a.recordedAt || a.createdAt || "")),
+  );
+  for (const row of sorted) {
+    const key = periodKey(row.recordedAt || row.createdAt, mode);
+    const raw = readValue(row);
+    const label = formatActivityLevelLabel(raw);
+    if (key && values[key] == null && label) {
+      values[key] = label;
+    }
+  }
+  return values;
+}
+
 export function buildMeasurementRows(records, mode, unit, columns) {
   const lengthSuffix = unit === "cm" ? "cm" : "in";
   const weightSuffix = unit === "cm" ? "kg" : "lb";
 
   return MEASURE_FIELDS.map((spec) => {
+    if (spec.kind === "activity") {
+      const history = latestStringValueByPeriod(records, mode, spec.field);
+      const values = columns.map((column) => history[column] || "-");
+      return { label: spec.label, values, delta: "-", tone: "neutral" };
+    }
+
     const history = latestMetricValueByPeriod(records, mode, spec.field, (row) => (
       spec.kind === "weight" ? weightToKg(row) : lengthCm(row, spec.field)
     ));

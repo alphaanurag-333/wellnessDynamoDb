@@ -175,20 +175,60 @@ function resolveGoalWeightKg(startKg, heightCm) {
   return defaultGoal;
 }
 
-function classifyFatLoss({ startKg, currentKg, heightCm }) {
+const FAT_LOSS_CONCERN_RE = /\b(fat loss|weight loss|fatloss)\b/i;
+
+function healthConcernIdOf(user) {
+  const raw = user?.primaryHealthConcern;
+  if (raw && typeof raw === "object") {
+    return String(raw.id || raw._id || "").trim();
+  }
+  return String(raw || "").trim();
+}
+
+function isFatLossConcernTitle(title) {
+  return FAT_LOSS_CONCERN_RE.test(String(title || "").trim());
+}
+
+function buildFatLossConcernIdSet(catalog) {
+  const ids = new Set();
+  for (const row of catalog || []) {
+    if (!isFatLossConcernTitle(row?.title)) continue;
+    const id = String(row?.id || row?._id || "").trim();
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
+function isPurchasedProgram(user) {
+  const value = user?.programPurchased;
+  return value === true || value === "true" || value === 1;
+}
+
+function isFatLossPrimaryConcern(user, fatLossConcernIds) {
+  if (!fatLossConcernIds?.size) return false;
+  if (!isPurchasedProgram(user)) return false;
+  const concernId = healthConcernIdOf(user);
+  return Boolean(concernId && fatLossConcernIds.has(concernId));
+}
+
+function classifyFatLoss({ startKg, currentKg, heightCm, goalKg: coachGoalKg }) {
   const start = toNumberOrNull(startKg);
   const current = toNumberOrNull(currentKg);
   if (start == null || current == null) {
     return { down610: false, halfway: false, neartarget: false, lost: null, goalKg: null };
   }
   const lost = round1(start - current);
-  const goalKg = resolveGoalWeightKg(start, heightCm);
-  const toGo = round1(current - goalKg);
-  const targetDrop = Math.max(0.1, start - goalKg);
+  const customGoal = toNumberOrNull(coachGoalKg);
+  const hasCoachGoal = customGoal != null && customGoal > 0;
+  const goalKg = hasCoachGoal ? round1(customGoal) : null;
+  const toGo = hasCoachGoal ? round1(current - goalKg) : null;
+  const targetDrop = hasCoachGoal ? Math.max(0.1, start - goalKg) : null;
   return {
+    // 6–10 kg down uses start vs actual only; coach target is not required.
     down610: lost >= FAT_DOWN_MIN_KG && lost <= FAT_DOWN_MAX_KG,
-    halfway: lost >= targetDrop * 0.5 && toGo > FAT_NEAR_TARGET_KG,
-    neartarget: lost > 0 && toGo <= FAT_NEAR_TARGET_KG,
+    halfway:
+      hasCoachGoal && lost >= targetDrop * 0.5 && toGo > FAT_NEAR_TARGET_KG,
+    neartarget: hasCoachGoal && lost > 0 && toGo <= FAT_NEAR_TARGET_KG,
     lost,
     goalKg,
   };
@@ -228,6 +268,20 @@ function firstAndLastNumeric(rows, readValue) {
     startRow,
     currentRow,
   };
+}
+
+/** Earliest vs latest weight from health-progress logs and body measurements (kg). */
+function resolveWeightSeriesForUser(weightRows, bodyRows) {
+  const weights = [...(weightRows || []), ...(bodyRows || [])];
+  const readWeight = (row) => toKg(row.weightKg, row.weightUnit);
+  const series = firstAndLastNumeric(weights, readWeight);
+  if (series.start == null || series.current == null) {
+    return { startKg: null, actualKg: null, skip: true };
+  }
+  if (series.start === series.current && weights.length < 2) {
+    return { startKg: series.start, actualKg: series.current, skip: true };
+  }
+  return { startKg: series.start, actualKg: series.current, skip: false };
 }
 
 function metricRow({ user, coachName, start, current, change }) {
@@ -392,10 +446,16 @@ module.exports = {
   buildOnboardingRow,
   idealWeightKg,
   resolveGoalWeightKg,
+  healthConcernIdOf,
+  isFatLossConcernTitle,
+  buildFatLossConcernIdSet,
+  isPurchasedProgram,
+  isFatLossPrimaryConcern,
   classifyFatLoss,
   looksLikeA1cSeries,
   classifyHba1c,
   firstAndLastNumeric,
+  resolveWeightSeriesForUser,
   metricRow,
   isHba1cMarker,
   parseMarkerNumericValue,

@@ -209,6 +209,26 @@ function getDailyMealGoal(user) {
   return normalizeDailyMealGoal(user?.dailyMealGoal, DAILY_MEAL_GOAL_DEFAULT);
 }
 
+const TARGET_WEIGHT_KG_MIN = 25;
+const TARGET_WEIGHT_KG_MAX = 300;
+
+function normalizeTargetWeightKg(value) {
+  if (value === null) return null;
+  if (value === undefined) return undefined;
+  if (typeof value === "string" && value.trim() === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new Error("targetWeightKg must be a number");
+  }
+  const rounded = Math.round(n * 10) / 10;
+  if (rounded < TARGET_WEIGHT_KG_MIN || rounded > TARGET_WEIGHT_KG_MAX) {
+    throw new Error(
+      `targetWeightKg must be between ${TARGET_WEIGHT_KG_MIN} and ${TARGET_WEIGHT_KG_MAX}`
+    );
+  }
+  return rounded;
+}
+
 function extractWellnessJourneyToken(entry) {
   if (entry == null) return "";
   if (typeof entry === "string" || typeof entry === "number") {
@@ -489,6 +509,7 @@ function sanitizeUpdateField(key, value) {
   if (key === "dietaryPreference") return normalizeDietaryPreference(value);
   if (key === "mealTrackingMode") return normalizeMealTrackingMode(value);
   if (key === "dailyMealGoal") return normalizeDailyMealGoal(value);
+  if (key === "targetWeightKg") return normalizeTargetWeightKg(value);
   if (key === "healthProgressFeatures") return normalizeHealthProgressFeatures(value);
   if (key === "healthProgressClientUpload") return normalizeHealthProgressClientUpload(value);
   if (key === "wellnessJourneyFor") return normalizeWellnessJourneyFor(value);
@@ -1897,6 +1918,7 @@ module.exports = {
   normalizeDietaryPreference,
   normalizeMealTrackingMode,
   normalizeDailyMealGoal,
+  normalizeTargetWeightKg,
   getDailyMealGoal,
   DAILY_MEAL_GOAL_DEFAULT,
   normalizeHealthProgressFeatures,

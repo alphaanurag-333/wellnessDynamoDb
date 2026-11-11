@@ -547,7 +547,7 @@ export function onboardingStatusSyncSignature(stepStatus) {
 }
 
 /** Returns a profile row when API onboarding fields differ from the current user; otherwise null. */
-export function mapUserRowWithOnboardingSync(user, apiPayload, index = 0) {
+export function mapUserRowWithOnboardingSync(user, apiPayload) {
   if (!apiPayload?.paidOnboardingStepStatus) return null;
   const completed = Boolean(apiPayload.paidOnboardingCompleted);
   const dataReady = apiPayload.bodyAnalyticsClientDataReady;
@@ -560,15 +560,24 @@ export function mapUserRowWithOnboardingSync(user, apiPayload, index = 0) {
   ) {
     return null;
   }
-  return mapApiUserToRow(
-    {
-      ...user,
-      paidOnboardingStepStatus: apiPayload.paidOnboardingStepStatus,
-      paidOnboardingCompleted: completed,
-      ...(dataReady !== undefined ? { bodyAnalyticsClientDataReady: Boolean(dataReady) } : {}),
-    },
-    user?.n ? user.n - 1 : index,
+  // Patch onboarding fields on the existing profile row — do not re-run mapApiUserToRow on UI rows
+  // (they use subscriptionDays, tier labels, etc., and would lose subscription days and other fields).
+  const paidOnboardingStepStatus = normalizeOnboardingStepStatus(
+    apiPayload.paidOnboardingStepStatus,
   );
+  const onboardingDone = countOnboardingDone(paidOnboardingStepStatus);
+  const onboardingTotal = user?.onboardingTotal ?? PAID_ONBOARDING_STATUS_KEYS.length;
+  return {
+    ...user,
+    paidOnboardingStepStatus,
+    paidOnboardingCompleted: completed,
+    onboardingDone,
+    onboardingTotal,
+    onboardingPct: onboardingTotal > 0
+      ? Math.round((onboardingDone / onboardingTotal) * 100)
+      : 0,
+    ...(dataReady !== undefined ? { bodyAnalyticsClientDataReady: Boolean(dataReady) } : {}),
+  };
 }
 
 /** Next incomplete paid-onboarding step label, or empty when complete/unknown. */
@@ -754,6 +763,10 @@ export function mapApiUserToRow(user, index = 0) {
     })(),
     heartRateEnabled: user?.heartRateEnabled !== false,
     sleepTrackingEnabled: user?.sleepTrackingEnabled !== false,
+    targetWeightKg: (() => {
+      const n = Number(user?.targetWeightKg);
+      return Number.isFinite(n) ? n : null;
+    })(),
     bodyMeasurementEnabled: resolveBodyMeasurementClientEnabled(user),
     bodyMeasurementEnabledRaw:
       user?.bodyMeasurementEnabled === true
@@ -1063,10 +1076,24 @@ export async function fetchUserBodyAnalytics(id) {
       ...analytics,
       bodyMeasurementEnabled: data.bodyMeasurementEnabled,
       progressPhotosInAppEnabled: data.progressPhotosInAppEnabled,
+      targetWeightKg: data.targetWeightKg ?? null,
       paidOnboardingStepStatus: data.paidOnboardingStepStatus,
       paidOnboardingCompleted: data.paidOnboardingCompleted,
       completedStepsCount: data.completedStepsCount,
     };
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function patchUserTargetWeight(userId, { targetWeightKg } = {}) {
+  try {
+    const { data } = await api.patch(
+      `/account/users/${encodeURIComponent(userId)}/body-analytics/target-weight`,
+      { targetWeightKg },
+      { headers: authHeader() },
+    );
+    return data;
   } catch (error) {
     normalizeApiError(error);
   }
