@@ -27,12 +27,14 @@ import {
   moveUserToSeek,
   moveMaintenanceUserToHeal,
   updateUserPersonalDetails,
+  fetchUser,
   GENDER_UI_OPTIONS,
   isGirlOnlyHealthConcern,
   toApiGender,
   parseWellnessJourneyTokens,
   formatWellnessJourneyDisplay,
 } from "../../api/usersApi.js";
+import { patchUserReferralUsed } from "../../api/referralTreeApi.js";
 import {
   PERSON_NAME_MAX_LEN,
   blockPersonNameDigitKeyDown,
@@ -228,6 +230,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const [saveBusy, setSaveBusy] = useState(false);
   const [goalOptions, setGoalOptions] = useState([]);
   const [form, setForm] = useState(() => formFromUser(user));
+  const [referralUsedInput, setReferralUsedInput] = useState(() => String(user?.referredByCode || "").trim());
 
   useEffect(() => {
     if (!canStartEdit && editing) setEditing(false);
@@ -236,6 +239,10 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   useEffect(() => {
     if (!editing) setForm(formFromUser(user));
   }, [user, editing]);
+
+  useEffect(() => {
+    setReferralUsedInput(String(user?.referredByCode || "").trim());
+  }, [user?.id, user?.referredByCode]);
 
   useEffect(() => {
     if (!editing || toApiGender(form.gender) === "female") return;
@@ -296,13 +303,16 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   const userReferralCode = String(user?.referralCode || "").trim();
   const usedReferralCode = String(user?.referredByCode || "").trim();
+  const showReferralUsedRow = Boolean(isAdminView) || Boolean(usedReferralCode);
+  const canEditReferralUsed = !archived && Boolean(isAdminView) && can("console.cl.edit");
   const fields = [
     { key: "name", label: "Full name", editable: canEditPii },
     { key: "dob", label: "Date of birth", editable: canEditPii },
     { key: "gender", label: "Gender", editable: canEditPii },
     { key: "email", label: "Email", value: user.email, editable: false },
     { key: "phone", label: "Phone", editable: canEditPii },
-    { key: "whatsapp", label: "WhatsApp", editable: canEditPii },
+    // WhatsApp is verified in the client app (OTP); never editable from the console.
+    { key: "whatsapp", label: "WhatsApp", editable: false },
     { key: "address", label: "Complete address", editable: canEditPii },
     { key: "state", label: "State", editable: false },
     { key: "tier", label: "Plan / tier", value: displayTierLabel, editable: false },
@@ -312,7 +322,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     { key: "coach", label: "Assigned coach", value: user.coach, editable: false },
     { key: "joined", label: "Joined", value: user.joined, editable: false },
     { key: "referralCode", label: "Referral code", value: userReferralCode || "—", editable: false },
-    ...(usedReferralCode
+    ...(showReferralUsedRow
       ? [{ key: "referredByCode", label: "Referral code used", value: usedReferralCode, editable: false }]
       : []),
     { key: "termsIp", label: "Terms & conditions IP", value: user.termsIp, editable: false },
@@ -321,6 +331,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
 
   function cancelEdit() {
     setForm(formFromUser(user));
+    setReferralUsedInput(String(user?.referredByCode || "").trim());
     setEditing(false);
   }
 
@@ -351,6 +362,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       try {
         const updated = await updateUserPersonalDetails(userId, payload);
         onUserUpdated?.(updated);
+        setReferralUsedInput(String(updated?.referredByCode || user?.referredByCode || "").trim());
         setEditing(false);
         onToast("Personal details saved");
       } catch (err) {
@@ -392,28 +404,11 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       }
     }
 
-    const whatsappParts = parsePhoneDisplay(form.whatsapp);
-    if (form.whatsapp.trim()) {
-      const whatsappError = validatePhoneDigits(whatsappParts.phone, {
-        label: "WhatsApp",
-        countryCode: whatsappParts.phoneCountryCode,
-      });
-      if (whatsappError) {
-        onToast(whatsappError);
-        return;
-      }
-    }
-
     const dobIso = parseDateOfBirthIso(form.dob) || dobToInputValue(form.dob);
     const { state, country } = parseStateField(form.state, user.country);
-    const sameWhatsapp = !form.whatsapp.trim() || phonesEqual(form.phone, form.whatsapp);
-    const whatsappUnchanged = phonesEqual(form.whatsapp, user.whatsapp)
-      || (!form.whatsapp.trim() && !String(user.whatsapp || "").trim());
-
-    if (!sameWhatsapp && !whatsappUnchanged) {
-      onToast("WhatsApp number changes require OTP verification on the client app");
-      return;
-    }
+    // WhatsApp is not editable here; only compare edited phone to stored WhatsApp for same-mobile handling.
+    const sameWhatsapp =
+      !String(user.whatsapp || "").trim() || phonesEqual(form.phone, user.whatsapp);
 
     payload.name = name;
     payload.dob = dobIso || null;
@@ -434,7 +429,28 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     setSaveBusy(true);
     try {
       const updated = await updateUserPersonalDetails(userId, payload);
-      onUserUpdated?.(updated);
+      let merged = updated;
+
+      if (canEditReferralUsed) {
+        const newCode = String(referralUsedInput || "").trim();
+        const prevUpper = usedReferralCode.toUpperCase();
+        if (newCode && newCode.toUpperCase() !== prevUpper) {
+          try {
+            await patchUserReferralUsed(userId, newCode);
+            const row = await fetchUser(userId);
+            if (row) merged = row;
+          } catch (err) {
+            onToast(err?.message || "Could not update referral code used");
+            onUserUpdated?.(updated);
+            setReferralUsedInput(String(updated?.referredByCode || "").trim());
+            setEditing(false);
+            return;
+          }
+        }
+      }
+
+      onUserUpdated?.(merged);
+      setReferralUsedInput(String(merged?.referredByCode || "").trim());
       setEditing(false);
       onToast("Personal details saved");
     } catch (err) {
@@ -547,7 +563,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       return (
         <input
           type="date"
-          className="ua-cp-field__input ua-cp-field__input--date"
+          className="ua-cp-field__input ua-cp-field__input--date ua-cp-field__input--inline ua-cp-field__input--inline--date"
           value={dobToInputValue(form.dob)}
           min={minAllowedDobIso()}
           max={maxAllowedDobIso()}
@@ -627,7 +643,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     if (f.key === "name") {
       return (
         <input
-          className="ua-cp-field__input"
+          className="ua-cp-field__input ua-cp-field__input--inline"
           value={form.name ?? ""}
           maxLength={PERSON_NAME_MAX_LEN}
           disabled={saveBusy}
@@ -638,7 +654,7 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     }
     return (
       <input
-        className="ua-cp-field__input"
+        className="ua-cp-field__input ua-cp-field__input--inline"
         value={form[f.key] ?? ""}
         disabled={saveBusy}
         onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
@@ -752,10 +768,22 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
         {fields.map((f) => {
           const val = fieldValue(f);
           const empty = !String(val || "").trim();
+          const isReferralUsedEditor = f.key === "referredByCode" && canEditReferralUsed && editing;
           return (
-            <div key={f.label} className={`ua-cp-field${empty ? " ua-cp-field--empty" : ""}`}>
+            <div key={f.label} className={`ua-cp-field${empty && !isReferralUsedEditor ? " ua-cp-field--empty" : ""}`}>
               <span className="ua-cp-field__label">{f.label}</span>
-              {editing && f.editable ? renderEditControl(f) : (
+              {isReferralUsedEditor ? (
+                <input
+                  type="text"
+                  className="ua-cp-field__input ua-cp-field__input--inline"
+                  value={referralUsedInput}
+                  disabled={saveBusy}
+                  placeholder="Referral code"
+                  autoComplete="off"
+                  spellCheck="false"
+                  onChange={(e) => setReferralUsedInput(e.target.value)}
+                />
+              ) : editing && f.editable ? renderEditControl(f) : (
                 <span className="ua-cp-field__value">{val || "Not submitted"}</span>
               )}
             </div>

@@ -49,6 +49,7 @@ const {
   getReferralCodeRecord,
   normalizeReferralCode,
   reassignReferralCodeEntity,
+  deleteReferralCodeRecord,
 } = require("../../models/referralCodeModel");
 const {
   assertValidPersonName,
@@ -392,6 +393,61 @@ async function adoptClientReferralCodeForStaff({
 }
 
 /**
+ * Align ReferralCode registry with Account when an admin changes a WC/AWC code from the Teams UI.
+ * Registers the new code before removing the old registry row (same account only).
+ */
+async function syncStaffReferralCodeRegistry(account, nextCode, { ownerCoachIdHint } = {}) {
+  const roleKey = primaryAccountRoleKey(account);
+  if (!REFERRAL_STAFF_ROLES.has(roleKey)) {
+    throw new AppError("Referral code can only be set for Wellness Coach and Assistant WC", 400);
+  }
+
+  const code = normalizeReferralCode(nextCode);
+  if (!code) {
+    throw new AppError("Referral code is required", 400);
+  }
+
+  const oldCode = normalizeReferralCode(account.referralCode);
+  if (oldCode === code) return;
+
+  const targetRecord = await getReferralCodeRecord(code);
+  if (targetRecord) {
+    const sameStaff =
+      targetRecord.entityType === roleKey &&
+      String(targetRecord.entityId || "").trim() === String(account.id || "").trim();
+    if (!sameStaff) {
+      throw new AppError("This referral code is already in use", 409);
+    }
+  } else {
+    const hinted = String(ownerCoachIdHint || "").trim();
+    const ownerCoachId =
+      roleKey === "wellness_coach"
+        ? String(account.id || "").trim()
+        : hinted || String(account.parentAccountId || "").trim();
+    if (roleKey === "assistant_wellness_coach" && !ownerCoachId) {
+      throw new AppError("Set Reports To (parent coach) before assigning a referral code", 400);
+    }
+    await registerReferralCode({
+      referralCode: code,
+      entityType: roleKey,
+      entityId: account.id,
+      ownerCoachId,
+    });
+  }
+
+  if (oldCode && oldCode !== code) {
+    const previous = await getReferralCodeRecord(oldCode);
+    const ownedByThisAccount =
+      previous &&
+      previous.entityType === roleKey &&
+      String(previous.entityId || "").trim() === String(account.id || "").trim();
+    if (ownedByThisAccount) {
+      await deleteReferralCodeRecord(oldCode);
+    }
+  }
+}
+
+/**
  * Create a staff Account (Teams page).
  * Body: name, email, whatsappPhone (or phone), whatsappCountryCode?, mobilePhone?, mobileCountryCode?, password?,
  *       roleKey (ui/account) and/or consoleRoleId (Access Control role id),
@@ -571,8 +627,10 @@ exports.createAccountHandler = asyncHandler(async (req, res) => {
 
 /**
  * Update a staff Account profile (Teams page).
- * Body: name?, email?, whatsappPhone?|phone?, whatsappCountryCode?, mobilePhone?, mobileCountryCode?,
- *       approvalStatus?|memberStatus? (Active|Pending)
+ * Body: name?, email?, mobilePhone?, mobileCountryCode?,
+ *       approvalStatus?|memberStatus? (Active|Pending), referralCode? (WC/AWC only — updates registry + account)
+ *
+ * Primary / WhatsApp number is not updated here (OTP verification lives in the member flow).
  */
 exports.updateAccountHandler = asyncHandler(async (req, res) => {
   if (!hasPermission(req.auth, "console.tm.edit")) {
@@ -598,6 +656,7 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
     approvalStatus,
     memberStatus,
     displayStatus,
+    referralCode: referralCodeBody,
   } = req.body || {};
   const updates = {};
 
@@ -614,23 +673,6 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
       }
     }
     updates.email = normalized;
-  }
-
-  const whatsappInput = readWhatsappInput(req.body);
-  if (whatsappInput.countryCode !== undefined) {
-    updates.phoneCountryCode = normalizeCountryCode(whatsappInput.countryCode);
-  }
-
-  if (whatsappInput.provided) {
-    const nextPhone = whatsappInput.phone ? normalizePhone(whatsappInput.phone) : null;
-    if (!nextPhone) throw new AppError("WhatsApp number is required", 400);
-    const nextCc = updates.phoneCountryCode || account.phoneCountryCode || "+91";
-    assertValidMobile(nextPhone, { field: "WhatsApp number", countryCode: nextCc });
-    updates.phone = nextPhone;
-    const existingPhone = await getAccountByPhone(nextCc, nextPhone);
-    if (existingPhone && existingPhone.id !== account.id) {
-      throw new AppError("An account already exists with this WhatsApp number", 409);
-    }
   }
 
   const mobileInput = readMobileInput(req.body);
@@ -677,6 +719,15 @@ exports.updateAccountHandler = asyncHandler(async (req, res) => {
       await deleteStoredMedia(account.profileImage);
     }
     updates.profileImage = key;
+  }
+
+  if (referralCodeBody !== undefined && referralCodeBody !== null) {
+    const nextReferral = normalizeReferralCode(referralCodeBody);
+    const parentHint = req.body?.parentAccountId ?? req.body?.parent_account_id;
+    const ownerCoachIdHint =
+      parentHint !== undefined && parentHint !== null ? String(parentHint).trim() : "";
+    await syncStaffReferralCodeRegistry(account, nextReferral, { ownerCoachIdHint });
+    updates.referralCode = nextReferral;
   }
 
   const uploadedKey = await uploadFileFromRequest(req, "account");

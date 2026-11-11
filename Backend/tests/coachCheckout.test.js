@@ -8,6 +8,7 @@ const {
   getExpiredCoachCheckoutOffer,
   toPublicCoachProgramOffer,
   resolveBundledSubscription,
+  resolveBundledFySubscription,
   canActorTriggerCheckout,
   deriveCheckoutCoachIds,
   isPendingCheckoutOrderReusable,
@@ -130,6 +131,7 @@ describe("coach program offer DTO", () => {
       productType: "program",
       itemId: "diabetes",
       itemName: "Diabetes Reversal",
+      programType: null,
       amount: 29999,
       discountPercent: 10,
       discountLabel: "standard",
@@ -137,6 +139,7 @@ describe("coach program offer DTO", () => {
       linkValidity: "48 hours",
       expiresAt: "2026-08-18T12:00:00.000Z",
       appHealValidity: "1 year",
+      catalogProgramType: null,
       bundledSubscription: null,
       transactionId: "txn-9",
       payable: true,
@@ -171,21 +174,42 @@ describe("coach program offer DTO", () => {
     });
   });
 
-  it("bundles complimentary FY subscription by default and supports multi-year offsets", () => {
-    const one = resolveBundledSubscription({ energy_exchange_monthly_amount: 200 }, {});
+  it("requires appSubscriptionDurationPresetId when bundling app subscription", () => {
+    assert.throws(
+      () => resolveBundledSubscription({ energy_exchange_monthly_amount: 200 }, {}),
+      /appSubscriptionDurationPresetId is required/,
+    );
+  });
+
+  it("bundles complimentary duration-based app subscription from preset id", () => {
+    const bundle = resolveBundledSubscription(
+      { energy_exchange_monthly_amount: 200 },
+      { appSubscriptionDurationPresetId: "1y" },
+    );
+    assert.equal(bundle.kind, "duration_energy_exchange");
+    assert.equal(bundle.durationPresetId, "1y");
+    assert.equal(bundle.durationUnit, "years");
+    assert.equal(bundle.durationAmount, 1);
+    assert.match(bundle.itemName, /App subscription/);
+    assert.equal(bundle.monthlyAmount, 200);
+    assert.equal(bundle.includedInProgramPrice, true);
+
+    const off = resolveBundledSubscription({}, { includeAppSubscription: false });
+    assert.equal(off, null);
+  });
+
+  it("resolveBundledFySubscription supports legacy multi-year offsets", () => {
+    const one = resolveBundledFySubscription({ energy_exchange_monthly_amount: 200 }, {});
     assert.deepEqual(one.fyOffsets, [0]);
     assert.equal(one.itemId, "fy-current");
 
-    const three = resolveBundledSubscription(
+    const three = resolveBundledFySubscription(
       { energy_exchange_monthly_amount: 200 },
       { fyYearCount: 3 },
     );
     assert.deepEqual(three.fyOffsets, [0, 1, 2]);
     assert.equal(three.itemId, "fy-3y");
     assert.match(three.itemName, /3 financial year/);
-
-    const off = resolveBundledSubscription({}, { includeAppSubscription: false });
-    assert.equal(off, null);
   });
 
   it("prefers the pending offer over a catalog assignment on GET", () => {

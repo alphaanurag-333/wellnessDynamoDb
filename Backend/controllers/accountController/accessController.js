@@ -1131,6 +1131,22 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       /* keep fallback meta */
     }
 
+    let referralCode = pub.referralCode || null;
+    if (!referralCode && REFERRAL_STAFF_ROLES.has(primaryAccountRole)) {
+      try {
+        referralCode = await ensureEntityReferralCode({
+          tableName: "Account",
+          entityType: primaryAccountRole,
+          entityId: pub.id,
+          ownerCoachId:
+            primaryAccountRole === "wellness_coach" ? pub.id : parentAccountId || "pending",
+          referralCode: null,
+        });
+      } catch (err) {
+        console.error("[fetchAccessMembers] ensure referral code failed", err.message);
+      }
+    }
+
     const approval = String(pub.approvalStatus || "").toLowerCase();
     const displayStatus =
       pub.status === "inactive"
@@ -1149,6 +1165,7 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
       state: pub.state || null,
       city: pub.city || null,
       bio: pub.bio || null,
+      referralCode,
       phone: pub.phone || null,
       phoneCountryCode: pub.phoneCountryCode || null,
       whatsappPhone: pub.whatsappPhone || pub.phone || null,

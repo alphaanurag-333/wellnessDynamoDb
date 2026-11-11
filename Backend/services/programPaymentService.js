@@ -39,7 +39,10 @@ const {
 } = require("./coachCheckoutService");
 const { applyPaidSubscriptionOutcome } = require("./subscriptionPaymentService");
 const { resolveSubscriptionPlanForPayment } = require("./subscriptionCategoryService");
-const { grantBundledFyAppSubscription } = require("./energyExchangeEntitlementService");
+const {
+  grantBundledFyAppSubscription,
+  grantBundledDurationAppSubscription,
+} = require("./energyExchangeEntitlementService");
 const {
   buildEaglePaidOnboardingCompleteUpdates,
 } = require("../utils/paidOnboardingHelpers");
@@ -445,14 +448,17 @@ async function applyPaidProgramEntitlements(user, transaction, paidAt) {
 
   const bundled = transaction?.userSnapshot?.bundledSubscription;
   if (bundled?.enabled && !isEagle) {
+    const isDurationBundle = bundled.kind === "duration_energy_exchange";
     const isFyBundle =
       bundled.kind === "fy_energy_exchange" ||
       bundled.itemId === "fy-current" ||
       (!bundled.days && Array.isArray(bundled.fyOffsets));
 
-    if (isFyBundle || bundled.itemId || bundled.itemName) {
+    if (isDurationBundle || isFyBundle || bundled.itemId || bundled.itemName) {
       const latest = await getUserById(user.id);
-      if (isFyBundle || bundled.kind === "fy_energy_exchange" || bundled.itemId === "fy-current") {
+      if (isDurationBundle) {
+        await grantBundledDurationAppSubscription(latest || refreshed, transaction, bundled, paidAt);
+      } else if (isFyBundle || bundled.kind === "fy_energy_exchange" || bundled.itemId === "fy-current") {
         await grantBundledFyAppSubscription(latest || refreshed, transaction, bundled);
       } else {
         const plan = await resolveSubscriptionPlanForPayment({

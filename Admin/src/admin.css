@@ -15573,6 +15573,18 @@
   background: #fff;
 }
 
+/* Full-row flex stretching makes width:100% inputs look like huge empty bars; size to content on the value side. */
+.updated-admin .ua-cp-personal .ua-cp-field__input--inline {
+  width: auto;
+  max-width: min(100%, 22rem);
+  min-width: 0;
+  justify-self: end;
+}
+
+.updated-admin .ua-cp-personal .ua-cp-field__input--inline--date {
+  max-width: min(100%, 11.25rem);
+}
+
 .updated-admin .ua-cp-nutritions {
   min-width: 0;
   max-width: 100%;
@@ -66176,6 +66188,11 @@ scrollbar-width: thin;
   .updated-admin .ua-cp-personal .ua-cp-field__value,
   .updated-admin .ua-cp-personal .ua-cp-field__input {
     text-align: left;
+  }
+
+  .updated-admin .ua-cp-personal .ua-cp-field__input--inline {
+    justify-self: start;
+    max-width: 100%;
   }
 
   .updated-admin .ua-cp-personal .ua-cp-field__input--select {

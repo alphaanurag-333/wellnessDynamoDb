@@ -14,6 +14,9 @@ const {
 const {
   buildFyPlansForProgram,
 } = require("./energyExchangePricingService");
+const { addDurationFromIso } = require("../utils/exchangeSubscriptionDurationMath");
+const { getBundledSubscriptionPresetById } = require("../utils/exchangeSubscriptionDurationPresets");
+const { maxEndsAtCoveringPaidAt, parseInstantMs } = require("../utils/exchangeSubscriptionCoverage");
 
 /**
  * Ensure the user has an enabled Energy Exchange program (for FY app subscription).
@@ -202,8 +205,75 @@ async function grantBundledFyAppSubscription(user, transaction, bundled) {
   return { program, subscriptions: created };
 }
 
+/**
+ * Grant fixed-duration Energy Exchange subscription bundled into program checkout.
+ * Starts at payment time, or when current access ends if still covered then.
+ */
+async function grantBundledDurationAppSubscription(user, transaction, bundled, paidAtIso) {
+  if (!bundled?.enabled) return null;
+
+  const preset =
+    bundled.durationPresetId != null
+      ? getBundledSubscriptionPresetById(bundled.durationPresetId)
+      : null;
+  if (!preset) {
+    const err = new Error("Invalid app subscription duration preset");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const latest = (await getUserById(user.id)) || user;
+  const program = await ensureEnergyExchangeProgramForUser(latest);
+  if (!program) return null;
+
+  const paidAt = paidAtIso || new Date().toISOString();
+  const paidAtMs = parseInstantMs(paidAt);
+  if (!Number.isFinite(paidAtMs)) {
+    const err = new Error("Invalid paidAt for duration subscription");
+    err.name = "ValidationError";
+    throw err;
+  }
+
+  const existing = await listSubscriptionsByUserId(latest.id, { page: 1, limit: 500 });
+  const items = existing.items || [];
+
+  const coveringEndMs = maxEndsAtCoveringPaidAt(items, paidAtMs);
+  const startsAtIso = coveringEndMs != null
+    ? new Date(Math.max(paidAtMs, coveringEndMs)).toISOString()
+    : paidAt;
+
+  const endsAtIso = addDurationFromIso(startsAtIso, preset.unit, preset.amount);
+  const now = new Date().toISOString();
+
+  const sub = await createSubscription({
+    userId: latest.id,
+    programId: program.id,
+    transactionId: transaction?.id || null,
+    fyStartYear: 0,
+    monthsCovered: 0,
+    monthlyRate: Number(program.monthlyAmount) || 0,
+    discountPercent: 0,
+    fyTierDiscountPercent: 0,
+    timeBasedDiscountPercent: 0,
+    baseAmount: 0,
+    discountAmount: 0,
+    taxAmount: 0,
+    taxPercent: 0,
+    taxType: "exclusive",
+    totalAmount: 0,
+    currency: program.currency || "INR",
+    startsAt: startsAtIso,
+    endsAt: endsAtIso,
+    status: "active",
+    activatedAt: now,
+  });
+
+  return { program, subscriptions: [sub] };
+}
+
 module.exports = {
   ensureEnergyExchangeProgramForUser,
   ensureCurrentFyAccessForMaintenance,
   grantBundledFyAppSubscription,
+  grantBundledDurationAppSubscription,
 };
