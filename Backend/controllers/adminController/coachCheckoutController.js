@@ -173,6 +173,12 @@ exports.triggerCoachCheckoutController = asyncHandler(async (req, res) => {
     appSubscriptionDurationPresetId:
       body.appSubscriptionDurationPresetId ??
       body.app_subscription_duration_preset_id,
+    appSubscriptionDurationAmount:
+      body.appSubscriptionDurationAmount ??
+      body.app_subscription_duration_amount,
+    appSubscriptionDurationUnit:
+      body.appSubscriptionDurationUnit ??
+      body.app_subscription_duration_unit,
     fyYearCount: body.fyYearCount ?? body.fy_year_count,
     fyOffsets: body.fyOffsets ?? body.fy_offsets,
     wellnessCoachId: body.wellnessCoachId ?? body.wellness_coach_id,

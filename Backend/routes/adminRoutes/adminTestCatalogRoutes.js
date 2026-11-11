@@ -4,6 +4,7 @@ const { authorizeStaff } = require("../../middleware/authorize");
 const {
   listTestCatalogController,
   listTestGoalsController,
+  getCatalogMasterController,
   getTestCatalogByIdController,
   createTestCatalogController,
   updateTestCatalogController,
@@ -13,6 +14,7 @@ const {
 const router = express.Router();
 
 router.get("/goals", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), listTestGoalsController);
+router.get("/catalog-master", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), getCatalogMasterController);
 router.get("/", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), listTestCatalogController);
 router.get("/:id", protectAccount, authorizeStaff("console.cf.view", { admin: "test-catalog.view" }), getTestCatalogByIdController);
 router.post("/", protectAccount, authorizeStaff("console.cf.edit", { admin: "test-catalog.edit" }), createTestCatalogController);

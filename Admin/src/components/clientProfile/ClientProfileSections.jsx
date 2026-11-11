@@ -46,6 +46,36 @@ import {
   validatePersonName,
   validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
+
+const PERSONAL_DETAILS_POLL_VISIBLE_MS = 5000;
+const PERSONAL_DETAILS_POLL_HIDDEN_MS = 15000;
+
+function personalProfileRemoteSignature(row) {
+  if (!row) return "";
+  return [
+    row.updatedAt || "",
+    row.name || "",
+    row.dobIso || "",
+    row.gender || "",
+    row.phone || "",
+    row.whatsapp || "",
+    row.addressLine1 || "",
+    row.addressLine2 || "",
+    row.pincode || "",
+    row.stateRaw || "",
+    row.country || "",
+    row.city || "",
+    row.dietaryPreference || "",
+    row.healthConcernId || "",
+    JSON.stringify(row.wellnessJourneyForRaw || []),
+    String(row.paidOnboardingStepStatus?.personalDetails || ""),
+    String(row.paidOnboardingStepStatus?.profileSetup || ""),
+    row.termsIp || "",
+    row.termsAcceptedBool ? "1" : "0",
+    row.referredByCode || "",
+  ].join("\u001f");
+}
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
 export { HealthProgressSection } from "./HealthProgressSection.jsx";
@@ -231,6 +261,20 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const [goalOptions, setGoalOptions] = useState([]);
   const [form, setForm] = useState(() => formFromUser(user));
   const [referralUsedInput, setReferralUsedInput] = useState(() => String(user?.referredByCode || "").trim());
+  const remoteSigRef = useRef(personalProfileRemoteSignature(user));
+  const pollInFlightRef = useRef(false);
+  const editingRef = useRef(editing);
+  const saveBusyRef = useRef(saveBusy);
+  const tierBusyRef = useRef(tierBusy);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  editingRef.current = editing;
+  saveBusyRef.current = saveBusy;
+  tierBusyRef.current = tierBusy;
+  onUserUpdatedRef.current = onUserUpdated;
+
+  useEffect(() => {
+    remoteSigRef.current = personalProfileRemoteSignature(user);
+  }, [user]);
 
   useEffect(() => {
     if (!canStartEdit && editing) setEditing(false);
@@ -243,6 +287,62 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   useEffect(() => {
     setReferralUsedInput(String(user?.referredByCode || "").trim());
   }, [user?.id, user?.referredByCode]);
+
+  useEffect(() => {
+    const userId = String(user?.id || "").trim();
+    if (!userId || isMockNumericId(userId)) return undefined;
+
+    const syncFromApp = async () => {
+      if (pollInFlightRef.current) return;
+      if (editingRef.current || saveBusyRef.current || tierBusyRef.current) return;
+
+      pollInFlightRef.current = true;
+      try {
+        const row = await fetchUser(userId);
+        if (!row) return;
+        const signature = personalProfileRemoteSignature(row);
+        if (signature !== remoteSigRef.current) {
+          remoteSigRef.current = signature;
+          onUserUpdatedRef.current?.(row);
+        }
+      } catch {
+        /* silent poll */
+      } finally {
+        pollInFlightRef.current = false;
+      }
+    };
+
+    let intervalId = null;
+
+    const reschedule = () => {
+      if (intervalId) window.clearInterval(intervalId);
+      const ms =
+        typeof document !== "undefined" && document.visibilityState === "hidden"
+          ? PERSONAL_DETAILS_POLL_HIDDEN_MS
+          : PERSONAL_DETAILS_POLL_VISIBLE_MS;
+      intervalId = window.setInterval(syncFromApp, ms);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncFromApp();
+      }
+      reschedule();
+    };
+
+    const onFocus = () => syncFromApp();
+
+    syncFromApp();
+    reschedule();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!editing || toApiGender(form.gender) === "female") return;

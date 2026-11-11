@@ -8,6 +8,12 @@ import {
 
 export const TEST_CATALOG_PAGE_SIZE = 20;
 export const BLOOD_TEST_CATEGORY_SLUG = "blood-test-category";
+export const CATALOG_MASTER_NAME = "Catalog master";
+export const CATALOG_MASTER_TEST_ID = "goal-catalog-master";
+
+export function isCatalogMasterEntry(row) {
+  return String(row?.testId || "").trim() === CATALOG_MASTER_TEST_ID;
+}
 
 /** Fallback labels. Live options come from Configs → Dropdowns (blood-test-category). */
 export const TEST_CATEGORIES = [
@@ -232,10 +238,33 @@ export async function adminListTestGoals(token) {
     const { data } = await api.get(`${catalogBase()}/goals`, {
       headers: authHeader(tokenOrStored(token)),
     });
-    return (Array.isArray(data.goals) ? data.goals : []).map(mapTestCatalog).filter((row) => row?.kind === "goal");
+    return (Array.isArray(data.goals) ? data.goals : [])
+      .map(mapTestCatalog)
+      .filter((row) => row?.kind === "goal" && !isCatalogMasterEntry(row));
   } catch (error) {
     normalizeApiError(error);
   }
+}
+
+export async function adminGetCatalogMaster(token) {
+  try {
+    const { data } = await api.get(`${catalogBase()}/catalog-master`, {
+      headers: authHeader(tokenOrStored(token)),
+    });
+    return mapTestCatalog(data.master);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
+export async function adminSaveCatalogMaster(token, { id, sections, dismissedCategories } = {}) {
+  return adminSaveTestGoal(token, {
+    id: id || undefined,
+    name: CATALOG_MASTER_NAME,
+    status: "inactive",
+    sections: Array.isArray(sections) ? sections : [],
+    dismissedCategories: Array.isArray(dismissedCategories) ? dismissedCategories : [],
+  });
 }
 
 export async function adminSaveTestGoal(token, goal) {

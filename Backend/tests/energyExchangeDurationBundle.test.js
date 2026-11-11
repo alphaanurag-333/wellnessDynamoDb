@@ -82,4 +82,34 @@ describe("grantBundledDurationAppSubscription", () => {
 
     assert.equal(created.startsAt, "2026-12-31T23:59:59.999Z");
   });
+
+  it("grants custom duration from bundled unit and amount when no preset id", async () => {
+    let created;
+    const grantBundledDurationAppSubscription = loadGrantDurationWithMocks({
+      program: { id: "prog-1", monthlyAmount: 100, currency: "INR" },
+      listItems: [],
+      capture: (input) => {
+        created = input;
+      },
+    });
+
+    const paidAt = "2026-01-15T10:00:00.000Z";
+    await grantBundledDurationAppSubscription(
+      { id: "u1" },
+      { id: "txn-3" },
+      {
+        enabled: true,
+        durationPresetId: null,
+        durationUnit: "months",
+        durationAmount: 3,
+      },
+      paidAt,
+    );
+
+    assert.equal(created.startsAt, paidAt);
+    const endsAt = new Date(created.endsAt);
+    const expected = new Date(paidAt);
+    expected.setUTCMonth(expected.getUTCMonth() + 3);
+    assert.equal(endsAt.toISOString(), expected.toISOString());
+  });
 });

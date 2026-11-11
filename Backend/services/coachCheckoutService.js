@@ -37,7 +37,12 @@ const {
 const {
   resolveSubscriptionPlanFromItem,
 } = require("./subscriptionCategoryService");
-const { getBundledSubscriptionPresetById } = require("../utils/exchangeSubscriptionDurationPresets");
+const {
+  getBundledSubscriptionPresetById,
+  normalizeBundledDurationUnit,
+  parseBundledDurationAmount,
+  formatBundledDurationShortLabel,
+} = require("../utils/exchangeSubscriptionDurationPresets");
 
 const HOURS_BY_UNIT = {
   hour: 1,
@@ -206,6 +211,8 @@ function resolveBundledFySubscription(config, { fyYearCount, fyOffsets } = {}) {
 function resolveBundledSubscription(config, {
   includeAppSubscription,
   appSubscriptionDurationPresetId,
+  appSubscriptionDurationAmount,
+  appSubscriptionDurationUnit,
 } = {}) {
   const enabled =
     includeAppSubscription === undefined
@@ -214,11 +221,57 @@ function resolveBundledSubscription(config, {
   if (!enabled) return null;
 
   const presetIdRaw = appSubscriptionDurationPresetId;
-  if (presetIdRaw == null || String(presetIdRaw).trim() === "") {
+  const hasPreset =
+    presetIdRaw != null && String(presetIdRaw).trim() !== "";
+  const amountRaw = appSubscriptionDurationAmount;
+  const unitRaw = appSubscriptionDurationUnit;
+  const hasCustomAmount = amountRaw != null && String(amountRaw).trim() !== "";
+  const hasCustomUnit = unitRaw != null && String(unitRaw).trim() !== "";
+  const hasCustom = hasCustomAmount || hasCustomUnit;
+
+  if (hasPreset && hasCustom) {
     throw new AppError(
-      "appSubscriptionDurationPresetId is required when including complimentary app subscription",
+      "Send either appSubscriptionDurationPresetId or app subscription duration amount and unit, not both",
       400
     );
+  }
+
+  if (!hasPreset && !hasCustom) {
+    throw new AppError(
+      "App subscription duration is required when including complimentary app subscription",
+      400
+    );
+  }
+
+  const monthlyAmount = Number(config?.energy_exchange_monthly_amount) || 0;
+
+  if (hasCustom) {
+    if (!hasCustomAmount || !hasCustomUnit) {
+      throw new AppError(
+        "appSubscriptionDurationAmount and appSubscriptionDurationUnit are both required",
+        400
+      );
+    }
+    const durationAmount = parseBundledDurationAmount(amountRaw);
+    const durationUnit = normalizeBundledDurationUnit(unitRaw);
+    if (durationAmount == null) {
+      throw new AppError("Enter a valid app subscription duration amount", 400);
+    }
+    if (!durationUnit) {
+      throw new AppError("Choose a valid app subscription duration unit", 400);
+    }
+    const shortLabel = formatBundledDurationShortLabel(durationAmount, durationUnit);
+    return {
+      enabled: true,
+      kind: "duration_energy_exchange",
+      itemId: "ee-duration-custom",
+      itemName: `App subscription (${shortLabel})`,
+      durationPresetId: null,
+      durationUnit,
+      durationAmount,
+      monthlyAmount,
+      includedInProgramPrice: true,
+    };
   }
 
   const preset = getBundledSubscriptionPresetById(presetIdRaw);
@@ -226,7 +279,6 @@ function resolveBundledSubscription(config, {
     throw new AppError("Choose a valid app subscription duration preset", 400);
   }
 
-  const monthlyAmount = Number(config?.energy_exchange_monthly_amount) || 0;
   const shortLabel = String(preset.label || "").replace(/\s*\(from payment\)\s*$/i, "").trim();
   return {
     enabled: true,
@@ -657,6 +709,8 @@ async function triggerCoachCheckout({
   includeAppSubscription,
   subscriptionItemId,
   appSubscriptionDurationPresetId,
+  appSubscriptionDurationAmount,
+  appSubscriptionDurationUnit,
   fyYearCount,
   fyOffsets,
   wellnessCoachId,
@@ -736,6 +790,8 @@ async function triggerCoachCheckout({
       ? resolveBundledSubscription(config, {
           includeAppSubscription,
           appSubscriptionDurationPresetId,
+          appSubscriptionDurationAmount,
+          appSubscriptionDurationUnit,
         })
       : null;
 

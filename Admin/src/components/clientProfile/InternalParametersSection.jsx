@@ -401,6 +401,7 @@ function catalogGroups(catalog) {
 /** Active admin-created goals from Configs → Goals & Tests. */
 function catalogGoalPresets(catalog) {
   return (catalog || [])
+    .filter((row) => row?.testId !== "goal-catalog-master")
     .filter((row) => row?.kind === "goal" && row.status !== "inactive")
     .filter((row) => Array.isArray(row.lines) && row.lines.some((line) => line?.name))
     .map((row) => ({

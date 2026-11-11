@@ -15,7 +15,11 @@ const {
   buildFyPlansForProgram,
 } = require("./energyExchangePricingService");
 const { addDurationFromIso } = require("../utils/exchangeSubscriptionDurationMath");
-const { getBundledSubscriptionPresetById } = require("../utils/exchangeSubscriptionDurationPresets");
+const {
+  getBundledSubscriptionPresetById,
+  normalizeBundledDurationUnit,
+  parseBundledDurationAmount,
+} = require("../utils/exchangeSubscriptionDurationPresets");
 const { maxEndsAtCoveringPaidAt, parseInstantMs } = require("../utils/exchangeSubscriptionCoverage");
 
 /**
@@ -213,13 +217,23 @@ async function grantBundledDurationAppSubscription(user, transaction, bundled, p
   if (!bundled?.enabled) return null;
 
   const preset =
-    bundled.durationPresetId != null
+    bundled.durationPresetId != null && String(bundled.durationPresetId).trim() !== ""
       ? getBundledSubscriptionPresetById(bundled.durationPresetId)
       : null;
-  if (!preset) {
-    const err = new Error("Invalid app subscription duration preset");
-    err.name = "ValidationError";
-    throw err;
+
+  let durationUnit;
+  let durationAmount;
+  if (preset) {
+    durationUnit = preset.unit;
+    durationAmount = preset.amount;
+  } else {
+    durationUnit = normalizeBundledDurationUnit(bundled.durationUnit);
+    durationAmount = parseBundledDurationAmount(bundled.durationAmount);
+    if (!durationUnit || durationAmount == null) {
+      const err = new Error("Invalid app subscription duration");
+      err.name = "ValidationError";
+      throw err;
+    }
   }
 
   const latest = (await getUserById(user.id)) || user;
@@ -242,7 +256,7 @@ async function grantBundledDurationAppSubscription(user, transaction, bundled, p
     ? new Date(Math.max(paidAtMs, coveringEndMs)).toISOString()
     : paidAt;
 
-  const endsAtIso = addDurationFromIso(startsAtIso, preset.unit, preset.amount);
+  const endsAtIso = addDurationFromIso(startsAtIso, durationUnit, durationAmount);
   const now = new Date().toISOString();
 
   const sub = await createSubscription({

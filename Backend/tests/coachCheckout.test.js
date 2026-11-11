@@ -174,10 +174,43 @@ describe("coach program offer DTO", () => {
     });
   });
 
-  it("requires appSubscriptionDurationPresetId when bundling app subscription", () => {
+  it("requires duration when bundling app subscription", () => {
     assert.throws(
       () => resolveBundledSubscription({ energy_exchange_monthly_amount: 200 }, {}),
-      /appSubscriptionDurationPresetId is required/,
+      /App subscription duration is required/,
+    );
+  });
+
+  it("bundles complimentary duration-based app subscription from custom amount and unit", () => {
+    const bundle = resolveBundledSubscription(
+      { energy_exchange_monthly_amount: 200 },
+      { appSubscriptionDurationAmount: 3, appSubscriptionDurationUnit: "months" },
+    );
+    assert.equal(bundle.kind, "duration_energy_exchange");
+    assert.equal(bundle.durationPresetId, null);
+    assert.equal(bundle.durationUnit, "months");
+    assert.equal(bundle.durationAmount, 3);
+    assert.equal(bundle.itemId, "ee-duration-custom");
+    assert.match(bundle.itemName, /3 months/);
+
+    assert.throws(
+      () => resolveBundledSubscription(
+        { energy_exchange_monthly_amount: 200 },
+        {
+          appSubscriptionDurationPresetId: "1y",
+          appSubscriptionDurationAmount: 3,
+          appSubscriptionDurationUnit: "months",
+        },
+      ),
+      /not both/,
+    );
+
+    assert.throws(
+      () => resolveBundledSubscription(
+        { energy_exchange_monthly_amount: 200 },
+        { appSubscriptionDurationAmount: 3, appSubscriptionDurationUnit: "weeks" },
+      ),
+      /valid app subscription duration unit/,
     );
   });
 
