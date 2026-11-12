@@ -54,7 +54,7 @@ const MEASURE_FIELDS = [
   { label: "Waist", field: "waistCm" },
   { label: "Hip", field: "hipCm" },
   { label: "Thighs", field: "thighsCm" },
-  { label: "Active Level", field: "activityLevel", kind: "activity" },
+  { label: "Activity Level", field: "activityLevel", kind: "activity" },
 ];
 
 const METABOLIC_FIELDS = [

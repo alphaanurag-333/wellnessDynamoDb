@@ -1396,7 +1396,7 @@ function OnboardingStatusCard({
           })}
         </div>
         <p className="ua-cp-onboard-footnote">
-          Client-side steps sync from the app. When body measurements, 180° photos, and medical answers are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
+          Client-side steps sync from the app. When body measurements, medical answers, and coach-approved 180° photos are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
           RCA, HAP, briefing, letter and initiation are yours to submit.
         </p>
       </div>

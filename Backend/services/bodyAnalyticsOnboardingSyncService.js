@@ -9,10 +9,25 @@ const {
   buildOnboardingPersistUpdates,
   BODY_ANALYTICS_SUBKEYS,
   bodyAnalyticsAutoCompleteReady,
+  photoAnglesAllApproved,
 } = require("../utils/paidOnboardingHelpers");
 
 function progressPhotoSubmissionComplete(photo) {
   return Boolean(photo?.frontPicKey && photo?.rightPicKey && photo?.leftPicKey);
+}
+
+function progressPhotoRecordedAtMs(photo) {
+  const raw = photo?.recordedAt || photo?.createdAt;
+  const ms = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Latest complete 180° set must be coach-approved for Body Analytics / At a Glance. */
+function progressPhotos180ApprovedForOnboarding(photos) {
+  const complete = (photos || []).filter(progressPhotoSubmissionComplete);
+  if (!complete.length) return false;
+  complete.sort((a, b) => progressPhotoRecordedAtMs(b) - progressPhotoRecordedAtMs(a));
+  return photoAnglesAllApproved(complete[0]);
 }
 
 /**
@@ -64,7 +79,7 @@ async function loadBodyAnalyticsDataFlags(userId) {
   const photos = photoResult?.items || [];
   return {
     bodyMeasurement: (measurementResult?.items || []).length > 0,
-    progressPhotos180: photos.some(progressPhotoSubmissionComplete),
+    progressPhotos180: progressPhotos180ApprovedForOnboarding(photos),
     medicalConditions: Boolean(medical),
   };
 }
@@ -109,6 +124,7 @@ module.exports = {
   loadBodyAnalyticsDataFlags,
   isBodyAnalyticsClientDataReady,
   progressPhotoSubmissionComplete,
+  progressPhotos180ApprovedForOnboarding,
   buildSyncedBodyAnalyticsStatus,
   reconcileBodyAnalyticsStatus,
 };

@@ -9,11 +9,11 @@ const {
 } = require("../../models/userModel");
 const { enrichUser } = require("./userProfileHelpers");
 const {
-  markStepDone,
   wizardStepAfterPhotosSaved,
   buildOnboardingPersistUpdates,
+  buildProgressPhotosUploadAppLockUpdates,
 } = require("../../utils/paidOnboardingHelpers");
-const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const { notifyProgressPhotos180UploadedAsync } = require("../../services/whatsappJourneyService");
 const {
   createProgressPhoto,
   listProgressPhotosByUser,
@@ -66,20 +66,17 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   const currentStatus = normalizePaidOnboardingStepStatus(user.paidOnboardingStepStatus);
-  const nextStatus = markStepDone(currentStatus, "progressPhotos180");
+  const nextStatus = currentStatus;
   const alreadyCompleted = Boolean(user.paidOnboardingCompleted);
   const nextWizardStep = wizardStepAfterPhotosSaved(user.paidOnboardingStep, nextStatus);
 
   const updated = await updateUser(userId, {
     ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
+    ...buildProgressPhotosUploadAppLockUpdates(user),
     paidOnboardingStep: nextWizardStep,
   });
 
-  notifyOnboardingWhatsAppTransitions({
-    user: updated || user,
-    previousStatus: currentStatus,
-    nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
-  });
+  notifyProgressPhotos180UploadedAsync(updated || user);
 
   return res.status(201).json({
     status: true,

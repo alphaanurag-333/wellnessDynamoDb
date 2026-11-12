@@ -134,7 +134,8 @@ function photoAnglesAllApproved(photo) {
 }
 
 /**
- * Coach review can reopen 180° photos (client must resubmit). Approvals do not mark onboarding subkeys.
+ * Coach review can reopen 180° photos (client must resubmit).
+ * Full approval is handled by applyBodyAnalyticsPhotoApproval.
  */
 function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}) {
   const normalizedAngle = String(angle || "").toLowerCase().trim();
@@ -155,6 +156,18 @@ function applyBodyAnalyticsPhotoReview(stepStatus, { angle, action, photo } = {}
   }
 
   return null;
+}
+
+/** When all 180° angles are approved, settle progressPhotos180 for Body Analytics. */
+function applyBodyAnalyticsPhotoApproval(stepStatus, { action, photo } = {}) {
+  const normalizedAction = String(action || "").toLowerCase().trim();
+  if (normalizedAction !== "approved") return null;
+  if (!photoAnglesAllApproved(photo)) return null;
+  const current = normalizePaidOnboardingStepStatus(stepStatus);
+  if (current.progressPhotos180 === "done" || current.progressPhotos180 === "skipped") {
+    return null;
+  }
+  return markStepDone(current, "progressPhotos180");
 }
 
 /**
@@ -454,6 +467,11 @@ function buildOnboardingStatusUpdates(nextStatus) {
  * hide progress photos, body measurement client fill, and medical conditions
  * in the client app unless the coach already turned a gate on explicitly.
  */
+/** After client uploads a complete 180° set, hide progress photo uploads in the app. */
+function buildProgressPhotosUploadAppLockUpdates() {
+  return { progressPhotosInAppEnabled: false };
+}
+
 function buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus) {
   if (!onboardingStepJustCompleted(previousStatus, nextStatus, "bodyAnalytics")) {
     return {};
@@ -539,12 +557,14 @@ module.exports = {
   publicCanonicalStepStatus,
   buildOnboardingStatusUpdates,
   buildBodyAnalyticsCompletionAppLockUpdates,
+  buildProgressPhotosUploadAppLockUpdates,
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsPhotoApproval,
   applyBodyAnalyticsWeightPhotoReview,
   photoAnglesAllApproved,
 };

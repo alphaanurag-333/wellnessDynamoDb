@@ -10,6 +10,8 @@ const {
   markStepSkipped,
   markStepDone,
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsPhotoApproval,
+  buildProgressPhotosUploadAppLockUpdates,
   wizardStepAfterPhotosSaved,
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
@@ -215,19 +217,27 @@ describe("body analytics photo review", () => {
     assert.equal(later.bodyAnalytics, "pending");
   });
 
-  it("does not mark progressPhotos180 done on coach approval", () => {
+  it("marks progressPhotos180 done when coach approves all angles", () => {
     const pendingMedical = normalizePaidOnboardingStepStatus({
       personalDetails: "done",
       bodyMeasurement: "done",
       progressPhotos180: "pending",
       medicalConditions: "pending",
     });
-    const photosOnly = applyBodyAnalyticsPhotoReview(pendingMedical, {
-      angle: "front",
+    const opened = applyBodyAnalyticsPhotoApproval(pendingMedical, {
       action: "approved",
       photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
     });
-    assert.equal(photosOnly, null);
+    assert.equal(opened.progressPhotos180, "done");
+    assert.equal(opened.bodyAnalytics, "pending");
+    assert.equal(
+      applyBodyAnalyticsPhotoReview(pendingMedical, {
+        angle: "front",
+        action: "approved",
+        photo: reviewedPhoto({ front: "approved", right: "approved", left: "approved" }),
+      }),
+      null,
+    );
   });
 
   it("returns a finished client to the app after they resubmit 180 photos", () => {
@@ -242,12 +252,13 @@ describe("body analytics photo review", () => {
     assert.equal(saved.bodyAnalytics, "done");
   });
 
-  it("continues to medical when 180 photos are the client's first upload", () => {
-    const first = markStepDone(
-      normalizePaidOnboardingStepStatus({ personalDetails: "done", bodyMeasurement: "done" }),
-      "progressPhotos180",
-    );
-    assert.equal(wizardStepAfterPhotosSaved("photos180", first), "medical");
+  it("continues to medical after upload while progressPhotos180 is still pending", () => {
+    const status = normalizePaidOnboardingStepStatus({
+      personalDetails: "done",
+      bodyMeasurement: "done",
+      progressPhotos180: "pending",
+    });
+    assert.equal(wizardStepAfterPhotosSaved("photos180", status), "medical");
   });
 
   it("ignores weight photo reviews", () => {
@@ -317,6 +328,14 @@ describe("onboardingStepJustCompleted", () => {
     assert.equal(onboardingStepJustCompleted(pending, done, "bodyAnalytics"), true);
     assert.equal(onboardingStepJustCompleted(done, done, "bodyAnalytics"), false);
     assert.equal(onboardingStepJustCompleted(pending, done, "protocolSettings"), false);
+  });
+});
+
+describe("buildProgressPhotosUploadAppLockUpdates", () => {
+  it("disables progress photo uploads in the client app after a 180 submit", () => {
+    assert.deepEqual(buildProgressPhotosUploadAppLockUpdates(), {
+      progressPhotosInAppEnabled: false,
+    });
   });
 });
 

@@ -32,6 +32,7 @@ const {
 } = require("../../services/whatsappJourneyService");
 const {
   applyBodyAnalyticsPhotoReview,
+  applyBodyAnalyticsPhotoApproval,
   applyBodyAnalyticsWeightPhotoReview,
   photoAnglesAllApproved,
   buildOnboardingPersistUpdates,
@@ -467,6 +468,12 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         action,
         photo: updated,
       });
+      if (!nextStatus && allAnglesApproved) {
+        nextStatus = applyBodyAnalyticsPhotoApproval(user.paidOnboardingStepStatus, {
+          action,
+          photo: updated,
+        });
+      }
     }
     if (nextStatus) {
       const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, persistExtra);

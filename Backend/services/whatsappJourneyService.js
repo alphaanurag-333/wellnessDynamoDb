@@ -698,6 +698,12 @@ function notifyProgressPhotos180ReshareToUserAsync(user) {
   runWhatsAppSafely("uob-180-reshare-user", notifyProgressPhotos180ReshareToUser(user));
 }
 
+function notifyProgressPhotos180UploadedAsync(user) {
+  if (!user) return;
+  runWhatsAppSafely("uob-180-submit", notifyProgressPhotos180SubmittedToCoaches(user));
+  runWhatsAppSafely("uob-180-review-user", notifyProgressPhotos180SubmittedToUser(user));
+}
+
 function notifyLaunchMeetingSlotConfirmedByClientToCoachesAsync(user) {
   runWhatsAppSafely(
     "launch-schedmeet-useravail",
@@ -794,6 +800,7 @@ module.exports = {
   notifyProgressPhotos180SubmittedToUser,
   notifyProgressPhotos180ReshareToUser,
   notifyProgressPhotos180ReshareToUserAsync,
+  notifyProgressPhotos180UploadedAsync,
   notifyLabReportUpdatedToCoaches,
   notifyLabReportUpdatedToCoachesAsync,
   notifyCommitmentLetterReady,

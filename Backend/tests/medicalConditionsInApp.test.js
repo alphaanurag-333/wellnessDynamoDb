@@ -18,6 +18,7 @@ describe("medical conditions in app", () => {
       isMedicalConditionsInAppEnabled({
         paidOnboardingStepStatus: {
           bodyAnalytics: "done",
+          bodyMeasurement: "done",
           progressPhotos180: "done",
           medicalConditions: "done",
         },
@@ -28,6 +29,7 @@ describe("medical conditions in app", () => {
       isMedicalConditionsInAppEnabled({
         paidOnboardingStepStatus: {
           bodyAnalytics: "done",
+          bodyMeasurement: "done",
           progressPhotos180: "done",
           medicalConditions: "done",
         },
@@ -59,11 +61,25 @@ describe("progress photos in app", () => {
     assert.equal(isProgressPhotosInAppEnabled({ progressPhotosInAppEnabled: false }), false);
   });
 
+  it("stays disabled after upload when coach gate is explicitly off", () => {
+    assert.equal(
+      isProgressPhotosInAppEnabled({
+        progressPhotosInAppEnabled: false,
+        paidOnboardingStepStatus: {
+          progressPhotos180: "pending",
+          bodyAnalytics: "pending",
+        },
+      }),
+      false,
+    );
+  });
+
   it("locks after Body Analytics is done even when the photo sub-step is done", () => {
     assert.equal(
       isProgressPhotosInAppEnabled({
         paidOnboardingStepStatus: {
           bodyAnalytics: "done",
+          bodyMeasurement: "done",
           progressPhotos180: "done",
           medicalConditions: "done",
         },
