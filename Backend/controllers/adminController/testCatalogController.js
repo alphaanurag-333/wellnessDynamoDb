@@ -4,6 +4,7 @@ const {
   createTestCatalog,
   getTestCatalogById,
   getTestCatalogRecordById,
+  getTestCatalogByTestId,
   updateTestCatalog,
   deleteTestCatalog,
   listTestCatalog,
@@ -16,8 +17,22 @@ const {
   normalizeFastingType,
   normalizeDuration,
   normalizeLines,
+  CATALOG_MASTER_NAME,
+  CATALOG_MASTER_TEST_ID,
+  isCatalogMasterRow,
 } = require("../../models/testCatalogModel");
 const { isTestCatalogReferenced } = require("../../models/coachRecommendedTestModel");
+const { normalizeRoleKey } = require("../../config/accountRoles");
+
+function assertAdminCatalogMasterAccess(req) {
+  if (req.auth?.isSuperAdmin || normalizeRoleKey(req.auth?.role) === "admin") return;
+  throw new AppError("Only admins can manage the catalog master test list", 403);
+}
+
+function isCatalogMasterPayload(body, projected) {
+  const name = String(body?.name || "").trim();
+  return projected?.testId === CATALOG_MASTER_TEST_ID || name === CATALOG_MASTER_NAME;
+}
 
 exports.listTestGoalsController = asyncHandler(async (req, res) => {
   const goals = await listTestGoals();
@@ -40,6 +55,12 @@ exports.getTestCatalogByIdController = asyncHandler(async (req, res) => {
   return res.status(200).json({ status: true, test });
 });
 
+exports.getCatalogMasterController = asyncHandler(async (req, res) => {
+  const record = await getTestCatalogByTestId(CATALOG_MASTER_TEST_ID);
+  const master = record ? await getTestCatalogById(record.id) : null;
+  return res.status(200).json({ status: true, master: master || null });
+});
+
 function isGoalPayload(body) {
   return body?.kind === "goal" || Array.isArray(body?.sections);
 }
@@ -52,6 +73,10 @@ exports.createTestCatalogController = asyncHandler(async (req, res) => {
     } catch (err) {
       if (err?.name === "ValidationError") throw new AppError(err.message, 400);
       throw err;
+    }
+
+    if (isCatalogMasterPayload(req.body, projected)) {
+      assertAdminCatalogMasterAccess(req);
     }
 
     let test;
@@ -154,6 +179,10 @@ exports.updateTestCatalogController = asyncHandler(async (req, res) => {
       throw err;
     }
 
+    if (isCatalogMasterRow(current) || isCatalogMasterPayload(req.body, projected)) {
+      assertAdminCatalogMasterAccess(req);
+    }
+
     let test;
     try {
       test = await updateTestCatalog(req.params.id, projected);
@@ -223,6 +252,10 @@ exports.updateTestCatalogController = asyncHandler(async (req, res) => {
 exports.deleteTestCatalogController = asyncHandler(async (req, res) => {
   const current = await getTestCatalogRecordById(req.params.id);
   if (!current) throw new AppError("Test catalog entry not found", 404);
+
+  if (isCatalogMasterRow(current)) {
+    throw new AppError("The catalog master test list cannot be deleted", 400);
+  }
 
   const referenced = await isTestCatalogReferenced(current.testId);
   if (referenced) {

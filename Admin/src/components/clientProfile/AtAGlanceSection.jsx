@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   buildOnboardingRemindMessage,
   ONBOARDING_STEPS,
@@ -32,6 +32,12 @@ import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import {
+  atAGlancePollSignature,
+  coachInsightPollSignature,
+  userRemindersPollSignature,
+} from "../../utils/clientProfileAppSync.js";
 import { fetchHealConsultancyTracks } from "../../api/counsellingApi.js";
 import {
   assignmentsFromPrescriptionPayload,
@@ -467,6 +473,12 @@ function resolveCoachMessageDuration(hours) {
   return match?.hours || DEFAULT_COACH_MESSAGE_DURATION;
 }
 
+function coachMessageDraftDirty(message, liveInsight) {
+  const server = String(liveInsight?.message || "").trim();
+  const draft = String(message || "").trim();
+  return draft !== server;
+}
+
 function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdit = true, canDelete = false }) {
   const userId = String(user?.id || "").trim();
   const isMock = isMockNumericId(userId);
@@ -480,17 +492,34 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
   const [reminderDays, setReminderDays] = useState(ALL_WEEKDAYS);
   const [savingReminder, setSavingReminder] = useState(false);
 
+  const insightSigRef = useRef("");
+  const messageDraftActiveRef = useRef(false);
+  const messageRef = useRef(message);
+  const liveInsightRef = useRef(liveInsight);
+  const sendingRef = useRef(sending);
+  const deletingRef = useRef(deleting);
+  const savingReminderRef = useRef(savingReminder);
+  messageRef.current = message;
+  liveInsightRef.current = liveInsight;
+  sendingRef.current = sending;
+  deletingRef.current = deleting;
+  savingReminderRef.current = savingReminder;
+
   useEffect(() => {
     if (!userId || isMock) {
+      insightSigRef.current = "";
       setMessage("");
       setLiveInsight(null);
       return undefined;
     }
 
+    insightSigRef.current = "";
     let cancelled = false;
     fetchUserCoachInsight(userId)
       .then((insight) => {
         if (cancelled) return;
+        insightSigRef.current = coachInsightPollSignature(insight);
+        messageDraftActiveRef.current = false;
         setLiveInsight(insight || null);
         setMessage(insight?.message || "");
         setDurationHours(resolveCoachMessageDuration(insight?.durationHours));
@@ -501,6 +530,24 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
       cancelled = true;
     };
   }, [isMock, userId]);
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      if (!userId || isMock) return;
+      if (sendingRef.current || deletingRef.current || savingReminderRef.current) return;
+      const insight = await fetchUserCoachInsight(userId);
+      const signature = coachInsightPollSignature(insight);
+      if (signature === insightSigRef.current) return;
+      insightSigRef.current = signature;
+      const nextInsight = insight || null;
+      setLiveInsight(nextInsight);
+      if (!messageDraftActiveRef.current && !coachMessageDraftDirty(messageRef.current, liveInsightRef.current)) {
+        setMessage(nextInsight?.message || "");
+        setDurationHours(resolveCoachMessageDuration(nextInsight?.durationHours));
+      }
+    }, [isMock, userId]),
+    { enabled: Boolean(userId) && !isMock },
+  );
 
   const sendCoachMessage = async () => {
     const trimmed = message.trim();
@@ -523,6 +570,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
         message: trimmed,
         durationHours,
       });
+      insightSigRef.current = coachInsightPollSignature(insight);
       setLiveInsight(insight);
       setMessage(insight?.message || trimmed);
       setDurationHours(resolveCoachMessageDuration(insight?.durationHours ?? durationHours));
@@ -547,6 +595,7 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
     setDeleting(true);
     try {
       await deleteUserCoachInsight(userId);
+      insightSigRef.current = coachInsightPollSignature(null);
       setLiveInsight(null);
       setMessage("");
       onToast("Message removed from their app");
@@ -607,6 +656,8 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
           maxLength={COACH_MESSAGE_MAX}
           value={message}
           disabled={sending || deleting}
+          onFocus={() => { messageDraftActiveRef.current = true; }}
+          onBlur={() => { messageDraftActiveRef.current = false; }}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
@@ -942,16 +993,24 @@ function OnboardingStatusCard({
   const [remindBusyWhatsApp, setRemindBusyWhatsApp] = useState(false);
   const [meetings, setMeetings] = useState([]);
 
-  const loadMeetings = () => {
+  const loadMeetings = useCallback(() => {
     if (!user?.id || String(user.id).match(/^\d+$/)) return;
     fetchOnboardingMeetings(user.id)
       .then((rows) => setMeetings(rows || []))
       .catch(() => {});
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     loadMeetings();
-  }, [user?.id]);
+  }, [loadMeetings]);
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      if (busy) return;
+      loadMeetings();
+    }, [busy, loadMeetings]),
+    { enabled: Boolean(user?.id) && !String(user?.id || "").match(/^\d+$/) },
+  );
 
   useEffect(() => {
     setRcaLatest(null);
@@ -979,11 +1038,13 @@ function OnboardingStatusCard({
   };
 
   useEffect(() => {
-    const next = buildInitialDone(user);
-    setDoneMap(next);
-    setStepNotes(buildInitialStepNotes(next));
+    setDoneMap(buildInitialDone(user));
+    setStepNotes(buildInitialStepNotes(buildInitialDone(user)));
+  }, [user?.id]);
+
+  useEffect(() => {
+    setDoneMap(buildInitialDone(user));
   }, [
-    user?.id,
     user?.paidOnboardingCompleted,
     user?.onboardingDone,
     user?.paidOnboardingStepStatus,
@@ -1335,7 +1396,7 @@ function OnboardingStatusCard({
           })}
         </div>
         <p className="ua-cp-onboard-footnote">
-          Client-side steps sync from the app. When body measurements, 180° photos, and medical answers are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
+          Client-side steps sync from the app. When body measurements, medical answers, and coach-approved 180° photos are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
           RCA, HAP, briefing, letter and initiation are yours to submit.
         </p>
       </div>
@@ -1649,6 +1710,18 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
   const [counsellingAssignments, setCounsellingAssignments] = useState([]);
   const [counsellingHistoryLoading, setCounsellingHistoryLoading] = useState(false);
 
+  const glanceSigRef = useRef("");
+  const remindersSigRef = useRef("");
+  const counsellingSigRef = useRef("");
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  const userRef = useRef(user);
+  const glanceLoadingRef = useRef(glanceLoading);
+  const deletingReminderIdRef = useRef(deletingReminderId);
+  onUserUpdatedRef.current = onUserUpdated;
+  userRef.current = user;
+  glanceLoadingRef.current = glanceLoading;
+  deletingReminderIdRef.current = deletingReminderId;
+
   useEffect(() => {
     setOnboardingProgress(null);
     setLastCounselling("");
@@ -1675,6 +1748,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       const meetings = Array.isArray(tracksData?.coachMeetings)
         ? mergeMeetingsWithOrphanTracks(tracksData.coachMeetings, tracks)
         : mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracks);
+      counsellingSigRef.current = JSON.stringify({
+        last: latestCounsellingLabel(tracks, meetings),
+        meetings: meetings.length,
+        assignments: assignments.length,
+      });
       setCounsellingMeetings(meetings);
       setCounsellingAssignments(assignments);
       setLastCounselling(latestCounsellingLabel(tracks, meetings));
@@ -1695,9 +1773,13 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     }
 
     let cancelled = false;
+    remindersSigRef.current = "";
     fetchUserReminders(userId)
       .then((rows) => {
-        if (!cancelled) setReminders(rows || []);
+        if (!cancelled) {
+          remindersSigRef.current = userRemindersPollSignature(rows);
+          setReminders(rows || []);
+        }
       })
       .catch(() => {
         if (!cancelled) setReminders([]);
@@ -1718,12 +1800,14 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
 
     let cancelled = false;
     setGlanceLoading(true);
+    glanceSigRef.current = "";
     fetchUserAtAGlance(userId)
       .then((payload) => {
         if (cancelled) return;
+        glanceSigRef.current = atAGlancePollSignature(payload);
         setGlance(payload?.glance || null);
-        const syncedRow = mapUserRowWithOnboardingSync(user, payload);
-        if (syncedRow) onUserUpdated?.(syncedRow);
+        const syncedRow = mapUserRowWithOnboardingSync(userRef.current, payload);
+        if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
       })
       .catch((err) => {
         if (!cancelled) {
@@ -1739,6 +1823,61 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
       cancelled = true;
     };
   }, [user?.id]);
+
+  const syncAtAGlanceFromApp = useCallback(async () => {
+    const userId = user?.id;
+    if (!userId || isMockNumericId(userId) || glanceLoadingRef.current) return;
+
+    const [glancePayload, reminderRows, tracksData, prescriptionData] = await Promise.all([
+      fetchUserAtAGlance(userId).catch(() => null),
+      fetchUserReminders(userId).catch(() => null),
+      fetchHealConsultancyTracks(userId, { page: 1, limit: 50 }).catch(() => null),
+      listUserWellnessPrescriptions(userId).catch(() => null),
+    ]);
+
+    if (glancePayload) {
+      const glanceSig = atAGlancePollSignature(glancePayload);
+      if (glanceSig !== glanceSigRef.current) {
+        glanceSigRef.current = glanceSig;
+        setGlance(glancePayload.glance || null);
+        const syncedRow = mapUserRowWithOnboardingSync(userRef.current, glancePayload);
+        if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
+      }
+    }
+
+    if (reminderRows && !deletingReminderIdRef.current) {
+      const reminderSig = userRemindersPollSignature(reminderRows);
+      if (reminderSig !== remindersSigRef.current) {
+        remindersSigRef.current = reminderSig;
+        setReminders(reminderRows);
+      }
+    }
+
+    const tracks = tracksData?.tracks || [];
+    const assignments = assignmentsFromPrescriptionPayload(prescriptionData);
+    const prescriptionMeetings = Array.isArray(prescriptionData?.meetings) && prescriptionData.meetings.length
+      ? prescriptionData.meetings
+      : coachMeetingsFromAssignments(assignments);
+    const meetings = Array.isArray(tracksData?.coachMeetings)
+      ? mergeMeetingsWithOrphanTracks(tracksData.coachMeetings, tracks)
+      : mergeMeetingsWithOrphanTracks(prescriptionMeetings, tracks);
+    const counsellingSig = JSON.stringify({
+      last: latestCounsellingLabel(tracks, meetings),
+      meetings: meetings.length,
+      assignments: assignments.length,
+    });
+    if (counsellingSig !== counsellingSigRef.current) {
+      counsellingSigRef.current = counsellingSig;
+      setCounsellingMeetings(meetings);
+      setCounsellingAssignments(assignments);
+      setLastCounselling(latestCounsellingLabel(tracks, meetings));
+    }
+  }, [user?.id]);
+
+  useVisibilityAwarePoll(
+    syncAtAGlanceFromApp,
+    { enabled: Boolean(user?.id) && !isMockNumericId(user?.id) && !glanceLoading },
+  );
 
   function handleWaterHover(active, tip) {
     setRainActive(active);
@@ -1776,7 +1915,13 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             user={user}
             onToast={onToast}
             reminders={reminders}
-            setReminders={setReminders}
+            setReminders={(updater) => {
+              setReminders((list) => {
+                const next = typeof updater === "function" ? updater(list) : updater;
+                remindersSigRef.current = userRemindersPollSignature(next);
+                return next;
+              });
+            }}
             onOpenList={() => setRemindersOpen(true)}
             canEdit={canEditClient}
             canDelete={canDeleteClientData}
@@ -1832,7 +1977,11 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
             setDeletingReminderId(id);
             try {
               await deleteUserReminder(user.id, id);
-              setReminders((list) => list.filter((x) => x.id !== id));
+              setReminders((list) => {
+                const next = list.filter((x) => x.id !== id);
+                remindersSigRef.current = userRemindersPollSignature(next);
+                return next;
+              });
               onToast("Reminder deleted");
             } catch (err) {
               onToast(err?.message || "Failed to delete reminder");

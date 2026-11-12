@@ -51,6 +51,7 @@ const {
 } = require("../../controllers/adminController/onboardingMeetingController");
 const {
   getUserBodyAnalyticsController,
+  patchTargetWeightController,
   patchBodyMeasurementSettingsController,
   patchProgressPhotosInAppSettingsController,
   downloadUserProgressPhotoController,
@@ -82,6 +83,12 @@ router.get(
   protectAccount,
   clientView,
   getUserBodyAnalyticsController
+);
+router.patch(
+  "/:id/body-analytics/target-weight",
+  protectAccount,
+  authorizeStaff("console.body.edit", { admin: "users.edit" }),
+  patchTargetWeightController
 );
 router.patch(
   "/:id/body-measurements/settings",

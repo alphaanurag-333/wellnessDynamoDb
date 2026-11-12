@@ -158,7 +158,7 @@ function toTaskItem(user, extras = {}) {
 }
 
 async function listScopedUsers(actor) {
-  if (actor.role === "admin") {
+  if (actor.role === "admin" || actor.role === "support") {
     const data = await listUsers({ page: 1, limit: 10000, status: "active" });
     return data.users || [];
   }

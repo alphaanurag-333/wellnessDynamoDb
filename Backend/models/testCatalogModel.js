@@ -15,6 +15,8 @@ const {
 } = require("../utils/dynamoList");
 
 const TABLE = "TestCatalog";
+const CATALOG_MASTER_NAME = "Catalog master";
+const CATALOG_MASTER_TEST_ID = "goal-catalog-master";
 const ALLOWED_STATUS = ["active", "inactive"];
 const ALLOWED_TYPES = ["PROFILE", "SINGLE"];
 const FASTING_TYPES = ["Fasting", "Non-fasting", "Post-prandial"];
@@ -595,11 +597,15 @@ async function listActiveTestCatalog() {
   return rows.sort(sortLiveCatalog);
 }
 
+function isCatalogMasterRow(row) {
+  return String(row?.testId || "").trim() === CATALOG_MASTER_TEST_ID;
+}
+
 async function listTestGoals() {
   const items = await scanAllTestCatalog();
   return items
     .map((row) => toTestCatalogPublic(row))
-    .filter((row) => row && row.kind === "goal")
+    .filter((row) => row && row.kind === "goal" && !isCatalogMasterRow(row))
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
 }
 
@@ -795,4 +801,7 @@ module.exports = {
   listTestGoals,
   updateTestCatalog,
   deleteTestCatalog,
+  CATALOG_MASTER_NAME,
+  CATALOG_MASTER_TEST_ID,
+  isCatalogMasterRow,
 };

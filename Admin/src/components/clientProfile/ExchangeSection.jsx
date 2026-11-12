@@ -23,8 +23,37 @@ import {
   paymentSummary,
   programLabel,
 } from "../../data/exchangeData.js";
-import { EXCHANGE_SUBSCRIPTION_DURATION_PRESETS } from "../../data/exchangeSubscriptionDurationPresets.js";
 import { clientHasWcOrAwc, WC_OR_AWC_REQUIRED_MESSAGE } from "../../data/usersData.js";
+
+const SUBSCRIPTION_DURATION_UNIT_OPTIONS = [
+  { id: "days", label: "Days" },
+  { id: "months", label: "Months" },
+  { id: "years", label: "Years" },
+];
+
+function formatBundledDurationLabel(amount, unit) {
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n < 1) return "";
+  const u = String(unit || "").toLowerCase();
+  let core = "";
+  if (u === "days") core = n === 1 ? "1 day" : `${n} days`;
+  else if (u === "months") core = n === 1 ? "1 month" : `${n} months`;
+  else if (u === "years") core = n === 1 ? "1 year" : `${n} years`;
+  else return "";
+  return `${core} (from payment)`;
+}
+
+function parseSubscriptionDurationAmount(raw) {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 9999) return null;
+  return n;
+}
+
+function subscriptionDurationUnitLabel(unitId) {
+  return SUBSCRIPTION_DURATION_UNIT_OPTIONS.find((o) => o.id === unitId)?.label || "Days";
+}
 
 function mapCatalog(rows) {
   return (Array.isArray(rows) ? rows : [])
@@ -395,11 +424,6 @@ function PaymentRow({ row, onToast }) {
   );
 }
 
-function subscriptionDurationLabel(preset) {
-  if (!preset) return EXCHANGE_SUBSCRIPTION_DURATION_PRESETS[0]?.label || "";
-  return preset.label;
-}
-
 export function ExchangeSection({ user, onToast }) {
   const { canCreate } = useClientSectionPermissions("exchange");
   const [programs, setPrograms] = useState([]);
@@ -408,9 +432,8 @@ export function ExchangeSection({ user, onToast }) {
   const [program, setProgram] = useState(null);
   const [discount, setDiscount] = useState(null);
   const [validity, setValidity] = useState(null);
-  const [subscriptionDurationPreset, setSubscriptionDurationPreset] = useState(
-    () => EXCHANGE_SUBSCRIPTION_DURATION_PRESETS[0] || null,
-  );
+  const [subscriptionDurationAmount, setSubscriptionDurationAmount] = useState("30");
+  const [subscriptionDurationUnit, setSubscriptionDurationUnit] = useState("days");
   const [openField, setOpenField] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -523,7 +546,14 @@ export function ExchangeSection({ user, onToast }) {
   const summary = paymentSummary(history);
   const firstName = user?.name?.split(" ")[0] || "Client";
   const hasCoach = clientHasWcOrAwc(user);
-  const canTrigger = canCreate && hasCoach && Boolean(user?.id && program && discount && validity && !loading && !triggering);
+  const parsedDurationAmount = parseSubscriptionDurationAmount(subscriptionDurationAmount);
+  const hasValidDuration = Boolean(
+    parsedDurationAmount
+    && SUBSCRIPTION_DURATION_UNIT_OPTIONS.some((o) => o.id === subscriptionDurationUnit),
+  );
+  const canTrigger = canCreate && hasCoach && Boolean(
+    user?.id && program && discount && validity && hasValidDuration && !loading && !triggering,
+  );
 
   function closeMenus() {
     setOpenField(null);
@@ -576,7 +606,8 @@ export function ExchangeSection({ user, onToast }) {
         discountLabel: discount.label,
         linkValidity: validity.label,
         includeAppSubscription: true,
-        appSubscriptionDurationPresetId: subscriptionDurationPreset?.id,
+        appSubscriptionDurationAmount: parsedDurationAmount,
+        appSubscriptionDurationUnit: subscriptionDurationUnit,
       });
       setConfirmOpen(false);
       onToast?.(result.message || `${program.name} triggered in app`);
@@ -595,7 +626,8 @@ export function ExchangeSection({ user, onToast }) {
   }
 
   const emptyConfig = !loading && !loadError && (!programs.length || !discounts.length || !validityPeriods.length);
-  const durationLabel = subscriptionDurationLabel(subscriptionDurationPreset);
+  const durationLabel = formatBundledDurationLabel(parsedDurationAmount, subscriptionDurationUnit)
+    || formatBundledDurationLabel(30, "days");
 
   return (
     <div className="ua-cp-section ua-cp-ex">
@@ -676,19 +708,37 @@ export function ExchangeSection({ user, onToast }) {
             <span className="ua-cp-ex-field__label">Value</span>
             <div className="ua-cp-ex-field__value">{program && discount ? formatRupee(value) : "—"}</div>
           </div>
-          <FieldSelect
-            label="App subscription (duration)"
-            value={durationLabel}
-            options={EXCHANGE_SUBSCRIPTION_DURATION_PRESETS}
-            open={openField === "subscription"}
-            disabled={loading}
-            onToggle={(next) => setOpenField(next ? "subscription" : null)}
-            onSelect={(next) => {
-              setSubscriptionDurationPreset(next);
-              closeMenus();
-            }}
-            getLabel={(option) => option.label}
-          />
+          <div className="ua-cp-ex-field">
+            <span className="ua-cp-ex-field__label">App subscription (duration)</span>
+            <div className="ua-cp-ex-duration">
+              <input
+                type="number"
+                className="ua-cp-ex-duration__amount"
+                min={1}
+                max={9999}
+                step={1}
+                inputMode="numeric"
+                aria-label="App subscription duration amount"
+                value={subscriptionDurationAmount}
+                disabled={loading}
+                onChange={(e) => setSubscriptionDurationAmount(e.target.value)}
+              />
+              <FieldSelect
+                label=""
+                value={subscriptionDurationUnitLabel(subscriptionDurationUnit)}
+                options={SUBSCRIPTION_DURATION_UNIT_OPTIONS}
+                open={openField === "subscriptionUnit"}
+                disabled={loading}
+                bare
+                onToggle={(next) => setOpenField(next ? "subscriptionUnit" : null)}
+                onSelect={(next) => {
+                  setSubscriptionDurationUnit(next.id);
+                  closeMenus();
+                }}
+                getLabel={(option) => option.label}
+              />
+            </div>
+          </div>
         </div>
         <div className="ua-cp-ex-form__actions">
           <button

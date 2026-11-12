@@ -13,7 +13,6 @@ const { TABLE: WEIGHT_TABLE } = require("../models/healthProgressWeightModel");
 const { TABLE: BODY_TABLE } = require("../models/userBodyMeasurementModel");
 const { TABLE: GLUCOSE_TABLE } = require("../models/healthProgressGlucoseModel");
 const {
-  toKg,
   toNumberOrNull,
   firstAndLastNumeric,
   isHealClientInOnboarding,
@@ -23,6 +22,9 @@ const {
   classifyFatLoss,
   classifyHba1c,
   looksLikeA1cSeries,
+  buildFatLossConcernIdSet,
+  isFatLossPrimaryConcern,
+  resolveWeightSeriesForUser,
   formatKg,
   formatA1c,
   formatChangeKg,
@@ -31,6 +33,7 @@ const {
   mergeHba1cReadings,
   daysAgo,
 } = require("../utils/programProgressCalculations");
+const { listHealthConcerns } = require("../models/healthConcernModel");
 
 const AVATAR_COLORS = ["#34a56a", "#5e6ad2", "#0d9488", "#ec7a45", "#c2661d", "#7c8aa5", "#a855f7"];
 const SCAN_LIMIT = 8000;
@@ -167,7 +170,7 @@ function buildOnboarding(users, coachNames) {
   };
 }
 
-function buildFatLoss(users, coachNames, weightByUser, bodyByUser) {
+function buildFatLoss(users, coachNames, weightByUser, bodyByUser, fatLossConcernIds) {
   const down610 = [];
   const halfway = [];
   const neartarget = [];
@@ -175,33 +178,31 @@ function buildFatLoss(users, coachNames, weightByUser, bodyByUser) {
   for (const user of users || []) {
     const userId = userIdOf(user);
     if (!userId) continue;
-    const weights = [
-      ...(weightByUser.get(userId) || []),
-      ...(bodyByUser.get(userId) || []),
-    ];
-    const readWeight = (row) => toKg(row.weightKg, row.weightUnit);
-    const series = firstAndLastNumeric(weights, readWeight);
-    if (series.start == null || series.current == null) continue;
-    if (series.start === series.current && (weightByUser.get(userId) || []).length + (bodyByUser.get(userId) || []).length < 2) {
-      continue;
-    }
+    if (!isFatLossPrimaryConcern(user, fatLossConcernIds)) continue;
+
+    const series = resolveWeightSeriesForUser(
+      weightByUser.get(userId) || [],
+      bodyByUser.get(userId) || [],
+    );
+    if (series.skip) continue;
 
     const heightCm =
       toNumberOrNull(
         [...(bodyByUser.get(userId) || [])].reverse().find((row) => toNumberOrNull(row.heightCm))?.heightCm
       ) || null;
     const flags = classifyFatLoss({
-      startKg: series.start,
-      currentKg: series.current,
+      startKg: series.startKg,
+      currentKg: series.actualKg,
       heightCm,
+      goalKg: toNumberOrNull(user?.targetWeightKg),
     });
     if (!flags.down610 && !flags.halfway && !flags.neartarget) continue;
 
     const row = metricRow({
       user,
       coachName: coachNameFor(user, coachNames),
-      start: formatKg(series.start),
-      current: formatKg(series.current),
+      start: formatKg(series.startKg),
+      current: formatKg(series.actualKg),
       change: formatChangeKg(flags.lost),
     });
     if (flags.down610) down610.push(row);
@@ -508,12 +509,24 @@ async function loadSupplements(actor, allowedIds) {
   }
 }
 
+async function loadFatLossConcernIds() {
+  try {
+    const { healthConcerns } = await listHealthConcerns({ page: 1, limit: 200, status: "active" });
+    return buildFatLossConcernIdSet(healthConcerns);
+  } catch (err) {
+    console.warn("[programProgress] health concerns catalog failed:", err?.message || err);
+    return new Set();
+  }
+}
+
 async function getProgramProgressOverview(actor) {
   const users = await listScopedUsers(actor);
   const usersById = new Map(users.map((user) => [userIdOf(user), user]).filter(([id]) => id));
   const allowedIds = actor.role === "admin" || actor.role === "support" ? null : new Set(usersById.keys());
 
-  const [coachNames, weightRows, bodyRows, glucoseRows, supplements, meetings, labReports] = await Promise.all([
+  const [fatLossConcernIds, coachNames, weightRows, bodyRows, glucoseRows, supplements, meetings, labReports] =
+    await Promise.all([
+    loadFatLossConcernIds(),
     loadCoachNames(users),
     safeScan(WEIGHT_TABLE, { projection: "userId, weightKg, recordedAt, createdAt" }),
     safeScan(BODY_TABLE, {
@@ -537,7 +550,8 @@ async function getProgramProgressOverview(actor) {
     users,
     coachNames,
     groupByUserId(filterRows(weightRows)),
-    groupByUserId(filterRows(bodyRows))
+    groupByUserId(filterRows(bodyRows)),
+    fatLossConcernIds,
   );
   const hba1c = buildHba1c(
     users,

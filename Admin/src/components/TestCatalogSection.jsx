@@ -3,10 +3,44 @@ import { CfgSelect } from "./shared.jsx";
 import { ConfirmDialog } from "./ConfirmDialog.jsx";
 import {
   adminDeleteTestCatalog,
+  adminGetCatalogMaster,
   adminListTestGoals,
+  adminSaveCatalogMaster,
   adminSaveTestGoal,
+  CATALOG_MASTER_NAME,
   fetchTestCategories,
 } from "../api/testCatalogApi.js";
+import { useViewAs } from "../context/ViewAsContext.jsx";
+import "./testCatalogConfig.css";
+
+function goalInitial(name) {
+  const trimmed = String(name || "").trim();
+  if (!trimmed) return "?";
+  return trimmed.charAt(0).toUpperCase();
+}
+
+function CatalogHeroIcon() {
+  return (
+    <svg className="ua-tc-hero__icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 3h6v2.2c0 .5.2 1 .6 1.3l2.4 2.1c.5.4.8 1 .8 1.6V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9.8c0-.6.3-1.2.8-1.6l2.4-2.1c.4-.3.6-.8.6-1.3V3Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11h4M10 15h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="ua-tc-search__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="8.5" cy="8.5" r="5.25" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M12.5 12.5 16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function newId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -62,6 +96,31 @@ function mergeSections(saved, dismissed, master) {
   });
 
   return sections;
+}
+
+function cloneTestsFromMaster(tests) {
+  return (tests || []).map((test) => ({
+    id: newId(),
+    name: test.name || "",
+    code: test.code || "",
+    hours: Number.isFinite(Number(test.hours)) ? Number(test.hours) : 12,
+    selected: test.selected !== false,
+  }));
+}
+
+function seedSectionsFromMaster(masterSections, dismissed, masterCategories) {
+  const base = mergeSections([], dismissed, masterCategories);
+  const byCategory = new Map(
+    (masterSections || []).map((section) => [
+      String(section?.category || "").trim().toLowerCase(),
+      section,
+    ]),
+  );
+  return base.map((section) => {
+    const masterSection = byCategory.get(section.category.toLowerCase());
+    if (!masterSection?.tests?.length) return section;
+    return { ...section, tests: cloneTestsFromMaster(masterSection.tests) };
+  });
 }
 
 function prepareGoal(draft) {
@@ -167,7 +226,11 @@ function CodeField({ value, disabled, onChange }) {
 }
 
 export function TestCatalogSection({ setTests, onToast }) {
+  const { isAdminView, can } = useViewAs();
+  const canEditCatalogMaster = Boolean(isAdminView) && can("console.cf.edit");
+
   const [goals, setGoals] = useState([]);
+  const [catalogMaster, setCatalogMaster] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
@@ -199,6 +262,19 @@ export function TestCatalogSection({ setTests, onToast }) {
   }, [loadGoals]);
 
   useEffect(() => {
+    if (!canEditCatalogMaster) return undefined;
+    let cancelled = false;
+    adminGetCatalogMaster(null)
+      .then((row) => {
+        if (!cancelled && row) setCatalogMaster(row);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [canEditCatalogMaster]);
+
+  useEffect(() => {
     let cancelled = false;
     fetchTestCategories()
       .then((labels) => {
@@ -216,7 +292,7 @@ export function TestCatalogSection({ setTests, onToast }) {
   snapshotRef.current = savedSnapshot;
 
   useEffect(() => {
-    if (mode !== "edit" || !masterCategories.length) return;
+    if ((mode !== "edit" && mode !== "master") || !masterCategories.length) return;
     const current = draftRef.current;
     if (!current) return;
     const merged = mergeSections(current.sections, current.dismissedCategories, masterCategories);
@@ -236,16 +312,38 @@ export function TestCatalogSection({ setTests, onToast }) {
     return goals.filter((goal) => goal.name.toLowerCase().includes(query));
   }, [goals, search]);
 
+  const listStats = useMemo(() => {
+    const activeGoals = goals.filter((goal) => goal.status !== "inactive").length;
+    let sectionTotal = 0;
+    let testTotal = 0;
+    goals.forEach((goal) => {
+      const rowCounts = goalCounts(goal.sections);
+      sectionTotal += rowCounts.sections;
+      testTotal += rowCounts.tests;
+    });
+    return {
+      goals: goals.length,
+      activeGoals,
+      sections: sectionTotal,
+      tests: testTotal,
+    };
+  }, [goals]);
+
   const counts = goalCounts(draft?.sections);
   const unusedCategories = useMemo(() => {
     const used = new Set((draft?.sections || []).map((section) => section.category.toLowerCase()));
     return masterCategories.filter((category) => !used.has(String(category).trim().toLowerCase()));
   }, [draft, masterCategories]);
 
-  const dirty = mode === "edit" && draft ? snapshotOf(draft) !== savedSnapshot : false;
+  const isMasterMode = mode === "master";
+  const dirty = (mode === "edit" || isMasterMode) && draft ? snapshotOf(draft) !== savedSnapshot : false;
 
   function openNew() {
-    const sections = mergeSections([], [], masterCategories);
+    const sections = seedSectionsFromMaster(
+      catalogMaster?.sections,
+      catalogMaster?.dismissedCategories,
+      masterCategories,
+    );
     const next = { id: null, name: "", status: "active", sections, dismissedCategories: [] };
     setDraft(next);
     setSavedSnapshot(snapshotOf(next));
@@ -267,8 +365,27 @@ export function TestCatalogSection({ setTests, onToast }) {
     setMode("edit");
   }
 
+  function openMaster() {
+    const next = {
+      id: catalogMaster?.id || null,
+      name: CATALOG_MASTER_NAME,
+      status: "inactive",
+      sections: mergeSections(
+        catalogMaster?.sections || [],
+        catalogMaster?.dismissedCategories || [],
+        masterCategories,
+      ),
+      dismissedCategories: [...(catalogMaster?.dismissedCategories || [])],
+    };
+    setDraft(next);
+    setSavedSnapshot(snapshotOf(next));
+    setCollapsedSections(new Set());
+    setMode("master");
+  }
+
   function leaveEditor() {
-    if (dirty && !window.confirm("Leave without saving this goal?")) return;
+    const noun = isMasterMode ? "master list" : "goal";
+    if (dirty && !window.confirm(`Leave without saving this ${noun}?`)) return;
     setMode("list");
     setDraft(null);
   }
@@ -326,7 +443,7 @@ export function TestCatalogSection({ setTests, onToast }) {
   }
 
   async function saveGoal() {
-    if (!draft || busy) return;
+    if (!draft || busy || isMasterMode) return;
     const { error, payload } = prepareGoal(draft);
     if (error) {
       onToast(error);
@@ -343,6 +460,32 @@ export function TestCatalogSection({ setTests, onToast }) {
       await loadGoals();
     } catch (error) {
       onToast(error?.message || "Failed to save goal");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveMaster() {
+    if (!draft || busy || !isMasterMode) return;
+    const { error, payload } = prepareGoal(draft);
+    if (error) {
+      onToast(error);
+      return;
+    }
+    setBusy(true);
+    try {
+      const saved = await adminSaveCatalogMaster(null, {
+        id: draft.id,
+        sections: payload.sections,
+        dismissedCategories: payload.dismissedCategories,
+      });
+      if (!saved) throw new Error("Failed to save master list");
+      setCatalogMaster(saved);
+      setSavedSnapshot(snapshotOf({ ...draft, id: saved.id }));
+      setDraft((current) => (current ? { ...current, id: saved.id } : current));
+      onToast("Master test list saved");
+    } catch (error) {
+      onToast(error?.message || "Failed to save master list");
     } finally {
       setBusy(false);
     }
@@ -386,29 +529,91 @@ export function TestCatalogSection({ setTests, onToast }) {
     }));
   }
 
+  const rootClass = [
+    "ua-cfg-goals",
+    "ua-test-catalog",
+    mode === "list" ? "is-list" : "",
+    mode === "edit" ? "is-edit" : "",
+    isMasterMode ? "is-master" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="ua-cfg-goals">
+    <div className={rootClass}>
       {mode === "list" ? (
         <>
-          <header className="ua-cfg-goals__head">
-            <div>
-              <h1 className="ua-cfg-goals__title">Goals &amp; Tests</h1>
-              <p className="ua-cfg-goals__sub">Each goal has its own set of test sections, with fasting or prep time per test.</p>
+          <header className="ua-tc-hero">
+            <div className="ua-tc-hero__copy">
+              <div className="ua-tc-hero__icon-wrap" aria-hidden="true">
+                <CatalogHeroIcon />
+              </div>
+              <div>
+                <p className="ua-tc-hero__eyebrow">Heal · Blood tests</p>
+                <h1 className="ua-cfg-goals__title">Goals &amp; Tests</h1>
+                <p className="ua-cfg-goals__sub">
+                  Each goal has its own set of test sections, with fasting or prep time per test.
+                </p>
+              </div>
             </div>
-            <button type="button" className="ua-cfg-goals__new" disabled={loading} onClick={openNew}>
-              + New goal
-            </button>
+            <div className="ua-tc-hero__actions">
+              {canEditCatalogMaster ? (
+                <button
+                  type="button"
+                  className="ua-cfg-goals__secondary"
+                  disabled={loading}
+                  onClick={openMaster}
+                >
+                  Edit master
+                </button>
+              ) : null}
+              <button type="button" className="ua-cfg-goals__new" disabled={loading} onClick={openNew}>
+                + New goal
+              </button>
+            </div>
           </header>
 
+          <div className="ua-tc-stats" aria-label="Catalog summary">
+            <div className="ua-tc-stat ua-tc-stat--accent">
+              <span className="ua-tc-stat__label">Goals</span>
+              <span className="ua-tc-stat__value">{loading ? "—" : listStats.goals}</span>
+              <span className="ua-tc-stat__hint">{loading ? "" : `${listStats.activeGoals} active`}</span>
+            </div>
+            <div className="ua-tc-stat">
+              <span className="ua-tc-stat__label">Sections</span>
+              <span className="ua-tc-stat__value">{loading ? "—" : listStats.sections}</span>
+              <span className="ua-tc-stat__hint">Across all goals</span>
+            </div>
+            <div className="ua-tc-stat">
+              <span className="ua-tc-stat__label">Tests</span>
+              <span className="ua-tc-stat__value">{loading ? "—" : listStats.tests}</span>
+              <span className="ua-tc-stat__hint">In catalog rows</span>
+            </div>
+            <div className="ua-tc-stat">
+              <span className="ua-tc-stat__label">Showing</span>
+              <span className="ua-tc-stat__value">{loading ? "—" : filtered.length}</span>
+              <span className="ua-tc-stat__hint">
+                {search.trim() ? "Matches search" : "All goals"}
+              </span>
+            </div>
+          </div>
+
           <section className="ua-cfg-goals-card">
-            <div className="ua-cfg-goals-card__search">
-              <input
-                type="search"
-                className="ua-cfg-goals-field"
-                placeholder="Search goals"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
+            <div className="ua-tc-toolbar">
+              <div>
+                <p className="ua-tc-toolbar__title">Goal directory</p>
+                <p className="ua-tc-toolbar__meta">Open a goal to manage sections, codes, and prep hours.</p>
+              </div>
+              <div className="ua-cfg-goals-card__search">
+                <label className="ua-tc-search">
+                  <SearchIcon />
+                  <input
+                    type="search"
+                    className="ua-cfg-goals-field"
+                    placeholder="Search goals by name…"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </label>
+              </div>
             </div>
             <div className="ua-cfg-goals-table-wrap">
               <table className="ua-cfg-goals-table">
@@ -432,9 +637,14 @@ export function TestCatalogSection({ setTests, onToast }) {
                       const active = goal.status !== "inactive";
                       return (
                         <tr key={goal.id}>
-                          <td className="ua-cfg-goals-table__goal">{goal.name}</td>
-                          <td>{rowCounts.sections}</td>
-                          <td>{rowCounts.tests}</td>
+                          <td className="ua-cfg-goals-table__goal">
+                            <div className="ua-tc-goal-cell">
+                              <span className="ua-tc-goal-avatar" aria-hidden="true">{goalInitial(goal.name)}</span>
+                              <span className="ua-tc-goal-name">{goal.name}</span>
+                            </div>
+                          </td>
+                          <td><span className="ua-tc-metric">{rowCounts.sections}</span></td>
+                          <td><span className="ua-tc-metric">{rowCounts.tests}</span></td>
                           <td>
                             <span className={`ua-cfg-goals-status${active ? "" : " is-inactive"}`}>
                               {active ? "Active" : "Inactive"}
@@ -443,6 +653,7 @@ export function TestCatalogSection({ setTests, onToast }) {
                           <td>
                             <button type="button" className="ua-cfg-goals-edit" onClick={() => openEdit(goal)}>
                               Edit
+                              <span aria-hidden="true">→</span>
                             </button>
                           </td>
                         </tr>
@@ -451,7 +662,21 @@ export function TestCatalogSection({ setTests, onToast }) {
                   ) : (
                     <tr>
                       <td colSpan={5} className="ua-cfg-goals-table__empty">
-                        {goals.length ? "No goals match that search." : "No goals yet. Create one to attach tests from the admin categories."}
+                        <div className="ua-tc-empty">
+                          <p className="ua-tc-empty__title">
+                            {goals.length ? "No matching goals" : "No goals yet"}
+                          </p>
+                          <p className="ua-tc-empty__sub">
+                            {goals.length
+                              ? "Try a different search term or clear the filter."
+                              : "Create a goal to attach tests from the admin blood-test categories."}
+                          </p>
+                          {!goals.length ? (
+                            <button type="button" className="ua-cfg-goals__new" onClick={openNew}>
+                              + Create first goal
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -467,47 +692,71 @@ export function TestCatalogSection({ setTests, onToast }) {
               Goals &amp; Tests
             </button>
             <span className="ua-cfg-goals-crumb__sep">/</span>
-            <span className="ua-cfg-goals-crumb__current">{draft.name.trim() || "New goal"}</span>
+            <span className="ua-cfg-goals-crumb__current">
+              {isMasterMode ? "Master test list" : draft.name.trim() || "New goal"}
+            </span>
           </p>
 
           <header className="ua-cfg-goals__head ua-cfg-goals__head--edit">
             <div>
-              <h1 className="ua-cfg-goals__title">{draft.id ? "Edit goal" : "New goal"}</h1>
-              <p className="ua-cfg-goals__sub">Choose which tests belong to this goal and how long the user should prepare before each one.</p>
+              <h1 className="ua-cfg-goals__title">
+                {isMasterMode ? "Master test list" : draft.id ? "Edit goal" : "New goal"}
+              </h1>
+              <p className="ua-cfg-goals__sub">
+                {isMasterMode
+                  ? "Default tests per category. New goals start from this list; coaches never see this master."
+                  : "Choose which tests belong to this goal and how long the user should prepare before each one."}
+              </p>
             </div>
           </header>
 
           <section className="ua-cfg-goals-card ua-cfg-goals-meta">
-            <label className="ua-cfg-goals-meta__name">
-              <span>Goal name</span>
-              <input
-                className="ua-cfg-goals-field"
-                value={draft.name}
-                disabled={busy}
-                placeholder="Fat loss"
-                onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
+            {!isMasterMode ? (
+              <label className="ua-cfg-goals-meta__name">
+                <span>Goal name</span>
+                <input
+                  className="ua-cfg-goals-field"
+                  value={draft.name}
+                  disabled={busy}
+                  placeholder="Fat loss"
+                  onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
+                />
+              </label>
+            ) : (
+              <div className="ua-cfg-goals-meta__name">
+                <span>Master list</span>
+                <p className="ua-cfg-goals-meta__master-label">Shared template for all new goals</p>
+              </div>
+            )}
             <div className="ua-cfg-goals-meta__side">
-              <button
-                type="button"
-                className={`ua-toggle${draft.status !== "inactive" ? " ua-toggle--on" : ""}`}
-                aria-pressed={draft.status !== "inactive"}
-                aria-label="Active"
-                disabled={busy}
-                onClick={() => setDraft((current) => ({
-                  ...current,
-                  status: current.status === "inactive" ? "active" : "inactive",
-                }))}
-              >
-                <span className="ua-toggle__knob" />
-              </button>
-              <span className="ua-cfg-goals-meta__active">{draft.status === "inactive" ? "Inactive" : "Active"}</span>
+              {!isMasterMode ? (
+                <>
+                  <button
+                    type="button"
+                    className={`ua-toggle${draft.status !== "inactive" ? " ua-toggle--on" : ""}`}
+                    aria-pressed={draft.status !== "inactive"}
+                    aria-label="Active"
+                    disabled={busy}
+                    onClick={() => setDraft((current) => ({
+                      ...current,
+                      status: current.status === "inactive" ? "active" : "inactive",
+                    }))}
+                  >
+                    <span className="ua-toggle__knob" />
+                  </button>
+                  <span className="ua-cfg-goals-meta__active">{draft.status === "inactive" ? "Inactive" : "Active"}</span>
+                </>
+              ) : null}
               <span className="ua-cfg-goals-meta__counts">
                 {plural(counts.sections, "section")} · {plural(counts.tests, "test")} · {counts.selected} selected
               </span>
-              <button type="button" className="ua-cfg-goals__new" disabled={busy} onClick={saveGoal}>
-                {busy ? "Saving…" : "Save goal"}
+              <button
+                type="button"
+                className="ua-cfg-goals__new"
+                disabled={busy}
+                onClick={isMasterMode ? saveMaster : saveGoal}
+              >
+                {busy ? "Saving…" : isMasterMode ? "Save master" : "Save goal"}
               </button>
             </div>
           </section>
@@ -665,7 +914,7 @@ export function TestCatalogSection({ setTests, onToast }) {
             </label>
           ) : null}
 
-          {draft.id ? (
+          {draft.id && !isMasterMode ? (
             <div className="ua-cfg-goals-footer">
               <button type="button" className="ua-cfg-goals-delete" disabled={busy} onClick={() => setPendingDeleteGoal(true)}>
                 Delete goal

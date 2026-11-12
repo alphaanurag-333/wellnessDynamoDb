@@ -1,6 +1,6 @@
 import api, { normalizeApiError } from "../api.js";
 import { getAccountToken } from "./accountApi.js";
-import { adminListTestCatalog } from "./testCatalogApi.js";
+import { adminListTestCatalog, isCatalogMasterEntry } from "./testCatalogApi.js";
 import { adminGetLaunchConfig } from "./launchConfigApi.js";
 
 function authHeader() {
@@ -681,6 +681,7 @@ function liveCatalogRows(rows) {
       parameters: Array.isArray(row.parameters) ? row.parameters : [],
     }))
     .filter((row) => row.id && row.status !== "inactive")
+    .filter((row) => !isCatalogMasterEntry(row))
     .filter((row) => row.kind !== "goal" || row.lines.some((line) => line?.name));
 }
 

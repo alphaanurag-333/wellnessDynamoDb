@@ -11,6 +11,10 @@ const {
   formatChangeKg,
   formatChangePts,
   resolveGoalWeightKg,
+  buildFatLossConcernIdSet,
+  isFatLossPrimaryConcern,
+  isFatLossConcernTitle,
+  resolveWeightSeriesForUser,
   extractHba1cFromLabReport,
   listHba1cReadingsFromLabReports,
   labReportsToHba1cReadings,
@@ -24,17 +28,104 @@ describe("classifyFatLoss", () => {
     assert.ok(flags.lost >= 6);
   });
 
-  it("flags at / 2 kg short when current is within 2 kg of goal", () => {
-    const flags = classifyFatLoss({ startKg: 78, currentKg: 69.2, heightCm: null });
+  it("flags at / 2 kg short when current is within 2 kg of coach target", () => {
+    const flags = classifyFatLoss({
+      startKg: 78,
+      currentKg: 69.2,
+      heightCm: null,
+      goalKg: 68,
+    });
     assert.equal(flags.neartarget, true);
     assert.equal(flags.goalKg, 68);
   });
 
-  it("flags halfway when at least 50% of the 10 kg goal is done but not near target", () => {
-    const flags = classifyFatLoss({ startKg: 98, currentKg: 91, heightCm: 168 });
+  it("flags halfway when at least 50% of coach target loss is done but not near target", () => {
+    const flags = classifyFatLoss({
+      startKg: 98,
+      currentKg: 91,
+      heightCm: 168,
+      goalKg: 88,
+    });
     assert.equal(flags.halfway, true);
     assert.equal(flags.neartarget, false);
     assert.equal(flags.goalKg, 88);
+  });
+
+  it("skips goal buckets without coach target but still flags 6–10 kg down", () => {
+    const flags = classifyFatLoss({ startKg: 92, currentKg: 84.2, heightCm: 165 });
+    assert.equal(flags.down610, true);
+    assert.equal(flags.halfway, false);
+    assert.equal(flags.neartarget, false);
+    assert.equal(flags.goalKg, null);
+  });
+
+  it("coach target scenarios (start 80 kg, target 60 kg)", () => {
+    const base = { startKg: 80, goalKg: 60, heightCm: null };
+    const twelve = classifyFatLoss({ ...base, currentKg: 68 });
+    assert.equal(twelve.halfway, true);
+    assert.equal(twelve.neartarget, false);
+    assert.equal(twelve.down610, false);
+
+    const ten = classifyFatLoss({ ...base, currentKg: 70 });
+    assert.equal(ten.down610, true);
+    assert.equal(ten.halfway, true);
+    assert.equal(ten.neartarget, false);
+
+    const near = classifyFatLoss({ ...base, currentKg: 61 });
+    assert.equal(near.neartarget, true);
+    assert.equal(near.halfway, false);
+    assert.equal(near.down610, false);
+  });
+
+  it("uses coach-set target weight when provided", () => {
+    const flags = classifyFatLoss({
+      startKg: 80,
+      currentKg: 62,
+      heightCm: null,
+      goalKg: 60,
+    });
+    assert.equal(flags.goalKg, 60);
+    assert.equal(flags.neartarget, true);
+  });
+});
+
+describe("fat loss client filter", () => {
+  it("matches Fat Loss catalog titles", () => {
+    assert.equal(isFatLossConcernTitle("Fat Loss"), true);
+    assert.equal(isFatLossConcernTitle("Weight Loss Program"), true);
+    assert.equal(isFatLossConcernTitle("Diabetes Reversal"), false);
+  });
+
+  it("includes purchased clients with primary Fat Loss concern id", () => {
+    const catalog = [{ id: "hc-fat", title: "Fat Loss", status: "active" }];
+    const ids = buildFatLossConcernIdSet(catalog);
+    const user = {
+      programPurchased: true,
+      primaryHealthConcern: "hc-fat",
+    };
+    assert.equal(isFatLossPrimaryConcern(user, ids), true);
+    assert.equal(
+      isFatLossPrimaryConcern({ ...user, primaryHealthConcern: "hc-diabetes" }, ids),
+      false,
+    );
+    assert.equal(isFatLossPrimaryConcern({ ...user, programPurchased: false }, ids), false);
+  });
+});
+
+describe("resolveWeightSeriesForUser", () => {
+  it("returns earliest and latest weights across sources", () => {
+    const series = resolveWeightSeriesForUser(
+      [{ weightKg: 80, recordedAt: "2026-01-01" }],
+      [{ weightKg: 75, weightUnit: "kg", recordedAt: "2026-02-01" }],
+    );
+    assert.equal(series.skip, false);
+    assert.equal(series.startKg, 80);
+    assert.equal(series.actualKg, 75);
+  });
+
+  it("skips a single unchanged reading", () => {
+    const series = resolveWeightSeriesForUser([{ weightKg: 80, recordedAt: "2026-01-01" }], []);
+    assert.equal(series.skip, true);
   });
 });
 
