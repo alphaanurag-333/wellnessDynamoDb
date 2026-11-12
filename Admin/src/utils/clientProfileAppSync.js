@@ -83,6 +83,53 @@ export function bmsTrackingPollSignature(tab, data, range) {
   ].join(ROW_SEP);
 }
 
+function mealLogRowSig(log) {
+  if (!log) return "";
+  return [
+    log.id || log._id,
+    log.date,
+    log.updatedAt,
+    log.createdAt,
+    log.entryTime,
+    log.status,
+    log.aiStatus,
+    log.loggedByRole,
+    log.trackingMode,
+    log.proteinGm,
+    log.carbsGm,
+    log.fatsGm,
+    log.caloriesKcal,
+    log.description,
+    JSON.stringify(log.items || []),
+    log.photoUrl ? "1" : "0",
+  ].join(":");
+}
+
+/** Client meal logs for a single day — used to detect new app submissions in admin Food tracking. */
+export function mealTrackingPollSignature(dateKey, data) {
+  const logs = (data?.logs || [])
+    .filter((log) => !log.date || log.date === dateKey)
+    .map(mealLogRowSig)
+    .join("|");
+  return [
+    String(dateKey || ""),
+    String(data?.dailyMealGoal ?? ""),
+    String(data?.mealTrackingMode ?? ""),
+    logs,
+  ].join(ROW_SEP);
+}
+
+export function waterTrackingPollSignature(range, data) {
+  const from = range?.from ? String(range.from) : "";
+  const to = range?.to ? String(range.to) : "";
+  const history = (data?.history || []).map((row) => JSON.stringify(row)).join("|");
+  return [from, to, history, JSON.stringify(data?.settings || null)].join(ROW_SEP);
+}
+
+export function foodMetabolicPollSignature(metabolicMetrics) {
+  return JSON.stringify(Array.isArray(metabolicMetrics) ? metabolicMetrics : []);
+}
+
 function healthProgressLogRowsSig(rows) {
   return (rows || [])
     .map((row) => [

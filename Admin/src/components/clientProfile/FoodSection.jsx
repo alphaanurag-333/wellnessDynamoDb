@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
@@ -39,6 +39,12 @@ import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import {
+  foodMetabolicPollSignature,
+  mealTrackingPollSignature,
+  waterTrackingPollSignature,
+} from "../../utils/clientProfileAppSync.js";
 
 function isLiveUserId(userId) {
   return Boolean(userId) && !isMockNumericId(userId);
@@ -880,8 +886,29 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const jumpedToLatestRef = useRef(false);
   const userRef = useRef(user);
   const onUserUpdatedRef = useRef(onUserUpdated);
+  const selectedDateRef = useRef(selectedDate);
+  const mealsSigRef = useRef("");
+  const waterSigRef = useRef("");
+  const metabolicSigRef = useRef("");
+  const busyIdRef = useRef("");
+  const editAfterAiIdRef = useRef("");
+  const mealGoalBusyRef = useRef(false);
+  const modeBusyRef = useRef(false);
+  const pendingDeleteRef = useRef(null);
+  const waterGoalEditingRef = useRef(false);
+  const waterGoalSavingRef = useRef(false);
+  const waterGoalUnlockBusyRef = useRef(false);
   userRef.current = user;
   onUserUpdatedRef.current = onUserUpdated;
+  selectedDateRef.current = selectedDate;
+  busyIdRef.current = busyId;
+  editAfterAiIdRef.current = editAfterAiId;
+  mealGoalBusyRef.current = mealGoalBusy;
+  modeBusyRef.current = modeBusy;
+  pendingDeleteRef.current = pendingDelete;
+  waterGoalEditingRef.current = waterGoalEditing;
+  waterGoalSavingRef.current = waterGoalSaving;
+  waterGoalUnlockBusyRef.current = waterGoalUnlockBusy;
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
   const waterChart = useMemo(() => {
@@ -920,11 +947,51 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setMacroTargets(macroTargetsFromTdee(0, 0));
     setMeals([]);
     jumpedToLatestRef.current = false;
+    mealsSigRef.current = "";
+    waterSigRef.current = "";
+    metabolicSigRef.current = "";
     setEditAfterAiId("");
     setPendingDelete(null);
     setPendingMode(null);
     setPendingMealGoal(null);
   }, [live, today, userId]);
+
+  const applyMealTrackingPayload = useCallback((data, dateKey, { allowJumpToLatest = false, isCancelled } = {}) => {
+    const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
+    logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
+    setMeals(logs.map(mapMealLogToUi));
+    mealsSigRef.current = mealTrackingPollSignature(dateKey, data);
+    const serverMode = data?.mealTrackingMode;
+    const currentUser = userRef.current;
+    if (serverMode && currentUser && !currentUser.mealTrackingMode) {
+      onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
+    }
+    const serverMealGoal = normalizeDailyMealGoal(data?.dailyMealGoal);
+    setDailyMealGoal(serverMealGoal);
+    const currentUserAfterMode = userRef.current;
+    if (currentUserAfterMode && normalizeDailyMealGoal(currentUserAfterMode.dailyMealGoal) !== serverMealGoal) {
+      onUserUpdatedRef.current?.({ ...currentUserAfterMode, dailyMealGoal: serverMealGoal });
+    }
+    if (
+      allowJumpToLatest
+      && !jumpedToLatestRef.current
+      && logs.length === 0
+      && dateKey === formatFoodDateInput(today)
+    ) {
+      jumpedToLatestRef.current = true;
+      fetchUserMealTracking(userId, { date: formatFoodDateInput(today), days: 21 })
+        .then((rangeData) => {
+          if (isCancelled?.()) return;
+          const latest = (rangeData?.logs || []).find((log) => log?.date);
+          const nextDate = latest?.date ? parseFoodDateInput(latest.date) : null;
+          const current = selectedDateRef.current;
+          if (nextDate && nextDate.toDateString() !== current.toDateString()) {
+            setSelectedDate(nextDate);
+          }
+        })
+        .catch(() => { });
+    }
+  }, [today, userId]);
 
   useEffect(() => {
     setDietPlanOn(user?.dietPlanEnabled !== false);
@@ -968,6 +1035,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     fetchUserBodyAnalytics(userId)
       .then((data) => {
         if (cancelled) return;
+        metabolicSigRef.current = foodMetabolicPollSignature(data?.metabolicMetrics);
         const { bmr, tdee } = latestBmrTdee(data?.metabolicMetrics);
         setMacroTargets(macroTargetsFromTdee(tdee, bmr));
       })
@@ -986,46 +1054,16 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       return undefined;
     }
     let cancelled = false;
+    mealsSigRef.current = "";
     setMealsLoading(true);
-    fetchUserMealTracking(userId, { date: formatFoodDateInput(selectedDate), days: 1 })
+    const dateKey = formatFoodDateInput(selectedDate);
+    fetchUserMealTracking(userId, { date: dateKey, days: 1 })
       .then((data) => {
         if (cancelled) return;
-        const dateKey = formatFoodDateInput(selectedDate);
-        const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
-        logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
-        setMeals(logs.map(mapMealLogToUi));
-        const serverMode = data?.mealTrackingMode;
-        const currentUser = userRef.current;
-        if (
-          serverMode
-          && currentUser
-          && !currentUser.mealTrackingMode
-        ) {
-          onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
-        }
-        const serverMealGoal = normalizeDailyMealGoal(data?.dailyMealGoal);
-        setDailyMealGoal(serverMealGoal);
-        const currentUserAfterMode = userRef.current;
-        if (currentUserAfterMode && normalizeDailyMealGoal(currentUserAfterMode.dailyMealGoal) !== serverMealGoal) {
-          onUserUpdatedRef.current?.({ ...currentUserAfterMode, dailyMealGoal: serverMealGoal });
-        }
-        if (
-          !jumpedToLatestRef.current
-          && logs.length === 0
-          && formatFoodDateInput(selectedDate) === formatFoodDateInput(today)
-        ) {
-          jumpedToLatestRef.current = true;
-          fetchUserMealTracking(userId, { date: formatFoodDateInput(today), days: 21 })
-            .then((rangeData) => {
-              if (cancelled) return;
-              const latest = (rangeData?.logs || []).find((log) => log?.date);
-              const nextDate = latest?.date ? parseFoodDateInput(latest.date) : null;
-              if (nextDate && nextDate.toDateString() !== selectedDate.toDateString()) {
-                setSelectedDate(nextDate);
-              }
-            })
-            .catch(() => { });
-        }
+        applyMealTrackingPayload(data, dateKey, {
+          allowJumpToLatest: true,
+          isCancelled: () => cancelled,
+        });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -1038,18 +1076,86 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [live, onToast, selectedDate, today, userId]);
+  }, [applyMealTrackingPayload, live, onToast, selectedDate, userId]);
+
+  const waterRangeRef = useRef(waterRange);
+  const tabRef = useRef(tab);
+  waterRangeRef.current = waterRange;
+  tabRef.current = tab;
+
+  useVisibilityAwarePoll(
+    useCallback(async () => {
+      if (!live || !userId) return;
+      if (
+        busyIdRef.current
+        || editAfterAiIdRef.current
+        || mealGoalBusyRef.current
+        || modeBusyRef.current
+        || pendingDeleteRef.current
+      ) {
+        return;
+      }
+
+      const dateKey = formatFoodDateInput(selectedDateRef.current);
+      const mealData = await fetchUserMealTracking(userId, { date: dateKey, days: 1 });
+      const mealSig = mealTrackingPollSignature(dateKey, mealData);
+      if (mealSig !== mealsSigRef.current) {
+        applyMealTrackingPayload(mealData, dateKey);
+      }
+
+      try {
+        const bodyData = await fetchUserBodyAnalytics(userId);
+        const metaSig = foodMetabolicPollSignature(bodyData?.metabolicMetrics);
+        if (metaSig !== metabolicSigRef.current) {
+          metabolicSigRef.current = metaSig;
+          const { bmr, tdee } = latestBmrTdee(bodyData?.metabolicMetrics);
+          setMacroTargets(macroTargetsFromTdee(tdee, bmr));
+        }
+      } catch {
+        /* silent poll */
+      }
+
+      if (tabRef.current !== "water") return;
+      if (
+        waterGoalEditingRef.current
+        || waterGoalSavingRef.current
+        || waterGoalUnlockBusyRef.current
+      ) {
+        return;
+      }
+      const range = waterRangeRef.current;
+      const wr = {
+        from: formatFoodDateInput(range.from),
+        to: formatFoodDateInput(range.to),
+      };
+      const waterData = await fetchUserWaterTracking(userId, wr);
+      const wSig = waterTrackingPollSignature(wr, waterData);
+      if (wSig !== waterSigRef.current) {
+        waterSigRef.current = wSig;
+        setWaterHistory(waterData?.history || []);
+        const goal = Number(waterData?.settings?.goalGlasses);
+        if (Number.isFinite(goal) && goal >= 0) {
+          setWaterGoal(goal);
+          setWaterGoalDraft(goal);
+        }
+        setWaterGoalLocked(Boolean(waterData?.settings?.goalLocked));
+      }
+    }, [applyMealTrackingPayload, live, userId]),
+    { enabled: live && Boolean(userId) },
+  );
 
   useEffect(() => {
     if (!live || tab !== "water") return undefined;
     let cancelled = false;
     setWaterLoading(true);
-    fetchUserWaterTracking(userId, {
+    const wr = {
       from: formatFoodDateInput(waterRange.from),
       to: formatFoodDateInput(waterRange.to),
-    })
+    };
+    fetchUserWaterTracking(userId, wr)
       .then((data) => {
         if (cancelled) return;
+        waterSigRef.current = waterTrackingPollSignature(wr, data);
         setWaterHistory(data?.history || []);
         const goal = Number(data?.settings?.goalGlasses);
         if (Number.isFinite(goal) && goal >= 0) {
