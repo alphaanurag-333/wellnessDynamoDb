@@ -143,11 +143,22 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
   const applyMedicalPayload = useCallback((data) => {
     if (!data) return;
     setRecord(data.medicalCondition || null);
-    if (data.medicalConditionsInAppEnabled !== undefined && !settingsBusyRef.current) {
+    const hasInAppFlag = data.medicalConditionsInAppEnabled !== undefined;
+    if (hasInAppFlag && !settingsBusyRef.current) {
       setInAppEnabled(Boolean(data.medicalConditionsInAppEnabled));
     }
     const syncedRow = mapUserRowWithOnboardingSync(userRef.current, data);
-    if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
+    const nextFlag = hasInAppFlag
+      ? Boolean(data.medicalConditionsInAppEnabled)
+      : undefined;
+    const flagChanged =
+      nextFlag !== undefined
+      && Boolean(userRef.current?.medicalConditionsInAppEnabled) !== nextFlag;
+    if (!syncedRow && !flagChanged) return;
+    onUserUpdatedRef.current?.({
+      ...(syncedRow || userRef.current),
+      ...(nextFlag !== undefined ? { medicalConditionsInAppEnabled: nextFlag } : {}),
+    });
   }, []);
 
   const live = Boolean(userId) && !isMockNumericId(userId);
@@ -159,6 +170,7 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
   const canApproveMedical = canEdit && Boolean(record) && medicalApprovalPending;
 
   useEffect(() => {
+    if (settingsBusyRef.current) return;
     setInAppEnabled(resolveMedicalConditionsInAppEnabled(user));
   }, [user?.medicalConditionsInAppEnabled]);
 
@@ -192,15 +204,48 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
     };
   }, [applyMedicalPayload, onToast, userId]);
 
-  const liveSyncTick = useCallback(async () => {
+  const liveSyncTick = useCallback(async (payload) => {
     if (!live || !userId) return;
     if (settingsBusyRef.current || approveBusyRef.current) return;
-    const data = await fetchUserMedicalConditions(userId);
-    if (!data) return;
-    const signature = medicalConditionsPollSignature(data);
-    if (signature === remoteSigRef.current) return;
-    remoteSigRef.current = signature;
-    applyMedicalPayload(data);
+
+    // Instant UI from socket meta when the client submits medical conditions.
+    const metaEnabled = payload?.meta?.medicalConditionsInAppEnabled;
+    if (metaEnabled === false && !settingsBusyRef.current) {
+      setInAppEnabled(false);
+      onUserUpdatedRef.current?.({
+        ...userRef.current,
+        medicalConditionsInAppEnabled: false,
+      });
+    } else if (metaEnabled === true && !settingsBusyRef.current) {
+      setInAppEnabled(true);
+      onUserUpdatedRef.current?.({
+        ...userRef.current,
+        medicalConditionsInAppEnabled: true,
+      });
+    } else if (
+      payload?.action === "medicalConditions.submitted"
+      && !settingsBusyRef.current
+    ) {
+      setInAppEnabled(false);
+      onUserUpdatedRef.current?.({
+        ...userRef.current,
+        medicalConditionsInAppEnabled: false,
+      });
+    }
+
+    const pull = async () => {
+      const data = await fetchUserMedicalConditions(userId);
+      if (!data) return false;
+      const signature = medicalConditionsPollSignature(data);
+      if (signature === remoteSigRef.current) return false;
+      remoteSigRef.current = signature;
+      applyMedicalPayload(data);
+      return true;
+    };
+
+    // Second pull covers DynamoDB read races right after mobile submit.
+    if (await pull()) return;
+    await pull();
   }, [applyMedicalPayload, live, userId]);
 
   useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.medical, liveSyncTick, {

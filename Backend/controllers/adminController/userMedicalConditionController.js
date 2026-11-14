@@ -100,7 +100,10 @@ exports.patchMedicalConditionsInAppSettingsController = asyncHandler(async (req,
 
   const updated = await updateUser(userId, { medicalConditionsInAppEnabled: enabled });
 
-  notifyClientProfileFromReq(req, userId, "medical", "medicalConditionsSettings.updated", { enabled });
+  notifyClientProfileFromReq(req, userId, "medical", "medicalConditionsSettings.updated", {
+    enabled,
+    medicalConditionsInAppEnabled: enabled,
+  });
 
   return res.status(200).json({
     status: true,

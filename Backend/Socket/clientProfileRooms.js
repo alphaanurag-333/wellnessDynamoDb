@@ -14,6 +14,11 @@ async function subscribeClientProfile(socket, staffReq, userId) {
   const id = String(userId || "").trim();
   if (!id) throw new AppError("userId required", 400);
 
+  // Mobile user sockets auto-join only their own room; subscribe is staff-only.
+  if (!staffReq?.auth?.role || staffReq.auth.role === "user") {
+    throw new AppError("Forbidden", 403);
+  }
+
   const tracked = socket.data.subscribedClientIds || new Set();
   if (tracked.size >= MAX_SUBSCRIPTIONS_PER_SOCKET && !tracked.has(id)) {
     throw new AppError("Too many client profile subscriptions", 429);

@@ -454,7 +454,12 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
 
-  notifyClientProfileFromReq(req, userId, "medical", "medicalConditions.submitted", {});
+  notifyClientProfileFromReq(req, userId, "medical", "medicalConditions.submitted", {
+    medicalConditionsInAppEnabled: false,
+  });
+  notifyClientProfileFromReq(req, userId, "glance", "medicalConditions.submitted", {
+    medicalConditionsInAppEnabled: false,
+  });
 
   return res.status(201).json({
     status: true,
@@ -463,6 +468,7 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
       : "Medical conditions saved",
     data: {
       medicalCondition: toPublicMedicalCondition(condition),
+      medicalConditionsInAppEnabled: false,
       paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
       paidOnboardingStep: updated.paidOnboardingStep,
       paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
