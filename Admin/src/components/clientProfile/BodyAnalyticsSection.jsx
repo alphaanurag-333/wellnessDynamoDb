@@ -835,7 +835,36 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
       setTargetWeightDraft(formatTargetWeightDraft(loadedTargetKg));
     }
     const syncedRow = mapUserRowWithOnboardingSync(userRef.current, data);
-    if (syncedRow) onUserUpdatedRef.current?.(syncedRow);
+    const nextProgress =
+      progressPhotosInAppEnabled === true || progressPhotosInAppEnabled === false
+        ? Boolean(progressPhotosInAppEnabled)
+        : undefined;
+    const nextBody =
+      bodyMeasurementEnabled === true || bodyMeasurementEnabled === false
+        ? Boolean(bodyMeasurementEnabled)
+        : undefined;
+    const progressChanged =
+      nextProgress !== undefined
+      && Boolean(userRef.current?.progressPhotosInAppEnabled) !== nextProgress;
+    const bodyChanged =
+      nextBody !== undefined
+      && Boolean(userRef.current?.bodyMeasurementEnabled) !== nextBody;
+    if (!syncedRow && !progressChanged && !bodyChanged) return;
+    onUserUpdatedRef.current?.({
+      ...(syncedRow || userRef.current),
+      ...(nextProgress !== undefined
+        ? {
+            progressPhotosInAppEnabled: nextProgress,
+            progressPhotosInAppEnabledRaw: nextProgress,
+          }
+        : {}),
+      ...(nextBody !== undefined
+        ? {
+            bodyMeasurementEnabled: nextBody,
+            bodyMeasurementEnabledRaw: nextBody,
+          }
+        : {}),
+    });
   }, [mayApplyServerTargetWeight]);
 
   const clientFirstName = user?.name?.split(/\s+/)[0] || "Client";
@@ -847,6 +876,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   );
 
   useEffect(() => {
+    if (settingsBusyRef.current) return;
     setFeatureEnabled(resolveBodyMeasurementClientEnabled(appGateUserFromProfileRow(user)));
   }, [
     user?.bodyMeasurementEnabledRaw,
@@ -855,6 +885,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   ]);
 
   useEffect(() => {
+    if (progressPhotosBusyRef.current) return;
     setProgressPhotosInApp(resolveProgressPhotosInAppEnabled(appGateUserFromProfileRow(user)));
   }, [
     user?.progressPhotosInAppEnabledRaw,
@@ -909,9 +940,45 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     [],
   );
 
-  const liveSyncTick = useCallback(async () => {
+  const liveSyncTick = useCallback(async (payload) => {
     if (!live || !userId || pollInFlightRef.current) return;
     if (bodySocketBusy()) return;
+
+    // Instant UI from socket when the client uploads a 180° set (or coach toggles gates).
+    const userPatch = {};
+    const metaPhotos = payload?.meta?.progressPhotosInAppEnabled;
+    const photosSubmitted = payload?.action === "progressPhotos.submitted";
+    if (
+      (metaPhotos === false || photosSubmitted)
+      && !progressPhotosBusyRef.current
+    ) {
+      setProgressPhotosInApp(false);
+      userPatch.progressPhotosInAppEnabled = false;
+      userPatch.progressPhotosInAppEnabledRaw = false;
+    } else if (metaPhotos === true && !progressPhotosBusyRef.current) {
+      setProgressPhotosInApp(true);
+      userPatch.progressPhotosInAppEnabled = true;
+      userPatch.progressPhotosInAppEnabledRaw = true;
+    }
+
+    const metaBody = payload?.meta?.bodyMeasurementEnabled;
+    const bodySubmitted = payload?.action === "bodyMeasurement.submitted";
+    if (
+      (metaBody === false || bodySubmitted)
+      && !settingsBusyRef.current
+    ) {
+      setFeatureEnabled(false);
+      userPatch.bodyMeasurementEnabled = false;
+      userPatch.bodyMeasurementEnabledRaw = false;
+    } else if (metaBody === true && !settingsBusyRef.current) {
+      setFeatureEnabled(true);
+      userPatch.bodyMeasurementEnabled = true;
+      userPatch.bodyMeasurementEnabledRaw = true;
+    }
+
+    if (Object.keys(userPatch).length) {
+      onUserUpdatedRef.current?.({ ...userRef.current, ...userPatch });
+    }
 
     pollInFlightRef.current = true;
     try {

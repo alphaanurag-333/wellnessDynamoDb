@@ -477,6 +477,11 @@ function buildMedicalConditionsSubmitAppLockUpdates() {
   return { medicalConditionsInAppEnabled: false };
 }
 
+/** After client submits body measurements, hide that form in the app. */
+function buildBodyMeasurementSubmitAppLockUpdates() {
+  return { bodyMeasurementEnabled: false };
+}
+
 function buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus) {
   if (!onboardingStepJustCompleted(previousStatus, nextStatus, "bodyAnalytics")) {
     return {};
@@ -564,6 +569,7 @@ module.exports = {
   buildBodyAnalyticsCompletionAppLockUpdates,
   buildProgressPhotosUploadAppLockUpdates,
   buildMedicalConditionsSubmitAppLockUpdates,
+  buildBodyMeasurementSubmitAppLockUpdates,
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,

@@ -2928,7 +2928,27 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
 
   useClientProfileSectionSync(
     CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.internal,
-    async () => reload({ silent: true }),
+    async (payload) => {
+      // Instant UI when the client submits a blood/lab report (or coach toggles the gate).
+      if (!submissionBusyRef.current) {
+        const metaLocked = payload?.meta?.labReportSubmissionLocked ?? payload?.meta?.submissionLocked;
+        const reportSubmitted = payload?.action === "labReport.submitted";
+        if (metaLocked === true || reportSubmitted) {
+          setSubmissionLocked(true);
+          onUserUpdatedRef.current?.({
+            ...userRef.current,
+            labReportSubmissionLocked: true,
+          });
+        } else if (metaLocked === false) {
+          setSubmissionLocked(false);
+          onUserUpdatedRef.current?.({
+            ...userRef.current,
+            labReportSubmissionLocked: false,
+          });
+        }
+      }
+      return reload({ silent: true });
+    },
     {
       enabled: live,
       shouldSkip: () => busyRef.current || stepBusyRef.current || submissionBusyRef.current,

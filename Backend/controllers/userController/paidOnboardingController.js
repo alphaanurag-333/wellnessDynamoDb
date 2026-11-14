@@ -40,6 +40,7 @@ const {
   wizardStepAfterMedicalComplete,
   buildOnboardingPersistUpdates,
   buildMedicalConditionsSubmitAppLockUpdates,
+  buildBodyMeasurementSubmitAppLockUpdates,
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
@@ -347,6 +348,7 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
 
   const updated = await updateUser(userId, {
     ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
+    ...buildBodyMeasurementSubmitAppLockUpdates(),
     paidOnboardingStep: nextWizardStep,
   });
 
@@ -358,6 +360,11 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
 
   notifyClientProfileFromReq(req, userId, "body", "bodyMeasurement.submitted", {
     measurementId: measurement.id,
+    bodyMeasurementEnabled: false,
+  });
+  notifyClientProfileFromReq(req, userId, "glance", "bodyMeasurement.submitted", {
+    measurementId: measurement.id,
+    bodyMeasurementEnabled: false,
   });
 
   return res.status(201).json({
@@ -367,9 +374,11 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
       : "Body measurements saved. Continue with your 180 view.",
     data: {
       bodyMeasurement: toPublicBodyMeasurement(measurement),
+      bodyMeasurementEnabled: false,
       paidOnboardingStep: updated.paidOnboardingStep,
       paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
       paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),
+      user: await enrichUser(updated),
     },
   });
 });
