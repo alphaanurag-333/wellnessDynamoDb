@@ -81,6 +81,11 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
 
   notifyClientProfileFromReq(req, userId, "body", "progressPhotos.submitted", {
     photoId: photo.id,
+    progressPhotosInAppEnabled: false,
+  });
+  notifyClientProfileFromReq(req, userId, "glance", "progressPhotos.submitted", {
+    photoId: photo.id,
+    progressPhotosInAppEnabled: false,
   });
 
   return res.status(201).json({
@@ -88,6 +93,7 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
     message: alreadyCompleted ? "Progress photos updated" : "Progress photos saved",
     data: {
       progressPhoto: toPublicProgressPhoto(photo),
+      progressPhotosInAppEnabled: false,
       paidOnboardingStep: updated.paidOnboardingStep,
       paidOnboardingStepStatus: updated.paidOnboardingStepStatus,
       paidOnboardingCompleted: Boolean(updated.paidOnboardingCompleted),

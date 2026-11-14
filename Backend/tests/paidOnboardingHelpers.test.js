@@ -13,6 +13,7 @@ const {
   applyBodyAnalyticsPhotoApproval,
   buildProgressPhotosUploadAppLockUpdates,
   buildMedicalConditionsSubmitAppLockUpdates,
+  buildBodyMeasurementSubmitAppLockUpdates,
   wizardStepAfterPhotosSaved,
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
@@ -344,6 +345,14 @@ describe("buildMedicalConditionsSubmitAppLockUpdates", () => {
   it("disables medical conditions in the client app after a mobile submit", () => {
     assert.deepEqual(buildMedicalConditionsSubmitAppLockUpdates(), {
       medicalConditionsInAppEnabled: false,
+    });
+  });
+});
+
+describe("buildBodyMeasurementSubmitAppLockUpdates", () => {
+  it("disables body measurements in the client app after a mobile submit", () => {
+    assert.deepEqual(buildBodyMeasurementSubmitAppLockUpdates(), {
+      bodyMeasurementEnabled: false,
     });
   });
 });

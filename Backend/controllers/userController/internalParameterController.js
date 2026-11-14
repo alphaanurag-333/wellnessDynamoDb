@@ -163,12 +163,18 @@ exports.createUserLabReportController = asyncHandler(async (req, res) => {
 
   notifyClientProfileFromReq(req, userId, "internal", "labReport.submitted", {
     reportId: report?.id,
+    submissionLocked: true,
+    labReportSubmissionLocked: true,
   });
   notifyClientProfileFromReq(req, userId, "glance", "labReport.submitted", {
     reportId: report?.id,
+    submissionLocked: true,
+    labReportSubmissionLocked: true,
   });
   notifyClientProfileFromReq(req, userId, "healthProgress", "labReport.submitted", {
     reportId: report?.id,
+    submissionLocked: true,
+    labReportSubmissionLocked: true,
   });
 
   return res.status(201).json({

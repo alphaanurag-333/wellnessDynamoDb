@@ -402,6 +402,8 @@ exports.updateCoachUserLabReportSubmissionController = asyncHandler(async (req, 
 
   notifyClientProfileFromReq(req, userId, "internal", "labReport.submissionUpdated", {
     enabled,
+    submissionLocked: !enabled,
+    labReportSubmissionLocked: !enabled,
   });
 
   return res.status(200).json({

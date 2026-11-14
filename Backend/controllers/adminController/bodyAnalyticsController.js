@@ -208,7 +208,10 @@ exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) =
 
   const updated = await updateUser(userId, { bodyMeasurementEnabled: enabled });
 
-  notifyClientProfileFromReq(req, userId, "body", "bodyMeasurementSettings.updated", { enabled });
+  notifyClientProfileFromReq(req, userId, "body", "bodyMeasurementSettings.updated", {
+    enabled,
+    bodyMeasurementEnabled: enabled,
+  });
 
   return res.status(200).json({
     status: true,
@@ -240,7 +243,10 @@ exports.patchProgressPhotosInAppSettingsController = asyncHandler(async (req, re
 
   const updated = await updateUser(userId, { progressPhotosInAppEnabled: enabled });
 
-  notifyClientProfileFromReq(req, userId, "body", "progressPhotosSettings.updated", { enabled });
+  notifyClientProfileFromReq(req, userId, "body", "progressPhotosSettings.updated", {
+    enabled,
+    progressPhotosInAppEnabled: enabled,
+  });
 
   return res.status(200).json({
     status: true,
