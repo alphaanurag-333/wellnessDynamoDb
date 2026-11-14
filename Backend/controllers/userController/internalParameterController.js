@@ -20,6 +20,7 @@ const {
 const {
   dispatchLabReportUploadCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const S3_FOLDER = "user-lab-reports";
 
 function assertPdfUpload(req) {
@@ -160,6 +161,16 @@ exports.createUserLabReportController = asyncHandler(async (req, res) => {
     });
   }
 
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.submitted", {
+    reportId: report?.id,
+  });
+  notifyClientProfileFromReq(req, userId, "glance", "labReport.submitted", {
+    reportId: report?.id,
+  });
+  notifyClientProfileFromReq(req, userId, "healthProgress", "labReport.submitted", {
+    reportId: report?.id,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Lab report submitted successfully",
@@ -188,6 +199,8 @@ exports.deleteUserLabReportController = asyncHandler(async (req, res) => {
   }
 
   const submissionLocked = await submissionLockedForUser(userId);
+
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.deleted", { reportId });
 
   return res.status(200).json({
     status: true,

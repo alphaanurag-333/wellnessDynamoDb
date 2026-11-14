@@ -9,14 +9,45 @@ import {
   getPanelSessionExpiryReason,
 } from "./utils/panelSession.js";
 
-// Prefer local backend during development so panel picks up unpaid onboard fixes.
-// Override with VITE_API_URL when you need the remote API.
-// const API_BASE =  "https://wellness-development.developmentalphawizz.com";
-const API_BASE = "http://localhost:5000";
-// const API_BASE = "https://irwellness.in";
-// Remote development still rejects mobile login with "Email and password are required".
-// const API_BASE = "https://wellness.developmentalphawizz.com:5005";
-// const API_BASE = "https://wellness-aws.developmentalphawizz.com:5001";
+
+export function isPrivateLanHost(hostname) {
+  const host = String(hostname || "").toLowerCase();
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)
+  );
+}
+
+/**
+ * When Admin is opened as http://192.168.x.x:5174 on another device, env
+ * "localhost:5000" would hit that device — use the page host:5000 instead.
+ */
+function resolveApiBase() {
+  const fromEnv = String(
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) || "",
+  )
+    .trim()
+    .replace(/\/$/, "");
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+    const pageIsLan =
+      hostname !== "localhost" &&
+      hostname !== "127.0.0.1" &&
+      isPrivateLanHost(hostname);
+    const envIsLoopback =
+      !fromEnv || /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(fromEnv);
+    if (pageIsLan && envIsLoopback) {
+      return `${protocol}//${hostname}:5000`;
+    }
+  }
+
+  return fromEnv || "http://localhost:5000";
+}
+
+const API_BASE = resolveApiBase();
+
 const ACCOUNT_AUTH_STORAGE_KEY = "wellness_account_auth";
 
 export function getApiBase() {

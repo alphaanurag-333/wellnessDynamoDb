@@ -35,6 +35,7 @@ const {
   durationFromRange,
 } = require("../../utils/requestedSlotsHelpers");
 const { createZoomForMeeting } = require("../../services/onboardingMeetingService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotificationAsync,
@@ -209,6 +210,11 @@ exports.createCoachHealConsultancyTrackController = asyncHandler(async (req, res
       trackId: track.id,
     });
   }
+
+  notifyClientProfileFromReq(req, userId, "counselling", "counselling.trackCreated", {
+    trackId: track?.id,
+    status: body.status,
+  });
 
   return res.status(201).json({
     status: true,

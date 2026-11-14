@@ -18,6 +18,7 @@ const {
   buildCurrentMonthlyScore,
   isValidAnalyticsRange,
 } = require("../../services/dailyReflectionScorePresentation");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function resolveTargetDate(query, body) {
   const candidate = body?.date ?? query?.date ?? todayDateOnly();
@@ -124,6 +125,10 @@ exports.submitMyDailyReflectionController = asyncHandler(async (req, res) => {
     score: result.score,
     submittedAt: new Date().toISOString(),
   });
+
+  notifyClientProfileFromReq(req, userId, "reflection", "dailyReflection.submitted", { date });
+  notifyClientProfileFromReq(req, userId, "glance", "dailyReflection.submitted", { date });
+  notifyClientProfileFromReq(req, userId, "bms", "dailyReflection.submitted", { date });
 
   return res.status(200).json({
     status: true,

@@ -9,6 +9,7 @@ const {
 const {
   dispatchWellnessYogaAssignedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   readUserIdParam,
   readAssignmentIdParam,
@@ -78,6 +79,10 @@ exports.createCoachUserWellnessYogaController = asyncHandler(async (req, res) =>
     });
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "wellnessYoga.assigned", {
+    count: result.created.length,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Yoga content assigned successfully",
@@ -106,6 +111,8 @@ exports.deleteCoachUserWellnessYogaController = asyncHandler(async (req, res) =>
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "wellnessYoga.removed", { assignmentId });
 
   return res.status(200).json({
     status: true,

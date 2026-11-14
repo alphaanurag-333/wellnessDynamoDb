@@ -21,6 +21,7 @@ const {
   assertStaffCanAccessUser,
   loadReminderForUser,
 } = require("../helpers/reminderControllerHelpers");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 exports.listCoachUserRemindersController = asyncHandler(async (req, res) => {
   const actingCoachId = req.auth?.sub;
@@ -76,6 +77,8 @@ exports.createCoachUserReminderController = asyncHandler(async (req, res) => {
     console.error("Coach reminder notification failed:", err?.message || err);
   });
 
+  notifyClientProfileFromReq(req, userId, "glance", "reminder.created", { reminderId: reminder?.id });
+
   return res.status(201).json({
     status: true,
     message: "Reminder created successfully",
@@ -108,6 +111,8 @@ exports.updateCoachUserReminderController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "glance", "reminder.updated", { reminderId });
+
   return res.status(200).json({
     status: true,
     message: "Reminder updated successfully",
@@ -138,6 +143,8 @@ exports.toggleCoachUserReminderController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "glance", "reminder.toggled", { reminderId });
+
   return res.status(200).json({
     status: true,
     message: "Reminder status updated",
@@ -163,6 +170,8 @@ exports.deleteCoachUserReminderController = asyncHandler(async (req, res) => {
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "glance", "reminder.deleted", { reminderId });
 
   return res.status(200).json({
     status: true,

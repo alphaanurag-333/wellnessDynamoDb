@@ -11,6 +11,7 @@ const {
 const {
   dispatchWellnessPrescriptionAssignedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   listEnrichedWellnessPrescriptionsForUser,
   loadCoachMeetingSnapshot,
@@ -112,6 +113,10 @@ exports.createCoachUserWellnessPrescriptionController = asyncHandler(async (req,
     console.error("Wellness prescription assignment notification failed:", err?.message || err);
   });
 
+  notifyClientProfileFromReq(req, userId, "prescription", "wellnessPrescription.assigned", {
+    assignmentId: assignment?.id,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Wellness prescription assigned successfully",
@@ -168,6 +173,10 @@ exports.updateCoachUserWellnessPrescriptionController = asyncHandler(async (req,
     updated: true,
   }).catch((err) => {
     console.error("Wellness prescription re-publish notification failed:", err?.message || err);
+  });
+
+  notifyClientProfileFromReq(req, userId, "prescription", "wellnessPrescription.updated", {
+    assignmentId: assignment?.id || assignmentId,
   });
 
   return res.status(200).json({

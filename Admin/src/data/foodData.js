@@ -254,14 +254,28 @@ export function roundMacros(macros) {
   };
 }
 
-export function macroTargetsFromTdee(tdee, bmr = 0) {
+function normalizeProteinTargetGm(proteinGoalGm, fallbackFromTdee) {
+  const n = Number(proteinGoalGm);
+  if (Number.isFinite(n) && n > 0) return Number(n.toFixed(1));
+  return fallbackFromTdee;
+}
+
+/** Protein target prefers At a Glance formula (weight × activity); carbs/fat stay TDEE-based. */
+export function macroTargetsFromTdee(tdee, bmr = 0, proteinGoalGm = null) {
   const calories = Math.round(Number(tdee) || 0);
   const bmrVal = Math.round(Number(bmr) || 0);
   if (!calories) {
-    return { protein: 0, carbs: 0, fat: 0, calories: 0, bmr: bmrVal, tdee: 0 };
+    return {
+      protein: normalizeProteinTargetGm(proteinGoalGm, 0),
+      carbs: 0,
+      fat: 0,
+      calories: 0,
+      bmr: bmrVal,
+      tdee: 0,
+    };
   }
   return {
-    protein: Math.round((calories * 0.22) / 4),
+    protein: normalizeProteinTargetGm(proteinGoalGm, Math.round((calories * 0.22) / 4)),
     carbs: Math.round((calories * 0.51) / 4),
     fat: Math.round((calories * 0.27) / 9),
     calories,

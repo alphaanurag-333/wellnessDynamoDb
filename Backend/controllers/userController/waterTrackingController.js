@@ -8,6 +8,7 @@ const {
   setDayGlassCount,
   getSettings,
 } = require("../../models/waterTrackingModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function mapWaterError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -58,6 +59,8 @@ exports.updateMyWaterGoalController = asyncHandler(async (req, res) => {
     mapWaterError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "water.goalUpdated", { date });
+
   return res.status(200).json({
     status: true,
     message: "Daily water goal updated",
@@ -77,6 +80,8 @@ exports.incrementMyWaterController = asyncHandler(async (req, res) => {
     mapWaterError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "water.dayUpdated", { date });
+
   return res.status(200).json({
     status: true,
     message: "Glass added",
@@ -95,6 +100,8 @@ exports.decrementMyWaterController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapWaterError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "food", "water.dayUpdated", { date });
 
   return res.status(200).json({
     status: true,
@@ -118,6 +125,8 @@ exports.setMyWaterDayController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapWaterError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "food", "water.dayUpdated", { date });
 
   return res.status(200).json({
     status: true,

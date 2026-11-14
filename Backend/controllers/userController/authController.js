@@ -19,6 +19,7 @@ const {
   isOtherHealthConcernTitle,
 } = require("../../services/consultancyHealthConcern");
 const { notifyPwcUserRegisteredAsync } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   createUser,
   getUserById,
@@ -551,6 +552,12 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     throw new AppError("status cannot be updated via profile", 400);
   }
 
+  if (process.env.NODE_ENV !== "test") {
+    console.log(
+      `[profile] PATCH /user/auth/me user=${userId} keys=${Object.keys(body).join(",") || "(none)"}`,
+    );
+  }
+
   const updates = await buildUserUpdatesFromBody(body, current, {
     allowStatus: false,
     req,
@@ -574,6 +581,20 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
       throw new AppError("User not found", 404);
     }
     throw err;
+  }
+
+  const profileMeta = {
+    fields: Object.keys(updates),
+    ...(updates.name != null ? { name: String(updates.name) } : {}),
+  };
+  notifyClientProfileFromReq(req, userId, "personal", "profile.updated", profileMeta);
+  notifyClientProfileFromReq(req, userId, "glance", "profile.updated", profileMeta);
+  if (
+    updates.presentablePic !== undefined
+    || updates.presentablePicStatus !== undefined
+    || updates.presentablePicHistory !== undefined
+  ) {
+    notifyClientProfileFromReq(req, userId, "presentable", "presentablePic.updated", profileMeta);
   }
 
   return res.status(200).json({
@@ -668,6 +689,9 @@ exports.verifyProfilePhoneChangeOtp = asyncHandler(async (req, res) => {
     otp: req.body.otp,
   });
 
+  notifyClientProfileFromReq(req, userId, "personal", "profile.updated", { field: "phone" });
+  notifyClientProfileFromReq(req, userId, "glance", "profile.updated", { field: "phone" });
+
   return res.status(200).json({
     status: true,
     message: "Phone number updated successfully",
@@ -709,6 +733,9 @@ exports.verifyProfileWhatsappChangeOtp = asyncHandler(async (req, res) => {
     whatsappCountryCode: req.body.whatsappCountryCode,
     otp: req.body.otp,
   });
+
+  notifyClientProfileFromReq(req, userId, "personal", "profile.updated", { field: "whatsapp" });
+  notifyClientProfileFromReq(req, userId, "glance", "profile.updated", { field: "whatsapp" });
 
   return res.status(200).json({
     status: true,

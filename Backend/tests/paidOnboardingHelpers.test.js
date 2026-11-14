@@ -12,6 +12,7 @@ const {
   applyBodyAnalyticsPhotoReview,
   applyBodyAnalyticsPhotoApproval,
   buildProgressPhotosUploadAppLockUpdates,
+  buildMedicalConditionsSubmitAppLockUpdates,
   wizardStepAfterPhotosSaved,
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
@@ -335,6 +336,14 @@ describe("buildProgressPhotosUploadAppLockUpdates", () => {
   it("disables progress photo uploads in the client app after a 180 submit", () => {
     assert.deepEqual(buildProgressPhotosUploadAppLockUpdates(), {
       progressPhotosInAppEnabled: false,
+    });
+  });
+});
+
+describe("buildMedicalConditionsSubmitAppLockUpdates", () => {
+  it("disables medical conditions in the client app after a mobile submit", () => {
+    assert.deepEqual(buildMedicalConditionsSubmitAppLockUpdates(), {
+      medicalConditionsInAppEnabled: false,
     });
   });
 });

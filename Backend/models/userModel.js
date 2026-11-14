@@ -733,6 +733,9 @@ async function getUserById(id) {
     new GetCommand({
       TableName: TABLE,
       Key: { id },
+      // Socket invalidation refetches immediately after writes; eventual reads can
+      // return the pre-update row and Admin skips the UI refresh (signature match).
+      ConsistentRead: true,
     })
   );
   return withLegacyId(Item || null);

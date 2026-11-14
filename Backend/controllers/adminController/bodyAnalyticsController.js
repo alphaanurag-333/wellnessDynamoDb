@@ -26,6 +26,7 @@ const {
   normalizeReviewStatus,
 } = require("../../models/userProgressPhotoModel");
 const { dispatchProgressPhotoReviewedNotification } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   notifyOnboardingWhatsAppTransitions,
   notifyProgressPhotos180ReshareToUserAsync,
@@ -178,6 +179,8 @@ exports.patchTargetWeightController = asyncHandler(async (req, res) => {
 
   const updated = await updateUser(userId, { targetWeightKg });
 
+  notifyClientProfileFromReq(req, userId, "body", "targetWeight.updated", {});
+
   return res.status(200).json({
     status: true,
     message: targetWeightKg == null ? "Target weight cleared" : "Target weight saved",
@@ -204,6 +207,8 @@ exports.patchBodyMeasurementSettingsController = asyncHandler(async (req, res) =
   const enabled = parsed.enabled;
 
   const updated = await updateUser(userId, { bodyMeasurementEnabled: enabled });
+
+  notifyClientProfileFromReq(req, userId, "body", "bodyMeasurementSettings.updated", { enabled });
 
   return res.status(200).json({
     status: true,
@@ -234,6 +239,8 @@ exports.patchProgressPhotosInAppSettingsController = asyncHandler(async (req, re
   const enabled = parsed.enabled;
 
   const updated = await updateUser(userId, { progressPhotosInAppEnabled: enabled });
+
+  notifyClientProfileFromReq(req, userId, "body", "progressPhotosSettings.updated", { enabled });
 
   return res.status(200).json({
     status: true,
@@ -497,6 +504,11 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
   }
 
   const label = PHOTO_ANGLE_LABELS[angle];
+  notifyClientProfileFromReq(req, userId, "body", "progressPhoto.reviewed", {
+    photoId,
+    angle,
+    action,
+  });
   return res.status(200).json({
     status: true,
     message: rejectedAngleDay

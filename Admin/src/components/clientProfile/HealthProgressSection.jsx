@@ -25,11 +25,13 @@ import {
 import { fetchUserLabReports } from "../../api/onboardingApi.js";
 import { todayIsoDate } from "../../utils/adminDateLimits.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
-import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
 import {
   healthProgressLogsPollSignature,
   healthProgressSettingsPollSignature,
 } from "../../utils/clientProfileAppSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 const CLIENT_UPLOAD_FEATURE_KEYS = ["weightPic", "glucose", "bloodPressure", "conditionComparison"];
 
@@ -2332,10 +2334,16 @@ export function HealthProgressSection({ user, onToast }) {
     if (glucose) setHba1cReadings(glucose.hba1cReadings);
   }, [isMock, userId]);
 
-  useVisibilityAwarePoll(
+  useClientProfileInvalidation(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS["health-progress"],
     syncHealthProgressFromApp,
-    { enabled: Boolean(userId) && !isMock && !loading },
+    {
+      enabled: Boolean(userId) && !isMock && !loading,
+    },
   );
+  useClientProfileLiveSync(syncHealthProgressFromApp, {
+    enabled: Boolean(userId) && !isMock && !loading,
+  });
 
   useEffect(() => {
     if (trackingFilter === "all") return undefined;

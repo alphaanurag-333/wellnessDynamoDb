@@ -19,6 +19,7 @@ const {
   listProgressPhotosByUser,
   toPublicProgressPhoto,
 } = require("../../models/userProgressPhotoModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function authedUserId(req) {
   return req.auth?.sub || req.user?.id;
@@ -77,6 +78,10 @@ exports.createProgressPhotoController = asyncHandler(async (req, res) => {
   });
 
   notifyProgressPhotos180UploadedAsync(updated || user);
+
+  notifyClientProfileFromReq(req, userId, "body", "progressPhotos.submitted", {
+    photoId: photo.id,
+  });
 
   return res.status(201).json({
     status: true,

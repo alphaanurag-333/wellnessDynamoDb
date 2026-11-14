@@ -18,6 +18,7 @@ const { resolveCommitmentLetterText } = require("../../utils/coachContent");
 const { generateCommitmentLetterPdf } = require("../../utils/commitmentLetterPdf");
 const { resolveAssignedCoachForUser } = require("../helpers/mealTrackingControllerHelpers");
 const { notifyCommitmentLetterUpdatedToCoachesAsync } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   assertPdfUpload,
   readCommitmentLetterUserId,
@@ -128,6 +129,9 @@ exports.submitUserCommitmentLetterController = asyncHandler(async (req, res) => 
   });
 
   notifyCommitmentLetterUpdatedToCoachesAsync(user);
+  notifyClientProfileFromReq(req, userId, "presentable", "commitmentLetter.submitted", {
+    letterId: commitmentLetter?.id,
+  });
 
   return res.status(201).json({
     status: true,

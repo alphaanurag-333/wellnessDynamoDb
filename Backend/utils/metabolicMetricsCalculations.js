@@ -225,6 +225,13 @@ function deriveMetricsFromBodyMeasurement(measurement, user) {
       })
     : null;
 
+  const whtrVisceral = computeVisceralFat({
+    gender,
+    heightCm,
+    waistCm,
+    hipCm,
+  });
+
   return {
     heightCm,
     weightKg,
@@ -233,7 +240,8 @@ function deriveMetricsFromBodyMeasurement(measurement, user) {
     tdee,
     bodyFatPercent: bodyFat?.bodyFatPercent ?? null,
     leanMuscleMassPercent: bodyFat?.leanMuscleMassPercent ?? null,
-    estimatedVisceralFat: computeSamoudaVisceralFat({
+    // LIH/Samouda VAT area (cm²) — https://www.lih.lu/en/visceral-fat-calculator/
+    visceralFatPercent: computeSamoudaVisceralFat({
       gender,
       age,
       heightCm,
@@ -241,34 +249,35 @@ function deriveMetricsFromBodyMeasurement(measurement, user) {
       waistCm,
       thighCm,
     }),
+    // WHtR estimated visceral fat %
+    estimatedVisceralFat: whtrVisceral?.estimatedVisceralFat ?? null,
     waistHipRatio: computeWaistHipRatio(waistCm, hipCm),
   };
 }
 
-function computeVisceralFat({ gender, age, heightCm, waistCm, hipCm }) {
+/**
+ * Estimated visceral fat % from waist-to-height ratio (WHtR).
+ * Men: (WHtR − 0.40) × 100
+ * Women: (WHtR − 0.42) × 100  (threshold slightly higher; more subcutaneous fat)
+ *
+ * LIH/Samouda VAT area (cm²) is computed separately via computeSamoudaVisceralFat.
+ */
+function computeVisceralFat({ gender, heightCm, waistCm, hipCm }) {
   const h = Number(heightCm);
   const w = Number(waistCm);
-  const a = Number(age);
   if (!h || !w || h <= 0 || w <= 0) return null;
 
-  // Visceral fat estimation uses waist-to-height ratio (WHtR), not waist-to-hip.
   const waistHeightRatio = Number((w / h).toFixed(2));
-  let level;
-  if (isFemaleGender(gender)) {
-    level = Math.round(waistHeightRatio * 100 + a * 0.15 - 28);
-  } else {
-    level = Math.round(waistHeightRatio * 100 + a * 0.18 - 30);
-  }
-  if (level < 1) level = 1;
-  if (level > 30) level = 30;
+  const offset = isFemaleGender(gender) ? 0.42 : 0.4;
+  let estimatedVisceralFat = Number(((waistHeightRatio - offset) * 100).toFixed(1));
+  if (!Number.isFinite(estimatedVisceralFat)) return null;
+  if (estimatedVisceralFat < 0) estimatedVisceralFat = 0;
 
-  const visceralFatPercent = Number(((level / 30) * 100).toFixed(1));
   const waistHipRatio = computeWaistHipRatio(w, hipCm);
   return {
     waistHeightRatio,
     ...(waistHipRatio != null ? { waistHipRatio } : {}),
-    estimatedVisceralFat: level,
-    visceralFatPercent,
+    estimatedVisceralFat,
     riskAssessment: assessVisceralFatRisk(waistHeightRatio),
   };
 }
@@ -354,6 +363,12 @@ function buildMetricSnapshot(metricType, inputs) {
   const neckCm = inputs.neckCm != null ? Number(inputs.neckCm) : null;
   const waistCm = inputs.waistCm != null ? Number(inputs.waistCm) : null;
   const hipCm = inputs.hipCm != null ? Number(inputs.hipCm) : null;
+  const thighCm =
+    inputs.thighCm != null
+      ? Number(inputs.thighCm)
+      : inputs.thighsCm != null
+        ? Number(inputs.thighsCm)
+        : null;
   const activityLevel = inputs.activityLevel || "moderately_active";
   const bodyFatGoal = inputs.bodyFatGoal != null ? Number(inputs.bodyFatGoal) : null;
 
@@ -366,6 +381,7 @@ function buildMetricSnapshot(metricType, inputs) {
     neckCm,
     waistCm,
     hipCm,
+    thighCm,
     activityLevel,
     bodyFatGoal,
   };
@@ -429,17 +445,26 @@ function buildMetricSnapshot(metricType, inputs) {
   }
 
   if (metricType === "visceral_fat") {
-    if (!heightCm || !waistCm || !age) {
-      throw new Error("age, heightCm, and waistCm are required for visceral fat");
+    if (!heightCm || !waistCm) {
+      throw new Error("heightCm and waistCm are required for visceral fat");
     }
-    const visceral = computeVisceralFat({ gender, age, heightCm, waistCm, hipCm });
+    const visceral = computeVisceralFat({ gender, heightCm, waistCm, hipCm });
     if (!visceral) throw new Error("Unable to calculate visceral fat from provided values");
+    // LIH Samouda VAT (cm²) when thigh (+ BMI inputs for women) are available.
+    const samoudaVat = computeSamoudaVisceralFat({
+      gender,
+      age,
+      heightCm,
+      weightKg,
+      waistCm,
+      thighCm,
+    });
     return {
       ...base,
       waistHeightRatio: visceral.waistHeightRatio,
       ...(visceral.waistHipRatio != null ? { waistHipRatio: visceral.waistHipRatio } : {}),
       estimatedVisceralFat: visceral.estimatedVisceralFat,
-      visceralFatPercent: visceral.visceralFatPercent,
+      ...(samoudaVat != null ? { visceralFatPercent: samoudaVat } : {}),
       visceralFatRisk: visceral.riskAssessment,
     };
   }

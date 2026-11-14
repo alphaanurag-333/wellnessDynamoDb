@@ -31,6 +31,7 @@ const {
   listActiveMedicalConditionQuestions,
 } = require("../../models/medicalConditionQuestionModel");
 const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   markStepDone,
   markStepSkipped,
@@ -38,6 +39,7 @@ const {
   wizardStepAfterBodyComplete,
   wizardStepAfterMedicalComplete,
   buildOnboardingPersistUpdates,
+  buildMedicalConditionsSubmitAppLockUpdates,
   getNextIncompleteStep,
   countCompletedSteps,
   SKIPPABLE_ONBOARDING_STATUS_KEYS,
@@ -75,6 +77,7 @@ async function syncMetabolicMetricsFromBodyMeasurement(userId, user, measurement
   const neckCm = toNumberOrNull(measurement?.neckCm);
   const waistCm = toNumberOrNull(measurement?.waistCm);
   const hipCm = toNumberOrNull(measurement?.hipCm);
+  const thighCm = toNumberOrNull(measurement?.thighsCm ?? measurement?.thighCm);
   const activityLevel = measurement?.activityLevel || "moderately_active";
   const gender = user?.gender;
   const age = ageFromDob(user?.dob);
@@ -118,12 +121,15 @@ async function syncMetabolicMetricsFromBodyMeasurement(userId, user, measurement
     });
   }
 
-  if (heightCm && waistCm && age) {
+  if (heightCm && waistCm) {
     await upsertSnapshot("visceral_fat", {
       gender,
       age,
       heightCm,
+      weightKg,
       waistCm,
+      hipCm,
+      thighCm,
     });
   }
 }
@@ -284,6 +290,9 @@ exports.submitProfileController = asyncHandler(async (req, res) => {
 
   const updated = await updateUser(userId, updates);
 
+  notifyClientProfileFromReq(req, userId, "personal", "profile.updated", {});
+  notifyClientProfileFromReq(req, userId, "glance", "profile.updated", {});
+
   return res.status(200).json({
     status: true,
     message: "Profile saved. Continue with body measurements.",
@@ -345,6 +354,10 @@ exports.submitBodyMeasurementsController = asyncHandler(async (req, res) => {
     user: updated || user,
     previousStatus: currentStatus,
     nextStatus,
+  });
+
+  notifyClientProfileFromReq(req, userId, "body", "bodyMeasurement.submitted", {
+    measurementId: measurement.id,
   });
 
   return res.status(201).json({
@@ -431,6 +444,7 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
 
   const updated = await updateUser(userId, {
     ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
+    ...buildMedicalConditionsSubmitAppLockUpdates(),
     paidOnboardingStep: nextWizardStep,
   });
 
@@ -439,6 +453,8 @@ exports.submitMedicalConditionsController = asyncHandler(async (req, res) => {
     previousStatus: currentStatus,
     nextStatus: updated?.paidOnboardingStepStatus || nextStatus,
   });
+
+  notifyClientProfileFromReq(req, userId, "medical", "medicalConditions.submitted", {});
 
   return res.status(201).json({
     status: true,
@@ -476,6 +492,16 @@ exports.skipOnboardingStepController = asyncHandler(async (req, res) => {
     ...buildOnboardingPersistUpdates(user, currentStatus, nextStatus),
     paidOnboardingStep: nextWizardStep,
   });
+
+  notifyClientProfileFromReq(req, userId, "glance", "onboardingStep.updated", {
+    stepKey: step,
+    status: "skipped",
+  });
+  notifyClientProfileFromReq(req, userId, "body", "onboardingStep.updated", {
+    stepKey: step,
+    status: "skipped",
+  });
+  notifyClientProfileFromReq(req, userId, "personal", "profile.updated", {});
 
   return res.status(200).json({
     status: true,

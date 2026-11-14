@@ -18,6 +18,7 @@ const {
 const {
   dispatchMealLoggedCoachNotificationAsync,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const { getDailyMealGoal } = require("../../models/userModel");
 
 function readLogIdParam(req) {
@@ -107,6 +108,11 @@ exports.createUserMealLogController = asyncHandler(async (req, res) => {
     mealLogId: mealLog.id,
   });
 
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.created", {
+    logId: mealLog.id,
+    date: mealLog.date,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Meal log created successfully",
@@ -141,6 +147,11 @@ exports.updateUserMealLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.updated", {
+    logId,
+    date: mealLog?.date,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Meal log updated successfully",
@@ -167,6 +178,8 @@ exports.deleteUserMealLogController = asyncHandler(async (req, res) => {
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.deleted", { logId });
 
   return res.status(200).json({
     status: true,

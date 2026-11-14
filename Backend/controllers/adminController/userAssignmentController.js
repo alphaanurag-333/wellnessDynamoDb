@@ -29,6 +29,14 @@ const { dispatchCoachAssignmentChangeNotification } = require("../../services/no
 const { buildPaidOnboardingResetUpdates } = require("../../utils/paidOnboardingHelpers");
 
 const { enrichUser } = require("../userController/userProfileHelpers");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
+
+function notifyPersonalProfileChanged(req, userId, meta = {}) {
+  const id = String(userId || "").trim();
+  if (!id) return;
+  notifyClientProfileFromReq(req, id, "personal", "profile.updated", meta);
+  notifyClientProfileFromReq(req, id, "glance", "profile.updated", meta);
+}
 const {
   listHealUsersForStaff,
   resolveStaffActor,
@@ -153,6 +161,8 @@ exports.convertUserToSeekController = asyncHandler(async (req, res) => {
     mapAssignmentError(err);
   }
 
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
+
   return res.status(200).json({
     status: true,
     message: "User downgraded to Seek successfully",
@@ -168,6 +178,7 @@ exports.convertUserToMaintenanceController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapAssignmentError(err);
   }
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
   return res.status(200).json({
     status: true,
     message: "User moved to maintenance successfully",
@@ -183,6 +194,7 @@ exports.convertMaintenanceUserToHealController = asyncHandler(async (req, res) =
   } catch (err) {
     mapAssignmentError(err);
   }
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
   return res.status(200).json({
     status: true,
     message: "Maintenance user moved back to Heal successfully",
@@ -205,6 +217,8 @@ exports.convertUserToHealController = asyncHandler(async (req, res) => {
     if (err?.name === "ValidationError") throw new AppError(err.message, 400);
     mapAssignmentError(err);
   }
+
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
 
   return res.status(200).json({
     status: true,
@@ -229,6 +243,8 @@ exports.convertUserToEagleController = asyncHandler(async (req, res) => {
     mapAssignmentError(err);
   }
 
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
+
   return res.status(200).json({
     status: true,
     message: "User converted to Eagle successfully",
@@ -243,6 +259,8 @@ exports.undoEagleConversionController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapAssignmentError(err);
   }
+
+  notifyPersonalProfileChanged(req, req.params.id, { field: "tier" });
 
   return res.status(200).json({
     status: true,
@@ -302,6 +320,8 @@ exports.assignHealUserController = asyncHandler(async (req, res) => {
     console.error("[UserAssignment] assignment notification failed", err.message);
   }
 
+  notifyPersonalProfileChanged(req, req.params.id, { field: "coach" });
+
   return res.status(200).json({
     status: true,
     message: "Coach assigned successfully",
@@ -341,6 +361,8 @@ exports.reassignHealUserController = asyncHandler(async (req, res) => {
     console.error("[UserAssignment] reassignment activity failed", err.message);
   }
 
+  notifyPersonalProfileChanged(req, req.params.id, { field: "coach" });
+
   return res.status(200).json({
     status: true,
     message: "User reassigned successfully",
@@ -356,6 +378,8 @@ exports.unassignUserCoachController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapAssignmentError(err);
   }
+
+  notifyPersonalProfileChanged(req, req.params.id, { field: "coach" });
 
   return res.status(200).json({
     status: true,

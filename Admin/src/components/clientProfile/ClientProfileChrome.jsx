@@ -5,6 +5,7 @@ import { UPDATED_ADMIN_PATHS } from "../../data/dashboardData.js";
 import { userTierBadge } from "../../data/usersData.js";
 import { NotificationInboxPanel } from "../NotificationInboxPanel.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { ClientProfileLiveStatus } from "./ClientProfileLiveStatus.jsx";
 
 const PROFILE_IMAGE_MAX_BYTES = 25 * 1024 * 1024;
 const PROFILE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -105,6 +106,7 @@ export function ClientProfileTopbar({
   refreshing = false,
   readOnly = false,
   backTo,
+  liveStatusEnabled = true,
 }) {
   const navigate = useNavigate();
   const { isAdminView } = useViewAs();
@@ -123,7 +125,10 @@ export function ClientProfileTopbar({
       <button type="button" className="ua-cp-topbar__btn ua-cp-topbar__btn--menu" onClick={onToggleMenu} title="Toggle menu">
         {menuHidden ? "▥ Show menu" : "▤ Hide menu"}
       </button>
-      <div className="ua-cp-topbar__title">Client profile</div>
+      <div className="ua-cp-topbar__title-wrap">
+        <div className="ua-cp-topbar__title">Client profile</div>
+        <ClientProfileLiveStatus enabled={liveStatusEnabled} />
+      </div>
       <div className="ua-cp-topbar__actions">
           <button
             type="button"

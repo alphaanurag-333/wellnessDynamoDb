@@ -32,6 +32,7 @@ const {
 } = require("../../services/notificationDispatchService");
 const { runDailyReflectionBedtimeJob } = require("../../services/dailyReflectionBedtimeJobService");
 const { parseFcmIdFromBody } = require("../../utils/parseFcmId");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 const DEFAULT_BEDTIME = "22:30";
 
@@ -261,6 +262,10 @@ exports.updateCoachUserDailyReflectionSettingsController = asyncHandler(async (r
   const date = resolveTargetDate(req.query, req.body);
   const form = await buildUserDrfForm(userId, updated, date);
 
+  notifyClientProfileFromReq(req, userId, "reflection", "dailyReflection.settingsUpdated", { date });
+  notifyClientProfileFromReq(req, userId, "glance", "dailyReflection.settingsUpdated", { date });
+  notifyClientProfileFromReq(req, userId, "bms", "dailyReflection.settingsUpdated", { date });
+
   return res.status(200).json({
     status: true,
     message: "Daily reflection settings updated",
@@ -298,6 +303,10 @@ exports.submitCoachUserDailyReflectionController = asyncHandler(async (req, res)
 
   const settings = await getSettings(userId);
   const form = await buildUserDrfForm(userId, settings, date);
+
+  notifyClientProfileFromReq(req, userId, "reflection", "dailyReflection.submitted", { date });
+  notifyClientProfileFromReq(req, userId, "glance", "dailyReflection.submitted", { date });
+  notifyClientProfileFromReq(req, userId, "bms", "dailyReflection.submitted", { date });
 
   return res.status(200).json({
     status: true,

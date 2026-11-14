@@ -5,6 +5,7 @@ const {
   getUserSleepSummary,
   syncSleepRecords,
 } = require("../../models/sleepTrackingModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function mapSleepError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -43,6 +44,8 @@ exports.syncMySleepTrackingController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapSleepError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "sleep.synced", {});
 
   return res.status(200).json({
     status: true,

@@ -8,6 +8,7 @@ const {
   syncStepRecords,
   setManualDayStepCount,
 } = require("../../models/stepsTrackingModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function mapStepsError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -55,6 +56,8 @@ exports.syncMyStepsTrackingController = asyncHandler(async (req, res) => {
     mapStepsError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "steps.synced", {});
+
   return res.status(200).json({
     status: true,
     message: "Steps synced",
@@ -81,6 +84,8 @@ exports.updateMyStepsGoalController = asyncHandler(async (req, res) => {
     mapStepsError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "steps.goalUpdated", {});
+
   return res.status(200).json({
     status: true,
     message: "Daily steps goal updated",
@@ -102,6 +107,8 @@ exports.setMyStepsDayController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapStepsError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "steps.dayUpdated", { date });
 
   return res.status(200).json({
     status: true,

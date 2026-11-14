@@ -9,6 +9,7 @@ const {
 const {
   dispatchMentalWellbeingAssignedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   readUserIdParam,
   readAssignmentIdParam,
@@ -79,6 +80,10 @@ exports.createCoachUserMentalWellbeingController = asyncHandler(async (req, res)
     });
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "mentalWellbeing.assigned", {
+    count: result.created.length,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Mental wellbeing content assigned successfully",
@@ -107,6 +112,8 @@ exports.deleteCoachUserMentalWellbeingController = asyncHandler(async (req, res)
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "mentalWellbeing.removed", { assignmentId });
 
   return res.status(200).json({
     status: true,

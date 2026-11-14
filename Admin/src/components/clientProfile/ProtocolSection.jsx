@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PROTOCOL_MAX_POINTS,
   PROTOCOL_MAX_SECTIONS,
@@ -16,7 +16,10 @@ import {
   updateUserProtocolSettings,
 } from "../../api/protocolSettingsApi.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function sectionsEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -570,11 +573,21 @@ export function ProtocolSection({ user, onToast }) {
   const [loadError, setLoadError] = useState("");
 
   const dirty = !sectionsEqual(workingSections, savedSections);
+  const live = Boolean(userId) && !isMockNumericId(userId);
   const latestVersion = history[0]?.version ?? null;
   const atSectionLimit = workingSections.length >= PROTOCOL_MAX_SECTIONS;
   const pageSub = latestVersion
     ? `Step ${PROTOCOL_ONBOARDING_STEP} of onboarding · saved as v${latestVersion}. Each section has a heading and up to ${PROTOCOL_MAX_POINTS} points.`
     : `Step ${PROTOCOL_ONBOARDING_STEP} of onboarding. Not set yet. Each section has a heading and up to ${PROTOCOL_MAX_POINTS} points.`;
+
+  const savingRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const savingVersionIdRef = useRef("");
+  const deletingIdRef = useRef("");
+  savingRef.current = saving;
+  dirtyRef.current = dirty;
+  savingVersionIdRef.current = savingVersionId;
+  deletingIdRef.current = deletingId;
 
   function applyLoadedSections(sections) {
     const next = cloneSections(sections);
@@ -584,6 +597,16 @@ export function ProtocolSection({ user, onToast }) {
     setPointErrors({});
     setFormError("");
   }
+
+  const reloadProtocol = useCallback(async ({ silent = false } = {}) => {
+    if (!userId) return;
+    const data = await fetchUserProtocolSettings(userId);
+    if (!silent || !dirtyRef.current) {
+      applyLoadedSections([]);
+    }
+    setHistory(data?.history || []);
+    setExpandedVersion(data?.current?.version ?? null);
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -605,13 +628,7 @@ export function ProtocolSection({ user, onToast }) {
     setPointErrors({});
     setFormError("");
 
-    fetchUserProtocolSettings(userId)
-      .then((data) => {
-        if (cancelled) return;
-        applyLoadedSections([]);
-        setHistory(data?.history || []);
-        setExpandedVersion(data?.current?.version ?? null);
-      })
+    reloadProtocol()
       .catch((err) => {
         if (cancelled) return;
         setLoadError(err?.message || "Failed to load protocol settings");
@@ -624,7 +641,23 @@ export function ProtocolSection({ user, onToast }) {
     return () => {
       cancelled = true;
     };
-  }, [onToast, userId]);
+  }, [onToast, reloadProtocol, userId]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.protocol,
+    async () => {
+      await reloadProtocol({ silent: true });
+      return true;
+    },
+    {
+      enabled: live,
+      shouldSkip: () =>
+        savingRef.current
+        || Boolean(savingVersionIdRef.current)
+        || Boolean(deletingIdRef.current)
+        || dirtyRef.current,
+    },
+  );
 
   function updateHeading(sectionId, value) {
     const heading = String(value ?? "");

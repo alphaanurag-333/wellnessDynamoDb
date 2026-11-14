@@ -10,6 +10,7 @@ const {
   upsertCoachInsight,
   deleteCoachInsight,
 } = require("../../models/userCoachInsightModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 async function coachContext(req) {
   const actingCoachId = req.auth?.sub;
@@ -47,6 +48,7 @@ exports.upsertCoachUserCoachInsightController = asyncHandler(async (req, res) =>
   const trimmed = String(rawMessage).trim();
   if (!trimmed) {
     await deleteCoachInsight(userId);
+    notifyClientProfileFromReq(req, userId, "glance", "coachInsight.cleared", {});
     return res.status(200).json({
       status: true,
       message: "Coach insight cleared",
@@ -66,6 +68,8 @@ exports.upsertCoachUserCoachInsightController = asyncHandler(async (req, res) =>
     mapValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "glance", "coachInsight.updated", {});
+
   return res.status(200).json({
     status: true,
     message: "Coach insight saved",
@@ -76,6 +80,8 @@ exports.upsertCoachUserCoachInsightController = asyncHandler(async (req, res) =>
 exports.deleteCoachUserCoachInsightController = asyncHandler(async (req, res) => {
   const { userId } = await coachContext(req);
   await deleteCoachInsight(userId);
+
+  notifyClientProfileFromReq(req, userId, "glance", "coachInsight.deleted", {});
 
   return res.status(200).json({
     status: true,

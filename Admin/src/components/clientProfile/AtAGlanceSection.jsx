@@ -32,7 +32,9 @@ import { HealthProgressCarousel } from "./HealthProgressCarousel.jsx";
 import { ScheduleMeetingModal } from "./ScheduleMeetingModal.jsx";
 import { ReviewRequestedTimesModal } from "./ReviewRequestedTimesModal.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
-import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 import {
   atAGlancePollSignature,
   coachInsightPollSignature,
@@ -531,23 +533,26 @@ function CommsBlock({ user, onToast, reminders, setReminders, onOpenList, canEdi
     };
   }, [isMock, userId]);
 
-  useVisibilityAwarePoll(
-    useCallback(async () => {
-      if (!userId || isMock) return;
-      if (sendingRef.current || deletingRef.current || savingReminderRef.current) return;
-      const insight = await fetchUserCoachInsight(userId);
-      const signature = coachInsightPollSignature(insight);
-      if (signature === insightSigRef.current) return;
-      insightSigRef.current = signature;
-      const nextInsight = insight || null;
-      setLiveInsight(nextInsight);
-      if (!messageDraftActiveRef.current && !coachMessageDraftDirty(messageRef.current, liveInsightRef.current)) {
-        setMessage(nextInsight?.message || "");
-        setDurationHours(resolveCoachMessageDuration(nextInsight?.durationHours));
-      }
-    }, [isMock, userId]),
-    { enabled: Boolean(userId) && !isMock },
-  );
+  const insightSyncTick = useCallback(async () => {
+    if (!userId || isMock) return;
+    if (sendingRef.current || deletingRef.current || savingReminderRef.current) return;
+    const insight = await fetchUserCoachInsight(userId);
+    const signature = coachInsightPollSignature(insight);
+    if (signature === insightSigRef.current) return;
+    insightSigRef.current = signature;
+    const nextInsight = insight || null;
+    setLiveInsight(nextInsight);
+    if (!messageDraftActiveRef.current && !coachMessageDraftDirty(messageRef.current, liveInsightRef.current)) {
+      setMessage(nextInsight?.message || "");
+      setDurationHours(resolveCoachMessageDuration(nextInsight?.durationHours));
+    }
+  }, [isMock, userId]);
+
+  useClientProfileInvalidation(["glance"], insightSyncTick, {
+    enabled: Boolean(userId) && !isMock,
+    shouldSkip: () => sendingRef.current || deletingRef.current || savingReminderRef.current,
+  });
+  useClientProfileLiveSync(insightSyncTick, { enabled: Boolean(userId) && !isMock });
 
   const sendCoachMessage = async () => {
     const trimmed = message.trim();
@@ -1004,13 +1009,18 @@ function OnboardingStatusCard({
     loadMeetings();
   }, [loadMeetings]);
 
-  useVisibilityAwarePoll(
-    useCallback(async () => {
-      if (busy) return;
-      loadMeetings();
-    }, [busy, loadMeetings]),
-    { enabled: Boolean(user?.id) && !String(user?.id || "").match(/^\d+$/) },
-  );
+  const meetingsSyncTick = useCallback(async () => {
+    if (busy) return;
+    loadMeetings();
+  }, [busy, loadMeetings]);
+
+  useClientProfileInvalidation(["counselling", "glance"], meetingsSyncTick, {
+    enabled: Boolean(user?.id) && !String(user?.id || "").match(/^\d+$/),
+    shouldSkip: () => busy,
+  });
+  useClientProfileLiveSync(meetingsSyncTick, {
+    enabled: Boolean(user?.id) && !String(user?.id || "").match(/^\d+$/),
+  });
 
   useEffect(() => {
     setRcaLatest(null);
@@ -1874,10 +1884,14 @@ export function AtAGlanceSection({ user, onToast, onNavigate, onUserUpdated }) {
     }
   }, [user?.id]);
 
-  useVisibilityAwarePoll(
+  useClientProfileInvalidation(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.glance,
     syncAtAGlanceFromApp,
     { enabled: Boolean(user?.id) && !isMockNumericId(user?.id) && !glanceLoading },
   );
+  useClientProfileLiveSync(syncAtAGlanceFromApp, {
+    enabled: Boolean(user?.id) && !isMockNumericId(user?.id) && !glanceLoading,
+  });
 
   function handleWaterHover(active, tip) {
     setRainActive(active);

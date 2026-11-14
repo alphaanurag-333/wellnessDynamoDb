@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { PillTabs } from "../shared.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import {
@@ -7,7 +7,10 @@ import {
   countSelected,
   flattenTests,
 } from "../../data/internalParametersData.js";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 import {
   appendUserGoalTests,
   createUserTestRecommendation,
@@ -1413,8 +1416,22 @@ function LiveRecommendedTestsTab({ user, catalog, recommended, history, busy, on
     const initial = selectedFromRecommendation(initialItems, recommended);
     return pinnedGroupIds(testTitleGroups(initialItems), initial);
   });
+  const dirtyRef = useRef(dirty);
+  const hydratedRecSigRef = useRef("");
+  dirtyRef.current = dirty;
 
   useEffect(() => {
+    const nextSig = [
+      recommended?.id || recommended?._id || "",
+      recommended?.updatedAt || "",
+      recommended?.createdAt || "",
+      Array.isArray(recommended?.tests) ? recommended.tests.length : 0,
+      items.length,
+    ].join(":");
+    // Socket refresh must not wipe an in-progress recommendation draft.
+    if (hydratedRecSigRef.current && dirtyRef.current) return;
+    hydratedRecSigRef.current = nextSig;
+
     const nextSelected = selectedFromRecommendation(items, recommended);
     const groups = testTitleGroups(items);
     const nextGoals = groups.filter((group) => group.kind === "goal");
@@ -2395,16 +2412,37 @@ function LiveReportAnalysisTab({
 }) {
   const [selectedId, setSelectedId] = useState(reports[0]?.id || null);
   const [viewing, setViewing] = useState(null);
+  const [aiDraft, setAiDraft] = useState(null);
+  const [aiEditing, setAiEditing] = useState(false);
+  const [bloodSummary, setBloodSummary] = useState([]);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryEditing, setSummaryEditing] = useState(false);
+  const [protocolItems, setProtocolItems] = useState([]);
+  const [protocolDraft, setProtocolDraft] = useState([]);
+  const [protocolEditing, setProtocolEditing] = useState(false);
+  const [nutritionLatest, setNutritionLatest] = useState("");
+  const [nutritionDraft, setNutritionDraft] = useState("");
+  const [nutritionEditing, setNutritionEditing] = useState(false);
+  const newestReportIdRef = useRef(reports[0]?.id || null);
 
   useEffect(() => {
     if (!reports.length) {
       setSelectedId(null);
+      newestReportIdRef.current = null;
+      return;
+    }
+    const newestId = reports[0].id;
+    const editing = aiEditing || summaryEditing || protocolEditing || nutritionEditing;
+    // New client upload arrived — jump to latest unless coach is mid-edit.
+    if (newestId !== newestReportIdRef.current) {
+      newestReportIdRef.current = newestId;
+      if (!editing) setSelectedId(newestId);
       return;
     }
     if (!reports.some((report) => report.id === selectedId)) {
-      setSelectedId(reports[0].id);
+      setSelectedId(newestId);
     }
-  }, [reports, selectedId]);
+  }, [aiEditing, nutritionEditing, protocolEditing, reports, selectedId, summaryEditing]);
 
   const selected = reports.find((report) => report.id === selectedId) || reports[0];
   const selectedAnalysis = isReportAiAnalysed(selected) ? selected.aiAnalysis : null;
@@ -2417,18 +2455,6 @@ function LiveReportAnalysisTab({
   const otherAnalysedReports = reports.filter(
     (report) => report.id !== selected?.id && isReportAiAnalysed(report)
   );
-
-  const [aiDraft, setAiDraft] = useState(null);
-  const [aiEditing, setAiEditing] = useState(false);
-  const [bloodSummary, setBloodSummary] = useState(selectedAnalysis?.bloodSummary || []);
-  const [summaryDraft, setSummaryDraft] = useState("");
-  const [summaryEditing, setSummaryEditing] = useState(false);
-  const [protocolItems, setProtocolItems] = useState(selectedAnalysis?.protocolItems || []);
-  const [protocolDraft, setProtocolDraft] = useState([]);
-  const [protocolEditing, setProtocolEditing] = useState(false);
-  const [nutritionLatest, setNutritionLatest] = useState(selectedAnalysis?.nutritionSummary || "");
-  const [nutritionDraft, setNutritionDraft] = useState("");
-  const [nutritionEditing, setNutritionEditing] = useState(false);
 
   useEffect(() => {
     setAiDraft(null);
@@ -2830,17 +2856,28 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
   const [loading, setLoading] = useState(false);
   const [submissionLocked, setSubmissionLocked] = useState(() => resolveLabReportSubmissionLocked(user));
   const [submissionBusy, setSubmissionBusy] = useState(false);
+  const [submissionConfirm, setSubmissionConfirm] = useState(null);
 
   const userId = user?.id;
-  const live = Boolean(userId && !/^\d+$/.test(String(userId)));
+  const live = Boolean(userId) && !isMockNumericId(userId);
   const stepStatus = String(user?.paidOnboardingStepStatus?.internalParameter || "pending").toLowerCase();
   const internalStepPending =
     !user?.paidOnboardingCompleted
     && stepStatus !== "done"
     && stepStatus !== "skipped";
+  const busyRef = useRef(false);
+  const stepBusyRef = useRef(false);
+  const submissionBusyRef = useRef(false);
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  const userRef = useRef(user);
+  busyRef.current = busy;
+  stepBusyRef.current = stepBusy;
+  submissionBusyRef.current = submissionBusy;
+  onUserUpdatedRef.current = onUserUpdated;
+  userRef.current = user;
 
-  const reload = async () => {
-    if (!live) return;
+  const reload = useCallback(async ({ silent = false } = {}) => {
+    if (!live) return false;
     const [rec, labs, tests] = await Promise.allSettled([
       fetchUserTestRecommendations(userId),
       fetchUserLabReports(userId),
@@ -2856,20 +2893,47 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       setReports(nextReports);
       if (typeof labs.value?.submissionLocked === "boolean") {
         setSubmissionLocked(labs.value.submissionLocked);
+        const currentUser = userRef.current;
+        if (
+          currentUser
+          && Boolean(currentUser.labReportSubmissionLocked) !== labs.value.submissionLocked
+        ) {
+          onUserUpdatedRef.current?.({
+            ...currentUser,
+            labReportSubmissionLocked: labs.value.submissionLocked,
+          });
+        }
       } else {
-        setSubmissionLocked(resolveLabReportSubmissionLocked(user));
+        setSubmissionLocked(resolveLabReportSubmissionLocked(userRef.current));
       }
     }
     if (tests.status === "fulfilled") {
       const list = Array.isArray(tests.value) ? tests.value : tests.value?.tests || [];
       setCatalog(list);
-    } else {
+    } else if (!silent) {
       setCatalog([]);
     }
 
-    const failed = [tests, rec, labs].find((result) => result.status === "rejected");
-    if (failed) throw failed.reason;
-  };
+    // Socket sync: apply whatever succeeded. Only hard-fail when lab reports fail on first load.
+    if (labs.status === "rejected") {
+      if (!silent) throw labs.reason;
+      return false;
+    }
+    if (!silent) {
+      const failed = [tests, rec].find((result) => result.status === "rejected");
+      if (failed) throw failed.reason;
+    }
+    return true;
+  }, [live, userId]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.internal,
+    async () => reload({ silent: true }),
+    {
+      enabled: live,
+      shouldSkip: () => busyRef.current || stepBusyRef.current || submissionBusyRef.current,
+    },
+  );
 
   async function handleReloadCatalog() {
     if (!live) return;
@@ -2890,7 +2954,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [live, onToast, reload, userId]);
 
   async function handleDeleteReport(reportId) {
     try {
@@ -2965,6 +3029,12 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
     } finally {
       setStepBusy(false);
     }
+  }
+
+  function requestToggleSubmissionEnabled() {
+    if (submissionBusy || !canEdit || !live) return;
+    // next = allow upload in the app (true) or disable it (false)
+    setSubmissionConfirm({ next: submissionLocked });
   }
 
   async function handleSubmissionEnabled(enabled) {
@@ -3067,7 +3137,7 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
               aria-pressed={!submissionLocked}
               aria-label={submissionLocked ? "Allow the client to upload a new report" : "Disable new report uploads in the app"}
               disabled={submissionBusy || !canEdit}
-              onClick={() => handleSubmissionEnabled(submissionLocked)}
+              onClick={requestToggleSubmissionEnabled}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -3176,6 +3246,32 @@ export function InternalParametersSection({ user, onToast, onUserUpdated }) {
       ) : (
         <MockReportAnalysisTab onToast={onToast} canCreate={canCreate} />
       )}
+
+      <ConfirmDialog
+        open={Boolean(submissionConfirm)}
+        tag="Client report upload"
+        title={
+          submissionConfirm?.next
+            ? `Allow ${firstName(user)} to upload a blood report in the app?`
+            : `Disable blood report upload in the app for ${firstName(user)}?`
+        }
+        body={
+          submissionConfirm?.next
+            ? "The client will be able to submit or update a blood report from Internal Parameters in the app."
+            : "The client will not be able to submit or update a blood report in the app until you turn this back on."
+        }
+        cancelLabel="Cancel"
+        confirmLabel={submissionConfirm?.next ? "Enable in app" : "Disable in app"}
+        confirmTone={submissionConfirm?.next ? "primary" : "danger"}
+        onCancel={() => {
+          if (!submissionBusy) setSubmissionConfirm(null);
+        }}
+        onConfirm={() => {
+          const next = submissionConfirm?.next;
+          setSubmissionConfirm(null);
+          if (typeof next === "boolean") handleSubmissionEnabled(next);
+        }}
+      />
     </div>
   );
 }

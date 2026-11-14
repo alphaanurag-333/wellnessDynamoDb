@@ -11,6 +11,7 @@ const {
   isHeartRateEnabled,
   isSleepTrackingEnabled,
 } = require("../../models/userModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function parseEnabledFlag(raw) {
   if (raw === true || raw === false) return raw;
@@ -47,6 +48,15 @@ exports.updateCoachUserBmsTrackingController = asyncHandler(async (req, res) => 
   }
 
   const updated = await updateUser(userId, patch);
+
+  notifyClientProfileFromReq(req, userId, "bms", "bmsTracking.updated", {
+    heartRateEnabled: isHeartRateEnabled(updated),
+    sleepTrackingEnabled: isSleepTrackingEnabled(updated),
+  });
+  notifyClientProfileFromReq(req, userId, "personal", "bmsTracking.updated", {
+    heartRateEnabled: isHeartRateEnabled(updated),
+    sleepTrackingEnabled: isSleepTrackingEnabled(updated),
+  });
 
   return res.status(200).json({
     status: true,

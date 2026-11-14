@@ -1,4 +1,5 @@
 const express = require("express");
+const config = require("../config");
 const adminAppConfigRoutes = require("./adminRoutes/adminAppConfigRoutes");
 const adminFaqRoutes = require("./adminRoutes/adminFaqRoutes");
 const adminConfigDropdownRoutes = require("./adminRoutes/adminConfigDropdownRoutes");
@@ -108,7 +109,16 @@ const {
 const router = express.Router();
 
 router.get("/health", (req, res) => {
-  res.json({ ok: true });
+  const { getRealtimeIo } = require("../services/realtimeIo");
+  res.json({
+    ok: true,
+    socket: {
+      enabled: Boolean(config.socketEnabled),
+      path: config.socketPath,
+      /** True only after attachClientProfileSocket() bound Engine.IO to this process */
+      attached: Boolean(getRealtimeIo()),
+    },
+  });
 });
 
 /** Unified staff Account auth + APIs. Staff login lives only under /account/auth. */

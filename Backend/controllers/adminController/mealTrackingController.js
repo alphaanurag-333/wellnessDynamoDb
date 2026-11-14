@@ -28,6 +28,7 @@ const {
   getDailyMealGoal,
 } = require("../../models/userModel");
 const { analyzeMealPhoto, analyzeMealItems } = require("../../services/mealPhotoAiService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const { ZERO_MACROS, mealAiRoute } = require("../../utils/mealPhotoAi");
 
 exports.adminGetUserMealTrackingController = asyncHandler(async (req, res) => {
@@ -80,6 +81,8 @@ exports.adminDeleteMealLogController = asyncHandler(async (req, res) => {
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.deleted", { logId });
 
   return res.status(200).json({
     status: true,
@@ -144,6 +147,11 @@ exports.createCoachUserMealLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.created", {
+    logId: mealLog.id,
+    date: mealLog.date,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Meal log created successfully",
@@ -181,6 +189,11 @@ exports.updateCoachUserMealLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.updated", {
+    logId,
+    date: updated?.date,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Meal log updated successfully",
@@ -211,6 +224,8 @@ exports.deleteCoachUserMealLogController = asyncHandler(async (req, res) => {
     throw err;
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.deleted", { logId });
+
   return res.status(200).json({
     status: true,
     message: "Meal log deleted successfully",
@@ -228,6 +243,8 @@ exports.updateCoachUserMealTrackingModeController = asyncHandler(async (req, res
 
   const mode = normalizeMealTrackingMode(req.body?.mealTrackingMode);
   const updated = await updateUser(userId, { mealTrackingMode: mode });
+
+  notifyClientProfileFromReq(req, userId, "food", "mealTrackingMode.updated", { mode });
 
   return res.status(200).json({
     status: true,
@@ -256,6 +273,8 @@ exports.updateCoachUserDailyMealGoalController = asyncHandler(async (req, res) =
   }
 
   const updated = await updateUser(userId, { dailyMealGoal: goal });
+
+  notifyClientProfileFromReq(req, userId, "food", "dailyMealGoal.updated", { goal });
 
   return res.status(200).json({
     status: true,
@@ -337,6 +356,11 @@ exports.analyzeCoachUserMealLogController = asyncHandler(async (req, res) => {
     aiAnalysedById: actingCoachId,
     aiSource: fromFoodList ? "items" : "photo",
     ...(fromFoodList ? { trackingMode: "detailed_macro" } : {}),
+  });
+
+  notifyClientProfileFromReq(req, userId, "food", "mealLog.analysed", {
+    logId,
+    date: mealLog?.date || record.date,
   });
 
   return res.status(200).json({

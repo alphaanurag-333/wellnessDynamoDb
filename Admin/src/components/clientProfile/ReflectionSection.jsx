@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
   fetchUserDailyReflectionSettings,
@@ -13,6 +13,8 @@ import {
   localToday,
   parseFoodDateInput,
 } from "../../data/foodData.js";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { FoodDateRow } from "./FoodDatePicker.jsx";
 import { BedtimePicker } from "./BedtimePicker.jsx";
 import {
@@ -24,6 +26,7 @@ import {
   groupActivities,
   unitLabel,
 } from "../../data/reflectionData.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function ConfirmModal({ open, eyebrow, title, body, confirmLabel, confirmTone = "primary", busy, onClose, onConfirm }) {
   useEffect(() => {
@@ -247,6 +250,18 @@ export function ReflectionSection({ user, onToast }) {
     ? (todayScore ? "Today's reflection score" : "Selected for the client app")
     : (todayScore ? "Reflection score" : "No score logged");
 
+  const live = Boolean(userId) && !isMockNumericId(userId) && isHealClient;
+  const busyRef = useRef(false);
+  const settingsDirtyRef = useRef(false);
+  const historyOpenRef = useRef(historyOpen);
+  const historyMonthRef = useRef(historyMonth);
+  const viewDateKeyRef = useRef(viewDateKey);
+  busyRef.current = busy;
+  settingsDirtyRef.current = settingsDirty;
+  historyOpenRef.current = historyOpen;
+  historyMonthRef.current = historyMonth;
+  viewDateKeyRef.current = viewDateKey;
+
   function applyForm(data) {
     const nextActivities = data?.activities || [];
     setActivities(nextActivities);
@@ -312,6 +327,26 @@ export function ReflectionSection({ user, onToast }) {
       cancelled = true;
     };
   }, [historyMonth, historyOpen, isHealClient, onToast, userId]);
+
+  const syncReflectionFromApp = useCallback(async () => {
+    if (!live) return false;
+    const data = await fetchUserDailyReflectionSettings(userId, { date: viewDateKeyRef.current });
+    if (!settingsDirtyRef.current) applyForm(data);
+    if (historyOpenRef.current) {
+      const historyData = await fetchUserDailyReflectionHistory(userId, historyMonthRef.current).catch(() => null);
+      if (historyData) setHistoryRows(historyData?.history || []);
+    }
+    return true;
+  }, [live, userId]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.reflection,
+    syncReflectionFromApp,
+    {
+      enabled: live,
+      shouldSkip: () => busyRef.current,
+    },
+  );
 
   function pickHistoryDate(dateKey) {
     const next = parseFoodDateInput(dateKey);

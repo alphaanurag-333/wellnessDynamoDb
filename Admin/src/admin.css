@@ -11174,11 +11174,69 @@
   font-weight: 650;
 }
 
+.updated-admin .ua-cp-topbar__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
 .updated-admin .ua-cp-topbar__title {
   font-weight: 700;
   font-size: 14px;
   color: #16233f;
   flex-shrink: 0;
+}
+
+.updated-admin .ua-cp-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.updated-admin .ua-cp-live-status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.updated-admin .ua-cp-live-status--live {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
+
+.updated-admin .ua-cp-live-status--pending {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fedf89;
+}
+
+.updated-admin .ua-cp-live-status--offline {
+  color: #667085;
+  background: #f9fafb;
+  border-color: #eaecf0;
+}
+
+.updated-admin .ua-cp-live-status--error {
+  color: #b42318;
+  background: #fef3f2;
+  border-color: #fecdca;
+}
+
+.updated-admin .ua-cp-live-status--muted {
+  color: #98a2b3;
+  background: #f9fafb;
+  border-color: #eaecf0;
 }
 
 .updated-admin .ua-cp-topbar__icon--save {

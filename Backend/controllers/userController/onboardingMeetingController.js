@@ -27,6 +27,13 @@ const {
   notifyReportsBriefingMeetingSlotConfirmedByClientToCoachesAsync,
   notifyReportsBriefingMeetingClientProposedSlotsToCoachesAsync,
 } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
+
+function notifyLaunchMeetingProfile(req, userId, stepKey, action, meta = {}) {
+  if (String(stepKey || "").trim() !== "launch") return;
+  notifyClientProfileFromReq(req, userId, "launch", action, { stepKey: "launch", ...meta });
+  notifyClientProfileFromReq(req, userId, "glance", action, { stepKey: "launch", ...meta });
+}
 
 function authedUserId(req) {
   const userId = req.auth?.sub || req.user?.id;
@@ -123,6 +130,10 @@ exports.bookUserOnboardingMeetingController = asyncHandler(async (req, res) => {
     notifyProgramInitMeetingSlotConfirmedByClientToCoachesAsync(user);
   }
 
+  notifyLaunchMeetingProfile(req, userId, stepKey, "onboardingMeeting.booked", {
+    meetingId: updated?.id || meeting.id,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Meeting booked",
@@ -168,6 +179,10 @@ exports.requestUserOnboardingMeetingTimeController = asyncHandler(async (req, re
   } else if (stepKey === "programInitiation" && user) {
     notifyProgramInitMeetingClientProposedSlotsToCoachesAsync(user);
   }
+
+  notifyLaunchMeetingProfile(req, userId, stepKey, "onboardingMeeting.timeRequested", {
+    meetingId: updated?.id || meeting.id,
+  });
 
   return res.status(200).json({
     status: true,

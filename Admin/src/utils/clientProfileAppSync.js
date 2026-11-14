@@ -126,8 +126,18 @@ export function waterTrackingPollSignature(range, data) {
   return [from, to, history, JSON.stringify(data?.settings || null)].join(ROW_SEP);
 }
 
-export function foodMetabolicPollSignature(metabolicMetrics) {
-  return JSON.stringify(Array.isArray(metabolicMetrics) ? metabolicMetrics : []);
+/** Tracks TDEE/BMR + weight/activity so Food macro protein goal stays in sync with At a Glance. */
+export function foodMetabolicPollSignature(bodyAnalyticsOrMetrics) {
+  if (Array.isArray(bodyAnalyticsOrMetrics)) {
+    return JSON.stringify(bodyAnalyticsOrMetrics);
+  }
+  const measurements = (bodyAnalyticsOrMetrics?.measurements || []).map((row) =>
+    [row?.id || row?._id, row?.recordedAt, row?.updatedAt, row?.weightKg, row?.activityLevel].join(":"),
+  );
+  return JSON.stringify({
+    metabolic: bodyAnalyticsOrMetrics?.metabolicMetrics || [],
+    measurements,
+  });
 }
 
 function healthProgressLogRowsSig(rows) {
@@ -217,4 +227,41 @@ export function bmsLibraryPollSignature(kind, items, reflectionAudioId) {
     .sort()
     .join("|");
   return `${kind}${ROW_SEP}${rows}${ROW_SEP}${reflectionAudioId || ""}`;
+}
+
+/** Profile row fingerprint for Personal details socket sync (mapApiUserToRow shape). */
+export function personalProfileRemoteSignature(row) {
+  if (!row) return "";
+  return [
+    row.updatedAt || "",
+    row.name || "",
+    row.email || "",
+    row.dobIso || "",
+    row.gender || "",
+    row.phone || "",
+    row.whatsapp || "",
+    row.addressLine1 || "",
+    row.addressLine2 || "",
+    row.pincode || "",
+    row.stateRaw || "",
+    row.country || "",
+    row.city || "",
+    row.dietaryPreference || "",
+    row.healthConcernId || "",
+    row.goal || "",
+    JSON.stringify(row.wellnessJourneyForRaw || []),
+    JSON.stringify(row.paidOnboardingStepStatus || {}),
+    row.termsIp || "",
+    row.termsAcceptedBool ? "1" : "0",
+    row.referredByCode || "",
+    row.referralCode || "",
+    row.tier || "",
+    row.coach || "",
+    row.awc || "",
+    row.status || "",
+    row.profileImage || "",
+    String(row.programLabel || ""),
+    row.programPurchased ? "1" : "0",
+    String(row.clientCategory || ""),
+  ].join(ROW_SEP);
 }

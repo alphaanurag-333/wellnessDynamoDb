@@ -14,6 +14,7 @@ const {
 } = require("../helpers/reminderControllerHelpers");
 const { assertStaffCanAccessUser, resolveStaffActor } = require("../staffAccess");
 const { notifyProtocolSettingsDesignStartedToUserAsync } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function parsePointList(raw) {
   if (!Array.isArray(raw)) return null;
@@ -97,6 +98,10 @@ exports.saveStaffUserProtocolSettingsController = asyncHandler(async (req, res) 
   const history = mapHistory(result.items);
   const current = toPublicProtocolVersion(created) || history[0] || null;
 
+  notifyClientProfileFromReq(req, userId, "protocol", "protocolSettings.saved", {
+    version: current?.version || created?.version,
+  });
+
   return res.status(201).json({
     status: true,
     message: `Protocol saved as v${current?.version || created?.version}`,
@@ -122,6 +127,8 @@ exports.updateStaffUserProtocolSettingsController = asyncHandler(async (req, res
   const history = mapHistory(result.items);
   const current = history[0] || null;
   const updated = history.find((item) => String(item.id) === versionId) || null;
+
+  notifyClientProfileFromReq(req, userId, "protocol", "protocolSettings.updated", { versionId });
 
   return res.status(200).json({
     status: true,
