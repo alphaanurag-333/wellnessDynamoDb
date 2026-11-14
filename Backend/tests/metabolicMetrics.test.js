@@ -38,17 +38,26 @@ test("computeBodyFat for male", () => {
   assert.equal(result.leanMuscleMassPercent + result.bodyFatPercent, 100);
 });
 
-test("computeVisceralFat returns risk assessment", () => {
-  const result = computeVisceralFat({
+test("computeVisceralFat uses WHtR % formula for men and women", () => {
+  const male = computeVisceralFat({
     gender: "male",
-    age: 28,
     heightCm: 175,
     waistCm: 93,
   });
-  assert.ok(result.waistHeightRatio > 0);
-  assert.equal(result.waistHipRatio, undefined);
-  assert.ok(result.estimatedVisceralFat >= 1);
-  assert.ok(result.riskAssessment);
+  // WHtR = 93/175 ≈ 0.53 → (0.53 − 0.40) × 100 = 13%
+  assert.equal(male.waistHeightRatio, 0.53);
+  assert.equal(male.estimatedVisceralFat, 13);
+  assert.equal(male.waistHipRatio, undefined);
+  assert.ok(male.riskAssessment);
+
+  const female = computeVisceralFat({
+    gender: "female",
+    heightCm: 165,
+    waistCm: 87,
+  });
+  // WHtR = 87/165 ≈ 0.53 → (0.53 − 0.42) × 100 = 11%
+  assert.equal(female.waistHeightRatio, 0.53);
+  assert.equal(female.estimatedVisceralFat, 11);
 });
 
 test("computeSamoudaVisceralFat matches the LIH VAT model", () => {
@@ -94,7 +103,10 @@ test("deriveMetricsFromBodyMeasurement uses calculator.net inputs", () => {
   assert.equal(metrics.bmr, 1693);
   assert.equal(metrics.tdee, 2032);
   assert.equal(metrics.bodyFatPercent, 15.7);
-  assert.equal(metrics.estimatedVisceralFat, 149.55);
+  // LIH/Samouda VAT cm²
+  assert.equal(metrics.visceralFatPercent, 149.55);
+  // WHtR = 96/178 ≈ 0.54 → (0.54 − 0.40) × 100 = 14%
+  assert.equal(metrics.estimatedVisceralFat, 14);
   assert.equal(metrics.waistHipRatio, 1.04);
 });
 
@@ -107,12 +119,12 @@ test("computeWaistHipRatio uses waist / hip", () => {
 test("computeVisceralFat includes waistHipRatio when hip provided", () => {
   const result = computeVisceralFat({
     gender: "male",
-    age: 28,
     heightCm: 175,
     waistCm: 90,
     hipCm: 100,
   });
   assert.equal(result.waistHeightRatio, 0.51);
+  assert.equal(result.estimatedVisceralFat, 11);
   assert.equal(result.waistHipRatio, 0.9);
 });
 

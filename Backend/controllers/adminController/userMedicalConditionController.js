@@ -19,6 +19,7 @@ const {
   syncBodyAnalyticsOnboardingFromClientData,
   attachBodyAnalyticsAdminMeta,
 } = require("../../services/bodyAnalyticsOnboardingSyncService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 exports.getUserMedicalConditionsAdminController = asyncHandler(async (req, res) => {
   const userId = req.params.id;
@@ -98,6 +99,8 @@ exports.patchMedicalConditionsInAppSettingsController = asyncHandler(async (req,
   }
 
   const updated = await updateUser(userId, { medicalConditionsInAppEnabled: enabled });
+
+  notifyClientProfileFromReq(req, userId, "medical", "medicalConditionsSettings.updated", { enabled });
 
   return res.status(200).json({
     status: true,

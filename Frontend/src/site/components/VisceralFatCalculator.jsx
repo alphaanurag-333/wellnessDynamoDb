@@ -160,22 +160,13 @@ export default function VisceralFatCalculator() {
 
     setRatio(whtr.toFixed(2));
 
-    let level = 0;
+    // Men: (WHtR − 0.40) × 100 | Women: (WHtR − 0.42) × 100
+    const offset = gender === "female" ? 0.42 : 0.4;
+    let estimatedPercent = Number(((whtr - offset) * 100).toFixed(1));
+    if (!Number.isFinite(estimatedPercent) || estimatedPercent < 0) estimatedPercent = 0;
 
-    if (gender === "male") {
-      level = Math.round(whtr * 100 + age * 0.18 - 30);
-    } else {
-      level = Math.round(whtr * 100 + age * 0.15 - 28);
-    }
-
-    if (level < 1) level = 1;
-    if (level > 30) level = 30;
-
-    setVisceralFat(level);
-
-    const percent = ((level / 30) * 100).toFixed(1);
-
-    setVisceralPercent(percent);
+    setVisceralFat(estimatedPercent);
+    setVisceralPercent(estimatedPercent.toFixed(1));
   };
 
   //------------------------------------
@@ -487,7 +478,9 @@ export default function VisceralFatCalculator() {
 
                 <div className="result-circle">
                   <span>
-                    {visceralFat || "--"}
+                    {visceralFat
+                      ? `${visceralFat}%`
+                      : "--"}
                   </span>
                 </div>
 

@@ -6,6 +6,7 @@ import { ConfirmDialog } from "./components/ConfirmDialog.jsx";
 import { ProfileModal } from "./components/ProfileModal.jsx";
 import { AdminHeader } from "./components/AdminHeader.jsx";
 import { AdminSidebar } from "./components/AdminSidebar.jsx";
+import { AdminRealtimeProvider } from "./context/AdminRealtimeContext.jsx";
 import { InboxProvider } from "./context/InboxContext.jsx";
 import { useViewAs } from "./context/ViewAsContext.jsx";
 import { useAppSelector } from "./store/hooks.js";
@@ -84,6 +85,7 @@ export function AdminLayout() {
   }, [mobileNavOpen]);
 
   return (
+    <AdminRealtimeProvider>
     <InboxProvider onToast={showToast}>
       <div className={`updated-admin${isClientProfile ? " updated-admin--client-profile" : ""}`}>
         <AdminSidebar
@@ -129,5 +131,6 @@ export function AdminLayout() {
         </div>
       </div>
     </InboxProvider>
+    </AdminRealtimeProvider>
   );
 }

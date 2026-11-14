@@ -20,6 +20,7 @@ const {
   syncHealthProgressAfterProfileSelections,
   updatesAffectHealthProgressSelections,
 } = require("../../services/healthProgressProgramTrackerService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   syncBodyAnalyticsOnboardingFromClientData,
   attachBodyAnalyticsAdminMeta,
@@ -298,6 +299,13 @@ exports.updateUserController = asyncHandler(async (req, res) => {
     user = await syncHealthProgressAfterProfileSelections(user);
   }
 
+  const profileMeta = {
+    fields: Object.keys(updates),
+    ...(updates.name != null ? { name: String(updates.name) } : {}),
+  };
+  notifyClientProfileFromReq(req, req.params.id, "personal", "profile.updated", profileMeta);
+  notifyClientProfileFromReq(req, req.params.id, "glance", "profile.updated", profileMeta);
+
   return res.status(200).json({
     status: true,
     message: "User updated successfully",
@@ -352,6 +360,10 @@ exports.patchPresentablePicsSettingsController = asyncHandler(async (req, res) =
     throw new AppError("enabled must be true or false", 400);
   }
   const updated = await updateUser(userId, { presentablePicsEnabled: enabled });
+
+  notifyClientProfileFromReq(req, userId, "presentable", "presentablePics.settingsUpdated", {
+    enabled,
+  });
 
   return res.status(200).json({
     status: true,
@@ -457,6 +469,8 @@ exports.reviewPresentablePicController = asyncHandler(async (req, res) => {
   }).catch((err) => {
     console.error("Presentable pic review notification failed:", err?.message || err);
   });
+
+  notifyClientProfileFromReq(req, userId, "presentable", "presentablePic.reviewed", { action });
 
   return res.status(200).json({
     status: true,

@@ -15,6 +15,7 @@ const {
   getWellnessCoachByIdResolved,
 } = require("../../services/accountResolver");
 const { resolveStaffActor, listStaffClientIdSet } = require("../staffAccess");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 const STAFF_ENTITY_TYPES = new Set(["wellness_coach", "assistant_wellness_coach"]);
 const GLOBAL_REFERRAL_ROLES = new Set(["admin", "support"]);
@@ -413,6 +414,8 @@ exports.patchUserReferralUsedController = asyncHandler(async (req, res) => {
 
   try {
     const user = await correctUserReferralAttribution(userId, referralCode);
+    notifyClientProfileFromReq(req, userId, "personal", "profile.updated", { field: "referral" });
+    notifyClientProfileFromReq(req, userId, "glance", "profile.updated", { field: "referral" });
     return res.status(200).json({
       status: true,
       user: {

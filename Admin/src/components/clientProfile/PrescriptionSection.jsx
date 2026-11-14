@@ -7,7 +7,10 @@ import {
   republishUserWellnessPrescription,
 } from "../../api/wellnessPrescriptionAssignmentApi.js";
 import { sectionsSummary, totalPoints } from "../../data/prescriptionData.js";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 const EDIT_WINDOW_MS = 12 * 60 * 60 * 1000;
 
@@ -259,10 +262,18 @@ export function PrescriptionSection({ user, onToast }) {
     return () => window.clearInterval(id);
   }, [withinEditWindow, editDeadlineMs]);
 
-  const load = useCallback(async () => {
+  const live = Boolean(userId) && !isMockNumericId(userId);
+  const savingRef = useRef(false);
+  const dirtyRef = useRef(false);
+  savingRef.current = saving;
+  dirtyRef.current = dirty;
+
+  const load = useCallback(async ({ silent = false } = {}) => {
     if (!userId) return;
-    setLoading(true);
-    setError("");
+    if (!silent) {
+      setLoading(true);
+      setError("");
+    }
     try {
       const catalogData = await listActiveWellnessPrescriptionPool({ limit: 200 });
       const nextPool = catalogData?.protocols || [];
@@ -282,20 +293,36 @@ export function PrescriptionSection({ user, onToast }) {
       const nextSections = cloneSections(nextRecommended?.sections || []);
       setRecommended(nextRecommended);
       setHistoryRows(nextHistory);
-      setSections(nextSections);
-      setSavedSections(cloneSections(nextSections));
+      if (!silent || !dirtyRef.current) {
+        setSections(nextSections);
+        setSavedSections(cloneSections(nextSections));
+      }
       setNowMs(Date.now());
     } catch (err) {
-      setError(err?.message || "Failed to load wellness prescriptions");
-      onToast?.(err?.message || "Failed to load wellness prescriptions");
+      if (!silent) {
+        setError(err?.message || "Failed to load wellness prescriptions");
+        onToast?.(err?.message || "Failed to load wellness prescriptions");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [isHealClient, onToast, userId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.prescription,
+    async () => {
+      await load({ silent: true });
+      return true;
+    },
+    {
+      enabled: live,
+      shouldSkip: () => savingRef.current,
+    },
+  );
 
   useEffect(() => {
     function onPointerDown(event) {

@@ -46,6 +46,7 @@ const {
 const {
   ensurePurchasedProgramTrackers,
 } = require("../../services/healthProgressProgramTrackerService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   clientUploadWindows,
   syncClientUploadWindow,
@@ -105,6 +106,8 @@ exports.createWeightLogController = asyncHandler(async (req, res) => {
 
   await closeClientUploadAfterSave(userId, "weightPic", req.currentUser);
 
+  notifyClientProfileFromReq(req, userId, "healthProgress", "weightLog.created", { logId: log.id });
+
   return res.status(201).json({
     status: true,
     message: "Weight entry saved",
@@ -162,6 +165,8 @@ exports.createGlucoseLogController = asyncHandler(async (req, res) => {
   }
 
   await closeClientUploadAfterSave(userId, "glucose", req.currentUser);
+
+  notifyClientProfileFromReq(req, userId, "healthProgress", "glucoseLog.created", { logId: log.id });
 
   return res.status(201).json({
     status: true,
@@ -228,6 +233,8 @@ exports.createBloodPressureLogController = asyncHandler(async (req, res) => {
 
   await closeClientUploadAfterSave(userId, "bloodPressure", req.currentUser);
 
+  notifyClientProfileFromReq(req, userId, "healthProgress", "bloodPressureLog.created", { logId: log.id });
+
   return res.status(201).json({
     status: true,
     message: "Blood pressure entry saved",
@@ -273,6 +280,8 @@ exports.createMenstrualCycleLogController = asyncHandler(async (req, res) => {
   } catch (err) {
     handleValidationError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "healthProgress", "menstrualLog.created", { logId: log.id });
 
   return res.status(201).json({
     status: true,
@@ -332,6 +341,8 @@ exports.createConditionLogController = asyncHandler(async (req, res) => {
   }
 
   await closeClientUploadAfterSave(userId, "conditionComparison", req.currentUser);
+
+  notifyClientProfileFromReq(req, userId, "healthProgress", "conditionLog.created", { logId: log.id });
 
   return res.status(201).json({
     status: true,

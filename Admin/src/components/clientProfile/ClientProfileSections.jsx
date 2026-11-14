@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 import { AtAGlanceSection } from "./AtAGlanceSection.jsx";
 import { BodyAnalyticsSection } from "./BodyAnalyticsSection.jsx";
 import { InternalParametersSection } from "./InternalParametersSection.jsx";
@@ -47,35 +50,7 @@ import {
   validatePhoneDigits,
 } from "../../utils/personFieldValidation.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
-
-const PERSONAL_DETAILS_POLL_VISIBLE_MS = 5000;
-const PERSONAL_DETAILS_POLL_HIDDEN_MS = 15000;
-
-function personalProfileRemoteSignature(row) {
-  if (!row) return "";
-  return [
-    row.updatedAt || "",
-    row.name || "",
-    row.dobIso || "",
-    row.gender || "",
-    row.phone || "",
-    row.whatsapp || "",
-    row.addressLine1 || "",
-    row.addressLine2 || "",
-    row.pincode || "",
-    row.stateRaw || "",
-    row.country || "",
-    row.city || "",
-    row.dietaryPreference || "",
-    row.healthConcernId || "",
-    JSON.stringify(row.wellnessJourneyForRaw || []),
-    String(row.paidOnboardingStepStatus?.personalDetails || ""),
-    String(row.paidOnboardingStepStatus?.profileSetup || ""),
-    row.termsIp || "",
-    row.termsAcceptedBool ? "1" : "0",
-    row.referredByCode || "",
-  ].join("\u001f");
-}
+import { personalProfileRemoteSignature } from "../../utils/clientProfileAppSync.js";
 
 export { AtAGlanceSection, BodyAnalyticsSection, InternalParametersSection, LaunchSection, FoodSection, BmsSection, NutritionsSection };
 export { HealthProgressSection } from "./HealthProgressSection.jsx";
@@ -288,61 +263,39 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     setReferralUsedInput(String(user?.referredByCode || "").trim());
   }, [user?.id, user?.referredByCode]);
 
-  useEffect(() => {
+  const syncFromApp = useCallback(async () => {
     const userId = String(user?.id || "").trim();
-    if (!userId || isMockNumericId(userId)) return undefined;
+    if (!userId || isMockNumericId(userId)) return;
+    if (pollInFlightRef.current) return;
+    if (editingRef.current || saveBusyRef.current || tierBusyRef.current) return;
 
-    const syncFromApp = async () => {
-      if (pollInFlightRef.current) return;
-      if (editingRef.current || saveBusyRef.current || tierBusyRef.current) return;
-
-      pollInFlightRef.current = true;
-      try {
+    pollInFlightRef.current = true;
+    try {
+      const pull = async () => {
+        if (editingRef.current || saveBusyRef.current || tierBusyRef.current) return true;
         const row = await fetchUser(userId);
-        if (!row) return;
+        if (!row) return false;
         const signature = personalProfileRemoteSignature(row);
-        if (signature !== remoteSigRef.current) {
-          remoteSigRef.current = signature;
-          onUserUpdatedRef.current?.(row);
-        }
-      } catch {
-        /* silent poll */
-      } finally {
-        pollInFlightRef.current = false;
-      }
-    };
-
-    let intervalId = null;
-
-    const reschedule = () => {
-      if (intervalId) window.clearInterval(intervalId);
-      const ms =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-          ? PERSONAL_DETAILS_POLL_HIDDEN_MS
-          : PERSONAL_DETAILS_POLL_VISIBLE_MS;
-      intervalId = window.setInterval(syncFromApp, ms);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        syncFromApp();
-      }
-      reschedule();
-    };
-
-    const onFocus = () => syncFromApp();
-
-    syncFromApp();
-    reschedule();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      if (intervalId) window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-    };
+        if (signature === remoteSigRef.current) return false;
+        remoteSigRef.current = signature;
+        onUserUpdatedRef.current?.(row);
+        return true;
+      };
+      if (await pull()) return;
+      await pull();
+    } catch {
+      /* silent sync */
+    } finally {
+      pollInFlightRef.current = false;
+    }
   }, [user?.id]);
+
+  const personalLive = Boolean(user?.id) && !isMockNumericId(user?.id);
+  useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.personal, syncFromApp, {
+    enabled: personalLive,
+    shouldSkip: () => editingRef.current || saveBusyRef.current || tierBusyRef.current,
+  });
+  useClientProfileLiveSync(syncFromApp, { enabled: personalLive });
 
   useEffect(() => {
     if (!editing || toApiGender(form.gender) === "female") return;
@@ -397,9 +350,11 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
   const displayTierLabel = tierBadge.label;
   const tierChangeBlocked = canChangeTier && tierChangeBlockedWithoutCoach(user);
   const userId = String(user?.id || "").trim();
-  const goalLabel = goalOptions.find((o) => o.id === form.healthConcernId)?.title
-    || user.goal
-    || "";
+  const healthConcernIdForDisplay = editing
+    ? form.healthConcernId
+    : (user.healthConcernId || form.healthConcernId);
+  const goalLabel =
+    goalOptions.find((o) => o.id === healthConcernIdForDisplay)?.title || user.goal || "";
 
   const userReferralCode = String(user?.referralCode || "").trim();
   const usedReferralCode = String(user?.referredByCode || "").trim();
@@ -650,11 +605,27 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
     if (f.value !== undefined) return f.value;
     if (f.key === "goal") return goalLabel;
     if (f.key === "wellnessJourneyFor") {
-      return formatWellnessJourneyDisplay(form.wellnessJourneyFor) || user.wellnessJourneyFor || "";
+      const journeySource = editing
+        ? form.wellnessJourneyFor
+        : (user.wellnessJourneyForRaw?.length ? user.wellnessJourneyForRaw : user.wellnessJourneyFor);
+      return formatWellnessJourneyDisplay(journeySource) || user.wellnessJourneyFor || "";
     }
-    if (f.key === "gender" && !editing) return user.gender || "";
-    if (f.key === "address" && !editing) return user.address || form.address || "";
-    if (f.key === "state" && !editing) return user.state || form.state || "";
+    if (!editing) {
+      const fromUser = {
+        name: user.name,
+        dob: user.dob,
+        gender: user.gender,
+        phone: user.phone,
+        whatsapp: user.whatsapp,
+        address: user.address,
+        state: user.state,
+        termsIp: user.termsIp,
+        termsAccepted: user.termsAccepted,
+      };
+      if (Object.prototype.hasOwnProperty.call(fromUser, f.key)) {
+        return fromUser[f.key] ?? "";
+      }
+    }
     return form[f.key] ?? "";
   }
 

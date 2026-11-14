@@ -472,6 +472,11 @@ function buildProgressPhotosUploadAppLockUpdates() {
   return { progressPhotosInAppEnabled: false };
 }
 
+/** After client submits medical conditions, hide that step in the app. */
+function buildMedicalConditionsSubmitAppLockUpdates() {
+  return { medicalConditionsInAppEnabled: false };
+}
+
 function buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus) {
   if (!onboardingStepJustCompleted(previousStatus, nextStatus, "bodyAnalytics")) {
     return {};
@@ -558,6 +563,7 @@ module.exports = {
   buildOnboardingStatusUpdates,
   buildBodyAnalyticsCompletionAppLockUpdates,
   buildProgressPhotosUploadAppLockUpdates,
+  buildMedicalConditionsSubmitAppLockUpdates,
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,

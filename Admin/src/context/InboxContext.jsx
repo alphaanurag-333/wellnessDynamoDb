@@ -6,13 +6,13 @@ import {
   markAllAdminInboxRead,
 } from "../api/adminInboxApi.js";
 import { dispatchCounsellingActivity } from "../utils/counsellingLiveRefresh.js";
-
-const INBOX_POLL_MS = 15_000;
+import { useAdminRealtime } from "./AdminRealtimeContext.jsx";
 
 const InboxContext = createContext(null);
 
 export function InboxProvider({ children, onToast }) {
   const navigate = useNavigate();
+  const { connected, onStaffInboxChanged } = useAdminRealtime();
   const [notifications, setNotifications] = useState([]);
   const [inboxLoading, setInboxLoading] = useState(true);
   const inboxInitializedRef = useRef(false);
@@ -54,9 +54,27 @@ export function InboxProvider({ children, onToast }) {
 
   useEffect(() => {
     loadInbox();
-    const timer = window.setInterval(() => loadInbox({ silent: true }), INBOX_POLL_MS);
-    return () => window.clearInterval(timer);
   }, [loadInbox]);
+
+  useEffect(() => onStaffInboxChanged(() => loadInbox({ silent: true })), [loadInbox, onStaffInboxChanged]);
+
+  useEffect(() => {
+    const run = () => loadInbox({ silent: true });
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") run();
+    };
+    const onFocus = () => run();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [loadInbox]);
+
+  useEffect(() => {
+    if (connected) loadInbox({ silent: true });
+  }, [connected, loadInbox]);
 
   const handleNotifClick = useCallback(
     async (id) => {

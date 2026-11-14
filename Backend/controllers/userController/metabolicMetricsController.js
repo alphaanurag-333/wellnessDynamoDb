@@ -36,6 +36,7 @@ function readMetricInputs(body, user) {
     neckCm: toNumberOrNull(body.neckCm ?? body.neck_cm),
     waistCm: toNumberOrNull(body.waistCm ?? body.waist_cm),
     hipCm: toNumberOrNull(body.hipCm ?? body.hip_cm),
+    thighCm: toNumberOrNull(body.thighCm ?? body.thigh_cm ?? body.thighsCm ?? body.thighs_cm),
     activityLevel: body.activityLevel ?? body.activity_level ?? "moderately_active",
     bodyFatGoal: toNumberOrNull(body.bodyFatGoal ?? body.body_fat_goal),
   };

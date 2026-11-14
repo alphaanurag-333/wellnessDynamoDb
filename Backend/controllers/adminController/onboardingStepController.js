@@ -23,6 +23,7 @@ const {
 } = require("../../services/notificationDispatchService");
 const { sendOnboardingReminderWhatsApp } = require("../../utils/whatsapp");
 const { notifyOnboardingWhatsAppTransitions } = require("../../services/whatsappJourneyService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function readUserId(req) {
   return String(req.params.userId || req.params.id || "").trim();
@@ -124,6 +125,19 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
   }
 
   const userForResponse = await attachBodyAnalyticsAdminMeta(updated || user);
+
+  notifyClientProfileFromReq(req, user.id, "glance", "onboardingStep.updated", { stepKey, status });
+  notifyClientProfileFromReq(req, user.id, "personal", "onboardingStep.updated", { stepKey, status });
+  notifyClientProfileFromReq(req, user.id, "body", "onboardingStep.updated", { stepKey, status });
+  const stepDomain = {
+    internalParameter: "internal",
+    launch: "launch",
+    protocol: "protocol",
+    presentablePics: "presentable",
+  }[stepKey];
+  if (stepDomain) {
+    notifyClientProfileFromReq(req, user.id, stepDomain, "onboardingStep.updated", { stepKey, status });
+  }
 
   return res.status(200).json({
     status: true,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PHOTO_REQUEST_TYPES } from "../../data/presentableData.js";
 import {
   fetchUserCommitmentLetter,
@@ -11,12 +11,10 @@ import {
 } from "../../api/onboardingApi.js";
 import { fetchUser, mapApiUserToRow } from "../../api/usersApi.js";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-
-function isLiveUserId(userId) {
-  const raw = String(userId || "").trim();
-  return Boolean(raw) && !/^\d+$/.test(raw);
-}
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function formatLetterDate(value) {
   if (!value) return "";
@@ -490,7 +488,9 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const canDeletePic = Boolean(isAdminView);
   const [featureEnabled, setFeatureEnabled] = useState(() => user?.presentablePicsEnabled !== false);
   const [letter, setLetter] = useState(null);
-  const [letterLoading, setLetterLoading] = useState(() => isLiveUserId(user?.id));
+  const [letterLoading, setLetterLoading] = useState(
+    () => Boolean(user?.id) && !isMockNumericId(user?.id),
+  );
   const [reviewBusy, setReviewBusy] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -503,7 +503,19 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   const [settingsBusy, setSettingsBusy] = useState(false);
   const [downloadBusyId, setDownloadBusyId] = useState(null);
 
-  const live = isLiveUserId(user?.id);
+  const live = Boolean(user?.id) && !isMockNumericId(user?.id);
+  const reviewBusyRef = useRef(false);
+  const photoReviewBusyRef = useRef(false);
+  const photoDeleteBusyRef = useRef(false);
+  const requestBusyRef = useRef(false);
+  const settingsBusyRef = useRef(false);
+  reviewBusyRef.current = reviewBusy;
+  photoReviewBusyRef.current = photoReviewBusy;
+  photoDeleteBusyRef.current = photoDeleteBusy;
+  requestBusyRef.current = requestBusy;
+  settingsBusyRef.current = settingsBusy;
+  const onUserUpdatedRef = useRef(onUserUpdated);
+  onUserUpdatedRef.current = onUserUpdated;
   const clientName = user?.name?.split(" ")[0] || "Client";
   const presentablePicStatus = user?.presentablePic
     ? String(user?.presentablePicStatus || "pending").toLowerCase()
@@ -567,6 +579,31 @@ export function PresentableSection({ user, onToast, onUserUpdated }) {
   useEffect(() => {
     setFeatureEnabled(user?.presentablePicsEnabled !== false);
   }, [user?.presentablePicsEnabled]);
+
+  const syncPresentableFromApp = useCallback(async () => {
+    if (!live || !user?.id) return false;
+    const [letterRow, profileRow] = await Promise.all([
+      fetchUserCommitmentLetter(user.id).catch(() => null),
+      fetchUser(user.id).catch(() => null),
+    ]);
+    if (letterRow !== undefined) setLetter(letterRow || null);
+    if (profileRow) onUserUpdatedRef.current?.(profileRow);
+    return true;
+  }, [live, user?.id]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.presentable,
+    syncPresentableFromApp,
+    {
+      enabled: live,
+      shouldSkip: () =>
+        reviewBusyRef.current
+        || photoReviewBusyRef.current
+        || photoDeleteBusyRef.current
+        || requestBusyRef.current
+        || settingsBusyRef.current,
+    },
+  );
 
   async function togglePresentablePicsFeature() {
     const next = !featureEnabled;

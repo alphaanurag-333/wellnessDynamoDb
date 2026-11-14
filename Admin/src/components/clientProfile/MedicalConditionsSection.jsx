@@ -9,9 +9,11 @@ import {
 } from "../../api/usersApi.js";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
 import { medicalConditionsPollSignature } from "../../utils/clientProfileAppSync.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function formatWhen(value) {
   const raw = String(value || "").trim();
@@ -190,19 +192,22 @@ export function MedicalConditionsSection({ user, onToast, onUserUpdated }) {
     };
   }, [applyMedicalPayload, onToast, userId]);
 
-  useVisibilityAwarePoll(
-    useCallback(async () => {
-      if (!live || !userId) return;
-      if (settingsBusyRef.current || approveBusyRef.current) return;
-      const data = await fetchUserMedicalConditions(userId);
-      if (!data) return;
-      const signature = medicalConditionsPollSignature(data);
-      if (signature === remoteSigRef.current) return;
-      remoteSigRef.current = signature;
-      applyMedicalPayload(data);
-    }, [applyMedicalPayload, live, userId]),
-    { enabled: live && Boolean(userId) },
-  );
+  const liveSyncTick = useCallback(async () => {
+    if (!live || !userId) return;
+    if (settingsBusyRef.current || approveBusyRef.current) return;
+    const data = await fetchUserMedicalConditions(userId);
+    if (!data) return;
+    const signature = medicalConditionsPollSignature(data);
+    if (signature === remoteSigRef.current) return;
+    remoteSigRef.current = signature;
+    applyMedicalPayload(data);
+  }, [applyMedicalPayload, live, userId]);
+
+  useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.medical, liveSyncTick, {
+    enabled: live && Boolean(userId),
+    shouldSkip: () => settingsBusyRef.current || approveBusyRef.current,
+  });
+  useClientProfileLiveSync(liveSyncTick, { enabled: live && Boolean(userId) });
 
   const rows = useMemo(() => rowsFromRecord(record), [record]);
   const submittedAt = formatWhen(record?.updatedAt || record?.createdAt);

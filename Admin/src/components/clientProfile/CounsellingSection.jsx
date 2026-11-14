@@ -23,10 +23,9 @@ import {
 } from "../../utils/counsellingReviewHistory.js";
 import { COUNSELLING_ACTIVITY_EVENT } from "../../utils/counsellingLiveRefresh.js";
 import { useInbox } from "../../context/InboxContext.jsx";
-
-const COUNSELLING_POLL_VISIBLE_MS = 3000;
-const COUNSELLING_POLL_HIDDEN_MS = 12000;
-const COUNSELLING_HISTORY_REFRESH_MS = 60_000;
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function activeTrackSignature(track) {
   if (!track) return "";
@@ -195,7 +194,6 @@ export function CounsellingSection({ user, onToast }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const loadInFlightRef = useRef(false);
   const activeTrackSigRef = useRef("");
-  const lastHistoryRefreshRef = useRef(0);
   const onToastRef = useRef(onToast);
   onToastRef.current = onToast;
 
@@ -239,15 +237,7 @@ export function CounsellingSection({ user, onToast }) {
       const slots = nextActive?.requestedSlots || [];
       setSelectedRequestedSlotId(slots.length === 1 ? slots[0].id : "");
 
-      const now = Date.now();
-      const shouldRefreshHistory =
-        !silent
-        || !lastHistoryRefreshRef.current
-        || now - lastHistoryRefreshRef.current >= COUNSELLING_HISTORY_REFRESH_MS;
-      if (shouldRefreshHistory) {
-        lastHistoryRefreshRef.current = now;
-        setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
-      }
+      setMeetings(await loadReviewHistory(tracksList, data.coachMeetings));
     } catch (error) {
       if (!silent) {
         onToastRef.current?.(error.message || "Could not load counselling sessions");
@@ -265,7 +255,6 @@ export function CounsellingSection({ user, onToast }) {
   useEffect(() => {
     if (!userId) {
       activeTrackSigRef.current = "";
-      lastHistoryRefreshRef.current = 0;
       setMeetings([]);
       setActiveTrack(null);
       setScheduledTrack(null);
@@ -277,52 +266,28 @@ export function CounsellingSection({ user, onToast }) {
     loadInbox({ silent: true });
   }, [userId, load, loadInbox]);
 
+  const counsellingSyncTick = useCallback(() => {
+    load({ silent: true });
+  }, [load]);
+
+  useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.counselling, counsellingSyncTick, {
+    enabled: Boolean(userId),
+  });
+  useClientProfileLiveSync(counsellingSyncTick, { enabled: Boolean(userId) });
+
   useEffect(() => {
     if (!userId) return undefined;
-
-    let intervalId = null;
-
-    const tick = () => {
-      load({ silent: true });
-    };
-
-    const reschedule = () => {
-      if (intervalId) window.clearInterval(intervalId);
-      const ms =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-          ? COUNSELLING_POLL_HIDDEN_MS
-          : COUNSELLING_POLL_VISIBLE_MS;
-      intervalId = window.setInterval(tick, ms);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        tick();
-      }
-      reschedule();
-    };
-
-    const onFocus = () => tick();
 
     const onCounsellingActivity = (event) => {
       const subjectUserId = String(event.detail?.subjectUserId || "").trim();
       if (subjectUserId && subjectUserId === userId) {
-        tick();
+        counsellingSyncTick();
       }
     };
 
-    reschedule();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
     window.addEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
-
-    return () => {
-      if (intervalId) window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
-    };
-  }, [userId, load]);
+    return () => window.removeEventListener(COUNSELLING_ACTIVITY_EVENT, onCounsellingActivity);
+  }, [counsellingSyncTick, userId]);
 
   const selectedOffer = useMemo(() => {
     if (!activeTrack) return null;

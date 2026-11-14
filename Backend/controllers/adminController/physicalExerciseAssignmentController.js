@@ -21,6 +21,7 @@ const {
   resolveCoachIdForUser,
   loadAssignmentForUser,
 } = require("../helpers/physicalExerciseAssignmentControllerHelpers");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 exports.listCoachUserPhysicalExercisesController = asyncHandler(async (req, res) => {
   const actingCoachId = req.auth?.sub;
@@ -79,6 +80,10 @@ exports.createCoachUserPhysicalExercisesController = asyncHandler(async (req, re
     });
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "physicalExercise.assigned", {
+    count: result.created.length,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Physical exercises assigned successfully",
@@ -107,6 +112,8 @@ exports.deleteCoachUserPhysicalExerciseController = asyncHandler(async (req, res
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "physicalExercise.removed", { assignmentId });
 
   return res.status(200).json({
     status: true,

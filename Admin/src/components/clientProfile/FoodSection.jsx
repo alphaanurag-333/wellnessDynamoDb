@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
@@ -38,7 +38,20 @@ import { MealPhotoModal } from "./MealPhotoModal.jsx";
 import { FoodDateRow, FoodWaterHistoryPicker } from "./FoodDatePicker.jsx";
 import { DietPlanPanel } from "./DietPlanPanel.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import {
+  foodMetabolicPollSignature,
+  mealTrackingPollSignature,
+  waterTrackingPollSignature,
+} from "../../utils/clientProfileAppSync.js";
+import { proteinGoalFromBodyAnalytics } from "../../utils/proteinGoalCalculations.js";
+
+function macroTargetsFromBodyAnalytics(bodyAnalytics) {
+  const { bmr, tdee } = latestBmrTdee(bodyAnalytics?.metabolicMetrics);
+  return macroTargetsFromTdee(tdee, bmr, proteinGoalFromBodyAnalytics(bodyAnalytics));
+}
 
 function isLiveUserId(userId) {
   return Boolean(userId) && !isMockNumericId(userId);
@@ -874,14 +887,36 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
   const [mealGoalBusy, setMealGoalBusy] = useState(false);
   const [pendingMode, setPendingMode] = useState(null);
   const [pendingMealGoal, setPendingMealGoal] = useState(null);
+  const [pendingDietPlan, setPendingDietPlan] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [editAfterAiId, setEditAfterAiId] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null);
   const jumpedToLatestRef = useRef(false);
   const userRef = useRef(user);
   const onUserUpdatedRef = useRef(onUserUpdated);
+  const selectedDateRef = useRef(selectedDate);
+  const mealsSigRef = useRef("");
+  const waterSigRef = useRef("");
+  const metabolicSigRef = useRef("");
+  const busyIdRef = useRef("");
+  const editAfterAiIdRef = useRef("");
+  const mealGoalBusyRef = useRef(false);
+  const modeBusyRef = useRef(false);
+  const pendingDeleteRef = useRef(null);
+  const waterGoalEditingRef = useRef(false);
+  const waterGoalSavingRef = useRef(false);
+  const waterGoalUnlockBusyRef = useRef(false);
   userRef.current = user;
   onUserUpdatedRef.current = onUserUpdated;
+  selectedDateRef.current = selectedDate;
+  busyIdRef.current = busyId;
+  editAfterAiIdRef.current = editAfterAiId;
+  mealGoalBusyRef.current = mealGoalBusy;
+  modeBusyRef.current = modeBusy;
+  pendingDeleteRef.current = pendingDelete;
+  waterGoalEditingRef.current = waterGoalEditing;
+  waterGoalSavingRef.current = waterGoalSaving;
+  waterGoalUnlockBusyRef.current = waterGoalUnlockBusy;
 
   const dateLabel = formatFoodDateLabel(selectedDate, today);
   const waterChart = useMemo(() => {
@@ -920,11 +955,60 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     setMacroTargets(macroTargetsFromTdee(0, 0));
     setMeals([]);
     jumpedToLatestRef.current = false;
+    mealsSigRef.current = "";
+    waterSigRef.current = "";
+    metabolicSigRef.current = "";
     setEditAfterAiId("");
     setPendingDelete(null);
     setPendingMode(null);
     setPendingMealGoal(null);
+    setPendingDietPlan(null);
   }, [live, today, userId]);
+
+  const applyMealTrackingPayload = useCallback((data, dateKey, { allowJumpToLatest = false, isCancelled } = {}) => {
+    const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
+    logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
+    const mapped = logs.map(mapMealLogToUi);
+    // Keep the meal the coach is editing after AI; still accept new/other meals from sync.
+    setMeals((prev) => {
+      const editId = editAfterAiIdRef.current;
+      if (!editId) return mapped;
+      const local = prev.find((m) => m.id === editId);
+      if (!local) return mapped;
+      return mapped.map((m) => (m.id === editId ? local : m));
+    });
+    mealsSigRef.current = mealTrackingPollSignature(dateKey, data);
+    const serverMode = data?.mealTrackingMode;
+    const currentUser = userRef.current;
+    if (serverMode && currentUser && !currentUser.mealTrackingMode) {
+      onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
+    }
+    const serverMealGoal = normalizeDailyMealGoal(data?.dailyMealGoal);
+    setDailyMealGoal(serverMealGoal);
+    const currentUserAfterMode = userRef.current;
+    if (currentUserAfterMode && normalizeDailyMealGoal(currentUserAfterMode.dailyMealGoal) !== serverMealGoal) {
+      onUserUpdatedRef.current?.({ ...currentUserAfterMode, dailyMealGoal: serverMealGoal });
+    }
+    if (
+      allowJumpToLatest
+      && !jumpedToLatestRef.current
+      && logs.length === 0
+      && dateKey === formatFoodDateInput(today)
+    ) {
+      jumpedToLatestRef.current = true;
+      fetchUserMealTracking(userId, { date: formatFoodDateInput(today), days: 21 })
+        .then((rangeData) => {
+          if (isCancelled?.()) return;
+          const latest = (rangeData?.logs || []).find((log) => log?.date);
+          const nextDate = latest?.date ? parseFoodDateInput(latest.date) : null;
+          const current = selectedDateRef.current;
+          if (nextDate && nextDate.toDateString() !== current.toDateString()) {
+            setSelectedDate(nextDate);
+          }
+        })
+        .catch(() => { });
+    }
+  }, [today, userId]);
 
   useEffect(() => {
     setDietPlanOn(user?.dietPlanEnabled !== false);
@@ -968,8 +1052,8 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     fetchUserBodyAnalytics(userId)
       .then((data) => {
         if (cancelled) return;
-        const { bmr, tdee } = latestBmrTdee(data?.metabolicMetrics);
-        setMacroTargets(macroTargetsFromTdee(tdee, bmr));
+        metabolicSigRef.current = foodMetabolicPollSignature(data);
+        setMacroTargets(macroTargetsFromBodyAnalytics(data));
       })
       .catch(() => {
         if (!cancelled) setMacroTargets(macroTargetsFromTdee(0, 0));
@@ -986,46 +1070,16 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
       return undefined;
     }
     let cancelled = false;
+    mealsSigRef.current = "";
     setMealsLoading(true);
-    fetchUserMealTracking(userId, { date: formatFoodDateInput(selectedDate), days: 1 })
+    const dateKey = formatFoodDateInput(selectedDate);
+    fetchUserMealTracking(userId, { date: dateKey, days: 1 })
       .then((data) => {
         if (cancelled) return;
-        const dateKey = formatFoodDateInput(selectedDate);
-        const logs = (data?.logs || []).filter((log) => !log.date || log.date === dateKey);
-        logs.sort((a, b) => String(a.entryTime || "").localeCompare(String(b.entryTime || "")));
-        setMeals(logs.map(mapMealLogToUi));
-        const serverMode = data?.mealTrackingMode;
-        const currentUser = userRef.current;
-        if (
-          serverMode
-          && currentUser
-          && !currentUser.mealTrackingMode
-        ) {
-          onUserUpdatedRef.current?.({ ...currentUser, mealTrackingMode: serverMode });
-        }
-        const serverMealGoal = normalizeDailyMealGoal(data?.dailyMealGoal);
-        setDailyMealGoal(serverMealGoal);
-        const currentUserAfterMode = userRef.current;
-        if (currentUserAfterMode && normalizeDailyMealGoal(currentUserAfterMode.dailyMealGoal) !== serverMealGoal) {
-          onUserUpdatedRef.current?.({ ...currentUserAfterMode, dailyMealGoal: serverMealGoal });
-        }
-        if (
-          !jumpedToLatestRef.current
-          && logs.length === 0
-          && formatFoodDateInput(selectedDate) === formatFoodDateInput(today)
-        ) {
-          jumpedToLatestRef.current = true;
-          fetchUserMealTracking(userId, { date: formatFoodDateInput(today), days: 21 })
-            .then((rangeData) => {
-              if (cancelled) return;
-              const latest = (rangeData?.logs || []).find((log) => log?.date);
-              const nextDate = latest?.date ? parseFoodDateInput(latest.date) : null;
-              if (nextDate && nextDate.toDateString() !== selectedDate.toDateString()) {
-                setSelectedDate(nextDate);
-              }
-            })
-            .catch(() => { });
-        }
+        applyMealTrackingPayload(data, dateKey, {
+          allowJumpToLatest: true,
+          isCancelled: () => cancelled,
+        });
       })
       .catch((err) => {
         if (cancelled) return;
@@ -1038,18 +1092,123 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [live, onToast, selectedDate, today, userId]);
+  }, [applyMealTrackingPayload, live, onToast, selectedDate, userId]);
+
+  const waterRangeRef = useRef(waterRange);
+  const tabRef = useRef(tab);
+  waterRangeRef.current = waterRange;
+  tabRef.current = tab;
+
+  const liveSyncTick = useCallback(async (payload) => {
+    if (!live || !userId) return false;
+    let applied = false;
+
+    // Client meal writes include meta.date — jump the calendar so macro tab shows the new log.
+    const eventDate = String(payload?.meta?.date || "").trim();
+    const mealTab = tabRef.current === "macro" || tabRef.current === "detailed-macro";
+    if (eventDate && mealTab) {
+      const currentKey = formatFoodDateInput(selectedDateRef.current);
+      if (eventDate !== currentKey) {
+        const nextDate = parseFoodDateInput(eventDate);
+        if (nextDate) {
+          setSelectedDate(nextDate);
+          return true;
+        }
+      }
+    }
+
+    const dateKey = formatFoodDateInput(selectedDateRef.current);
+    try {
+      const mealData = await fetchUserMealTracking(userId, { date: dateKey, days: 1 });
+      const mealSig = mealTrackingPollSignature(dateKey, mealData);
+      if (mealSig !== mealsSigRef.current) {
+        applyMealTrackingPayload(mealData, dateKey);
+        applied = true;
+      }
+    } catch {
+      /* silent sync */
+    }
+
+    try {
+      const bodyData = await fetchUserBodyAnalytics(userId);
+      const metaSig = foodMetabolicPollSignature(bodyData);
+      if (metaSig !== metabolicSigRef.current) {
+        metabolicSigRef.current = metaSig;
+        setMacroTargets(macroTargetsFromBodyAnalytics(bodyData));
+        applied = true;
+      }
+    } catch {
+      /* silent sync */
+    }
+
+    if (tabRef.current !== "water") return applied;
+    if (
+      waterGoalEditingRef.current
+      || waterGoalSavingRef.current
+      || waterGoalUnlockBusyRef.current
+    ) {
+      return applied;
+    }
+
+    try {
+      const range = waterRangeRef.current;
+      const wr = {
+        from: formatFoodDateInput(range.from),
+        to: formatFoodDateInput(range.to),
+      };
+      const waterData = await fetchUserWaterTracking(userId, wr);
+      const wSig = waterTrackingPollSignature(wr, waterData);
+      if (wSig !== waterSigRef.current) {
+        waterSigRef.current = wSig;
+        setWaterHistory(waterData?.history || []);
+        const goal = Number(waterData?.settings?.goalGlasses);
+        if (Number.isFinite(goal) && goal >= 0) {
+          setWaterGoal(goal);
+          setWaterGoalDraft(goal);
+        }
+        setWaterGoalLocked(Boolean(waterData?.settings?.goalLocked));
+        applied = true;
+      }
+    } catch {
+      /* silent sync */
+    }
+
+    return applied;
+  }, [applyMealTrackingPayload, live, userId]);
+
+  const foodPollSkip = useCallback(
+    () =>
+      Boolean(
+        busyIdRef.current
+        || mealGoalBusyRef.current
+        || modeBusyRef.current
+        || pendingDeleteRef.current
+        || (tabRef.current === "water" && (
+          waterGoalEditingRef.current
+          || waterGoalSavingRef.current
+          || waterGoalUnlockBusyRef.current
+        )),
+      ),
+    [],
+  );
+
+  useClientProfileSectionSync(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.food, liveSyncTick, {
+    enabled: live && Boolean(userId),
+    shouldSkip: foodPollSkip,
+  });
 
   useEffect(() => {
     if (!live || tab !== "water") return undefined;
     let cancelled = false;
     setWaterLoading(true);
-    fetchUserWaterTracking(userId, {
+    const wr = {
       from: formatFoodDateInput(waterRange.from),
       to: formatFoodDateInput(waterRange.to),
-    })
+    };
+    fetchUserWaterTracking(userId, wr)
       .then((data) => {
         if (cancelled) return;
+        waterSigRef.current = waterTrackingPollSignature(wr, data);
         setWaterHistory(data?.history || []);
         const goal = Number(data?.settings?.goalGlasses);
         if (Number.isFinite(goal) && goal >= 0) {
@@ -1071,8 +1230,12 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
     };
   }, [live, onToast, tab, userId, waterRange.from, waterRange.to]);
 
-  async function toggleDietPlan() {
-    const next = !dietPlanOn;
+  function requestDietPlanChange() {
+    if (dietPlanBusy || !canEdit) return;
+    setPendingDietPlan(!dietPlanOn);
+  }
+
+  async function toggleDietPlan(next = !dietPlanOn) {
     if (!live) {
       setDietPlanOn(next);
       onToast?.(next ? "Diet plan enabled in the client app" : "Diet plan hidden from the client app");
@@ -1377,7 +1540,7 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
               aria-pressed={dietPlanOn}
               aria-label="Show diet plan in client app"
               disabled={dietPlanBusy || !canEdit}
-              onClick={toggleDietPlan}
+              onClick={requestDietPlanChange}
             >
               <span className="ua-toggle__knob" />
             </button>
@@ -1540,6 +1703,28 @@ export function FoodSection({ user, onToast, onUserUpdated }) {
           const next = pendingMode;
           setPendingMode(null);
           if (next) setMode(next);
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingDietPlan != null}
+        tag="Diet plan"
+        title={pendingDietPlan ? "Show diet plan in the client app?" : "Hide diet plan from the client app?"}
+        body={
+          pendingDietPlan
+            ? "The client will be able to see their diet plan in the app."
+            : "The diet plan will be hidden from the client app until you turn this back on. Meal logs are not changed."
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pendingDietPlan ? "Enable in app" : "Hide from app"}
+        confirmTone={pendingDietPlan ? "primary" : "danger"}
+        onCancel={() => {
+          if (!dietPlanBusy) setPendingDietPlan(null);
+        }}
+        onConfirm={() => {
+          const next = pendingDietPlan;
+          setPendingDietPlan(null);
+          if (typeof next === "boolean") toggleDietPlan(next);
         }}
       />
 

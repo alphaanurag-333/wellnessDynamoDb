@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PillTabs } from "../shared.jsx";
 import { suggestRating } from "../../data/launchData.js";
@@ -10,7 +10,10 @@ import {
 import { ScheduleMeetingModal, slotsFromMeeting } from "./ScheduleMeetingModal.jsx";
 import { ScoringReferenceModal } from "./ScoringReferenceModal.jsx";
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import {
   cancelOnboardingMeeting,
@@ -856,6 +859,8 @@ function LifestyleTab({
   const [assessmentPushOpen, setAssessmentPushOpen] = useState(false);
   const hydratedFocusRef = useRef(null);
   const hydratedNotesRef = useRef(null);
+  const busyRef = useRef(false);
+  busyRef.current = saving || savingFocus || pushingFocus || pushingScore;
 
   const ratingOptions = config.ratings || [];
   const totals = useMemo(
@@ -870,6 +875,16 @@ function LifestyleTab({
   const history = assessmentsToHistory(assessments);
   const attempt = Math.max(history.length, assessments.length, 0) || (assessments.length ? assessments.length : 0);
   const latest = assessments[0];
+  const latestRemoteStamp = [
+    latest?.id || "",
+    latest?.updatedAt || "",
+    latest?.pushedAt || "",
+    latest?.focusPointsPushedAt || "",
+    Array.isArray(latest?.answers) ? latest.answers.length : 0,
+    Array.isArray(latest?.focusPoints) ? latest.focusPoints.length : 0,
+    String(latest?.pointsToNote || "").length,
+    Number(latest?.totalScore) || 0,
+  ].join(":");
 
   useEffect(() => {
     const first = (totals.domainRows || []).find((d) => d.items.length);
@@ -877,6 +892,7 @@ function LifestyleTab({
   }, [totals.domainRows]);
 
   useEffect(() => {
+    if (busyRef.current) return;
     const answers = latest?.answers;
     if (!Array.isArray(answers) || !answers.length) return;
     const nextRatings = {};
@@ -887,7 +903,7 @@ function LifestyleTab({
     });
     setRatings(nextRatings);
     setReplies(nextReplies);
-  }, [latest]);
+  }, [latest, latestRemoteStamp]);
 
   const autoFocus = useMemo(
     () => buildLaunchAutoFocusFromCatalog(totals.domainRows, focusAreas),
@@ -916,8 +932,8 @@ function LifestyleTab({
   }, [autoFocus, focusAreas]);
 
   useEffect(() => {
-    if (!latest?.id) return;
-    if (hydratedFocusRef.current === latest.id) return;
+    if (!latest?.id || busyRef.current) return;
+    if (hydratedFocusRef.current === latestRemoteStamp) return;
     const saved = Array.isArray(latest.focusPoints) ? latest.focusPoints : [];
     const isAutoPoint = isAutoFocusPoint;
     const hiddenSet = new Set(
@@ -941,15 +957,15 @@ function LifestyleTab({
     setAutoEdits({});
     setHiddenFocusTitles(Array.isArray(latest.hiddenFocusTitles) ? latest.hiddenFocusTitles : []);
     if (Array.isArray(latest.focusAreaIds)) setSelectedFocus(latest.focusAreaIds);
-    hydratedFocusRef.current = latest.id;
-  }, [latest, focusAreas]);
+    hydratedFocusRef.current = latestRemoteStamp;
+  }, [latest, latestRemoteStamp, focusAreas]);
 
   useEffect(() => {
-    if (!latest?.id) return;
-    if (hydratedNotesRef.current === latest.id) return;
+    if (!latest?.id || busyRef.current) return;
+    if (hydratedNotesRef.current === latestRemoteStamp) return;
     setPointsToNote(String(latest.pointsToNote || ""));
-    hydratedNotesRef.current = latest.id;
-  }, [latest]);
+    hydratedNotesRef.current = latestRemoteStamp;
+  }, [latest, latestRemoteStamp]);
 
   function handleRate(questionId, ratingId) {
     setRatings((r) => ({ ...r, [questionId]: ratingId }));
@@ -1556,7 +1572,7 @@ function GuideTextField({ value, onChange, ariaLabel }) {
   );
 }
 
-function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
+function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null, syncNonce = 0 }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
   const [types, setTypes] = useState([]);
@@ -1576,15 +1592,21 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
   const listsTouchedRef = useRef(false);
   const listsTypeRef = useRef("");
   const catalogRequestRef = useRef(0);
+  const busyRef = useRef(false);
+  busyRef.current = saving || savingRec || savingAvoid || pushing || listsTouchedRef.current;
 
   useEffect(() => {
     const userId = user?.id;
-    if (!userId || /^\d+$/.test(String(userId))) {
+    if (!userId || isMockNumericId(userId)) {
       setLoading(false);
       return undefined;
     }
+    // Socket refresh: do not clobber in-progress coach edits.
+    if (syncNonce > 0 && busyRef.current) return undefined;
+
     let cancelled = false;
-    setLoading(true);
+    const silent = syncNonce > 0;
+    if (!silent) setLoading(true);
     Promise.all([
       fetchPrakrutiQuestions(userId),
       fetchPrakrutiThingsToAvoid(userId),
@@ -1611,13 +1633,13 @@ function PrakritiTab({ user, onToast, canWrite = true, meetingBanner = null }) {
         setForceNew(false);
       })
       .catch((err) => {
-        if (!cancelled) onToast(err?.message || "Failed to load Prakriti config");
+        if (!cancelled && !silent) onToast(err?.message || "Failed to load Prakriti config");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [onToast, syncNonce, user?.id]);
 
   const doshas = useMemo(() => {
     return DOSHA_KEYS.map((id) => {
@@ -2230,6 +2252,7 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
   const [focusAreas, setFocusAreas] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [prakritiSyncNonce, setPrakritiSyncNonce] = useState(0);
 
   const meetingStatus = String(launchMeeting?.status || "").toLowerCase();
   const meetingHeld = ["slots_offered", "time_requested"].includes(meetingStatus);
@@ -2301,57 +2324,88 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
     setTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  useEffect(() => {
-    const userId = user?.id;
-    if (!userId || /^\d+$/.test(String(userId))) {
-      setConfigLoading(false);
-      return undefined;
-    }
-    let cancelled = false;
-    setConfigLoading(true);
-    fetchLaunchAssessmentConfig(userId)
-      .then((data) => {
-        if (cancelled) return;
+  const userId = String(user?.id || "").trim();
+  const live = Boolean(userId) && !isMockNumericId(userId);
+  const scheduleOpenRef = useRef(scheduleOpen);
+  scheduleOpenRef.current = scheduleOpen;
+
+  const reloadLaunch = useCallback(async ({ silent = false } = {}) => {
+    if (!live) return;
+    if (!silent) setConfigLoading(true);
+    try {
+      const [configData, focusRows, assessmentData, meetingRows] = await Promise.all([
+        fetchLaunchAssessmentConfig(userId).catch((err) => {
+          if (!silent) throw err;
+          return null;
+        }),
+        fetchLaunchFocusAreas(userId).catch(() => null),
+        fetchUserLaunchAssessments(userId).catch(() => null),
+        fetchOnboardingMeetings(userId).catch(() => null),
+      ]);
+
+      if (configData) {
         setConfig({
-          ratings: data?.ratings || [],
-          domains: data?.domains || [],
+          ratings: configData?.ratings || [],
+          domains: configData?.domains || [],
         });
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setConfig({ ratings: [], domains: [] });
-          onToast(err?.message || "Failed to load LAUNCH config");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setConfigLoading(false);
-      });
-    fetchLaunchFocusAreas(userId)
-      .then((rows) => { if (!cancelled) setFocusAreas(Array.isArray(rows) ? rows : rows?.focusAreas || []); })
-      .catch(() => {});
-    fetchUserLaunchAssessments(userId)
-      .then((data) => {
-        if (cancelled) return;
-        const list = data?.assessments || data?.items || [];
+      } else if (!silent) {
+        setConfig({ ratings: [], domains: [] });
+      }
+
+      if (focusRows != null) {
+        setFocusAreas(Array.isArray(focusRows) ? focusRows : focusRows?.focusAreas || []);
+      }
+
+      if (assessmentData) {
+        const list = assessmentData?.assessments || assessmentData?.items || [];
         setAssessments(
           [...(Array.isArray(list) ? list : [])].sort((a, b) =>
             String(b.assessmentDate || b.updatedAt || "").localeCompare(String(a.assessmentDate || a.updatedAt || "")),
           ),
         );
-      })
-      .catch(() => {});
-    fetchOnboardingMeetings(userId)
-      .then((rows) => {
-        if (cancelled) return;
+      }
+
+      if (meetingRows != null) {
+        const rows = Array.isArray(meetingRows) ? meetingRows : [];
         const active = new Set(["slots_offered", "time_requested", "booked", "confirmed", "scheduled"]);
-        const meeting = (rows || []).find((row) => (
+        const meeting = rows.find((row) => (
           row.stepKey === "launch" && active.has(String(row.status || "").toLowerCase())
         )) || null;
         setLaunchMeeting(meeting);
-      })
-      .catch(() => {});
+      }
+    } finally {
+      if (!silent) setConfigLoading(false);
+    }
+  }, [live, userId]);
+
+  useEffect(() => {
+    if (!live) {
+      setConfigLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    reloadLaunch()
+      .catch((err) => {
+        if (!cancelled) {
+          setConfig({ ratings: [], domains: [] });
+          onToast(err?.message || "Failed to load LAUNCH config");
+        }
+      });
     return () => { cancelled = true; };
-  }, [user?.id]);
+  }, [live, onToast, reloadLaunch]);
+
+  useClientProfileSectionSync(
+    CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.launch,
+    async () => {
+      await reloadLaunch({ silent: true });
+      setPrakritiSyncNonce((n) => n + 1);
+      return true;
+    },
+    {
+      enabled: live,
+      shouldSkip: () => scheduleOpenRef.current,
+    },
+  );
 
   function handleTabChange(next) {
     setTab(next);
@@ -2401,7 +2455,13 @@ export function LaunchSection({ user, onToast, onUserUpdated }) {
           meetingBanner={meetingBanner}
         />
       ) : (
-        <PrakritiTab user={user} onToast={onToast} canWrite={canWrite} meetingBanner={meetingBanner} />
+        <PrakritiTab
+          user={user}
+          onToast={onToast}
+          canWrite={canWrite}
+          meetingBanner={meetingBanner}
+          syncNonce={prakritiSyncNonce}
+        />
       )}
       {scheduleOpen ? (
         <ScheduleMeetingModal

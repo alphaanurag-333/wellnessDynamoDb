@@ -114,6 +114,17 @@ async function createAdminActivity({
     })
   );
 
+  try {
+    const { notifyStaffInboxChanged } = require("../services/staffInboxRealtime");
+    notifyStaffInboxChanged({
+      activityId: item.id,
+      recipientAccountId: item.recipientAccountId,
+      subjectUserId: item.subjectUserId,
+    });
+  } catch {
+    /* realtime optional */
+  }
+
   return item;
 }
 

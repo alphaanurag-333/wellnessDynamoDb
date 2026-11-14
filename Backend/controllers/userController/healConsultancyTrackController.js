@@ -27,6 +27,7 @@ const {
 const { createZoomForMeeting } = require("../../services/onboardingMeetingService");
 const { loadCoachMeetingSnapshot } = require("../../services/wellnessPrescriptionReviewService");
 const { getUserById } = require("../../models/userModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 async function coachMeetingFields(userId, user) {
   try {
@@ -72,6 +73,10 @@ exports.createMyHealConsultancyTrackController = asyncHandler(async (req, res) =
   dispatchCounsellingRequestedCoachNotificationAsync({
     user,
     trackId: track.id,
+  });
+
+  notifyClientProfileFromReq(req, userId, "counselling", "counselling.requested", {
+    trackId: track?.id,
   });
 
   return res.status(201).json({

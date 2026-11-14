@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const path = require("path");
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 
@@ -45,7 +46,11 @@ async function start() {
     } = require("./jobs/dailyReflectionBedtimeCron");
     startDailyReflectionBedtimeCron();
 
-    const server = app.listen(config.port, () => {
+    const httpServer = http.createServer(app);
+    const { attachClientProfileSocket } = require("./Socket/socketServer");
+    attachClientProfileSocket(httpServer);
+
+    const server = httpServer.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
     });
     server.on("error", (err) => {

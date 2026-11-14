@@ -12,6 +12,7 @@ const { handleValidationError } = require("../helpers/mealTrackingControllerHelp
 const {
   dispatchMealLogReviewedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   resolveStaffActor,
   getStaffScopeCoachId,
@@ -136,6 +137,11 @@ exports.reviewMealLogController = asyncHandler(async (req, res) => {
     mealLogId: logId,
   }).catch((err) => {
     console.error("Meal review notification failed:", err?.message || err);
+  });
+
+  notifyClientProfileFromReq(req, record.userId, "food", `mealLog.${nextStatus}`, {
+    logId,
+    date: mealLog?.date || record.date,
   });
 
   return res.status(200).json({

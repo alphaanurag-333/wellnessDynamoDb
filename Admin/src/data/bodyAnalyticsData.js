@@ -62,8 +62,8 @@ const METABOLIC_FIELDS = [
   { label: "BMR", field: "bmr", metricType: "bmr", suffix: " kcal", decimals: 0 },
   { label: "TDEE", field: "tdee", metricType: "bmr", fieldKey: "tdee", suffix: " kcal", decimals: 0 },
   { label: "Body fat %", field: "bodyFatPercent", metricType: "body_fat", suffix: "%", decimals: 1 },
-  { label: "Visceral fat %", field: "visceralFatPercent", metricType: "visceral_fat", suffix: " cm²", decimals: 2 },
-  { label: "Est. visceral fat", field: "estimatedVisceralFat", metricType: "visceral_fat", suffix: " cm²", decimals: 2 },
+  { label: "Visceral fat", field: "visceralFatPercent", metricType: "visceral_fat", suffix: " cm²", decimals: 2 },
+  { label: "Est. visceral fat", field: "estimatedVisceralFat", metricType: "visceral_fat", suffix: "%", decimals: 1 },
   { label: "Waist - hip ratio", field: "waistHipRatio", metricType: "visceral_fat", decimals: 2 },
   {
     label: "Fatty liver index (FLI)",
@@ -273,6 +273,20 @@ function computeVisceralFatCm2({ gender, age, heightCm, weightKg, waistCm, thigh
   return roundTo(vat, 2);
 }
 
+/**
+ * Estimated visceral fat % from waist-to-height ratio (WHtR).
+ * Men: (WHtR − 0.40) × 100
+ * Women: (WHtR − 0.42) × 100
+ */
+function computeEstimatedVisceralFatPercent({ gender, heightCm, waistCm }) {
+  if (!heightCm || !waistCm || heightCm <= 0 || waistCm <= 0) return null;
+  const whtr = roundTo(waistCm / heightCm, 2);
+  const offset = gender === "female" ? 0.42 : 0.4;
+  const percent = roundTo((whtr - offset) * 100, 1);
+  if (!Number.isFinite(percent)) return null;
+  return percent < 0 ? 0 : percent;
+}
+
 function computeWaistHipRatio(waistCm, hipCm) {
   if (!waistCm || !hipCm) return null;
   return roundTo(waistCm / hipCm, 2);
@@ -300,7 +314,7 @@ function deriveMetabolicSnapshot(row, profile) {
     tdee: bmr != null ? Math.round(bmr * multiplier) : null,
     bodyFatPercent: computeBodyFatPercent({ gender, heightCm, neckCm, waistCm, hipCm }),
     visceralFatPercent: visceralFatCm2,
-    estimatedVisceralFat: visceralFatCm2,
+    estimatedVisceralFat: computeEstimatedVisceralFatPercent({ gender, heightCm, waistCm }),
     waistHipRatio: computeWaistHipRatio(waistCm, hipCm),
   };
 }
@@ -392,14 +406,21 @@ export function buildMetabolicRows(measurementRecords, mode, columns, profile = 
     const logHistory = typeLogs.length
       ? latestMetricValueByPeriod(typeLogs, mode, readField, (row) => row?.[readField])
       : null;
-    const history = logHistory
-      ? Object.fromEntries(
-        columns.map((column) => [
-          column,
-          hasNumericValue(logHistory[column]) ? logHistory[column] : derivedHistory[column],
-        ]),
-      )
-      : derivedHistory;
+    // Visceral rows are always recomputed from measurements:
+    // - estimatedVisceralFat: WHtR %
+    // - visceralFatPercent: LIH/Samouda VAT cm²
+    // so stale metabolic logs (old level/percent) cannot override.
+    const preferDerived = field === "estimatedVisceralFat" || field === "visceralFatPercent";
+    const history = preferDerived
+      ? derivedHistory
+      : logHistory
+        ? Object.fromEntries(
+          columns.map((column) => [
+            column,
+            hasNumericValue(logHistory[column]) ? logHistory[column] : derivedHistory[column],
+          ]),
+        )
+        : derivedHistory;
 
     const values = columns.map((column) => {
       const raw = history[column];

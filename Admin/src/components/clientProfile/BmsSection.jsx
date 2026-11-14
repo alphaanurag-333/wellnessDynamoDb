@@ -35,11 +35,12 @@ import {
   saveUserDailyReflectionSettings,
 } from "../../api/dailyReflectionApi.js";
 import { isMockNumericId } from "../../utils/isMockNumericId.js";
-import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
+import { useClientProfileSectionSync } from "../../hooks/useClientProfileSectionSync.js";
 import {
   bmsLibraryPollSignature,
   bmsTrackingPollSignature,
 } from "../../utils/clientProfileAppSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function isLiveUserId(userId) {
   return Boolean(userId) && !isMockNumericId(userId);
@@ -602,23 +603,30 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   const [yogaFilter, setYogaFilter] = useState("all");
   const [exerciseFilter, setExerciseFilter] = useState("all");
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [pendingTracking, setPendingTracking] = useState(null);
 
   const metricSigRef = useRef("");
   const librarySigRef = useRef("");
   const userBmsSigRef = useRef("");
+  const tabRef = useRef(tab);
+  const historyRangeRef = useRef(historyRange);
   const toggleBusyRef = useRef(toggleBusy);
   const stepsGoalEditingRef = useRef(stepsGoalEditing);
   const stepsGoalSavingRef = useRef(stepsGoalSaving);
   const stepsGoalUnlockBusyRef = useRef(stepsGoalUnlockBusy);
   const libraryBusyRef = useRef(libraryBusy);
   const pendingConfirmRef = useRef(pendingConfirm);
+  const pendingTrackingRef = useRef(pendingTracking);
   const onUserUpdatedRef = useRef(onUserUpdated);
+  tabRef.current = tab;
+  historyRangeRef.current = historyRange;
   toggleBusyRef.current = toggleBusy;
   stepsGoalEditingRef.current = stepsGoalEditing;
   stepsGoalSavingRef.current = stepsGoalSaving;
   stepsGoalUnlockBusyRef.current = stepsGoalUnlockBusy;
   libraryBusyRef.current = libraryBusy;
   pendingConfirmRef.current = pendingConfirm;
+  pendingTrackingRef.current = pendingTracking;
   onUserUpdatedRef.current = onUserUpdated;
 
   const applyMetricTabData = useCallback((activeTab, data) => {
@@ -668,6 +676,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     metricSigRef.current = "";
     librarySigRef.current = "";
     userBmsSigRef.current = "";
+    setPendingConfirm(null);
+    setPendingTracking(null);
   }, [live, today, userId]);
 
   const stepsChart = useMemo(() => (
@@ -736,57 +746,67 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
     };
   }, [applyMetricTabData, live, onToast, tab, userId, historyRange.from, historyRange.to]);
 
-  useVisibilityAwarePoll(
-    useCallback(async () => {
-      if (!live || !userId) return;
-      if (toggleBusyRef.current) return;
+  const liveSyncTick = useCallback(async () => {
+    if (!live || !userId) return false;
+    let applied = false;
+    const activeTab = tabRef.current;
 
-      try {
-        const row = await fetchUser(userId);
-        if (row) {
-          const remoteSig = [
-            row.heartRateEnabled === false ? "0" : "1",
-            row.sleepTrackingEnabled === false ? "0" : "1",
-          ].join(":");
-          if (remoteSig !== userBmsSigRef.current) {
-            userBmsSigRef.current = remoteSig;
-            onUserUpdatedRef.current?.(row);
-          }
+    try {
+      const row = await fetchUser(userId);
+      if (row) {
+        const remoteSig = [
+          row.heartRateEnabled === false ? "0" : "1",
+          row.sleepTrackingEnabled === false ? "0" : "1",
+        ].join(":");
+        if (remoteSig !== userBmsSigRef.current) {
+          userBmsSigRef.current = remoteSig;
+          onUserUpdatedRef.current?.(row);
+          applied = true;
         }
-      } catch {
-        /* silent poll */
       }
+    } catch {
+      /* silent sync */
+    }
 
-      if (tab === "steps" || tab === "heart" || tab === "sleep") {
-        if (
+    if (activeTab === "steps" || activeTab === "heart" || activeTab === "sleep") {
+      if (
+        activeTab === "steps"
+        && (
           stepsGoalEditingRef.current
           || stepsGoalSavingRef.current
           || stepsGoalUnlockBusyRef.current
-        ) {
-          return;
-        }
+        )
+      ) {
+        return applied;
+      }
+      try {
+        const rangeState = historyRangeRef.current;
         const range = {
-          from: formatFoodDateInput(historyRange.from),
-          to: formatFoodDateInput(historyRange.to),
+          from: formatFoodDateInput(rangeState.from),
+          to: formatFoodDateInput(rangeState.to),
         };
-        const request = tab === "steps"
-          ? fetchUserStepsTracking(userId, range)
-          : tab === "heart"
-            ? fetchUserHeartRateTracking(userId, range)
-            : fetchUserSleepTracking(userId, range);
-        const data = await request;
-        const signature = bmsTrackingPollSignature(tab, data, range);
+        const data = activeTab === "steps"
+          ? await fetchUserStepsTracking(userId, range)
+          : activeTab === "heart"
+            ? await fetchUserHeartRateTracking(userId, range)
+            : await fetchUserSleepTracking(userId, range);
+        const signature = bmsTrackingPollSignature(activeTab, data, range);
         if (signature !== metricSigRef.current) {
           metricSigRef.current = signature;
-          applyMetricTabData(tab, data);
+          applyMetricTabData(activeTab, data);
+          applied = true;
         }
-        return;
+      } catch {
+        /* silent sync */
       }
+      return applied;
+    }
 
-      const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
-      const kind = kindByTab[tab];
-      if (!kind || libraryBusyRef.current || pendingConfirmRef.current) return;
+    const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
+    const kind = kindByTab[activeTab];
+    if (!kind || libraryBusyRef.current || pendingConfirmRef.current) return applied;
 
+    try {
       const [{ items }, assignments, reflectionSettings] = await Promise.all([
         adminListWellnessLibrary(kind, null, { page: 1, limit: 200, status: "active" }),
         canAssign ? listUserWellnessAssignments(kind, userId) : Promise.resolve([]),
@@ -805,7 +825,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
         forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
       }));
       const signature = bmsLibraryPollSignature(kind, mapped, reflectionAudioId);
-      if (signature === librarySigRef.current) return;
+      if (signature === librarySigRef.current) return applied;
       librarySigRef.current = signature;
       if (kind === "mental") setDailyReflectionAudioId(reflectionAudioId);
       const setters = { mental: setMentalItems, yoga: setYogaItems, exercise: setExerciseItems };
@@ -815,17 +835,23 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
         assignmentId: assigned.get(item.id) || "",
         forDailyReflection: kind === "mental" && reflectionAudioId === item.id,
       })));
-    }, [
-      applyMetricTabData,
-      canAssign,
-      historyRange.from,
-      historyRange.to,
-      live,
-      tab,
-      userId,
-    ]),
-    { enabled: live && Boolean(userId) },
-  );
+      applied = true;
+    } catch {
+      /* silent sync */
+    }
+
+    return applied;
+  }, [applyMetricTabData, canAssign, live, userId]);
+
+  useClientProfileSectionSync(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.bms, liveSyncTick, {
+    enabled: live && Boolean(userId),
+    shouldSkip: () => Boolean(
+      toggleBusyRef.current
+      || libraryBusyRef.current
+      || pendingConfirmRef.current
+      || pendingTrackingRef.current,
+    ),
+  });
 
   useEffect(() => {
     const kindByTab = { mental: "mental", yoga: "yoga", exercise: "exercise" };
@@ -880,6 +906,11 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
       cancelled = true;
     };
   }, [tab, userId, canAssign, onToast]);
+
+  function requestTrackingChange(kind, next) {
+    if (toggleBusy || !canEdit) return;
+    setPendingTracking({ kind, next });
+  }
 
   async function toggleTracking(kind, next) {
     if (!live) {
@@ -1122,7 +1153,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
               type="button"
               className={`ua-toggle${heartRateOn ? " ua-toggle--on" : ""}`}
               aria-pressed={heartRateOn}
-              onClick={() => canEdit && toggleTracking("heart", !heartRateOn)}
+              onClick={() => requestTrackingChange("heart", !heartRateOn)}
               disabled={toggleBusy || !canEdit}
             >
               <span className="ua-toggle__knob" />
@@ -1134,7 +1165,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
               type="button"
               className={`ua-toggle${sleepTrackingOn ? " ua-toggle--on" : ""}`}
               aria-pressed={sleepTrackingOn}
-              onClick={() => canEdit && toggleTracking("sleep", !sleepTrackingOn)}
+              onClick={() => requestTrackingChange("sleep", !sleepTrackingOn)}
               disabled={toggleBusy || !canEdit}
             >
               <span className="ua-toggle__knob" />
@@ -1269,6 +1300,32 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           if (pending.action === "set-drf" || pending.action === "clear-drf") {
             setDailyReflectionAudio(pending.item);
           }
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingTracking)}
+        tag={pendingTracking?.kind === "heart" ? "Heart rate" : "Sleep tracking"}
+        title={
+          pendingTracking?.next
+            ? `Show ${pendingTracking?.kind === "heart" ? "heart rate" : "sleep tracking"} in the client app?`
+            : `Hide ${pendingTracking?.kind === "heart" ? "heart rate" : "sleep tracking"} from the client app?`
+        }
+        body={
+          pendingTracking?.next
+            ? `The client will be able to see ${pendingTracking?.kind === "heart" ? "heart rate" : "sleep"} tracking in the app.`
+            : `${pendingTracking?.kind === "heart" ? "Heart rate" : "Sleep"} tracking will be hidden from the client app until you turn this back on. Existing logs are not changed.`
+        }
+        cancelLabel="Cancel"
+        confirmLabel={pendingTracking?.next ? "Enable in app" : "Hide from app"}
+        confirmTone={pendingTracking?.next ? "primary" : "danger"}
+        onCancel={() => {
+          if (!toggleBusy) setPendingTracking(null);
+        }}
+        onConfirm={() => {
+          const pending = pendingTracking;
+          setPendingTracking(null);
+          if (pending?.kind) toggleTracking(pending.kind, pending.next);
         }}
       />
     </div>

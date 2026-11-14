@@ -100,10 +100,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: true, // expose on LAN (e.g. http://192.168.1.15:5174)
     port: 5174,
     strictPort: true,
   },
   preview: {
+    host: true,
     port: 5174,
     strictPort: true,
   },

@@ -19,6 +19,7 @@ const {
 const {
   dispatchSupplementDosagesPublishedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   readUserIdParam,
   readDosageIdParam,
@@ -154,6 +155,10 @@ exports.publishCoachUserSupplementDosagesController = asyncHandler(async (req, r
     await listUserSupplementDosagesByUserId(userId, { includeDraft: true }),
     userId,
   );
+
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementDosages.published", {
+    publishedCount: published.length,
+  });
 
   return res.status(200).json({
     status: true,

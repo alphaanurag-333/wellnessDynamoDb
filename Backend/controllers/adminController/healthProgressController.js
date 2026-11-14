@@ -24,6 +24,7 @@ const {
   reviewWeightLogPhoto,
   toPublicWeightLog,
 } = require("../../models/healthProgressWeightModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   listGlucoseLogsByUser,
   reviewGlucoseLogPhoto,
@@ -86,6 +87,12 @@ async function coachPhotoReview(req, res, {
   }
 
   const updatedUser = await applyClientUploadAfterPhotoReview(userId, featureKey, action);
+
+  notifyClientProfileFromReq(req, userId, "healthProgress", "photoReviewed", {
+    featureKey,
+    logId,
+    action,
+  });
 
   return res.status(200).json({
     status: true,
@@ -153,6 +160,8 @@ exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, r
         : "Client update settings updated"
     : "Health progress settings updated";
 
+  notifyClientProfileFromReq(req, userId, "healthProgress", "settings.updated", {});
+
   return res.status(200).json({
     status: true,
     message: uploadEntries.length ? uploadMessage : "Health progress settings updated",
@@ -209,6 +218,8 @@ exports.createCoachWeightLogController = asyncHandler(async (req, res) => {
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "healthProgress", "weightLog.created", { logId: log.id });
+
   return res.status(201).json({
     status: true,
     message: "Weight entry saved",
@@ -228,6 +239,8 @@ exports.deleteCoachWeightPhotoController = asyncHandler(async (req, res) => {
     if (err?.name === "NotFoundError") throw new AppError(err.message, 404);
     handleValidationError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "healthProgress", "weightPhoto.deleted", { logId });
 
   return res.status(200).json({
     status: true,

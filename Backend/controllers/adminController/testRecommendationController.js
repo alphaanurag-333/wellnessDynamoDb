@@ -27,6 +27,7 @@ const {
 const {
   dispatchInternalParametersRecommendationNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   syncFattyLiverMetricFromLatestLabReport,
 } = require("../helpers/metabolicMetricsFattyLiverSync");
@@ -115,6 +116,10 @@ exports.createCoachUserTestRecommendationController = asyncHandler(async (req, r
     return null;
   });
 
+  notifyClientProfileFromReq(req, userId, "internal", "testRecommendation.created", {
+    recommendationId: recommendation?.id,
+  });
+
   return res.status(201).json({
     status: true,
     message: "Test recommendation created successfully",
@@ -178,6 +183,8 @@ exports.deleteCoachUserLabReportController = asyncHandler(async (req, res) => {
     throw err;
   }
 
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.deleted", { reportId });
+
   return res.status(200).json({
     status: true,
     message: "Lab report deleted successfully",
@@ -202,6 +209,7 @@ exports.reviewCoachUserLabReportController = asyncHandler(async (req, res) => {
   }
 
   const report = await reviewUserLabReport(reportId, { reviewedById: actingCoachId });
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.reviewed", { reportId });
   return res.status(200).json({
     status: true,
     message: "Lab report marked as reviewed",
@@ -316,6 +324,9 @@ exports.analyzeCoachUserLabReportController = asyncHandler(async (req, res) => {
     console.error("Fatty liver sync after lab AI analysis failed:", err?.message || err);
   }
 
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.analysed", { reportId });
+  notifyClientProfileFromReq(req, userId, "healthProgress", "labReport.analysed", { reportId });
+
   return res.status(200).json({
     status: true,
     message: "Lab report analysed successfully",
@@ -355,6 +366,8 @@ exports.updateCoachUserLabReportAiController = asyncHandler(async (req, res) => 
     handleValidationError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.aiUpdated", { reportId });
+
   return res.status(200).json({
     status: true,
     message: "AI interpretation saved",
@@ -386,6 +399,10 @@ exports.updateCoachUserLabReportSubmissionController = asyncHandler(async (req, 
   }
 
   const updated = await updateUser(userId, { labReportSubmissionLocked: !enabled });
+
+  notifyClientProfileFromReq(req, userId, "internal", "labReport.submissionUpdated", {
+    enabled,
+  });
 
   return res.status(200).json({
     status: true,
@@ -438,6 +455,10 @@ exports.deleteCoachUserTestRecommendationController = asyncHandler(async (req, r
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "internal", "testRecommendation.deleted", {
+    recommendationId,
+  });
 
   return res.status(200).json({
     status: true,

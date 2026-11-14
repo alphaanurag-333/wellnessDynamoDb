@@ -18,6 +18,7 @@ import {
   filterClientProfileMenu,
 } from "../utils/clientProfilePermissions.js";
 import { isMockNumericId } from "../utils/isMockNumericId.js";
+import { ClientProfileRealtimeProvider } from "../context/ClientProfileRealtimeContext.jsx";
 import {
   AtAGlanceSection,
   BodyAnalyticsSection,
@@ -39,6 +40,8 @@ import {
   PlaceholderSection,
 } from "../components/clientProfile/ClientProfileSections.jsx";
 import { CounsellingSection } from "../components/clientProfile/CounsellingSection.jsx";
+import { ClientProfileUserRecordSync } from "../components/clientProfile/ClientProfileUserRecordSync.jsx";
+import { ClientProfilePageSocketSync } from "../components/clientProfile/ClientProfilePageSocketSync.jsx";
 
 const PLACEHOLDER_META = {
   food: { title: "Food & Water Tracking", subtitle: "Meals, hydration & nutrition logs." },
@@ -116,6 +119,7 @@ export function UserDetailPage() {
   const [loading, setLoading] = useState(() => Boolean(userId) && !isMockNumericId(userId));
   const [refreshing, setRefreshing] = useState(false);
   const [sectionEpoch, setSectionEpoch] = useState(0);
+  const [socketSectionNonce, setSocketSectionNonce] = useState(0);
   const [loadError, setLoadError] = useState(() => (
     isMockNumericId(userId)
       ? "Demo profile URLs are disabled. Real clients use UUID ids from the API."
@@ -251,10 +255,13 @@ export function UserDetailPage() {
   }
 
   if (loading && !user) {
+    const realtimeOn = Boolean(userId) && !isMockNumericId(userId);
     return (
-      <div className="ua-cp-drawer" role="status" aria-label="Loading client profile">
-        <BrandLoader variant="page" label="Loading client…" />
-      </div>
+      <ClientProfileRealtimeProvider userId={userId} enabled={realtimeOn}>
+        <div className="ua-cp-drawer" role="status" aria-label="Loading client profile">
+          <BrandLoader variant="page" label="Loading client…" />
+        </div>
+      </ClientProfileRealtimeProvider>
     );
   }
 
@@ -327,6 +334,22 @@ export function UserDetailPage() {
 
   return (
     <ClientProfileArchivedContext.Provider value={isArchivedProfile}>
+    <ClientProfileRealtimeProvider
+      userId={userId}
+      enabled={Boolean(userId) && !isMockNumericId(userId) && !isArchivedProfile}
+    >
+    <ClientProfileUserRecordSync
+      userId={userId}
+      onUserRow={(row) =>
+        setUser((prev) => profileFromListUser({ ...(prev || {}), ...(row || {}) }, userId))
+      }
+    />
+    <ClientProfilePageSocketSync
+      userId={userId}
+      activeSection={section}
+      enabled={Boolean(userId) && !isMockNumericId(userId) && !isArchivedProfile}
+      onRemountActiveSection={() => setSocketSectionNonce((n) => n + 1)}
+    />
     <div
       className={`ua-cp-drawer${menuHidden ? " ua-cp-drawer--menu-hidden" : ""}${isArchivedProfile ? " ua-cp-drawer--archived" : ""}`}
       role="dialog"
@@ -340,6 +363,7 @@ export function UserDetailPage() {
         refreshing={refreshing}
         onRefresh={refreshProfile}
         readOnly={isArchivedProfile}
+        liveStatusEnabled={!isArchivedProfile}
         backTo={isArchivedProfile ? `${UPDATED_ADMIN_PATHS.users}?tab=archived` : UPDATED_ADMIN_PATHS.users}
       />
       {isArchivedProfile ? (
@@ -382,7 +406,11 @@ export function UserDetailPage() {
                     ‹ Back
                   </button>
                 ) : null}
-                <ClientProfileSectionGate key={`${section}-${sectionEpoch}`} section={section} label={activeMenuItem?.label}>
+                <ClientProfileSectionGate
+                  key={`${section}-${sectionEpoch}-${socketSectionNonce}`}
+                  section={section}
+                  label={activeMenuItem?.label}
+                >
                   {renderSection(section, user, onToast, setSection, (updatedRow) => {
                     setUser(profileFromListUser(updatedRow, userId));
                   }, { showBack, onBack: goBack })}
@@ -393,6 +421,7 @@ export function UserDetailPage() {
         </div>
       </div>
     </div>
+    </ClientProfileRealtimeProvider>
     </ClientProfileArchivedContext.Provider>
   );
 }

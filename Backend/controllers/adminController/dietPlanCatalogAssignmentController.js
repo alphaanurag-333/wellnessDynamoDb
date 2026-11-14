@@ -14,6 +14,7 @@ const {
   sectionsFromPublishedAssignment,
 } = require("../../utils/personalisedDietPlan");
 const { splitCoachDietPlanAssignmentsForAdmin } = require("../../utils/dietPlanAdminList");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
   updateUser,
   toPublicUser,
@@ -278,6 +279,10 @@ exports.publishCoachUserDietPlanAssignmentController = asyncHandler(async (req, 
     coachName: coach?.name || "Your coach",
   }).catch((err) => {
     console.error("Diet plan assignment notification failed:", err?.message || err);
+  });
+
+  notifyClientProfileFromReq(req, userId, "nutritions", "dietPlan.published", {
+    assignmentId: assignment?.id,
   });
 
   return res.status(200).json({

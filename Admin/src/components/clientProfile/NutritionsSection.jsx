@@ -17,13 +17,14 @@ import {
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { createDraftOrder, formatSupplementOption } from "../../data/userDetailData.js";
 import { formatSupplementQuantityLabel } from "../../utils/supplementUnitLabel.js";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 const MAX_TIMINGS = 1;
 const MAX_DAY_PARTS = 1;
 const MAX_PERIODS = 4; // hard cap per nutrition, including merged adds
 const COMPOSITE_PERIOD_SEP = "__";
-const NUTRITIONS_POLL_VISIBLE_MS = 5000;
-const NUTRITIONS_POLL_HIDDEN_MS = 15000;
 
 const DAY_PART_OPTIONS = [
   { id: "morning", label: "Morning" },
@@ -1390,43 +1391,15 @@ export function NutritionsSection({ user, onToast }) {
     load();
   }, [load]);
 
-  useEffect(() => {
-    if (!userId) return undefined;
+  const nutritionsSyncTick = useCallback(() => {
+    load({ silent: true });
+  }, [load]);
 
-    let intervalId = null;
-
-    const tick = () => {
-      load({ silent: true });
-    };
-
-    const reschedule = () => {
-      if (intervalId) window.clearInterval(intervalId);
-      const ms =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-          ? NUTRITIONS_POLL_HIDDEN_MS
-          : NUTRITIONS_POLL_VISIBLE_MS;
-      intervalId = window.setInterval(tick, ms);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        tick();
-      }
-      reschedule();
-    };
-
-    const onFocus = () => tick();
-
-    reschedule();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      if (intervalId) window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [load, userId]);
+  useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.nutritions, nutritionsSyncTick, {
+    enabled: Boolean(userId),
+    shouldSkip: () => dirtyRef.current || composingNewRef.current || localNutritionFormEditRef.current,
+  });
+  useClientProfileLiveSync(nutritionsSyncTick, { enabled: Boolean(userId) });
 
   useEffect(() => {
     function onDocClick(event) {

@@ -6,6 +6,7 @@ const { isValidDateOnly, todayDateOnly } = require("../utils/dateOnly");
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
+const { notifyClientProfileFromReq } = require("../services/clientProfileRealtime");
 
 function toHistoryUser(user) {
   return {
@@ -115,6 +116,8 @@ exports.updateStaffHealUserWaterGoalController = asyncHandler(async (req, res) =
     throw err;
   }
 
+  notifyClientProfileFromReq(req, userId, "food", "water.goalUpdated", { date });
+
   return res.status(200).json({
     status: true,
     message: "Daily water goal updated",
@@ -129,6 +132,8 @@ exports.unlockStaffHealUserWaterGoalController = asyncHandler(async (req, res) =
   await assertStaffCanAccessUser(req, user);
 
   const settings = await unlockGoalSettings(userId);
+
+  notifyClientProfileFromReq(req, userId, "food", "water.goalUnlocked", {});
 
   return res.status(200).json({
     status: true,

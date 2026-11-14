@@ -5,6 +5,7 @@ const { getUserStepsHistory, upsertSettings, unlockGoalSettings } = require("../
 const { enrichUser } = require("./userController/userProfileHelpers");
 const { normalizeUserTier } = require("../models/userAssignmentLogic");
 const { assertStaffCanAccessUser } = require("./staffAccess");
+const { notifyClientProfileFromReq } = require("../services/clientProfileRealtime");
 
 function toHistoryUser(user) {
   return {
@@ -84,6 +85,8 @@ exports.updateStaffHealUserStepsGoalController = asyncHandler(async (req, res) =
     throw err;
   }
 
+  notifyClientProfileFromReq(req, userId, "bms", "steps.goalUpdated", {});
+
   return res.status(200).json({
     status: true,
     message: "Daily steps goal updated",
@@ -98,6 +101,8 @@ exports.unlockStaffHealUserStepsGoalController = asyncHandler(async (req, res) =
   await assertStaffCanAccessUser(req, user);
 
   const settings = await unlockGoalSettings(userId);
+
+  notifyClientProfileFromReq(req, userId, "bms", "steps.goalUnlocked", {});
 
   return res.status(200).json({
     status: true,

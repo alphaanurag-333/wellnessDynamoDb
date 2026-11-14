@@ -34,16 +34,14 @@ import {
 import { ConfirmDialog } from "../ConfirmDialog.jsx";
 import { useViewAs } from "../../context/ViewAsContext.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
-import { useVisibilityAwarePoll } from "../../hooks/useVisibilityAwarePoll.js";
-import { bodyAnalyticsClientPollSignature } from "../../utils/clientProfileAppSync.js";
+import { useClientProfileInvalidation } from "../../hooks/useClientProfileInvalidation.js";
+import { useClientProfileLiveSync } from "../../hooks/useClientProfileLiveSync.js";
+import { bodyAnalyticsPollSignature } from "../../utils/clientProfileAppSync.js";
+import { isMockNumericId } from "../../utils/isMockNumericId.js";
+import { CLIENT_PROFILE_SECTION_SOCKET_DOMAINS } from "./ClientProfilePageSocketSync.jsx";
 
 function getModalRoot() {
   return document.querySelector(".updated-admin") || document.body;
-}
-
-function isLiveUserId(userId) {
-  const id = String(userId || "").trim();
-  return id.length > 8 && !id.startsWith("demo-");
 }
 
 function SegToggle({ options, value, onChange, size = "sm" }) {
@@ -769,7 +767,8 @@ function applyReviewResult(current, result, angle) {
 export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const { isAdminView } = useViewAs();
   const { canEdit } = useClientSectionPermissions("body");
-  const live = isLiveUserId(user?.id);
+  const userId = String(user?.id || "").trim();
+  const live = Boolean(userId) && !isMockNumericId(userId);
   const [historyMode, setHistoryMode] = useState("monthly");
   const [period, setPeriod] = useState("");
   const [unit, setUnit] = useState("cm");
@@ -790,6 +789,7 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   const [targetWeightBusy, setTargetWeightBusy] = useState(false);
 
   const remoteSigRef = useRef("");
+  const pollInFlightRef = useRef(false);
   const targetWeightEditingRef = useRef(false);
   const settingsBusyRef = useRef(settingsBusy);
   const progressPhotosBusyRef = useRef(progressPhotosBusy);
@@ -874,10 +874,15 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     let cancelled = false;
     setLoading(true);
     setLoadError("");
-    fetchUserBodyAnalytics(user?.id)
+    if (!userId || isMockNumericId(userId)) {
+      setBodyAnalytics(null);
+      setLoading(false);
+      return undefined;
+    }
+    fetchUserBodyAnalytics(userId)
       .then((data) => {
         if (!cancelled && data) {
-          remoteSigRef.current = bodyAnalyticsClientPollSignature(data);
+          remoteSigRef.current = bodyAnalyticsPollSignature(data);
           applyBodyAnalyticsPayload(data);
         }
       })
@@ -893,24 +898,48 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
     return () => {
       cancelled = true;
     };
-  }, [applyBodyAnalyticsPayload, onToast, user?.id]);
+  }, [applyBodyAnalyticsPayload, onToast, userId]);
 
-  useVisibilityAwarePoll(
-    useCallback(async () => {
-      const userId = String(user?.id || "").trim();
-      if (!live || !userId) return;
-      if (settingsBusyRef.current || progressPhotosBusyRef.current) {
-        return;
-      }
-      const data = await fetchUserBodyAnalytics(userId);
-      if (!data) return;
-      const signature = bodyAnalyticsClientPollSignature(data);
-      if (signature === remoteSigRef.current) return;
-      remoteSigRef.current = signature;
-      applyBodyAnalyticsPayload(data);
-    }, [applyBodyAnalyticsPayload, live, user?.id]),
-    { enabled: live && Boolean(user?.id) },
+  const bodySocketBusy = useCallback(
+    () =>
+      settingsBusyRef.current
+      || progressPhotosBusyRef.current
+      || targetWeightBusyRef.current
+      || targetWeightEditingRef.current,
+    [],
   );
+
+  const liveSyncTick = useCallback(async () => {
+    if (!live || !userId || pollInFlightRef.current) return;
+    if (bodySocketBusy()) return;
+
+    pollInFlightRef.current = true;
+    try {
+      const pull = async () => {
+        if (bodySocketBusy()) return true;
+        const data = await fetchUserBodyAnalytics(userId);
+        if (!data) return false;
+        const signature = bodyAnalyticsPollSignature(data);
+        if (signature === remoteSigRef.current) return false;
+        remoteSigRef.current = signature;
+        applyBodyAnalyticsPayload(data);
+        return true;
+      };
+      // Second pull covers rare read races (same pattern as Personal details).
+      if (await pull()) return;
+      await pull();
+    } catch {
+      /* socket resync is best-effort */
+    } finally {
+      pollInFlightRef.current = false;
+    }
+  }, [applyBodyAnalyticsPayload, bodySocketBusy, live, userId]);
+
+  useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.body, liveSyncTick, {
+    enabled: live,
+    shouldSkip: bodySocketBusy,
+  });
+  useClientProfileLiveSync(liveSyncTick, { enabled: live });
 
   useEffect(() => {
     setPeriod((current) => {

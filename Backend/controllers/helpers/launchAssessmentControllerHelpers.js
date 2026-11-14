@@ -39,6 +39,7 @@ const {
   resolveCoachIdForUser,
   resolveStaffActor,
 } = require("./dietPlanControllerHelpers");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 async function persistLaunchStepDone(user) {
   const userId = String(user?.id || "").trim();
@@ -332,6 +333,9 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       }
 
       await persistLaunchStepDone(user);
+      notifyClientProfileFromReq(req, userId, "launch", "launchAssessment.created", {
+        assessmentId: assessment?.id,
+      });
 
       return res.status(201).json({
         status: true,
@@ -391,6 +395,9 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       }
 
       await persistLaunchStepDone(user);
+      notifyClientProfileFromReq(req, userId, "launch", "launchAssessment.updated", {
+        assessmentId: assessment?.id || assessmentId,
+      });
 
       return res.status(200).json({
         status: true,
@@ -415,6 +422,10 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       } catch (err) {
         handleLaunchValidationError(err);
       }
+
+      notifyClientProfileFromReq(req, userId, "launch", "launchAssessment.scorePushed", {
+        assessmentId: assessment?.id || assessmentId,
+      });
 
       return res.status(200).json({
         status: true,
@@ -443,6 +454,11 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
 
       const count = Array.isArray(assessment?.pushedFocusPoints) ? assessment.pushedFocusPoints.length : 0;
 
+      notifyClientProfileFromReq(req, userId, "launch", "launchAssessment.focusPushed", {
+        assessmentId: assessment?.id || assessmentId,
+        publishedCount: count,
+      });
+
       return res.status(200).json({
         status: true,
         message: count
@@ -468,6 +484,10 @@ function createLaunchAssessmentPortalHandlers({ assertHealUserAccess, createdByR
       } catch (err) {
         handleLaunchValidationError(err);
       }
+
+      notifyClientProfileFromReq(req, userId, "launch", "launchAssessment.deleted", {
+        assessmentId,
+      });
 
       return res.status(200).json({
         status: true,

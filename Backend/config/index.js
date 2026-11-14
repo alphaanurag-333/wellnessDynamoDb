@@ -277,4 +277,25 @@ module.exports = {
   accountDualWrite: bool("ACCOUNT_DUAL_WRITE"),
   accountAuthEnabled: bool("ACCOUNT_AUTH_ENABLED"),
   accountLegacyShims: process.env.ACCOUNT_LEGACY_SHIMS !== "false",
+
+  /** WebSocket (Socket.IO) for client-profile realtime — Admin staff v1 */
+  socketEnabled: process.env.SOCKET_ENABLED != null
+    ? bool("SOCKET_ENABLED")
+    : nodeEnv !== "test",
+  socketPath:
+    process.env.SOCKET_PATH != null && String(process.env.SOCKET_PATH).trim() !== ""
+      ? str("SOCKET_PATH", "/socket.io")
+      : bool("SOCKET_MOUNT_UNDER_API")
+        ? "/api/socket.io"
+        : "/socket.io",
+  socketCorsOrigins: str(
+    "SOCKET_CORS_ORIGINS",
+    [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
+      "https://wellnessadmin-development.developmentalphawizz.com",
+    ].join(",")
+  ),
 };

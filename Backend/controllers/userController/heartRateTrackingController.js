@@ -5,6 +5,7 @@ const {
   getUserHeartRateSummary,
   syncHeartRateRecords,
 } = require("../../models/heartRateTrackingModel");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function mapHeartRateError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -43,6 +44,8 @@ exports.syncMyHeartRateTrackingController = asyncHandler(async (req, res) => {
   } catch (err) {
     mapHeartRateError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "bms", "heartRate.synced", {});
 
   return res.status(200).json({
     status: true,

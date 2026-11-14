@@ -23,6 +23,7 @@ const {
   resolveCoachIdForUser,
   resolveStaffActor,
 } = require("./dietPlanControllerHelpers");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function handlePrakrutiValidationError(err) {
   if (err?.name === "ValidationError") throw new AppError(err.message, 400);
@@ -209,6 +210,10 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
         handlePrakrutiValidationError(err);
       }
 
+      notifyClientProfileFromReq(req, userId, "launch", "prakritiAssessment.saved", {
+        assessmentId: assessment?.id,
+      });
+
       return res.status(200).json({
         status: true,
         message: "Prakruti assessment saved (draft — use Push to App to publish)",
@@ -227,6 +232,10 @@ function createPrakrutiAssessmentPortalHandlers({ assertHealUserAccess, createdB
         if (err?.name === "NotFoundError") throw new AppError("Save Prakruti assessment first", 404);
         handlePrakrutiValidationError(err);
       }
+
+      notifyClientProfileFromReq(req, userId, "launch", "prakritiAssessment.pushed", {
+        assessmentId: assessment?.id,
+      });
 
       return res.status(200).json({
         status: true,
