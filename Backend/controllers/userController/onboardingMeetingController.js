@@ -30,9 +30,10 @@ const {
 const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 
 function notifyLaunchMeetingProfile(req, userId, stepKey, action, meta = {}) {
-  if (String(stepKey || "").trim() !== "launch") return;
-  notifyClientProfileFromReq(req, userId, "launch", action, { stepKey: "launch", ...meta });
-  notifyClientProfileFromReq(req, userId, "glance", action, { stepKey: "launch", ...meta });
+  const key = String(stepKey || "").trim();
+  if (!key) return;
+  notifyClientProfileFromReq(req, userId, "launch", action, { stepKey: key, ...meta });
+  notifyClientProfileFromReq(req, userId, "glance", action, { stepKey: key, ...meta });
 }
 
 function authedUserId(req) {

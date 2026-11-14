@@ -137,6 +137,12 @@ describe("attachClientProfileSocket handshake", () => {
           },
         };
       }
+      if (token === "replaced-token") {
+        const err = new Error("Logged in on another device. Please login again.");
+        err.statusCode = 401;
+        err.code = "SESSION_REPLACED";
+        throw err;
+      }
       const err = new Error("Unauthorized");
       err.statusCode = 401;
       throw err;
@@ -235,24 +241,76 @@ describe("attachClientProfileSocket handshake", () => {
     client.close();
   });
 
-  it("disconnects invalid tokens", async () => {
+  it("rejects invalid tokens with connect_error (not connect-then-disconnect)", async () => {
     const client = ioClient(`http://127.0.0.1:${port}`, {
       transports: ["websocket"],
       auth: { token: "bad-token" },
+      reconnection: false,
     });
 
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("expected disconnect")), 3000);
-      client.on("disconnect", () => {
+    const err = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("expected connect_error")), 3000);
+      client.on("connect", () => {
         clearTimeout(timer);
-        resolve();
+        reject(new Error("should not connect with invalid token"));
       });
-      client.on("connect_error", () => {
+      client.on("connect_error", (e) => {
         clearTimeout(timer);
-        resolve();
+        resolve(e);
       });
     });
 
+    assert.equal(err.data?.status, 401);
+    assert.equal(err.data?.code, "UNAUTHORIZED");
+    client.close();
+  });
+
+  it("rejects SESSION_REPLACED with connect_error data.code", async () => {
+    const client = ioClient(`http://127.0.0.1:${port}`, {
+      transports: ["websocket"],
+      auth: { token: "replaced-token" },
+      reconnection: false,
+    });
+
+    const err = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("expected connect_error")), 3000);
+      client.on("connect", () => {
+        clearTimeout(timer);
+        reject(new Error("should not connect with replaced session"));
+      });
+      client.on("connect_error", (e) => {
+        clearTimeout(timer);
+        resolve(e);
+      });
+    });
+
+    assert.equal(err.data?.status, 401);
+    assert.equal(err.data?.code, "SESSION_REPLACED");
     client.close();
   });
 });
+
+describe("toHandshakeRejection", () => {
+  it("maps AppError statusCode/code into error.data", () => {
+    clearSocketModules();
+    const { toHandshakeRejection } = require("../Socket/socketServer");
+
+    const withCode = new Error("Logged in on another device. Please login again.");
+    withCode.statusCode = 401;
+    withCode.code = "SESSION_REPLACED";
+    const a = toHandshakeRejection(withCode);
+    assert.equal(a.message, withCode.message);
+    assert.deepEqual(a.data, { status: 401, code: "SESSION_REPLACED" });
+
+    const forbidden = new Error("Forbidden");
+    forbidden.statusCode = 403;
+    const b = toHandshakeRejection(forbidden);
+    assert.deepEqual(b.data, { status: 403, code: "FORBIDDEN" });
+
+    const inactive = new Error("Account is inactive");
+    inactive.statusCode = 403;
+    const c = toHandshakeRejection(inactive);
+    assert.deepEqual(c.data, { status: 403, code: "ACCOUNT_INACTIVE" });
+  });
+});
+

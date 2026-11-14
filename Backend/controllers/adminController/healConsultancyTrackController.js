@@ -36,6 +36,10 @@ const {
 } = require("../../utils/requestedSlotsHelpers");
 const { createZoomForMeeting } = require("../../services/onboardingMeetingService");
 const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
+
+function emitCounsellingChange(req, userId, action, meta) {
+  notifyClientProfileFromReq(req, userId, "counselling", action, meta);
+}
 const {
   dispatchCounsellingPeriodsOfferedNotificationAsync,
   dispatchCounsellingScheduledNotificationAsync,
@@ -211,7 +215,7 @@ exports.createCoachHealConsultancyTrackController = asyncHandler(async (req, res
     });
   }
 
-  notifyClientProfileFromReq(req, userId, "counselling", "counselling.trackCreated", {
+  emitCounsellingChange(req, userId, "counselling.trackCreated", {
     trackId: track?.id,
     status: body.status,
   });
@@ -259,6 +263,11 @@ exports.updateCoachHealConsultancyTrackController = asyncHandler(async (req, res
     });
   }
 
+  emitCounsellingChange(req, userId, "counselling.trackUpdated", {
+    trackId,
+    status: track?.status,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Consultancy track updated",
@@ -291,6 +300,11 @@ exports.deleteCoachHealConsultancyTrackController = asyncHandler(async (req, res
       trackId,
     });
   }
+
+  emitCounsellingChange(req, userId, "counselling.trackDeleted", {
+    trackId,
+    status: existing?.status,
+  });
 
   return res.status(200).json({
     status: true,
@@ -340,6 +354,11 @@ exports.offerCoachHealConsultancyPeriodsController = asyncHandler(async (req, re
   dispatchCounsellingPeriodsOfferedNotificationAsync({
     userId,
     trackId,
+  });
+
+  emitCounsellingChange(req, userId, "counselling.periodsOffered", {
+    trackId,
+    status: updated?.status,
   });
 
   return res.status(200).json({
@@ -409,6 +428,11 @@ exports.confirmCoachHealConsultancyTimeController = asyncHandler(async (req, res
   dispatchCounsellingScheduledNotificationAsync({
     userId,
     trackId,
+  });
+
+  emitCounsellingChange(req, userId, "counselling.timeConfirmed", {
+    trackId,
+    status: updated?.status,
   });
 
   return res.status(200).json({
@@ -497,6 +521,11 @@ exports.acceptCoachHealConsultancyRequestController = asyncHandler(async (req, r
     trackId,
   });
 
+  emitCounsellingChange(req, userId, "counselling.requestAccepted", {
+    trackId,
+    status: updated?.status,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Requested time accepted",
@@ -529,6 +558,11 @@ exports.rejectCoachHealConsultancyRequestController = asyncHandler(async (req, r
   } catch (err) {
     handleValidationError(err);
   }
+
+  emitCounsellingChange(req, userId, "counselling.requestRejected", {
+    trackId,
+    status: updated?.status,
+  });
 
   return res.status(200).json({
     status: true,
@@ -565,6 +599,11 @@ exports.rejectCoachHealConsultancyIntakeController = asyncHandler(async (req, re
   dispatchCounsellingRequestDeclinedNotificationAsync({
     userId,
     trackId,
+  });
+
+  emitCounsellingChange(req, userId, "counselling.intakeRejected", {
+    trackId,
+    status: updated?.status,
   });
 
   return res.status(200).json({

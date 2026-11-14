@@ -13,6 +13,7 @@ const {
   dispatchSupplementRecommendedNotification,
   dispatchSupplementOrderLoggedNotification,
 } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const { uploadFileFromRequest } = require("../../utils/s3");
 const {
   readUserIdParam,
@@ -134,6 +135,9 @@ exports.createCoachUserSupplementRecommendationController = asyncHandler(async (
   }).catch((err) => {
     console.error("Supplement recommendation notification failed:", err?.message || err);
   });
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementRecommendation.created", {
+    recommendationId: recommendation?.id,
+  });
 
   return res.status(201).json({
     status: true,
@@ -161,6 +165,10 @@ exports.deleteCoachUserSupplementRecommendationController = asyncHandler(async (
     }
     throw err;
   }
+
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementRecommendation.deleted", {
+    recommendationId,
+  });
 
   return res.status(200).json({
     status: true,
@@ -210,6 +218,10 @@ exports.upsertCoachUserSupplementFulfilmentOrderController = asyncHandler(async 
   }).catch((err) => {
     console.error("Supplement order logged notification failed:", err?.message || err);
   });
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementOrder.saved", {
+    recommendationId,
+    orderId: result?.order?.id,
+  });
 
   return res.status(200).json({
     status: true,
@@ -249,6 +261,11 @@ exports.uploadCoachUserSupplementFulfilmentOrderBillController = asyncHandler(as
     handleOrderError(err);
   }
 
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementOrder.billUploaded", {
+    recommendationId,
+    orderId,
+  });
+
   return res.status(200).json({
     status: true,
     message: "Fulfilment order bill uploaded successfully",
@@ -275,6 +292,11 @@ exports.deleteCoachUserSupplementFulfilmentOrderController = asyncHandler(async 
   } catch (err) {
     handleOrderError(err);
   }
+
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementOrder.deleted", {
+    recommendationId,
+    orderId,
+  });
 
   return res.status(200).json({
     status: true,
