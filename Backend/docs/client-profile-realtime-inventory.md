@@ -86,7 +86,7 @@ Room: `client:{userId}`. Socket event name: `clientProfile.changed`.
 - Emit after successful Dynamo write only; never block response on socket IO.
 - Use `notifyClientProfileChanged` from `services/clientProfileRealtime.js`.
 - Admin listeners refetch via existing REST + `clientProfileAppSync.js` signatures (diff only; no 5s interval poll).
-- Mobile (out of repo): Phase F — same events; v1 uses FCM for push-to-refetch.
+- Mobile (`wellness-app`): same `clientProfile.changed` events. Socket handshake accepts staff **or** user JWT; users auto-join `client:{ownUserId}` (no `clientProfile:subscribe`). Staff subscribe flow unchanged. Optional v1 alternative: FCM push-to-refetch.
 
 ## QA matrix (Phase E)
 
