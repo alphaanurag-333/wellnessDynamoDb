@@ -22,6 +22,10 @@ export function isPrivateLanHost(hostname) {
 /**
  * When Admin is opened as http://192.168.x.x:5174 on another device, env
  * "localhost:5000" would hit that device — use the page host:5000 instead.
+ * Also ignore a stale hard-coded LAN IP in env when browsing on localhost, or
+ * when the page LAN host differs from the env LAN host (DHCP IP change).
+ * On public hosts (e.g. https://admin.irwellness.in), never fall back to
+ * localhost — use VITE_API_URL, or same-origin if env is missing/loopback.
  */
 function resolveApiBase() {
   const fromEnv = String(
@@ -31,15 +35,35 @@ function resolveApiBase() {
     .replace(/\/$/, "");
 
   if (typeof window !== "undefined") {
-    const { protocol, hostname } = window.location;
+    const { protocol, hostname, origin } = window.location;
+    const pageIsLoopback = hostname === "localhost" || hostname === "127.0.0.1";
     const pageIsLan =
-      hostname !== "localhost" &&
-      hostname !== "127.0.0.1" &&
-      isPrivateLanHost(hostname);
+      !pageIsLoopback && isPrivateLanHost(hostname);
     const envIsLoopback =
       !fromEnv || /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:|\/|$)/i.test(fromEnv);
-    if (pageIsLan && envIsLoopback) {
+
+    let envHost = "";
+    try {
+      envHost = fromEnv ? new URL(fromEnv).hostname : "";
+    } catch {
+      envHost = "";
+    }
+    const envIsPrivateLan = Boolean(envHost) && isPrivateLanHost(envHost);
+
+    // Local tab + stale LAN API URL (old DHCP lease) → use loopback backend.
+    if (pageIsLoopback && envIsPrivateLan) {
+      return `${protocol}//localhost:5000`;
+    }
+
+    // LAN tab: prefer the page host so Wi‑Fi clients reach this machine's API.
+    if (pageIsLan && (envIsLoopback || (envIsPrivateLan && envHost !== hostname))) {
       return `${protocol}//${hostname}:5000`;
+    }
+
+    // Live / staging public host: never call localhost from a deployed Admin.
+    if (!pageIsLoopback && !pageIsLan) {
+      if (fromEnv && !envIsLoopback && !envIsPrivateLan) return fromEnv;
+      return origin;
     }
   }
 

@@ -94,4 +94,22 @@ describe("bodyAnalyticsOnboardingSync", () => {
     assert.equal(normalized.progressPhotos180, "pending");
     assert.equal(normalized.medicalConditions, "pending");
   });
+
+  it("keeps staff-forced BA done intact when reconcile is skipped via excluded freeze", () => {
+    // syncBodyAnalyticsOnboardingFromClientData returns early when excluded && !dataReady.
+    // This documents the freeze contract: without reconcile, forced done stays done.
+    const forced = normalizePaidOnboardingStepStatus({
+      personalDetails: "pending",
+      bodyAnalytics: "done",
+      bodyMeasurement: "done",
+      progressPhotos180: "done",
+      medicalConditions: "done",
+    });
+    assert.equal(forced.bodyAnalytics, "done");
+    const demoted = reconcileBodyAnalyticsStatus(
+      forced,
+      { bodyMeasurement: false, progressPhotos180: false, medicalConditions: false },
+    );
+    assert.equal(normalizePaidOnboardingStepStatus(demoted).bodyAnalytics, "pending");
+  });
 });

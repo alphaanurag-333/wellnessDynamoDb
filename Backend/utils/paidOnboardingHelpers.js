@@ -323,10 +323,18 @@ function priorCanonicalStepsDone(stepStatus, stepKey) {
   return PAID_ONBOARDING_STATUS_KEYS.slice(0, idx).every((key) => status[key] === "done");
 }
 
-/** Coach At a Glance toggle when client body / 180° / medical data exists. */
-function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataReady = false } = {}) {
+/**
+ * Coach At a Glance Body Analytics toggle.
+ * With staffOverride, can mark done even when client has not uploaded data yet
+ * (excluded=true so sync will not wipe the forced done until data is ready).
+ */
+function setCoachBodyAnalyticsAtGlanceStatus(
+  stepStatus,
+  value,
+  { clientDataReady = false, staffOverride = false } = {},
+) {
   const normalized = String(value || "").toLowerCase().trim() === "done" ? "done" : "pending";
-  if (normalized === "done" && !clientDataReady) {
+  if (normalized === "done" && !clientDataReady && !staffOverride) {
     const err = new Error(
       "Add body measurements, 180° photos, and medical answers before marking Body Analytics done",
     );
@@ -350,7 +358,8 @@ function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataRead
   next = syncDerivedOnboardingSteps({ ...next, bodyAnalytics: "done" });
   return {
     stepStatus: next,
-    bodyAnalyticsGlanceExcluded: false,
+    // Force-done without data must stay excluded so sync cannot demote it.
+    bodyAnalyticsGlanceExcluded: !clientDataReady,
   };
 }
 

@@ -18,6 +18,7 @@ const {
   programStartedAtFromInitiationCompleted,
   buildProgramStartedAtUpdates,
   buildOnboardingPersistUpdates,
+  setCoachBodyAnalyticsAtGlanceStatus,
 } = require("../utils/paidOnboardingHelpers");
 
 describe("buildPaidOnboardingResetUpdates", () => {
@@ -89,6 +90,37 @@ describe("bodyAnalytics derivation", () => {
       () => setCanonicalStepStatus(seeded, "bodyAnalytics", "done"),
       (err) => err.name === "BodyAnalyticsAutoCompleteError",
     );
+  });
+
+  it("rejects coach BA done without data unless staffOverride", () => {
+    const seeded = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    assert.throws(
+      () => setCoachBodyAnalyticsAtGlanceStatus(seeded, "done", { clientDataReady: false }),
+      (err) => err.name === "BodyAnalyticsAutoCompleteError",
+    );
+  });
+
+  it("staffOverride can mark BA done without client data and sets glance excluded", () => {
+    const seeded = normalizePaidOnboardingStepStatus({ personalDetails: "pending" });
+    const result = setCoachBodyAnalyticsAtGlanceStatus(seeded, "done", {
+      clientDataReady: false,
+      staffOverride: true,
+    });
+    assert.equal(result.stepStatus.bodyAnalytics, "done");
+    for (const key of BODY_ANALYTICS_SUBKEYS) {
+      assert.equal(result.stepStatus[key], "done");
+    }
+    assert.equal(result.bodyAnalyticsGlanceExcluded, true);
+  });
+
+  it("marks BA done with data ready and clears glance excluded", () => {
+    const seeded = normalizePaidOnboardingStepStatus({ personalDetails: "done" });
+    const result = setCoachBodyAnalyticsAtGlanceStatus(seeded, "done", {
+      clientDataReady: true,
+      staffOverride: true,
+    });
+    assert.equal(result.stepStatus.bodyAnalytics, "done");
+    assert.equal(result.bodyAnalyticsGlanceExcluded, false);
   });
 
   it("allows internalParameter after bodyAnalytics auto-completes", () => {

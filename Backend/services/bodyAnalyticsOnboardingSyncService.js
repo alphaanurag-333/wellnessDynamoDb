@@ -89,17 +89,27 @@ async function syncBodyAnalyticsOnboardingFromClientData(user) {
   if (!user?.id) return user;
 
   const flags = await loadBodyAnalyticsDataFlags(user.id);
-  const previousStatus = user.paidOnboardingStepStatus;
-  const nextStatus = reconcileBodyAnalyticsStatus(previousStatus, flags, {
-    promoteFromClient: !user.bodyAnalyticsGlanceExcluded,
-  });
-  if (!bodyAnalyticsOnboardingStatusChanged(previousStatus, nextStatus)) {
+  const dataReady = isBodyAnalyticsClientDataReady(flags);
+
+  // Staff force-done (or undo) — freeze status until client data is fully ready.
+  if (user.bodyAnalyticsGlanceExcluded && !dataReady) {
     return user;
   }
 
+  const previousStatus = user.paidOnboardingStepStatus;
+  const nextStatus = reconcileBodyAnalyticsStatus(previousStatus, flags, {
+    promoteFromClient: true,
+  });
   const persistExtras = {};
-  if (isBodyAnalyticsClientDataReady(flags) && !user.bodyAnalyticsGlanceExcluded) {
+  if (dataReady && user.bodyAnalyticsGlanceExcluded) {
     persistExtras.bodyAnalyticsGlanceExcluded = false;
+  }
+
+  if (
+    !bodyAnalyticsOnboardingStatusChanged(previousStatus, nextStatus)
+    && Object.keys(persistExtras).length === 0
+  ) {
+    return user;
   }
 
   const updated = await updateUser(user.id, {
