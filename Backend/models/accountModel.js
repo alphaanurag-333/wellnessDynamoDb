@@ -870,16 +870,18 @@ async function countAccountsByRoleKey(roleKey, { status = "active", primaryOnly 
   let total = 0;
   let lastKey;
   do {
-    const exprNames = { "#roleKeys": "roleKeys" };
+    const exprNames = { "#roleKeys": "roleKeys", "#status": "status" };
     const exprValues = { ":roleKey": key };
-    let filterExpression = "contains(#roleKeys, :roleKey)";
-    const projection = ["#roleKeys", "defaultRoleKey", "memberships"];
+    let filterExpression;
+    const projection = ["#roleKeys", "defaultRoleKey", "memberships", "#status"];
 
     if (normalizedStatus) {
-      exprNames["#status"] = "status";
       exprValues[":status"] = normalizedStatus;
-      filterExpression += " AND #status = :status";
-      projection.push("#status");
+      filterExpression = "contains(#roleKeys, :roleKey) AND #status = :status";
+    } else {
+      exprValues[":deletedStatus"] = "deleted";
+      filterExpression =
+        "contains(#roleKeys, :roleKey) AND (attribute_not_exists(#status) OR #status <> :deletedStatus)";
     }
 
     const { Items, LastEvaluatedKey } = await docClient.send(
@@ -894,9 +896,13 @@ async function countAccountsByRoleKey(roleKey, { status = "active", primaryOnly 
     );
 
     for (const item of Items || []) {
+      const itemStatus = String(item.status || "").toLowerCase();
+      if (itemStatus === "deleted" && normalizedStatus !== "deleted") continue;
+      if (normalizedStatus && itemStatus !== normalizedStatus) continue;
       if (primaryOnly) {
         if (resolvePrimaryRoleKey(item) !== key) continue;
       }
+      if (!hasActiveMembership(item, key)) continue;
       total += 1;
     }
     lastKey = LastEvaluatedKey;
@@ -907,10 +913,13 @@ async function countAccountsByRoleKey(roleKey, { status = "active", primaryOnly 
 
 function assignedMembershipRoleId(account, primaryRoleKey) {
   const memberships = Array.isArray(account?.memberships) ? account.memberships : [];
+  // Soft-deleted / deactivated memberships keep roleId for audit — never count them as assigned.
+  const active = memberships.filter((m) => normalizeMembershipStatus(m?.status) === "active");
+  const pool = active.length ? active : [];
   const primary = normalizeRoleKey(primaryRoleKey) || resolvePrimaryRoleKey(account);
   const match =
-    (primary && memberships.find((m) => normalizeRoleKey(m?.roleKey) === primary)) ||
-    memberships[0] ||
+    (primary && pool.find((m) => normalizeRoleKey(m?.roleKey) === primary)) ||
+    pool[0] ||
     null;
   return String(match?.roleId || "").trim();
 }
@@ -919,6 +928,7 @@ function assignedMembershipRoleId(account, primaryRoleKey) {
  * Find accounts assigned to a console Role id (membership.roleId).
  * System templates can also include legacy rows with no membership.roleId
  * when accountRoleKey + includeUnassigned are set.
+ * Soft-deleted and inactive accounts are excluded unless status is overridden.
  */
 async function findAccountsByConsoleRoleId(
   consoleRoleId,
@@ -933,29 +943,36 @@ async function findAccountsByConsoleRoleId(
   let total = 0;
   let lastKey;
   do {
-    const exprNames = {};
+    const exprNames = { "#status": "status" };
     const exprValues = {};
     let filterExpression;
 
     if (normalizedStatus) {
-      exprNames["#status"] = "status";
       exprValues[":status"] = normalizedStatus;
       filterExpression = "#status = :status";
+    } else {
+      exprValues[":deletedStatus"] = "deleted";
+      filterExpression = "(attribute_not_exists(#status) OR #status <> :deletedStatus)";
     }
 
     const { Items, LastEvaluatedKey } = await docClient.send(
       new ScanCommand({
         TableName: TABLE,
         FilterExpression: filterExpression,
-        ExpressionAttributeNames: Object.keys(exprNames).length ? exprNames : undefined,
-        ExpressionAttributeValues: Object.keys(exprValues).length ? exprValues : undefined,
+        ExpressionAttributeNames: exprNames,
+        ExpressionAttributeValues: exprValues,
         ExclusiveStartKey: lastKey,
       })
     );
 
     for (const item of Items || []) {
+      const itemStatus = String(item.status || "").toLowerCase();
+      if (itemStatus === "deleted" && normalizedStatus !== "deleted") continue;
+      if (normalizedStatus && itemStatus !== normalizedStatus) continue;
       const primary = resolvePrimaryRoleKey(item);
       if (expectedRole && primary !== expectedRole) continue;
+      // Require an active membership for the primary role before counting.
+      if (primary && !hasActiveMembership(item, primary)) continue;
       const assignedId = assignedMembershipRoleId(item, primary);
       const hit =
         assignedId === id ||

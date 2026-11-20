@@ -8,6 +8,7 @@ const {
   HEALTH_PROGRESS_FEATURE_KEYS,
   normalizeHealthProgressFeatures,
   applyPurchasedProgramTrackers,
+  isFemaleUser,
   isGeneralWellbeingConcernLabel,
   isBroadWellnessProgramLabel,
 } = require("../utils/healthProgressHelpers");
@@ -98,8 +99,22 @@ async function trackerLabelsForUser(user) {
 
 function reconcileHealthProgressFeatures(user, labels) {
   const stored = normalizeHealthProgressFeatures(user?.healthProgressFeatures);
+  // Once a coach/admin has set Live-in-app toggles, keep their choices.
+  // Program sync must not force trackers back on/off (except menstrual gender gate).
+  if (user?.healthProgressFeaturesLockedByCoach) {
+    const next = { ...stored };
+    if (!isFemaleUser(user)) next.menstrualCycle = false;
+    return next;
+  }
   const next = applyPurchasedProgramTrackers({}, labels, user);
   next.conditionComparison = Boolean(stored.conditionComparison);
+  return next;
+}
+
+/** Coach/admin Live-in-app toggles — respect requested flags; only gender-gate menstrual. */
+function applyCoachHealthProgressFeatures(user, features) {
+  const next = normalizeHealthProgressFeatures(features);
+  if (!isFemaleUser(user)) next.menstrualCycle = false;
   return next;
 }
 
@@ -139,6 +154,7 @@ module.exports = {
   reconcileHealthProgressFeatures,
   ensurePurchasedProgramTrackers,
   withPurchasedProgramTrackers,
+  applyCoachHealthProgressFeatures,
   updatesAffectHealthProgressSelections,
   syncHealthProgressAfterProfileSelections,
 };

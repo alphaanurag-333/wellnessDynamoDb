@@ -1238,6 +1238,17 @@ export async function deleteUser(id) {
   }
 }
 
+/** Admin-only: permanently remove an already-archived client. */
+export async function permanentlyDeleteArchivedUser(id) {
+  try {
+    await api.delete(`/account/users/archived/${encodeURIComponent(id)}`, {
+      headers: authHeader(),
+    });
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function moveUserToHeal(id) {
   try {
     const { data } = await api.post(

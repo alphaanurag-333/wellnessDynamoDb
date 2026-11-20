@@ -638,6 +638,7 @@ function ClientUploadControl({
   compact = false,
 }) {
   if (!CLIENT_UPLOAD_FEATURE_KEYS.includes(featureKey)) return null;
+  if (!trackerEnabled) return null;
   const open = Boolean(window?.open);
   const canChange = canEnable && trackerEnabled;
   return (
@@ -2393,7 +2394,7 @@ export function HealthProgressSection({ user, onToast }) {
       const result = await updateHealthProgressSettings(userId, { [tracker.featureKey]: nextEnabled });
       if (result?.settings) {
         settingsSigRef.current = healthProgressSettingsPollSignature(result);
-        setIsFemale(result.isFemale);
+        if (typeof result.isFemale === "boolean") setIsFemale(result.isFemale);
         if (result.clientUpload) setClientUpload(result.clientUpload);
         setTrackers((list) => list.map((row) => ({
           ...row,

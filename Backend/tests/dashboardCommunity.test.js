@@ -3,11 +3,22 @@ const assert = require("node:assert/strict");
 const {
   formatBirthdayWhen,
   formatScoreDisplay,
+  isActiveDashboardUser,
   nextBirthdayFromDob,
   pickUpcomingBirthdays,
   selectCommunityBirthdayUsers,
 } = require("../services/dashboardCommunityService");
 const { communityBirthdayTierLabel } = require("../models/userAssignmentLogic");
+
+describe("isActiveDashboardUser", () => {
+  it("keeps only active clients for champion and community widgets", () => {
+    assert.equal(isActiveDashboardUser({ status: "active" }), true);
+    assert.equal(isActiveDashboardUser({ status: "Active" }), true);
+    assert.equal(isActiveDashboardUser({ status: "deleted" }), false);
+    assert.equal(isActiveDashboardUser({ status: "inactive" }), false);
+    assert.equal(isActiveDashboardUser({}), false);
+  });
+});
 
 describe("formatBirthdayWhen", () => {
   it("labels today and upcoming dates like the dashboard chips", () => {

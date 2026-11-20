@@ -457,7 +457,7 @@ function SleepPanel({
   );
 }
 
-function ContentCard({ item, onToggle, onSetDailyReflection, busy, showDailyReflection }) {
+function ContentCard({ item, onToggle, onSetDailyReflection, busy, canToggle, showDailyReflection }) {
   const isAudio = item.type === "audio";
   const forDailyReflection = Boolean(item.forDailyReflection);
 
@@ -483,7 +483,8 @@ function ContentCard({ item, onToggle, onSetDailyReflection, busy, showDailyRefl
         <button
           type="button"
           className={`ua-cp-bms-content-card__action${item.inApp ? " ua-cp-bms-content-card__action--in" : ""}`}
-          disabled={busy}
+          disabled={busy || !canToggle}
+          title={item.inApp ? "Remove from user app" : "Add to user app"}
           onClick={() => onToggle(item)}
         >
           {item.inApp ? "✓ In user app" : "Add to app"}
@@ -492,7 +493,7 @@ function ContentCard({ item, onToggle, onSetDailyReflection, busy, showDailyRefl
           <button
             type="button"
             className={`ua-cp-bms-content-card__action ua-cp-bms-content-card__action--drf${forDailyReflection ? " ua-cp-bms-content-card__action--drf-on" : ""}`}
-            disabled={busy || !item.inApp}
+            disabled={busy || !item.inApp || !canToggle}
             title={!item.inApp ? "Add to app first" : undefined}
             onClick={() => onSetDailyReflection?.(item)}
           >
@@ -516,6 +517,7 @@ function ContentLibraryPanel({
   loading,
   emptyLabel,
   busy,
+  canToggle = true,
 }) {
   const selectedCount = items.filter((i) => i.inApp).length;
   const dailyReflectionTitle = items.find((i) => i.forDailyReflection)?.title;
@@ -551,6 +553,7 @@ function ContentLibraryPanel({
               onSetDailyReflection={onSetDailyReflection}
               showDailyReflection={showDailyReflection}
               busy={busy}
+              canToggle={canToggle}
             />
           ))}
         </div>
@@ -562,7 +565,7 @@ function ContentLibraryPanel({
 }
 
 export function BmsSection({ user, onToast, onUserUpdated }) {
-  const { canEdit, canCreate, canDelete } = useClientSectionPermissions("bms");
+  const { canEdit, canCreate } = useClientSectionPermissions("bms");
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const tab = BMS_TABS.some((t) => t.id === tabParam) ? tabParam : "steps";
@@ -950,7 +953,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
   }
 
   function requestToggleContent(kind, item) {
-    if (!item) return;
+    if (!item || !canCreate) return;
     setPendingConfirm({
       action: item.inApp ? "remove-app" : "add-app",
       kind,
@@ -969,8 +972,8 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
 
   async function toggleContent(kind, item) {
     if (!userId) return;
-    if (item.inApp && item.assignmentId && !canDelete) return;
-    if (!item.inApp && !canCreate) return;
+    // Add and remove from the client app both use assign/write permission (coach workflow).
+    if (!canCreate) return;
     if (!canAssign) {
       onToast("Content can only be assigned to Heal clients");
       return;
@@ -1248,6 +1251,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           showDailyReflection
           loading={libraryLoading.mental}
           busy={libraryBusy}
+          canToggle={canCreate}
           emptyLabel="No mental wellbeing items yet. Add them in Config → Common."
           hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app, and which one audio plays on the Daily Reflection form."
         />
@@ -1262,6 +1266,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           onToggle={(item) => requestToggleContent("yoga", item)}
           loading={libraryLoading.yoga}
           busy={libraryBusy}
+          canToggle={canCreate}
           emptyLabel="No yoga items yet. Add them in Config → Common."
           hint="Admin maintains the full library of yoga videos & audios. The wellness coach selects which appear in this client's app."
         />
@@ -1276,6 +1281,7 @@ export function BmsSection({ user, onToast, onUserUpdated }) {
           onToggle={(item) => requestToggleContent("exercise", item)}
           loading={libraryLoading.exercise}
           busy={libraryBusy}
+          canToggle={canCreate}
           emptyLabel="No physical exercise items yet. Add them in Config → Common."
           hint="Admin maintains the full library of videos & audios. The wellness coach selects which appear in this client's app."
         />

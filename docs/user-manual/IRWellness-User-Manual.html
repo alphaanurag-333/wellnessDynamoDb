@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IR Wellness — User Manual</title>
+  <style>
+    :root {
+      --saffron: #e8873a;
+      --saffron-soft: #f6d5b8;
+      --green: #5fad6a;
+      --green-soft: #d9efd9;
+      --navy: #1c2b4a;
+      --ink: #243047;
+      --muted: #667085;
+      --line: #e8ecf2;
+      --bg: #f7f4ef;
+      --card: #ffffff;
+      --shadow: 0 10px 30px rgba(28, 43, 74, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(232, 135, 58, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(95, 173, 106, 0.12), transparent 24%),
+        var(--bg);
+      line-height: 1.6;
+    }
+
+    a { color: var(--saffron); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #fff7ef 0%, #ffffff 45%, #f1faf2 100%);
+      border: 1px solid #f0e6d8;
+      border-radius: 28px;
+      padding: 36px 32px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 28px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--saffron-soft), var(--green-soft));
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 42px;
+      line-height: 1.15;
+      color: var(--navy);
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .hero-meta {
+      margin-top: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .chip {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .hero-shot {
+      background: #fff;
+      border-radius: 24px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .hero-shot img {
+      width: min(220px, 100%);
+      border-radius: 18px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.12);
+    }
+
+    .toc, .section, .note {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 22px;
+    }
+
+    .toc h2, .section h2 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-size: 28px;
+    }
+
+    .section-intro {
+      color: var(--muted);
+      margin: 0 0 22px;
+    }
+
+    .toc ol {
+      margin: 12px 0 0;
+      padding-left: 22px;
+      columns: 2;
+      gap: 24px;
+    }
+
+    .toc li { margin: 8px 0; break-inside: avoid; }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 0;
+    }
+
+    .flow span {
+      background: #fff8f1;
+      border: 1px solid #f2dfc8;
+      color: #8a4d1d;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .shot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .shot {
+      background: #fbfbfd;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .shot img {
+      width: 100%;
+      max-width: 280px;
+      border-radius: 16px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.1);
+      background: #fff;
+    }
+
+    .shot.wide {
+      grid-column: 1 / -1;
+    }
+
+    .shot.wide img {
+      max-width: 360px;
+    }
+
+    .shot figcaption {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .steps {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .steps li { margin: 10px 0; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .feature-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .feature-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(180deg, #ffffff, #fafafa);
+    }
+
+    .feature-card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      color: var(--navy);
+    }
+
+    .feature-card p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .note {
+      background: linear-gradient(90deg, #fff8f0, #f4fbf5);
+      border-color: #eed9c3;
+    }
+
+    .note strong { color: var(--navy); }
+
+    .footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .print-btn {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 20;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 18px;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(90deg, var(--saffron), var(--green));
+      box-shadow: 0 10px 24px rgba(232, 135, 58, 0.35);
+      cursor: pointer;
+    }
+
+    @media (max-width: 800px) {
+      .hero, .two-col { grid-template-columns: 1fr; }
+      .toc ol { columns: 1; }
+      h1 { font-size: 32px; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { max-width: none; padding: 0; }
+      .print-btn { display: none; }
+      .hero, .toc, .section, .note {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+
+  <div class="page">
+    <header class="hero">
+      <div>
+        <div class="badge">Official End-User Guide</div>
+        <h1>IR Wellness User Manual</h1>
+        <p>
+          Welcome to <strong>IR Wellness (India Redefining Wellness)</strong> — your guided companion for
+          metabolic health, coaching, daily tracking, and long-term lifestyle transformation.
+          This manual explains every major screen in simple English, with screenshots from the app design.
+        </p>
+        <div class="hero-meta">
+          <span class="chip">App: IR Wellness</span>
+          <span class="chip">Platforms: Android &amp; iOS</span>
+          <span class="chip">Languages: English &amp; Hindi</span>
+          <span class="chip">Version guide: 1.0</span>
+        </div>
+      </div>
+      <figure class="hero-shot">
+        <img src="images/Splash.png" alt="IR Wellness splash screen" />
+        <figcaption>App splash / brand screen</figcaption>
+      </figure>
+    </header>
+
+    <nav class="toc">
+      <h2>Table of Contents</h2>
+      <ol>
+        <li><a href="#overview">1. App Overview</a></li>
+        <li><a href="#getting-started">2. Getting Started</a></li>
+        <li><a href="#login">3. Login &amp; OTP Verification</a></li>
+        <li><a href="#profile">4. Profile Set Up</a></li>
+        <li><a href="#vitals">5. Body Vitals &amp; Health Metrics</a></li>
+        <li><a href="#reports">6. Medical &amp; Blood Test Reports</a></li>
+        <li><a href="#discovery">7. Discovery Call &amp; Scheduling</a></li>
+        <li><a href="#program">8. Program Initiation &amp; Visibility</a></li>
+        <li><a href="#heal">9. HEAL Dashboard</a></li>
+        <li><a href="#tracking">10. Daily Tracking</a></li>
+        <li><a href="#seek">11. Free / Seek Features</a></li>
+        <li><a href="#tips">12. Tips, Privacy &amp; Support</a></li>
+      </ol>
+    </nav>
+
+    <section class="section" id="overview">
+      <h2>1. App Overview</h2>
+      <p class="section-intro">
+        IR Wellness has two main experiences: <strong>Seek</strong> (explore &amp; learn) and
+        <strong>Heal</strong> (paid coaching program with personalized protocols).
+      </p>
+      <div class="feature-cards">
+        <div class="feature-card">
+          <h3>Seek (Free)</h3>
+          <p>Explore wellness content, health tools, recipes, testimonials, and book a consultation.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Heal (Paid Program)</h3>
+          <p>Get a coach, complete onboarding, follow your protocol, and track meals, water, steps, sleep, and more.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Health Tools</h3>
+          <p>Use BMI, BMR, body fat, visceral fat, water, and steps tools anytime from Wellnesspedia / Tools.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Coaching Loop</h3>
+          <p>Upload reports, schedule calls, receive prescriptions, and review daily coach insights.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <span>Language</span>
+        <span>Login / OTP</span>
+        <span>Profile Setup</span>
+        <span>Body Vitals</span>
+        <span>Reports</span>
+        <span>Discovery Call</span>
+        <span>Program Start</span>
+        <span>Daily Tracking</span>
+      </div>
+    </section>
+
+    <section class="section" id="getting-started">
+      <h2>2. Getting Started</h2>
+      <p class="section-intro">When you open the app for the first time, choose your preferred language.</p>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Launch <strong>IR Wellness</strong> from your phone.</li>
+            <li>On <strong>Select Language</strong>, tap <strong>English</strong> or <strong>Hindi (हिन्दी)</strong>.</li>
+            <li>Tap <strong>Continue</strong>.</li>
+            <li>You can change language later from Profile / Settings.</li>
+          </ol>
+          <div class="note" style="margin-top:18px;padding:16px;">
+            <strong>Tip:</strong> English keeps all screens, buttons, and coaching content in English.
+            Hindi switches the interface for Hindi-preferring users.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="images/Language.png" alt="Select Language screen" />
+          <figcaption>Select Language</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="login">
+      <h2>3. Login &amp; OTP Verification</h2>
+      <p class="section-intro">Sign in securely using your WhatsApp / mobile number. No password is required.</p>
+      <div class="shot-grid">
+        <figure class="shot">
+          <img src="images/Login.png" alt="Login screen" />
+          <figcaption>Welcome / Login</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/OTP.png" alt="OTP verification screen" />
+          <figcaption>Verify Your Number</figcaption>
+        </figure>
+      </div>
+      <h3 style="margin-top:24px;color:var(--navy);">How to log in</h3>
+      <ol class="steps">
+        <li>Enter your registered <strong>WhatsApp number</strong> with country code (default <strong>+91</strong>).</li>
+        <li>Tap <strong>Send OTP</strong>.</li>
+        <li>Open WhatsApp / SMS and copy the one-time code.</li>
+        <li>Enter the code on <strong>Verify Your Number</strong>.</li>
+        <li>Tap <strong>Login</strong>.</li>
+        <li>If the timer ends, wait for <strong>Resend code</strong> and request a new OTP.</li>
+      </ol>
+      <div class="note" style="margin-top:18px;padding:16px;">
+        <strong>New user?</strong> Tap <strong>Sign Up</strong> on the login screen to create an account with name,
+        email, date of birth, gender, mobile, WhatsApp number, and health concern.
+      </div>
+    </section>
+
+    <section class="section" id="profile">
+      <h2>4. Profile Set Up</h2>
+      <p class="section-intro">
+        After joining the Heal program, complete your profile so your coach can personalize your plan.
+      </p>
+      <div class="shot-grid">
+        <figure class="shot">
+          <img src="images/Profile%20Set%20Up%201.png" alt="Profile setup basic details" />
+          <figcaption>Basic, contact &amp; address details</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/Profile%20Set%20Up%202.png" alt="Profile setup preferences" />
+          <figcaption>Dietary preference &amp; support team</figcaption>
+        </figure>
+      </div>
+      <h3 style="margin-top:24px;color:var(--navy);">What to fill</h3>
+      <ol class="steps">
+        <li>Upload a clear <strong>profile picture</strong> for your coach.</li>
+        <li>Enter <strong>Full Name</strong>, <strong>Date of Birth</strong>, and <strong>Gender</strong>.</li>
+        <li>Confirm <strong>Mobile</strong>, <strong>WhatsApp</strong>, and <strong>Email</strong>. Use “Same as mobile number?” if both numbers match.</li>
+        <li>Add your complete residential address (city, state, country, pincode).</li>
+        <li>Choose your <strong>Food Preference</strong> (Vegetarian, Eggetarian, Vegan, Non-Vegetarian, Jain).</li>
+        <li>Select your <strong>Target Program</strong> (for example, Weight Loss).</li>
+        <li>Review your assigned <strong>Wellness Coach</strong> and <strong>Assistant Coach</strong>.</li>
+        <li>Tap <strong>Save &amp; Continue</strong>.</li>
+      </ol>
+    </section>
+
+    <section class="section" id="vitals">
+      <h2>5. Body Vitals &amp; Health Metrics</h2>
+      <p class="section-intro">
+        Enter accurate body measurements. The app calculates your biological snapshot automatically.
+      </p>
+      <div class="shot-grid">
+        <figure class="shot">
+          <img src="images/Body%20Vitals.png" alt="Body Vitals screen" />
+          <figcaption>Body Vitals entry</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/Calculated%20Health%20Metrics.png" alt="Calculated Health Metrics screen" />
+          <figcaption>Your Biological Snapshot</figcaption>
+        </figure>
+      </div>
+      <h3 style="margin-top:24px;color:var(--navy);">Body Vitals steps</h3>
+      <ol class="steps">
+        <li>Enter <strong>Height</strong> (feet/cm) and <strong>Weight</strong> (kgs/lbs).</li>
+        <li>Upload a <strong>Weight Pic</strong> — this is mandatory for verification.</li>
+        <li>Enter neck, chest, waist, hip, and thigh measurements.</li>
+        <li>Open <strong>Guidelines for measurements</strong> if you need help measuring correctly.</li>
+        <li>Tap <strong>Save &amp; Continue</strong>.</li>
+      </ol>
+      <h3 style="margin-top:24px;color:var(--navy);">What you will see next</h3>
+      <ul class="steps">
+        <li><strong>BMI</strong> with status (for example, Normal)</li>
+        <li><strong>Waist-Hip Ratio</strong> risk assessment</li>
+        <li><strong>Body Fat %</strong> and <strong>Lean Muscle %</strong></li>
+        <li><strong>BMR</strong> and <strong>TDEE</strong> calorie estimates</li>
+        <li><strong>Visceral Fat</strong> level vs global benchmark</li>
+      </ul>
+    </section>
+
+    <section class="section" id="reports">
+      <h2>6. Medical &amp; Blood Test Reports</h2>
+      <p class="section-intro">
+        Use Report Hub to upload lab PDFs, view verified reports, and track biomarker trends.
+      </p>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Open <strong>Medical &amp; Blood Test</strong>.</li>
+            <li>Review your <strong>Last Report</strong> status (for example, Verified).</li>
+            <li>Tap <strong>Browse Files (PDF)</strong> to upload a new blood work report.</li>
+            <li>The app extracts key values and stores them in History.</li>
+            <li>Use <strong>VIEW</strong> on any past month to reopen an older report.</li>
+            <li>Check trend charts such as <strong>Blood Glucose Trend</strong> against your target.</li>
+            <li>Tap <strong>Save &amp; Continue</strong>.</li>
+          </ol>
+          <div class="note" style="margin-top:18px;padding:16px;">
+            <strong>Best practice:</strong> Upload clear PDF reports from a recognized lab.
+            Blurry photos or incomplete pages may delay verification.
+          </div>
+        </div>
+        <figure class="shot">
+          <img src="images/Medical%20%26%20Blood%20Test.png" alt="Medical and Blood Test Report Hub" />
+          <figcaption>Report Hub</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="discovery">
+      <h2>7. Discovery Call &amp; Scheduling</h2>
+      <p class="section-intro">
+        Share your current wellness status, then book a convenient slot with your coach.
+      </p>
+      <div class="shot-grid">
+        <figure class="shot">
+          <img src="images/Discovery%20Call.png" alt="Discovery Call consultation form" />
+          <figcaption>Consultation Form</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/Scheduling.png" alt="Scheduling screen" />
+          <figcaption>Pick a Time</figcaption>
+        </figure>
+      </div>
+      <h3 style="margin-top:24px;color:var(--navy);">Discovery Call form</h3>
+      <ol class="steps">
+        <li>Describe your main health concerns and goals.</li>
+        <li>Select your current energy level: Low / Medium / High.</li>
+        <li>Rate sleep quality from 1 (Poor) to 5 (Excellent).</li>
+        <li>Choose focus areas such as Nutrition, Mobility, Stress Management, or Gut Health.</li>
+        <li>Tap <strong>Continue</strong>.</li>
+      </ol>
+      <h3 style="margin-top:24px;color:var(--navy);">Scheduling</h3>
+      <ol class="steps">
+        <li>Select an available date from the calendar strip.</li>
+        <li>Choose a morning, afternoon, or evening slot.</li>
+        <li>Confirm your coach details.</li>
+        <li>Tap <strong>Confirm</strong> to lock the appointment.</li>
+      </ol>
+    </section>
+
+    <section class="section" id="program">
+      <h2>8. Program Initiation &amp; Visibility</h2>
+      <p class="section-intro">
+        Configure your metabolic rhythm, then follow your personalized daily protocol.
+      </p>
+      <div class="shot-grid">
+        <figure class="shot">
+          <img src="images/Program%20Initiation.png" alt="Program Initiation screen" />
+          <figcaption>Wellness Setup</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/Program%20Visibility.png" alt="Program Visibility screen" />
+          <figcaption>Your Protocol</figcaption>
+        </figure>
+      </div>
+      <h3 style="margin-top:24px;color:var(--navy);">Program Initiation</h3>
+      <ul class="steps">
+        <li><strong>Eating Window:</strong> set start and end times for active eating hours.</li>
+        <li><strong>Sleep Schedule:</strong> set wind-down and wake-up times.</li>
+        <li><strong>Clinical Guidelines:</strong> follow hydration, morning stretch, and sunlight goals.</li>
+      </ul>
+      <h3 style="margin-top:24px;color:var(--navy);">Program Visibility</h3>
+      <ul class="steps">
+        <li>See your current phase (example: Phase 1 Metabolic Reset) and day progress.</li>
+        <li>Read the latest notes from your coach.</li>
+        <li>Tick off your <strong>Daily Prescription</strong> items (morning / lunch / evening).</li>
+        <li>Tap <strong>Confirm</strong> after completing the day’s checklist.</li>
+      </ul>
+    </section>
+
+    <section class="section" id="heal">
+      <h2>9. HEAL Dashboard</h2>
+      <p class="section-intro">
+        Your home base for the paid journey — daily score, coach insight, quick actions, and goals.
+      </p>
+      <div class="shot-grid">
+        <figure class="shot wide">
+          <img src="images/Pro.png" alt="HEAL dashboard" />
+          <figcaption>HEAL home dashboard</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="images/Frame%201171275718.png" alt="Daily Score card" />
+          <figcaption>Daily Score detail</figcaption>
+        </figure>
+      </div>
+      <div class="feature-cards">
+        <div class="feature-card">
+          <h3>Your Journey</h3>
+          <p>Shows which day of transformation you are on (for example, Day 45).</p>
+        </div>
+        <div class="feature-card">
+          <h3>Daily Score</h3>
+          <p>A 0–100 score of today’s consistency. 80+ is Good; nearer 100 is Excellent.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Coach Insight</h3>
+          <p>Short guidance from your coach based on recent activity and goals.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Quick Actions</h3>
+          <p>Jump instantly to Meal, Water, Steps, Meditation, Exercise, Nutrition, Prescription, Progress, or Daily Reflection.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Today’s Health Goal</h3>
+          <p>Your priority action for the day, such as a prep session before a clinical review.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Active Protocol</h3>
+          <p>See current macros (carbs / proteins / fats) and the next suggested meal.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tracking">
+      <h2>10. Daily Tracking</h2>
+      <p class="section-intro">
+        Log everyday habits so your coach and the app can measure real progress.
+      </p>
+
+      <h3 style="margin-top:8px;color:var(--navy);">10.1 Meal Tracking</h3>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Open <strong>Meal Tracking</strong> from Daily Tracking or Quick Actions.</li>
+            <li>Select the meal slot (1st Meal, 2nd Meal, snack, etc.).</li>
+            <li>Set the entry time.</li>
+            <li>Describe what you ate and optionally <strong>Add Photo</strong>.</li>
+            <li>Tap <strong>Log Meal</strong> to save protein / carbs / fats where available.</li>
+          </ol>
+        </div>
+        <figure class="shot">
+          <img src="images/daily-tracking/Meal.png" alt="Meal Tracking screen" />
+          <figcaption>Meal Tracking</figcaption>
+        </figure>
+      </div>
+
+      <h3 style="margin-top:28px;color:var(--navy);">10.2 Water Intake Tracking</h3>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Open <strong>Water Intake Tracking</strong>.</li>
+            <li>Use <strong>+</strong> / <strong>–</strong> to add or remove water in 250 ml steps.</li>
+            <li>Watch the glass fill toward your daily goal (example: 3.0 L).</li>
+            <li>Tap <strong>Save &amp; Continue</strong>.</li>
+          </ol>
+        </div>
+        <figure class="shot">
+          <img src="images/daily-tracking/Water.png" alt="Water Intake Tracking screen" />
+          <figcaption>Water Intake Tracking</figcaption>
+        </figure>
+      </div>
+
+      <h3 style="margin-top:28px;color:var(--navy);">10.3 Steps Tracking</h3>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Open <strong>Steps Tracking</strong>.</li>
+            <li>Allow Health Connect (Android) or HealthKit / Apple Watch (iOS) when prompted.</li>
+            <li>Review today’s steps, distance, and calories burned.</li>
+            <li>Confirm device connectivity shows <strong>LIVE</strong> / recently synced.</li>
+            <li>Aim for your daily goal (example: 10,000 steps).</li>
+          </ol>
+        </div>
+        <figure class="shot">
+          <img src="images/daily-tracking/Steps.png" alt="Steps Tracking screen" />
+          <figcaption>Steps Tracking</figcaption>
+        </figure>
+      </div>
+
+      <h3 style="margin-top:28px;color:var(--navy);">10.4 Exercise &amp; Meditation</h3>
+      <div class="two-col">
+        <div>
+          <ol class="steps">
+            <li>Open <strong>Exercise &amp; Meditation</strong>.</li>
+            <li>Play guided workout / yoga videos such as Morning Flow.</li>
+            <li>Choose short <strong>Pranayam</strong> sessions for breathing practice.</li>
+            <li>Play meditation audio tracks for wind-down or focus.</li>
+            <li>Tap <strong>Save &amp; Continue</strong> after completing your session.</li>
+          </ol>
+        </div>
+        <figure class="shot">
+          <img src="images/daily-tracking/Exercise.png" alt="Exercise and Meditation screen" />
+          <figcaption>Exercise &amp; Meditation</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="seek">
+      <h2>11. Free / Seek Features</h2>
+      <p class="section-intro">
+        Even before joining Heal, you can explore learning and self-assessment tools.
+      </p>
+      <div class="feature-cards">
+        <div class="feature-card">
+          <h3>Seek Home</h3>
+          <p>Banners, transformation stories, champions, recipes preview, and consultation CTA.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Testimonials</h3>
+          <p>Read and watch real client healing journeys filtered by health concern.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Wellnesspedia</h3>
+          <p>Healthy recipes, yoga/pranayam media, health disorders, and calculators.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Health Tools</h3>
+          <p>Water, Steps, BMI, BMR, Body Fat, and Visceral Fat estimators.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Energy Exchange</h3>
+          <p>Browse wellness program / subscription plans and complete secure checkout.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Referrals</h3>
+          <p>Share your referral link/code so friends can join your wellness circle.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="tips">
+      <h2>12. Tips, Privacy &amp; Support</h2>
+      <div class="feature-cards">
+        <div class="feature-card">
+          <h3>Stay consistent</h3>
+          <p>Log meals, water, and reflection every day. Your Daily Score improves with consistency.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Keep data accurate</h3>
+          <p>Upload clear weight photos and original PDF lab reports for faster coach review.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Enable notifications</h3>
+          <p>Allow push notifications so reminders, coach messages, and appointment alerts reach you on time.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Connect health apps</h3>
+          <p>Link Health Connect / Apple Health for automatic steps, sleep, and heart-rate sync.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Privacy</h3>
+          <p>Your medical reports and personal details are used for coaching and care. Review Terms &amp; Privacy inside the app drawer.</p>
+        </div>
+        <div class="feature-card">
+          <h3>Need help?</h3>
+          <p>Use in-app FAQ, WhatsApp support, or contact your assigned Wellness Coach from the Heal dashboard.</p>
+        </div>
+      </div>
+
+      <div class="note" style="margin-top:18px;padding:18px;">
+        <strong>Quick checklist for new Heal members</strong>
+        <ol class="steps">
+          <li>Select language → Login with OTP</li>
+          <li>Complete Profile Set Up (photo + preferences)</li>
+          <li>Enter Body Vitals + upload weight pic</li>
+          <li>Upload latest blood test PDF</li>
+          <li>Fill Discovery Call form and schedule your session</li>
+          <li>Set eating window &amp; sleep schedule</li>
+          <li>Start daily meal / water / steps / reflection tracking</li>
+        </ol>
+      </div>
+    </section>
+
+    <p class="footer">
+      © IR Wellness · User Manual (English) · Designed from official app screens · For end users of the mobile app
+    </p>
+  </div>
+</body>
+</html>

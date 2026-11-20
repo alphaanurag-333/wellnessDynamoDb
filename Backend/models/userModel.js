@@ -2,6 +2,7 @@ const {
   PutCommand,
   GetCommand,
   UpdateCommand,
+  DeleteCommand,
   QueryCommand,
 } = require("@aws-sdk/lib-dynamodb");
 const { v4: uuidv4 } = require("uuid");
@@ -499,7 +500,8 @@ function sanitizeUpdateField(key, value) {
     key === "medicalConditionsInAppEnabled" ||
     key === "progressPhotosInAppEnabled" ||
     key === "labReportSubmissionLocked" ||
-    key === "bodyAnalyticsGlanceExcluded"
+    key === "bodyAnalyticsGlanceExcluded" ||
+    key === "healthProgressFeaturesLockedByCoach"
   ) {
     return Boolean(value);
   }
@@ -1059,6 +1061,23 @@ async function deleteUser(id) {
     })
   );
   return withLegacyId(Attributes || null);
+}
+
+/** Permanently remove an already-archived (status=deleted) user row. */
+async function hardDeleteArchivedUser(id) {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required");
+
+  await docClient.send(
+    new DeleteCommand({
+      TableName: TABLE,
+      Key: { id: userId },
+      ConditionExpression: "attribute_exists(id) AND #status = :deleted",
+      ExpressionAttributeNames: { "#status": "status" },
+      ExpressionAttributeValues: { ":deleted": "deleted" },
+    })
+  );
+  return true;
 }
 
 async function listUsersByParentCoachId(
@@ -1952,6 +1971,7 @@ module.exports = {
   updateUser,
   forceUpdateReferralAttribution,
   deleteUser,
+  hardDeleteArchivedUser,
   listDeletedUserIds,
   listUsersByParentCoachId,
   listUsersByReferredByUserId,

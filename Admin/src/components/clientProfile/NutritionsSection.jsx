@@ -3,6 +3,7 @@ import { PillTabs } from "../shared.jsx";
 import { useClientSectionPermissions } from "./ClientProfileSectionGate.jsx";
 import { formatLongDate } from "../../api/usersApi.js";
 import {
+  clearUserSupplementBill,
   createUserSupplementDosage,
   createUserSupplementRecommendation,
   deleteUserSupplementFulfilmentOrder,
@@ -570,7 +571,7 @@ function mapDosageToCard(dosage) {
   };
 }
 
-function FulfilmentStatus({ recommendation }) {
+function FulfilmentStatus({ recommendation, canWrite = false, busy = false, onRequestNewBill }) {
   if (!recommendation) {
     return (
       <div className="ua-cp-nut-log">
@@ -589,6 +590,7 @@ function FulfilmentStatus({ recommendation }) {
   const billedOn = formatLongDate(recommendation.billUploadedAt);
   const statusLabel = billedOn ? "Bill uploaded" : "Awaiting bill";
   const statusTone = billedOn ? "saved" : "pending";
+  const hasBill = Boolean(recommendation.billPdfUrl || billedOn);
 
   return (
     <div className="ua-cp-nut-log">
@@ -605,6 +607,16 @@ function FulfilmentStatus({ recommendation }) {
         <a className="ua-cp-nut-log__add" href={recommendation.billPdfUrl} target="_blank" rel="noreferrer">
           Open uploaded bill
         </a>
+      ) : null}
+      {hasBill && canWrite ? (
+        <button
+          type="button"
+          className="ua-cp-nut-log__add"
+          disabled={busy}
+          onClick={() => onRequestNewBill?.(recommendation)}
+        >
+          Request new bill
+        </button>
       ) : null}
       {requestedOn ? (
         <p className="ua-cp-nut-log__hint">Delivery was previously requested on {requestedOn}.</p>
@@ -1107,6 +1119,7 @@ export function NutritionsSection({ user, onToast }) {
   const [pendingDosageDelete, setPendingDosageDelete] = useState(null);
   const [pendingPeriodDelete, setPendingPeriodDelete] = useState(null);
   const [pendingOrderDelete, setPendingOrderDelete] = useState(null);
+  const [pendingBillClear, setPendingBillClear] = useState(null);
   const [editingDosageId, setEditingDosageId] = useState(null);
   const [editingPeriodKey, setEditingPeriodKey] = useState(null);
   const [syncedRecViewOpen, setSyncedRecViewOpen] = useState(false);
@@ -1550,6 +1563,29 @@ export function NutritionsSection({ user, onToast }) {
       onToast("Bill uploaded & synced to user app");
     } catch (err) {
       onToast?.(err?.message || "Could not upload bill");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function clearSelfBillingBill(recommendationId) {
+    const id = String(recommendationId || "").trim();
+    if (!userId || !id || !canWrite) return;
+    setSaving(true);
+    try {
+      const updated = await clearUserSupplementBill(userId, id);
+      if (updated) {
+        setRecommended(updated);
+      } else {
+        setRecommended((prev) => (
+          prev && prev.id === id
+            ? { ...prev, billPdfUrl: "", billUploadedAt: null }
+            : prev
+        ));
+      }
+      onToast?.("Bill cleared. Client can upload again in the app.");
+    } catch (err) {
+      onToast?.(err?.message || "Could not clear bill");
     } finally {
       setSaving(false);
     }
@@ -2070,7 +2106,12 @@ export function NutritionsSection({ user, onToast }) {
                     )}
                   </div>
                 ) : (
-                  <FulfilmentStatus recommendation={currentRecommendation} />
+                  <FulfilmentStatus
+                    recommendation={currentRecommendation}
+                    canWrite={canWrite && isHealClient}
+                    busy={saving}
+                    onRequestNewBill={(rec) => setPendingBillClear({ id: rec.id })}
+                  />
                 )}
               </div>
             </div>
@@ -2432,6 +2473,22 @@ export function NutritionsSection({ user, onToast }) {
           const id = pendingOrderDelete?.id;
           setPendingOrderDelete(null);
           if (id) removeCoachOrder(id);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingBillClear)}
+        tag="Self billing"
+        title="Request a new bill?"
+        body="This removes the uploaded bill from the recommendation. The client app upload portal reopens so they can submit the correct PDF."
+        cancelLabel="Cancel"
+        confirmLabel="Clear bill"
+        confirmTone="danger"
+        onCancel={() => setPendingBillClear(null)}
+        onConfirm={() => {
+          const id = pendingBillClear?.id;
+          setPendingBillClear(null);
+          if (id) clearSelfBillingBill(id);
         }}
       />
 

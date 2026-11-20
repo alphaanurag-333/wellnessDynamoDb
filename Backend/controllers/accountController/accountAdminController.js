@@ -42,6 +42,7 @@ const {
   listUsersByAssignedCoachId,
   getUserById,
 } = require("../../models/userModel");
+const { notifyCoachWelcomeVideoUpdated } = require("../../services/clientProfileRealtime");
 const { UI_TO_ACCOUNT_ROLE } = require("../../config/consolePermissionCatalog");
 const {
   generateUniqueReferralCode,
@@ -1084,12 +1085,37 @@ async function applyCoachContentPatch(req, account) {
   const ensured = await ensureIntroUploadedAt(nextIntro);
   nextIntro = ensured.intro;
 
-  return updateAccount(account.id, {
+  const updated = await updateAccount(account.id, {
     coach_content: {
       intro: nextIntro,
       letter: nextLetter,
     },
   });
+
+  return { account: updated, introTouched };
+}
+
+/**
+ * Fire-and-forget fan-out so a Dynamo / socket failure never fails the PATCH response.
+ * Only wellness coaches feed parentCoach.welcomeVideo on the mobile profile.
+ */
+function scheduleCoachWelcomeVideoNotify(account) {
+  try {
+    if (!accountRoleKeys(account).has("wellness_coach")) return;
+    const coachId = String(account.id || "").trim();
+    if (!coachId) return;
+    const intro = account.coach_content?.intro || {};
+    const live = Boolean(intro.live) && introHasMedia(intro);
+    void notifyCoachWelcomeVideoUpdated(coachId, { live }).catch((err) => {
+      if (process.env.NODE_ENV !== "test") {
+        console.error("welcomeVideo realtime fan-out failed:", err?.message || err);
+      }
+    });
+  } catch (err) {
+    if (process.env.NODE_ENV !== "test") {
+      console.error("welcomeVideo realtime schedule failed:", err?.message || err);
+    }
+  }
 }
 
 function letterTemplatePayload(config) {
@@ -1127,7 +1153,8 @@ exports.patchCoachContentHandler = asyncHandler(async (req, res) => {
     throw new AppError("Forbidden", 403);
   }
 
-  const updated = await applyCoachContentPatch(req, account);
+  const { account: updated, introTouched } = await applyCoachContentPatch(req, account);
+  if (introTouched) scheduleCoachWelcomeVideoNotify(updated);
   return res.json({
     status: true,
     message: "Coach content updated",
@@ -1157,7 +1184,8 @@ exports.patchMyCoachContentHandler = asyncHandler(async (req, res) => {
   const account = req.account || (await getAccountById(req.auth?.sub));
   if (!account) throw new AppError("Account not found", 404);
   assertCoachContentRole(account);
-  const updated = await applyCoachContentPatch(req, account);
+  const { account: updated, introTouched } = await applyCoachContentPatch(req, account);
+  if (introTouched) scheduleCoachWelcomeVideoNotify(updated);
   return res.json({
     status: true,
     message: "Coach content updated",

@@ -14,6 +14,37 @@ function parseCorsOrigins() {
 }
 
 /**
+ * Token from handshake.auth.token or Authorization: Bearer …
+ * @param {import("socket.io").Socket} socket
+ */
+function handshakeToken(socket) {
+  const header = socket.handshake.headers?.authorization;
+  const bearer =
+    typeof header === "string" ? header.replace(/^Bearer\s+/i, "").trim() : "";
+  const authToken = socket.handshake.auth?.token;
+  return (typeof authToken === "string" && authToken.trim()) || bearer || "";
+}
+
+/**
+ * Stable Socket.IO connect_error payload: message + error.data { status, code? }.
+ * @param {unknown} err
+ * @returns {Error & { data: { status: number, code?: string } }}
+ */
+function toHandshakeRejection(err) {
+  const status = Number(err?.statusCode) || 401;
+  const message = String(err?.message || "Unauthorized");
+  let code = err?.code ? String(err.code) : undefined;
+  if (!code) {
+    if (/inactive/i.test(message)) code = "ACCOUNT_INACTIVE";
+    else if (status === 403) code = "FORBIDDEN";
+    else code = "UNAUTHORIZED";
+  }
+  const error = new Error(message);
+  error.data = { status, code };
+  return error;
+}
+
+/**
  * @param {import("http").Server} httpServer
  * @returns {import("socket.io").Server | null}
  */
@@ -33,35 +64,55 @@ function attachClientProfileSocket(httpServer) {
 
   setRealtimeIo(io);
 
+  // Auth must fail in middleware so the client gets connect_error (auto-retryable),
+  // not connect-then-disconnect from the connection handler.
+  io.use(async (socket, next) => {
+    try {
+      const token = handshakeToken(socket);
+      socket.data.pendingAuth = await socketAuth.resolveSocketAuthFromToken(token);
+      next();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "test") {
+        console.warn("[socket] handshake rejected:", err?.message || err);
+      }
+      next(toHandshakeRejection(err));
+    }
+  });
+
   io.on("connection", async (socket) => {
     socket.data.subscribedClientIds = new Set();
     socket.data.actorKind = null;
     socket.data.staffReq = null;
     socket.data.userReq = null;
 
-    const token = socket.handshake.auth?.token;
-    try {
-      const { kind, req } = await socketAuth.resolveSocketAuthFromToken(token);
-      socket.data.actorKind = kind;
+    const pending = socket.data.pendingAuth;
+    delete socket.data.pendingAuth;
 
-      if (kind === "user") {
-        socket.data.userReq = req;
-        const userId = String(req.auth?.sub || "").trim();
-        if (!userId) throw new Error("Unauthorized");
+    // Unreachable when middleware succeeds; keep socket closed if state is corrupt.
+    if (!pending?.kind || !pending?.req) {
+      socket.disconnect(true);
+      return;
+    }
+
+    // Middleware already authenticated; only room setup remains.
+    const { kind, req } = pending;
+    socket.data.actorKind = kind;
+
+    if (kind === "user") {
+      socket.data.userReq = req;
+      const userId = String(req.auth?.sub || "").trim();
+      if (userId) {
         // Mobile clients auto-join only their own profile room — no subscribe emit needed.
         await socket.join(clientRoom(userId));
         socket.data.subscribedClientIds.add(userId);
-      } else {
-        socket.data.staffReq = req;
-        const accountId = String(req.auth?.sub || "").trim();
-        if (accountId) {
-          await socket.join(staffRoom(accountId));
-        }
-        await socket.join(STAFF_BROADCAST_ROOM);
       }
-    } catch (err) {
-      socket.disconnect(true);
-      return;
+    } else {
+      socket.data.staffReq = req;
+      const accountId = String(req.auth?.sub || "").trim();
+      if (accountId) {
+        await socket.join(staffRoom(accountId));
+      }
+      await socket.join(STAFF_BROADCAST_ROOM);
     }
 
     socket.on("clientProfile:subscribe", async (payload, ack) => {
@@ -74,9 +125,9 @@ function attachClientProfileSocket(httpServer) {
           throw err;
         }
         const userId = payload?.userId;
-        const req = socket.data.staffReq;
-        if (!req) throw new Error("Unauthorized");
-        const result = await clientProfileRooms.subscribeClientProfile(socket, req, userId);
+        const staffReq = socket.data.staffReq;
+        if (!staffReq) throw new Error("Unauthorized");
+        const result = await clientProfileRooms.subscribeClientProfile(socket, staffReq, userId);
         respond({ ok: true, ...result });
       } catch (err) {
         respond({
@@ -118,4 +169,8 @@ function attachClientProfileSocket(httpServer) {
   return io;
 }
 
-module.exports = { attachClientProfileSocket };
+module.exports = {
+  attachClientProfileSocket,
+  handshakeToken,
+  toHandshakeRejection,
+};

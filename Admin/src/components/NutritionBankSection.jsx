@@ -33,6 +33,25 @@ const STATUS_FILTER_OPTIONS = [
 const SUPPLEMENT_NAME_MAX_LEN = 80;
 const SUPPLEMENT_DESCRIPTION_MAX_LEN = 500;
 
+function normalizeNutritionNameKey(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function findDuplicateNutritionName(items, name, excludeId) {
+  const key = normalizeNutritionNameKey(name);
+  if (!key) return null;
+  const exclude = String(excludeId || "").trim();
+  return (
+    (items || []).find((entry) => {
+      if (exclude && String(entry.id || "") === exclude) return false;
+      return normalizeNutritionNameKey(entry.name) === key;
+    }) || null
+  );
+}
+
 function unitSelectOptions(unit) {
   return unitOptionsFor(unit).map((value) => ({ id: value, value, label: value }));
 }
@@ -502,6 +521,10 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       onToast("Name, pack size, unit and bottle price are required");
       return;
     }
+    if (findDuplicateNutritionName(itemsRef.current, name)) {
+      onToast(`A nutrition named “${name}” already exists`);
+      return;
+    }
     setBusy(true);
     try {
       const created = await adminCreateNutritionBankItem(
@@ -531,13 +554,22 @@ export function NutritionBankSection({ items, setItems, onToast }) {
       onToast("Name, pack size, unit and bottle price are required");
       return;
     }
+    if (findDuplicateNutritionName(itemsRef.current, name, item.id)) {
+      onToast(`A nutrition named “${name}” already exists`);
+      return;
+    }
+    const nameChanged =
+      normalizeNutritionNameKey(name) !== normalizeNutritionNameKey(item.name);
     const ok = await persistItem(
       item.id,
       { name, description: description || name, packSize, unit, price },
       editFile,
       "Nutrition saved",
     );
-    if (ok) cancelEdit();
+    if (ok) {
+      cancelEdit();
+      if (nameChanged) await loadItems(page);
+    }
   }
 
   async function confirmDelete() {

@@ -55,7 +55,7 @@ const {
   normalizeMonthYear,
 } = require("../../models/monthlyChampionPostModel");
 const { readCatalogPagination, wantsCatalogPagination } = require("../../utils/catalogPagination");
-const { getUserById } = require("../../models/userModel");
+const { getUserById, isDeletedUser } = require("../../models/userModel");
 const { isCommunityBirthdayUser } = require("../../models/userAssignmentLogic");
 const { todayInTimezone } = require("../../utils/birthdayTimezone");
 const { isValidDateOnly } = require("../../utils/dateOnly");
@@ -628,12 +628,15 @@ exports.getActiveMonthlyChampions = asyncHandler(async (req, res) => {
     status: "active",
   });
 
-  const monthlyChampions = await Promise.all(
-    monthlyChampionPosts.map(async (post) => {
-      const user = await getUserById(post.userId);
-      return toPublicSiteMonthlyChampion(post, user);
-    })
-  );
+  const monthlyChampions = (
+    await Promise.all(
+      monthlyChampionPosts.map(async (post) => {
+        const user = await getUserById(post.userId);
+        if (!user || isDeletedUser(user)) return null;
+        return toPublicSiteMonthlyChampion(post, user);
+      })
+    )
+  ).filter(Boolean);
 
   return res.status(200).json({
     status: true,

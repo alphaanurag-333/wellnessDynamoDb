@@ -377,6 +377,43 @@ async function saveBillPdf(id, billPdfKey) {
   return toCoachRecommendedSupplementPublic(Attributes);
 }
 
+async function clearBillPdf(id) {
+  const record = await getCoachRecommendedSupplementRecordById(id);
+  if (!record) {
+    const err = new Error("Recommendation not found");
+    err.name = "NotFoundError";
+    throw err;
+  }
+  if (record.deliveryOption !== "self_billing") {
+    const err = new Error("Bill clear is only available for self-billing recommendations");
+    err.name = "ValidationError";
+    throw err;
+  }
+  if (!record.billPdfKey && !record.billUploadedAt) {
+    return toCoachRecommendedSupplementPublic(record);
+  }
+
+  if (record.billPdfKey) {
+    await deleteStoredMedia(record.billPdfKey);
+  }
+
+  const now = new Date().toISOString();
+  const { Attributes } = await docClient.send(
+    new UpdateCommand({
+      TableName: TABLE,
+      Key: { id },
+      UpdateExpression: "SET updatedAt = :updatedAt REMOVE billPdfKey, billUploadedAt",
+      ExpressionAttributeValues: {
+        ":updatedAt": now,
+      },
+      ConditionExpression: "attribute_exists(id)",
+      ReturnValues: "ALL_NEW",
+    })
+  );
+
+  return toCoachRecommendedSupplementPublic(Attributes);
+}
+
 async function assertCoachDeliveryRecommendation(record) {
   if (!record) {
     const err = new Error("Recommendation not found");
@@ -574,6 +611,7 @@ module.exports = {
   scanCoachRecommendedSupplements,
   markDeliveryRequested,
   saveBillPdf,
+  clearBillPdf,
   upsertFulfilmentOrder,
   saveFulfilmentOrderBill,
   deleteFulfilmentOrder,

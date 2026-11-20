@@ -172,14 +172,13 @@ function applyBodyAnalyticsPhotoApproval(stepStatus, { action, photo } = {}) {
 
 /**
  * Rejecting the onboarding weight photo reopens body measurements in the client app
- * when the coach has not disabled client fill (bodyMeasurementEnabled !== false).
+ * (Allowed in the app), including after an auto-lock from a prior mobile submit.
  * Also clears the At a Glance Body Analytics step until the client resubmits and
  * the coach completes review again.
  */
-function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) {
+function applyBodyAnalyticsWeightPhotoReview(_user, stepStatus, { action } = {}) {
   const normalizedAction = String(action || "").toLowerCase().trim();
   if (normalizedAction !== "rejected") return null;
-  if (user?.bodyMeasurementEnabled === false) return null;
 
   const current = normalizePaidOnboardingStepStatus(stepStatus);
   const nextStatus = syncDerivedOnboardingSteps({
@@ -191,7 +190,7 @@ function applyBodyAnalyticsWeightPhotoReview(user, stepStatus, { action } = {}) 
   return {
     stepStatus: nextStatus,
     extraUserUpdates: {
-      bodyMeasurementEnabled: true,
+      ...buildBodyMeasurementRejectAppUnlockUpdates(),
       paidOnboardingStep: "body",
     },
   };
@@ -323,10 +322,18 @@ function priorCanonicalStepsDone(stepStatus, stepKey) {
   return PAID_ONBOARDING_STATUS_KEYS.slice(0, idx).every((key) => status[key] === "done");
 }
 
-/** Coach At a Glance toggle when client body / 180° / medical data exists. */
-function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataReady = false } = {}) {
+/**
+ * Coach At a Glance Body Analytics toggle.
+ * With staffOverride, can mark done even when client has not uploaded data yet
+ * (excluded=true so sync will not wipe the forced done until data is ready).
+ */
+function setCoachBodyAnalyticsAtGlanceStatus(
+  stepStatus,
+  value,
+  { clientDataReady = false, staffOverride = false } = {},
+) {
   const normalized = String(value || "").toLowerCase().trim() === "done" ? "done" : "pending";
-  if (normalized === "done" && !clientDataReady) {
+  if (normalized === "done" && !clientDataReady && !staffOverride) {
     const err = new Error(
       "Add body measurements, 180° photos, and medical answers before marking Body Analytics done",
     );
@@ -350,7 +357,8 @@ function setCoachBodyAnalyticsAtGlanceStatus(stepStatus, value, { clientDataRead
   next = syncDerivedOnboardingSteps({ ...next, bodyAnalytics: "done" });
   return {
     stepStatus: next,
-    bodyAnalyticsGlanceExcluded: false,
+    // Force-done without data must stay excluded so sync cannot demote it.
+    bodyAnalyticsGlanceExcluded: !clientDataReady,
   };
 }
 
@@ -472,6 +480,11 @@ function buildProgressPhotosUploadAppLockUpdates() {
   return { progressPhotosInAppEnabled: false };
 }
 
+/** After coach rejects a 180° set, allow progress photo uploads in the app again. */
+function buildProgressPhotosRejectAppUnlockUpdates() {
+  return { progressPhotosInAppEnabled: true };
+}
+
 /** After client submits medical conditions, hide that step in the app. */
 function buildMedicalConditionsSubmitAppLockUpdates() {
   return { medicalConditionsInAppEnabled: false };
@@ -480,6 +493,11 @@ function buildMedicalConditionsSubmitAppLockUpdates() {
 /** After client submits body measurements, hide that form in the app. */
 function buildBodyMeasurementSubmitAppLockUpdates() {
   return { bodyMeasurementEnabled: false };
+}
+
+/** After coach rejects the onboarding weight photo, allow body measurements in the app again. */
+function buildBodyMeasurementRejectAppUnlockUpdates() {
+  return { bodyMeasurementEnabled: true };
 }
 
 function buildBodyAnalyticsCompletionAppLockUpdates(user, previousStatus, nextStatus) {
@@ -568,8 +586,10 @@ module.exports = {
   buildOnboardingStatusUpdates,
   buildBodyAnalyticsCompletionAppLockUpdates,
   buildProgressPhotosUploadAppLockUpdates,
+  buildProgressPhotosRejectAppUnlockUpdates,
   buildMedicalConditionsSubmitAppLockUpdates,
   buildBodyMeasurementSubmitAppLockUpdates,
+  buildBodyMeasurementRejectAppUnlockUpdates,
   buildOnboardingPersistUpdates,
   buildPaidOnboardingResetUpdates,
   buildEaglePaidOnboardingCompleteUpdates,

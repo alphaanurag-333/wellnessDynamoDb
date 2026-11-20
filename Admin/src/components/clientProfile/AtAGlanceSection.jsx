@@ -856,12 +856,6 @@ function buildInitialDone(user) {
     const seed = {};
     Object.entries(PAID_STATUS_TO_UI_STEP).forEach(([key, stepN]) => {
       if (status[key] === "done" || status[key] === "skipped") {
-        if (
-          key === "bodyAnalytics"
-          && !user.bodyAnalyticsClientDataReady
-        ) {
-          return;
-        }
         seed[stepN] = true;
       }
     });
@@ -1058,19 +1052,14 @@ function OnboardingStatusCard({
     user?.paidOnboardingCompleted,
     user?.onboardingDone,
     user?.paidOnboardingStepStatus,
-    user?.bodyAnalyticsClientDataReady,
   ]);
-
-  const bodyAnalyticsClientDataReady = Boolean(user?.bodyAnalyticsClientDataReady);
 
   const steps = useMemo(
     () => ONBOARDING_STEPS.map((step) => ({
       ...step,
-      done: step.key === "bodyAnalytics"
-        ? Boolean(doneMap[step.n] && bodyAnalyticsClientDataReady)
-        : Boolean(doneMap[step.n]),
+      done: Boolean(doneMap[step.n]),
     })),
-    [doneMap, bodyAnalyticsClientDataReady],
+    [doneMap],
   );
 
   const doneCount = steps.filter((s) => s.done).length;
@@ -1306,7 +1295,6 @@ function OnboardingStatusCard({
                   current={isCurrent}
                   onClick={
                     canEdit
-                    && (step.key !== "bodyAnalytics" || step.done || bodyAnalyticsClientDataReady)
                       ? () => {
                           toggleStep(step.n).catch((err) => {
                             onToast(err?.message || "Failed to update step");
@@ -1315,11 +1303,11 @@ function OnboardingStatusCard({
                       : undefined
                   }
                   title={
-                    !step.done && step.key === "bodyAnalytics" && !bodyAnalyticsClientDataReady
-                      ? "Add body measurements, 180° photos, and medical answers to enable this toggle"
-                      : !step.done && step.key === "bodyAnalytics"
-                        ? "Mark complete or leave open — client data is on file"
-                        : undefined
+                    canEdit && step.key === "bodyAnalytics"
+                      ? step.done
+                        ? "Undo Body Analytics step"
+                        : "Mark Body Analytics complete — client must still upload data in the app to advance"
+                      : undefined
                   }
                 />
                 <div className="ua-cp-onboard-step__copy">
@@ -1406,7 +1394,7 @@ function OnboardingStatusCard({
           })}
         </div>
         <p className="ua-cp-onboard-footnote">
-          Client-side steps sync from the app. When body measurements, medical answers, and coach-approved 180° photos are on file, Body Analytics auto-completes and you can turn it on or off with the step toggle.
+          You can mark any step done or pending with the toggle. Body Analytics also auto-completes when the client uploads body measurements, medical answers, and coach-approved 180° photos — the client still cannot advance in the app until that data is uploaded.
           RCA, HAP, briefing, letter and initiation are yours to submit.
         </p>
       </div>

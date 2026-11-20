@@ -38,7 +38,7 @@ async function resolveUserAuthFromToken(token, preVerifiedPayload) {
     }
   }
 
-  if (String(payload.role || "").trim() !== "user") {
+  if (String(payload.role || "").trim().toLowerCase() !== "user") {
     throw new AppError("Forbidden", 403);
   }
 

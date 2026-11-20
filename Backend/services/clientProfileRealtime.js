@@ -1,8 +1,9 @@
-/** @typedef {"glance"|"personal"|"body"|"medical"|"internal"|"launch"|"food"|"bms"|"nutritions"|"healthProgress"|"reflection"|"prescription"|"presentable"|"exchange"|"counselling"|"protocol"|"gut"} ClientProfileDomain */
+/** @typedef {"glance"|"personal"|"body"|"medical"|"internal"|"launch"|"food"|"bms"|"nutritions"|"healthProgress"|"reflection"|"prescription"|"presentable"|"exchange"|"counselling"|"protocol"|"gut"|"coach"|"welcomeVideo"} ClientProfileDomain */
 
 const EVENT_NAME = "clientProfile.changed";
 
 const { getRealtimeIo } = require("./realtimeIo");
+const { listUsersByParentCoachId } = require("../models/userModel");
 
 function clientRoom(userId) {
   return `client:${String(userId || "").trim()}`;
@@ -54,6 +55,53 @@ function notifyClientProfileChanged({
 }
 
 /**
+ * Emit welcome-video update to each assigned client room.
+ * Always uses source "staff" so mobile does not treat this as a user self-edit.
+ *
+ * @param {string[]} userIds
+ * @param {{ coachId: string, live?: boolean }} meta
+ */
+function emitWelcomeVideoUpdatedForUsers(userIds, { coachId, live = false } = {}) {
+  const coach = String(coachId || "").trim();
+  if (!coach) return;
+
+  const ids = Array.isArray(userIds) ? userIds : [];
+  for (const rawId of ids) {
+    const userId = String(rawId || "").trim();
+    if (!userId) continue;
+    notifyClientProfileChanged({
+      userId,
+      domain: "coach",
+      action: "welcomeVideo.updated",
+      source: "staff",
+      meta: { coachId: coach, live: Boolean(live) },
+    });
+  }
+}
+
+/**
+ * Resolve clients under a wellness coach and emit clientProfile.changed once per user.
+ * Safe to call fire-and-forget after a successful coach intro write.
+ *
+ * @param {string} coachId
+ * @param {{ live?: boolean }} [options]
+ */
+async function notifyCoachWelcomeVideoUpdated(coachId, { live = false } = {}) {
+  const id = String(coachId || "").trim();
+  if (!id) return;
+
+  const { users } = await listUsersByParentCoachId(id, {
+    unpaginated: true,
+    userTier: "client",
+  });
+
+  emitWelcomeVideoUpdatedForUsers(
+    (users || []).map((user) => user.id),
+    { coachId: id, live: Boolean(live) },
+  );
+}
+
+/**
  * @param {import("express").Request} req
  * @returns {"user"|"staff"}
  */
@@ -86,4 +134,6 @@ module.exports = {
   notifyClientProfileChanged,
   notifyClientProfileFromReq,
   clientProfileSourceFromReq,
+  emitWelcomeVideoUpdatedForUsers,
+  notifyCoachWelcomeVideoUpdated,
 };

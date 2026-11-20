@@ -31,6 +31,18 @@ function progressPhotos180ApprovedForOnboarding(photos) {
 }
 
 /**
+ * Latest body measurement counts toward onboarding only when its weight photo is not rejected.
+ * Rejecting weight reopens body measurements in the app; sync must not immediately mark the
+ * step done again while that rejected weight row is still the latest record.
+ */
+function bodyMeasurementCompleteForOnboarding(measurements) {
+  const latest = (measurements || [])[0];
+  if (!latest) return false;
+  const weightStatus = String(latest.weightReviewStatus || "").toLowerCase().trim();
+  return weightStatus !== "rejected";
+}
+
+/**
  * Align subkeys with stored client data. Demotes done/skipped subkeys when data is missing.
  * When promoteFromClient is true (default), pending subkeys become done once client data exists.
  */
@@ -78,7 +90,7 @@ async function loadBodyAnalyticsDataFlags(userId) {
   ]);
   const photos = photoResult?.items || [];
   return {
-    bodyMeasurement: (measurementResult?.items || []).length > 0,
+    bodyMeasurement: bodyMeasurementCompleteForOnboarding(measurementResult?.items),
     progressPhotos180: progressPhotos180ApprovedForOnboarding(photos),
     medicalConditions: Boolean(medical),
   };
@@ -89,17 +101,27 @@ async function syncBodyAnalyticsOnboardingFromClientData(user) {
   if (!user?.id) return user;
 
   const flags = await loadBodyAnalyticsDataFlags(user.id);
-  const previousStatus = user.paidOnboardingStepStatus;
-  const nextStatus = reconcileBodyAnalyticsStatus(previousStatus, flags, {
-    promoteFromClient: !user.bodyAnalyticsGlanceExcluded,
-  });
-  if (!bodyAnalyticsOnboardingStatusChanged(previousStatus, nextStatus)) {
+  const dataReady = isBodyAnalyticsClientDataReady(flags);
+
+  // Staff force-done (or undo) — freeze status until client data is fully ready.
+  if (user.bodyAnalyticsGlanceExcluded && !dataReady) {
     return user;
   }
 
+  const previousStatus = user.paidOnboardingStepStatus;
+  const nextStatus = reconcileBodyAnalyticsStatus(previousStatus, flags, {
+    promoteFromClient: true,
+  });
   const persistExtras = {};
-  if (isBodyAnalyticsClientDataReady(flags) && !user.bodyAnalyticsGlanceExcluded) {
+  if (dataReady && user.bodyAnalyticsGlanceExcluded) {
     persistExtras.bodyAnalyticsGlanceExcluded = false;
+  }
+
+  if (
+    !bodyAnalyticsOnboardingStatusChanged(previousStatus, nextStatus)
+    && Object.keys(persistExtras).length === 0
+  ) {
+    return user;
   }
 
   const updated = await updateUser(user.id, {
@@ -125,6 +147,7 @@ module.exports = {
   isBodyAnalyticsClientDataReady,
   progressPhotoSubmissionComplete,
   progressPhotos180ApprovedForOnboarding,
+  bodyMeasurementCompleteForOnboarding,
   buildSyncedBodyAnalyticsStatus,
   reconcileBodyAnalyticsStatus,
 };

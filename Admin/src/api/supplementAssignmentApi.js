@@ -208,6 +208,18 @@ export async function deleteUserSupplementRecommendation(userId, recommendationI
   }
 }
 
+export async function clearUserSupplementBill(userId, recommendationId) {
+  try {
+    const { data } = await api.delete(
+      `${recBase(userId)}/${encodeURIComponent(recommendationId)}/bill`,
+      { headers: authHeader(tokenOrStored()) },
+    );
+    return mapRecommendation(data.recommendation);
+  } catch (error) {
+    normalizeApiError(error);
+  }
+}
+
 export async function upsertUserSupplementFulfilmentOrder(userId, recommendationId, order) {
   try {
     const orderId = String(order?.id || "").trim();

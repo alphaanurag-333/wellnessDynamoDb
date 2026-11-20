@@ -9,6 +9,7 @@ const {
   createSupplement,
   getSupplementById,
   getSupplementRecordById,
+  findSupplementByName,
   updateSupplement,
   deleteSupplement,
   listSupplements,
@@ -44,8 +45,6 @@ exports.createSupplementController = asyncHandler(async (req, res) => {
   const description = String(req.body.description || "").trim() || name;
   const unit = String(req.body.unit || "").trim();
   const status = String(req.body.status || "active").trim().toLowerCase();
-  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
-  const image = uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image") ?? "";
 
   if (!name) throw new AppError("name is required", 400);
   if (name.length > NAME_MAX_LEN) throw new AppError(`name cannot exceed ${NAME_MAX_LEN} characters`, 400);
@@ -57,7 +56,25 @@ exports.createSupplementController = asyncHandler(async (req, res) => {
   const price = parsePositiveNumber(req.body.price, "price");
   if (!SUPPLEMENT_ALLOWED_STATUS.includes(status)) throw new AppError("status must be active or inactive", 400);
 
-  const supplement = await createSupplement({ name, description, packSize, unit, price, image, status });
+  const duplicate = await findSupplementByName(name);
+  if (duplicate) {
+    throw new AppError(`A nutrition named "${name}" already exists`, 409);
+  }
+
+  const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
+  const image = uploadedKey ?? parseMediaKeyFromBody(req.body.image, "image") ?? "";
+
+  let supplement;
+  try {
+    supplement = await createSupplement({ name, description, packSize, unit, price, image, status });
+  } catch (err) {
+    if (err?.code === "DUPLICATE_SUPPLEMENT_NAME") {
+      if (uploadedKey) await deleteStoredMedia(uploadedKey);
+      throw new AppError(err.message || "A nutrition with this name already exists", 409);
+    }
+    if (uploadedKey) await deleteStoredMedia(uploadedKey);
+    throw err;
+  }
 
   return res.status(201).json({ status: true, message: "Nutrition created successfully", supplement });
 });
@@ -100,6 +117,13 @@ exports.updateSupplementController = asyncHandler(async (req, res) => {
     updates.image = parseMediaKeyFromBody(req.body.image, "image") ?? "";
   }
 
+  if (updates.name) {
+    const duplicate = await findSupplementByName(updates.name, { excludeId: req.params.id });
+    if (duplicate) {
+      throw new AppError(`A nutrition named "${updates.name}" already exists`, 409);
+    }
+  }
+
   const uploadedKey = await uploadFileFromRequest(req, S3_FOLDER);
   if (uploadedKey) {
     if (current.image) await deleteStoredMedia(current.image);
@@ -112,6 +136,9 @@ exports.updateSupplementController = asyncHandler(async (req, res) => {
   try {
     supplement = await updateSupplement(req.params.id, updates);
   } catch (err) {
+    if (err?.code === "DUPLICATE_SUPPLEMENT_NAME") {
+      throw new AppError(err.message || "A nutrition with this name already exists", 409);
+    }
     if (err?.name === "ConditionalCheckFailedException") throw new AppError("Nutrition not found", 404);
     throw err;
   }

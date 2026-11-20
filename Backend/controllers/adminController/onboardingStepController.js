@@ -11,7 +11,6 @@ const {
   onboardingStepLabel,
   buildOnboardingPersistUpdates,
   setCoachBodyAnalyticsAtGlanceStatus,
-  priorCanonicalStepsDone,
 } = require("../../utils/paidOnboardingHelpers");
 const {
   loadBodyAnalyticsDataFlags,
@@ -72,27 +71,21 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
 
   let nextStatus;
   let extraUserUpdates = {};
+  let clientDataReady = false;
   try {
     if (stepKey === "bodyAnalytics") {
       const flags = await loadBodyAnalyticsDataFlags(user.id);
-      const clientDataReady = isBodyAnalyticsClientDataReady(flags);
-      if (
-        status === "done"
-        && !clientDataReady
-        && !priorCanonicalStepsDone(user.paidOnboardingStepStatus, stepKey)
-      ) {
-        const err = new Error("Complete prior onboarding steps first");
-        err.name = "SequentialStepError";
-        throw err;
-      }
+      clientDataReady = isBodyAnalyticsClientDataReady(flags);
       const coachResult = setCoachBodyAnalyticsAtGlanceStatus(user.paidOnboardingStepStatus, status, {
         clientDataReady,
+        staffOverride: true,
       });
       nextStatus = coachResult.stepStatus;
       extraUserUpdates = { bodyAnalyticsGlanceExcluded: coachResult.bodyAnalyticsGlanceExcluded };
     } else {
+      // Staff At a Glance toggles are free — no sequential prerequisites.
       nextStatus = setCanonicalStepStatus(user.paidOnboardingStepStatus, stepKey, status, {
-        sequential: status === "done",
+        sequential: false,
       });
     }
   } catch (err) {
@@ -103,8 +96,16 @@ exports.patchUserOnboardingStepController = asyncHandler(async (req, res) => {
   }
 
   const previousStatus = user.paidOnboardingStepStatus;
+  const persistUpdates = buildOnboardingPersistUpdates(user, previousStatus, nextStatus);
+  // Staff force-done without client uploads must not hide body/photos/medical in the app —
+  // client still needs to upload before their wizard can advance.
+  if (stepKey === "bodyAnalytics" && status === "done" && !clientDataReady) {
+    delete persistUpdates.progressPhotosInAppEnabled;
+    delete persistUpdates.bodyMeasurementEnabled;
+    delete persistUpdates.medicalConditionsInAppEnabled;
+  }
   const updated = await updateUser(user.id, {
-    ...buildOnboardingPersistUpdates(user, previousStatus, nextStatus),
+    ...persistUpdates,
     ...extraUserUpdates,
   });
 

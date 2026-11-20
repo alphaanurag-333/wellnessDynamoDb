@@ -37,6 +37,7 @@ const {
   applyBodyAnalyticsWeightPhotoReview,
   photoAnglesAllApproved,
   buildOnboardingPersistUpdates,
+  buildProgressPhotosRejectAppUnlockUpdates,
   countCompletedSteps,
   normalizePaidOnboardingStepStatus,
 } = require("../../utils/paidOnboardingHelpers");
@@ -452,6 +453,7 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
 
   let onboarding = null;
   let weightResubmitOpened = false;
+  let progressPhotosResubmitOpened = false;
   try {
     let nextStatus = null;
     let persistExtra = {};
@@ -474,7 +476,12 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         bodyAnalytics: "pending",
         progressPhotos180: "pending",
       });
-      persistExtra = { paidOnboardingStep: "photos180" };
+      // Reject → Allowed in the app so the client can resubmit 180° photos.
+      persistExtra = {
+        paidOnboardingStep: "photos180",
+        ...buildProgressPhotosRejectAppUnlockUpdates(),
+      };
+      progressPhotosResubmitOpened = true;
     } else if (angle !== "weight") {
       nextStatus = applyBodyAnalyticsPhotoReview(user.paidOnboardingStepStatus, {
         angle,
@@ -487,6 +494,10 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
           photo: updated,
         });
       }
+      // Accept → keep Disabled in the app (already locked after the client upload).
+      if (action === "approved" && nextStatus) {
+        persistExtra = { ...persistExtra, progressPhotosInAppEnabled: false };
+      }
     }
     if (nextStatus) {
       const updates = buildOnboardingPersistUpdates(user, user.paidOnboardingStepStatus, nextStatus, persistExtra);
@@ -498,36 +509,55 @@ exports.reviewUserProgressPhotoController = asyncHandler(async (req, res) => {
         paidOnboardingCompleted: Boolean(saved?.paidOnboardingCompleted),
         completedStepsCount: countCompletedSteps(paidOnboardingStepStatus),
         bodyMeasurementEnabled: isBodyMeasurementEnabled(saved || user),
+        progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(saved || user),
       };
       notifyOnboardingWhatsAppTransitions({
         user: saved || user,
         previousStatus: user.paidOnboardingStepStatus,
         nextStatus: paidOnboardingStepStatus,
       });
+    } else if (action === "approved" && angle !== "weight" && user.progressPhotosInAppEnabled !== false) {
+      // Partial accept with no onboarding change: still keep Disabled in the app.
+      const saved = await updateUser(userId, { progressPhotosInAppEnabled: false });
+      onboarding = {
+        progressPhotosInAppEnabled: isProgressPhotosInAppEnabled(saved || { ...user, progressPhotosInAppEnabled: false }),
+      };
     }
   } catch (err) {
     console.error("Body analytics onboarding sync failed:", err?.message || err);
   }
 
   const label = PHOTO_ANGLE_LABELS[angle];
+  const progressPhotosInAppEnabled = onboarding?.progressPhotosInAppEnabled
+    ?? (progressPhotosResubmitOpened
+      ? true
+      : action === "approved" && angle !== "weight"
+        ? false
+        : isProgressPhotosInAppEnabled(user));
+  const bodyMeasurementEnabled = onboarding?.bodyMeasurementEnabled
+    ?? (weightResubmitOpened ? true : isBodyMeasurementEnabled(user));
   notifyClientProfileFromReq(req, userId, "body", "progressPhoto.reviewed", {
     photoId,
     angle,
     action,
+    progressPhotosInAppEnabled,
+    bodyMeasurementEnabled,
   });
   return res.status(200).json({
     status: true,
     message: rejectedAngleDay
-      ? "This day's 180° photos were rejected. The client can submit Front, Right, and Left again."
+      ? "This day's 180° photos were rejected. Progress photos are Allowed in the app so the client can submit Front, Right, and Left again."
       : action === "rejected" && angle === "weight"
         ? (weightResubmitOpened
-          ? "Weight photo rejected. The client can submit body measurements again in the app."
-          : "Weight photo rejected. Body measurements stay hidden in the app until you turn off “Disabled in the app”.")
+          ? "Weight photo rejected. Body measurements are Allowed in the app so the client can submit again."
+          : "Weight photo rejected.")
         : action === "rejected"
           ? `${label} photo rejected`
           : `${label} photo accepted`,
     angle,
     photo: updated,
+    progressPhotosInAppEnabled,
+    bodyMeasurementEnabled,
     ...(rejectedAngleDay ? { rejectedPhotos, rejectedMeasurements } : {}),
     ...(onboarding || {}),
   });

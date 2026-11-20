@@ -439,11 +439,11 @@ function PhotoReviewDialog({ photo, angle, action, reason, onReasonChange, busy,
         <p className="ua-cp-present-modal__body">
           {rejecting
             ? (rejectDayAngles
-              ? "Front, Right, and Left from this day are rejected together. The weight photo stays as-is. The client is sent back to the 180° page to submit the three angles again."
+              ? "Front, Right, and Left from this day are rejected together. The weight photo stays as-is. Progress photos switch to Allowed in the app so the client can submit the three angles again."
               : angle === "Weight"
-                ? "If body measurements are allowed in the app (Disabled in the app is off), the client can open the body measurement form and upload a new weight photo."
+                ? "Body measurements switch to Allowed in the app so the client can submit measures and a new weight photo."
                 : `The client is notified that this ${angle.toLowerCase()} photo was rejected and can upload a new one.`)
-            : `The client is notified that this ${angle.toLowerCase()} photo was accepted.`}
+            : `The client is notified that this ${angle.toLowerCase()} photo was accepted. Progress photos stay Disabled in the app.`}
         </p>
         {rejecting ? (
           <label className="ua-cp-present-request__field">
@@ -941,10 +941,11 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
   );
 
   const liveSyncTick = useCallback(async (payload) => {
-    if (!live || !userId || pollInFlightRef.current) return;
-    if (bodySocketBusy()) return;
+    if (!live || !userId) return;
 
-    // Instant UI from socket when the client uploads a 180° set (or coach toggles gates).
+    // Instant UI from socket when the client submits measurements / 180° photos (or coach toggles).
+    // Apply gate flips even if a history refetch is already in flight — otherwise
+    // bodyMeasurement.submitted can be dropped and “Allowed in the app” stays green.
     const userPatch = {};
     const metaPhotos = payload?.meta?.progressPhotosInAppEnabled;
     const photosSubmitted = payload?.action === "progressPhotos.submitted";
@@ -980,6 +981,9 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
       onUserUpdatedRef.current?.({ ...userRef.current, ...userPatch });
     }
 
+    // History refetch can wait if coach is mid-edit or another pull is running.
+    if (pollInFlightRef.current || bodySocketBusy()) return;
+
     pollInFlightRef.current = true;
     try {
       const pull = async () => {
@@ -1004,7 +1008,6 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
 
   useClientProfileInvalidation(CLIENT_PROFILE_SECTION_SOCKET_DOMAINS.body, liveSyncTick, {
     enabled: live,
-    shouldSkip: bodySocketBusy,
   });
   useClientProfileLiveSync(liveSyncTick, { enabled: live });
 
@@ -1425,21 +1428,42 @@ export function BodyAnalyticsSection({ user, onToast, onUserUpdated }) {
             if (result?.bodyMeasurementEnabled !== undefined) {
               setFeatureEnabled(Boolean(result.bodyMeasurementEnabled));
             }
+            if (result?.progressPhotosInAppEnabled !== undefined) {
+              setProgressPhotosInApp(Boolean(result.progressPhotosInAppEnabled));
+            }
             const status = result?.paidOnboardingStepStatus;
-            if (!status || !onUserUpdated) return;
+            const photosGate =
+              result?.progressPhotosInAppEnabled === true || result?.progressPhotosInAppEnabled === false
+                ? {
+                    progressPhotosInAppEnabled: Boolean(result.progressPhotosInAppEnabled),
+                    progressPhotosInAppEnabledRaw: Boolean(result.progressPhotosInAppEnabled),
+                  }
+                : {};
+            const bodyGate =
+              result?.bodyMeasurementEnabled === true || result?.bodyMeasurementEnabled === false
+                ? {
+                    bodyMeasurementEnabled: Boolean(result.bodyMeasurementEnabled),
+                    bodyMeasurementEnabledRaw: Boolean(result.bodyMeasurementEnabled),
+                  }
+                : {};
+            if (!onUserUpdated) return;
+            if (!status && !Object.keys(photosGate).length && !Object.keys(bodyGate).length) return;
             const done = Number(result.completedStepsCount);
             onUserUpdated({
               ...user,
-              paidOnboardingStepStatus: status,
-              paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
-              ...(result.paidOnboardingStep ? { paidOnboardingStep: result.paidOnboardingStep } : {}),
-              ...(result.bodyMeasurementEnabled === true
-                ? { bodyMeasurementEnabled: true, bodyMeasurementEnabledRaw: true }
+              ...(status
+                ? {
+                    paidOnboardingStepStatus: status,
+                    paidOnboardingCompleted: Boolean(result.paidOnboardingCompleted),
+                    ...(result.paidOnboardingStep ? { paidOnboardingStep: result.paidOnboardingStep } : {}),
+                    ...(Number.isFinite(done) ? {
+                      onboardingDone: done,
+                      onboardingPct: Math.round((done / 10) * 100),
+                    } : {}),
+                  }
                 : {}),
-              ...(Number.isFinite(done) ? {
-                onboardingDone: done,
-                onboardingPct: Math.round((done / 10) * 100),
-              } : {}),
+              ...bodyGate,
+              ...photosGate,
             });
           }}
           onClose={() => setPhotoAngle(null)}

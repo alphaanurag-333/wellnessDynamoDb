@@ -133,9 +133,6 @@ exports.createStaffOnboardingMeetingController = asyncHandler(async (req, res) =
   }
 
   dispatchOnboardingSlotsOfferedNotificationAsync({ userId, stepKey, meetingId: meeting.id });
-  notifyLaunchMeetingProfile(req, userId, stepKey, "onboardingMeeting.slotsOffered", {
-    meetingId: meeting?.id,
-  });
 
   return res.status(201).json({
     status: true,
@@ -248,10 +245,6 @@ exports.acceptOnboardingMeetingRequestController = asyncHandler(async (req, res)
     notifyProgramInitMeetingCoachConfirmedToUserAsync(user);
   }
 
-  notifyLaunchMeetingProfile(req, user.id, stepKey, "onboardingMeeting.accepted", {
-    meetingId: updated?.id || meeting.id,
-  });
-
   return res.status(200).json({
     status: true,
     message: "Requested time accepted",
@@ -270,10 +263,6 @@ exports.rejectOnboardingMeetingRequestController = asyncHandler(async (req, res)
     status: "slots_offered",
     ...mirrorRequestedSlots([]),
     holdExpiresAt: holdExpiresAtFrom(req.body?.hold || "24 hours"),
-  });
-
-  notifyLaunchMeetingProfile(req, meeting.userId, meeting.stepKey, "onboardingMeeting.rejected", {
-    meetingId: updated?.id || meeting.id,
   });
 
   return res.status(200).json({
@@ -323,9 +312,6 @@ exports.cancelStaffOnboardingMeetingController = asyncHandler(async (req, res) =
   assertStaffCanMutate(req);
   const { meeting } = await loadOwnedMeeting(req);
   const updated = await updateOnboardingMeeting(meeting.id, { status: "cancelled" });
-  notifyLaunchMeetingProfile(req, meeting.userId, meeting.stepKey, "onboardingMeeting.cancelled", {
-    meetingId: updated?.id || meeting.id,
-  });
   return res.status(200).json({
     status: true,
     message: "Meeting cancelled",

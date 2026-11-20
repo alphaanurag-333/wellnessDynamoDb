@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IR Wellness Admin Panel — Complete Manual</title>
+  <style>
+    :root {
+      --bg: #0f1f17;
+      --panel: #163126;
+      --card: #1c3d2f;
+      --line: #2f5a45;
+      --text: #eef6f1;
+      --muted: #a8c4b5;
+      --accent: #34a56a;
+      --accent-2: #f0a91b;
+      --warn: #ec7a45;
+      --info: #5e6ad2;
+      --client: #0d9488;
+      --coach: #7c3aed;
+      --admin: #c0392b;
+      --radius: 16px;
+      --shadow: 0 18px 50px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1f4a35 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #2a3d55 0%, transparent 50%),
+        var(--bg);
+      color: var(--text);
+    }
+    .shell {
+      max-width: 85%;
+      margin: 0 auto;
+      min-height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 18px 18px 12px;
+      gap: 14px;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand strong { font-size: 1.15rem; letter-spacing: .02em; }
+    .brand span { color: var(--muted); font-size: .9rem; }
+    .url {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      font-size: .85rem;
+      text-decoration: none;
+    }
+    .url b { color: var(--accent); font-weight: 600; }
+    .stage {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 14px;
+      min-height: 0;
+    }
+    @media (max-width: 980px) {
+      .stage { grid-template-columns: 1fr; }
+      .toc { max-height: 180px; }
+    }
+    .toc, .slide-card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%), var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .toc {
+      padding: 12px;
+      overflow: auto;
+    }
+    .toc h2 {
+      margin: 4px 8px 10px;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .toc button {
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 8px;
+      align-items: start;
+      font: inherit;
+    }
+    .toc button:hover { background: rgba(52,165,106,.12); color: var(--text); }
+    .toc button.active {
+      background: rgba(52,165,106,.22);
+      color: var(--text);
+      outline: 1px solid rgba(52,165,106,.45);
+    }
+    .toc .n {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: rgba(255,255,255,.06);
+      color: var(--accent);
+      font-size: .75rem; font-weight: 700;
+    }
+    .toc button.active .n { background: var(--accent); color: #062416; }
+    .toc .t { font-size: .86rem; line-height: 1.25; }
+    .slide-card {
+      padding: 18px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      gap: 14px;
+      min-height: 640px;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .pill {
+      font-size: .75rem;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(0,0,0,.18);
+    }
+    .pill.step { color: #d7ffe8; border-color: rgba(52,165,106,.5); background: rgba(52,165,106,.18); }
+    .pill.warn { color: #ffe3c8; border-color: rgba(240,169,27,.45); background: rgba(240,169,27,.14); }
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+      line-height: 1.2;
+    }
+    .lead { margin: 0; color: var(--muted); font-size: .98rem; max-width: 72ch; }
+    .body {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 14px;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .body { grid-template-columns: 1fr; }
+    }
+    .shot, .facts {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      overflow: hidden;
+      min-height: 280px;
+    }
+    .shot {
+      position: relative;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(135deg, rgba(52,165,106,.08), transparent 40%),
+        rgba(0,0,0,.25);
+    }
+    .shot img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      max-height: 460px;
+      background: #0a1510;
+    }
+    .shot.multi {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 36px 8px 8px;
+      place-items: stretch;
+    }
+    .shot.multi img { max-height: 220px; border-radius: 8px; }
+    .shot .placeholder {
+      padding: 28px;
+      text-align: center;
+      color: var(--muted);
+      max-width: 36ch;
+    }
+    .shot .placeholder strong { display: block; color: var(--text); margin-bottom: 8px; font-size: 1.05rem; }
+    .shot .badge {
+      position: absolute;
+      left: 12px; top: 12px;
+      background: rgba(6,36,22,.85);
+      border: 1px solid rgba(52,165,106,.4);
+      color: #b9f0d0;
+      font-size: .72rem;
+      padding: 5px 9px;
+      border-radius: 999px;
+    }
+    .facts { padding: 14px 16px; overflow: auto; }
+    .facts h3 {
+      margin: 0 0 10px;
+      font-size: .78rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .facts ol, .facts ul { margin: 0; padding-left: 1.15rem; }
+    .facts li { margin: 0 0 10px; line-height: 1.45; color: #d7e8de; }
+    .facts li strong { color: #fff; }
+    .source {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed rgba(94,106,210,.55);
+      background: rgba(94,106,210,.12);
+    }
+    .source .label {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #c5caf5;
+      margin-bottom: 6px;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .tag {
+      font-size: .72rem;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .tag.client { background: rgba(13,148,136,.2); color: #7ee7d8; }
+    .tag.coach { background: rgba(124,58,237,.2); color: #d2b4ff; }
+    .tag.admin { background: rgba(192,57,43,.2); color: #ffb4aa; }
+    .tag.api { background: rgba(52,165,106,.18); color: #9de8bf; }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    button.ctrl {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 600;
+    }
+    button.ctrl.primary {
+      background: linear-gradient(135deg, #2e9e5f, #34a56a);
+      border-color: transparent;
+      color: #062416;
+    }
+    button.ctrl:disabled { opacity: .4; cursor: not-allowed; }
+    .progress {
+      flex: 1;
+      min-width: 160px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #7ad0a1);
+      transition: width .25s ease;
+    }
+    footer {
+      color: var(--muted);
+      font-size: .8rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    kbd {
+      font: 600 .75rem ui-monospace, Consolas, monospace;
+      border: 1px solid var(--line);
+      border-bottom-width: 2px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(0,0,0,.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <strong>IR Wellness Admin Panel — Complete Manual</strong>
+        <span>Admin / Coach training · step-by-step · data sources explained</span>
+      </div>
+      <a class="url" href="https://admin.irwellness.in/dashboard" target="_blank" rel="noopener">
+        Live URL · <b>https://admin.irwellness.in/dashboard</b>
+      </a>
+    </header>
+
+    <div class="stage">
+      <aside class="toc" id="toc" aria-label="Manual chapters"></aside>
+      <section class="slide-card" aria-live="polite">
+        <div class="meta" id="meta"></div>
+        <div>
+          <h1 id="title"></h1>
+          <p class="lead" id="lead"></p>
+        </div>
+        <div class="body">
+          <div class="shot" id="shot"></div>
+          <div class="facts" id="facts"></div>
+        </div>
+        <div class="controls">
+          <div class="nav-btns">
+            <button class="ctrl" id="prevBtn" type="button">← Previous</button>
+            <button class="ctrl primary" id="nextBtn" type="button">Next →</button>
+            <button class="ctrl" id="playBtn" type="button">▶ Auto-play</button>
+          </div>
+          <div class="progress" aria-hidden="true"><i id="bar"></i></div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <span>Keyboard: <kbd>←</kbd> <kbd>→</kbd> · Auto-play ≈ video walkthrough</span>
+      <span id="pageLabel"></span>
+    </footer>
+  </div>
+
+  <script>
+    const slides = [
+      {
+        id: "intro",
+        chapter: "Overview",
+        title: "What is the Admin Console dsdsdsds?",
+        lead: "This manual shows Admins and Wellness Coaches where every screen’s data comes from — the client app, coach actions, or the Configs catalog.",
+        shot: "screenshots/02-dashboard.webp",
+        shotLabel: "Screenshot · Dashboard home",
+        shotNote: "Open https://admin.irwellness.in/dashboard — after login you land on Dashboard home.",
+        steps: [
+          "Production URL: <strong>https://admin.irwellness.in/dashboard</strong> (unauthenticated users redirect to /login).",
+          "Left sidebar modules: Dashboard, Users, Access, Teams, Referral Tree, Calendar, Configs, Pending, SOP, Contact.",
+          "Role decides what you see: <strong>Admin / WC / AWC / Trainee / Support</strong>.",
+          "Client profile menu depends on tier: HEAL = full, Seek/PWC = compact, Eagle = limited."
+        ],
+        source: "Auth token → /account/* APIs. Live client changes can refresh via the admin realtime socket.",
+        tags: ["admin", "coach", "api"]
+      },
+      {
+        id: "login",
+        chapter: "Login",
+        title: "Step 1 — Sign in (OTP or Password)",
+        lead: "Sign in to the Admin Console before opening the Dashboard. Screenshot: production login screen.",
+        shot: "screenshots/01-login.png",
+        shotLabel: "Screenshot · Login",
+        steps: [
+          "<strong>Password tab</strong>: registered mobile (+91) + password → Sign in.",
+          "<strong>OTP tab</strong>: 6-digit OTP via WhatsApp (send → verify).",
+          "Accepting the terms checkbox is required — Sign in stays disabled until then.",
+          "If MFA is enabled on the account, a Google Authenticator TOTP step appears next."
+        ],
+        source: "OTP: POST /account/auth/otp/send + verify · Password: POST /account/auth/login · MFA: /account/auth/login/totp. Brand logo/name come from Configs (app config).",
+        tags: ["admin", "coach", "api"]
+      },
+      {
+        id: "nav",
+        chapter: "Sidebar",
+        title: "Step 2 — Understand the left navigation",
+        lead: "Each nav item is filtered by permission + role. Admins get Configs/Access; WCs mostly see clients and pending work.",
+        shot: "screenshots/02-dashboard.webp",
+        shotLabel: "Screenshot · Left navigation",
+        shotNote: "Left sidebar is visible on every console page.",
+        steps: [
+          "<strong>Dashboard</strong> — stats, pending, leaderboard, revenue (permission-gated).",
+          "<strong>User Management</strong> — client list, create user, open profile.",
+          "<strong>Access Control</strong> — Super Admin only · roles/permissions.",
+          "<strong>Teams / Referral / Calendar / Configs / Pending / SOP / Contact</strong> — separate workflows."
+        ],
+        source: "NAV_ITEMS + permission slugs (console.dash.view, console.cl.view, …). View-as picker at the bottom previews each role.",
+        tags: ["admin", "coach"]
+      },
+      {
+        id: "dashboard",
+        chapter: "Dashboard",
+        title: "Step 3 — Dashboard: where the numbers come from",
+        lead: "Dashboard cards load from the live statistics API. Scope: Admin = Global, WC = assigned clients, AWC = team clients.",
+        shot: "screenshots/02-dashboard.webp",
+        shotLabel: "Screenshot · Dashboard",
+        shotNote: "Dashboard screenshot pending (login required).",
+        steps: [
+          "<strong>User / tier cards</strong> → GET /account/dashboard/statistics.",
+          "<strong>Client list snippets</strong> → GET /account/users (all) or scoped heal-users.",
+          "<strong>Program categories</strong> → health-concern catalog / config dropdowns.",
+          "<strong>Leaderboard</strong> → GET /account/dashboard/leaderboard?monthYear=.",
+          "<strong>Payments</strong> → GET /account/dashboard/payments.",
+          "<strong>Community</strong> (birthdays, champions) → statistics.community."
+        ],
+        source: "DashboardPage loads statistics + program categories + clients in parallel. Refresh pulls the latest numbers.",
+        tags: ["api", "coach", "admin"]
+      },
+      {
+        id: "users",
+        chapter: "Users",
+        title: "Step 4 — User Management",
+        lead: "Manage the client roster here: create users, assign coaches, convert tiers, archive.",
+        shot: "screenshots/05-users.webp",
+        shotLabel: "Screenshot · User Management",
+        shotNote: "Users list screenshot pending.",
+        steps: [
+          "List data: <strong>GET /account/users</strong> (admin scope) or scoped heal-users.",
+          "Tabs: Active / Eagle / Maintenance / Archived filters.",
+          "<strong>Create user</strong>: POST /account/users — name, DOB, phone, address, primary health concern, referral.",
+          "Open a row to reach the client profile → /users/{uuid}."
+        ],
+        source: "Health concern options come from Configs/catalog. Coach assignment APIs: assign / unassign / reassign coach.",
+        tags: ["admin", "coach", "api"]
+      },
+      {
+        id: "profile-rules",
+        chapter: "Client profile",
+        title: "Step 5 — Client profile menu rules",
+        lead: "Even on the same URL /users/{id}, the menu changes by client type — critical for understanding requirements.",
+        shot: "screenshots/06-client-menu-full.webp",
+        shotLabel: "Screenshot · HEAL full menu",
+        shotNote: "Compare with SEEK compact menu (Personal + Consultation + Energy Exchange only).",
+        steps: [
+          "<strong>HEAL / Maintenance</strong>: full menu (At a Glance → Gut Reset).",
+          "<strong>Seek / PWC</strong>: Personal + Consultation + Energy Exchange only.",
+          "<strong>Eagle</strong>: Personal, Internal, Food, Nutritions, Counselling, Exchange.",
+          "Access Control permissions can also hide individual sections."
+        ],
+        source: "getClientProfileDefinition() in userDetailData.js + filterClientProfileMenu().",
+        tags: ["coach", "admin"]
+      },
+      {
+        id: "glance",
+        chapter: "At a Glance",
+        title: "Step 6 — At a Glance",
+        lead: "The coach’s daily cockpit: onboarding progress, daily metrics, supplements snapshot, review history.",
+        shot: "screenshots/08-at-a-glance.webp",
+        shotLabel: "Screenshot · At a Glance",
+        shotNote: "At a Glance screenshot pending.",
+        steps: [
+          "Data: <strong>GET /account/users/{id}/at-a-glance</strong> + onboarding APIs.",
+          "<strong>Client app</strong> supplies: personal/body steps, meal/water/BMS daily numbers.",
+          "<strong>Coach</strong> actions: mark steps, schedule meetings, push reminders, write coach insight notes.",
+          "Protein/Water link to Food; Steps/Meditation link to BMS."
+        ],
+        source: "Live sync: client app changes can refresh via the admin realtime socket.",
+        tags: ["client", "coach", "api"]
+      },
+      {
+        id: "personal",
+        chapter: "Personal",
+        title: "Step 7 — Personal Details",
+        lead: "PII and program identity. WhatsApp OTP is app-only — not editable in the console.",
+        shot: "screenshots/07-personal-details.webp",
+        shotLabel: "Screenshot · Personal Details",
+        shotNote: "Personal Details screenshot pending.",
+        steps: [
+          "Load/save: GET/PATCH /account/users/{id} (personal fields).",
+          "<strong>Coach/Admin</strong>: name, DOB, gender, phone, address, health concern, journey tokens (permission-gated).",
+          "<strong>Client</strong>: dietary preference etc. from the app; email is generally read-only.",
+          "Tier / coach badges come from the user record + assignment APIs."
+        ],
+        source: "Primary health concern from catalog; referral fields from referral-tree / user patch.",
+        tags: ["client", "coach", "admin"]
+      },
+      {
+        id: "body",
+        chapter: "Body",
+        title: "Step 8 — Body Analytics",
+        lead: "Weight, target, progress photos, and measurement toggles.",
+        shot: "screenshots/09-body-analytics.webp",
+        shotLabel: "Screenshot · Body Analytics",
+        shotNote: "Body Analytics screenshot pending.",
+        steps: [
+          "APIs: heal-users body-analytics + photo review endpoints.",
+          "<strong>Client</strong>: logs weight/photos only when the coach has toggled the app features ON.",
+          "<strong>Coach</strong>: set target weight, enable measurements/photos, approve/reject photos.",
+          "Rejected photos show in the client app with feedback."
+        ],
+        source: "Settings toggles control the app gates — without enable, the client cannot submit.",
+        tags: ["client", "coach", "api"]
+      },
+      {
+        id: "medical",
+        chapter: "Medical",
+        title: "Step 9 — Medical Conditions (HEAL)",
+        lead: "Hidden on free/Seek compact profiles. Example: Karishma Mhatre (HEAL).",
+        shot: "screenshots/15-medical-karishma.webp",
+        shotLabel: "Screenshot · Medical Conditions · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — paid onboarding medical questionnaire.",
+        steps: [
+          "Client fills the medical form in the app.",
+          "Coach: enable the section in-app + approve the submission.",
+          "API: medical-conditions get/settings/approve under heal-users."
+        ],
+        source: "HEAL/paid journey requirement — do not show on consultancy-only clients.",
+        tags: ["client", "coach"]
+      },
+      {
+        id: "internal",
+        chapter: "Internal",
+        title: "Step 10 — Internal Parameters (labs)",
+        lead: "Blood reports + test recommendations. Catalog comes from Configs → Test Catalog. Example: Karishma Mhatre.",
+        shot: "screenshots/16-internal-karishma.webp",
+        shotLabel: "Screenshot · Internal Parameters · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — recommended tests + report cycle.",
+        steps: [
+          "<strong>Client</strong>: upload lab reports (when submission lock is OFF).",
+          "<strong>Coach</strong>: recommend tests → publish (WhatsApp + app), review/AI-analyze reports, toggle lock.",
+          "Test list comes from Configs App → Test Catalog."
+        ],
+        source: "onboarding/lab + test recommendation APIs; catalog via admin test-catalog routes.",
+        tags: ["client", "coach", "api"]
+      },
+      {
+        id: "launch",
+        chapter: "LAUNCH",
+        title: "Step 11 — LAUNCH assessment",
+        lead: "Coach-led assessment; scores and focus points publish to the client app. Example: Karishma Mhatre.",
+        shot: "screenshots/17-launch-karishma.webp",
+        shotLabel: "Screenshot · LAUNCH · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — lifestyle score + meeting.",
+        steps: [
+          "Coach runs/edits the assessment.",
+          "Publish score + focus points → client app.",
+          "Prakruti assessment may be linked via separate APIs.",
+          "Meeting scheduling connects to Calendar."
+        ],
+        source: "launch-assessment + prakruti APIs under heal-users / onboarding.",
+        tags: ["coach", "client"]
+      },
+      {
+        id: "food",
+        chapter: "Food",
+        title: "Step 12 — Food & Water Tracking",
+        lead: "Daily meals/macros/water come from the client app; the coach enables the diet plan.",
+        shot: "screenshots/10-food-water.webp",
+        shotLabel: "Screenshot · Food & Water",
+        shotNote: "Food & Water screenshot pending.",
+        steps: [
+          "<strong>Client</strong>: meal pics + water logs.",
+          "<strong>Coach</strong>: turn diet plan ON, set macro/goal mode, review/edit meals (permission).",
+          "Diet plan options are assigned from the Diet Plan Catalog (Configs)."
+        ],
+        source: "meal-tracking + water-tracking APIs; pending meal pics also appear on Dashboard/Pending.",
+        tags: ["client", "coach", "api"]
+      },
+      {
+        id: "bms",
+        chapter: "BMS",
+        title: "Step 13 — Body, Mind & Soul",
+        lead: "Steps, meditation, pranayam, exercise, sleep/HR tracking. Example: Karishma Mhatre.",
+        shot: "screenshots/18-bms-karishma.webp",
+        shotLabel: "Screenshot · Body, Mind & Soul · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — step tracking + BMS tabs.",
+        steps: [
+          "<strong>Client</strong>: daily BMS logs in the app.",
+          "<strong>Coach</strong>: step goals, sleep/HR visibility toggles.",
+          "At a Glance metrics are fed from here."
+        ],
+        source: "bmsTrackingApi — steps/sleep/heart-rate endpoints.",
+        tags: ["client", "coach"]
+      },
+      {
+        id: "nutritions",
+        chapter: "Nutritions",
+        title: "Step 14 — Nutritions (supplements)",
+        lead: "Recommendation + dosage + order fulfilment are coach-driven; adherence comes from the client app. Example: Karishma Mhatre.",
+        shot: "screenshots/14-nutritions-karishma.webp",
+        shotLabel: "Screenshot · Nutritions · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — recommendation + order history.",
+        steps: [
+          "Supplement pool from Configs Nutrition Bank / catalog.",
+          "Coach recommend → publish dosage → place/track order.",
+          "Client ‘taken’ states sync from the app."
+        ],
+        source: "supplementAssignmentApi; pending orders surface on Dashboard ops overdue / Pending Tasks.",
+        tags: ["coach", "client", "api"]
+      },
+      {
+        id: "health",
+        chapter: "Health Progress",
+        title: "Step 15 — Health Progress",
+        lead: "Glucose, BP, weight pics, cycle — each tracker opens via a coach gate. Example: Karishma Mhatre.",
+        shot: "screenshots/19-health-progress-karishma.webp",
+        shotLabel: "Screenshot · Health Progress · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — trackers + glucose panel.",
+        steps: [
+          "Coach enables each tracker (glucose/BP/…) in the app.",
+          "Client uploads only when the gate is open.",
+          "Saturday vs coach-sourced upload rules are defined in code."
+        ],
+        source: "healthProgressApi settings + uploads.",
+        tags: ["coach", "client"]
+      },
+      {
+        id: "reflection",
+        chapter: "Reflection",
+        title: "Step 16 — Daily Reflection form",
+        lead: "Client fills the daily form; coach monitors history. Example: Karishma Mhatre.",
+        shot: "screenshots/20-reflection-karishma.webp",
+        shotLabel: "Screenshot · Daily Reflection · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — daily check-in + activity gates.",
+        steps: [
+          "Form questions/settings come from the reflection bank / API.",
+          "Client daily submit → coach read-only/history view."
+        ],
+        source: "dailyReflectionApi.",
+        tags: ["client", "coach"]
+      },
+      {
+        id: "rx",
+        chapter: "Prescription",
+        title: "Step 17 — Wellness Prescription",
+        lead: "Choose points from the catalog and assign/publish them to the client. Example: Karishma Mhatre.",
+        shot: "screenshots/21-prescription-karishma.webp",
+        shotLabel: "Screenshot · Wellness Prescription · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — protocol editor + history.",
+        steps: [
+          "Catalog: GET wellness-prescriptions (Configs RX bank).",
+          "Assign: POST heal-users/.../wellness-prescriptions.",
+          "Client sees the active prescription in the app."
+        ],
+        source: "wellnessPrescriptionAssignmentApi + Configs app-rx-bank.",
+        tags: ["coach", "client", "api"]
+      },
+      {
+        id: "presentable",
+        chapter: "Presentable",
+        title: "Step 18 — Presentable Pics & commitment",
+        lead: "Before/after photos + commitment letter review loop.",
+        shot: "screenshots/11-presentable.webp",
+        shotLabel: "Screenshot · Presentable Pics",
+        shotNote: "Presentable screenshot pending.",
+        steps: [
+          "Client uploads pics/letter in the app.",
+          "Coach request / approve / reject / feature toggle.",
+          "Commitment letter templates from My Content / Configs."
+        ],
+        source: "onboarding presentable + commitment letter review APIs.",
+        tags: ["client", "coach"]
+      },
+      {
+        id: "exchange",
+        chapter: "Energy Exchange",
+        title: "Step 19 — Energy Exchange (billing)",
+        lead: "Programs, checkout, invoices, FY subscription — payment happens in the client app. Example: Karishma Mhatre.",
+        shot: "screenshots/22-exchange-karishma.webp",
+        shotLabel: "Screenshot · Energy Exchange · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — FY subscription + payment history.",
+        steps: [
+          "Coach enables program / triggers checkout / sends invoice WhatsApp.",
+          "Client payment in app → Dashboard Payments feed.",
+          "Program amounts from Configs App → subscriptions / consultancy amount."
+        ],
+        source: "energyExchange + appProgram + subscription FY APIs.",
+        tags: ["coach", "client", "admin", "api"]
+      },
+      {
+        id: "counselling",
+        chapter: "Counselling",
+        title: "Step 20 — Counselling sessions",
+        lead: "Tracks + slots; also visible on Calendar.",
+        shot: "screenshots/12-counselling.webp",
+        shotLabel: "Screenshot · Counselling",
+        shotNote: "Counselling screenshot pending.",
+        steps: [
+          "Client requests/books from the app.",
+          "Coach accept/reject/update track.",
+          "Overdue counselling appears in Pending Tasks + Dashboard pending groups."
+        ],
+        source: "counsellingApi / heal consultancy tracks; Calendar maps the same tracks.",
+        tags: ["client", "coach", "api"]
+      },
+      {
+        id: "protocol-gut",
+        chapter: "Protocol & Gut",
+        title: "Step 21 — Protocol Settings & Gut Reset",
+        lead: "Coach configures protocol/gut cycles; client follows in the app. Example: Karishma Mhatre.",
+        shot: "screenshots/23-protocol-karishma.webp",
+        shot2: "screenshots/24-gut-karishma.webp",
+        shotLabel: "Screenshots · Protocol Settings + Gut Reset · Karishma Mhatre",
+        shotNote: "Karishma Mhatre — Protocol Settings and Gut Reset.",
+        steps: [
+          "Protocol: protocolSettingsApi (diet permission).",
+          "Gut Reset: gutResetApi cycles.",
+          "Stale gut reset may flag on Dashboard stale-records."
+        ],
+        source: "HEAL workspace sections — generally not on compact Seek/PWC profiles.",
+        tags: ["coach", "client"]
+      },
+      {
+        id: "ops",
+        chapter: "Ops modules",
+        title: "Step 22 — Access, Teams, Calendar, Pending…",
+        lead: "Remaining sidebar modules — who uses them and where data comes from.",
+        shot: "screenshots/03-pending-tasks.webp",
+        shotLabel: "Screenshot · Pending Tasks",
+        shotNote: "Also captured: Access Control, Calendar (see screenshots folder).",
+        steps: [
+          "<strong>Access Control</strong>: roles/permissions matrix (Super Admin) — accessApi. Shot: screenshots/04-access-control.webp",
+          "<strong>Teams</strong>: staff roster, passwords/TOTP — access members APIs.",
+          "<strong>Referral Tree</strong>: GET /account/referral-tree/overview.",
+          "<strong>Calendar</strong>: onboarding meetings + counselling tracks. Shot: screenshots/13-calendar.webp",
+          "<strong>Pending Tasks</strong>: GET /account/dashboard/pending-tasks (screenshot on left).",
+          "<strong>SOP</strong>: /account/sops library · <strong>Contact</strong>: web form leads."
+        ],
+        source: "Configs (/configs) App/Web/Common catalogs CMS — banners, banks, legal, BMS libraries, etc.",
+        tags: ["admin", "coach", "api"]
+      },
+      {
+        id: "workflow",
+        chapter: "Daily workflow",
+        title: "Step 23 — Coach daily workflow (recommended)",
+        lead: "Keep requirements clear: Pending first, then client profile, then Calendar/billing close-out.",
+        shot: "screenshots/03-pending-tasks.webp",
+        shotLabel: "Screenshot · Start at Pending Tasks",
+        shotNote: "Workflow summary — screenshots from previous steps.",
+        steps: [
+          "Login → check <strong>Pending Tasks</strong> for overdue counselling / meals / orders / meetings.",
+          "User Management → open client → <strong>At a Glance</strong> onboarding check.",
+          "Whatever the client submitted in the app (meals, labs, pics) — review/approve in that section.",
+          "Whatever the coach publishes (prescription, dosage, LAUNCH, diet gate) — then appears in the client app.",
+          "Confirm Calendar → close Energy Exchange / Nutritions orders."
+        ],
+        source: "Rule of thumb: Client submits · Coach enables/approves/publishes · Configs supply catalogs.",
+        tags: ["coach", "admin"]
+      }
+    ];
+
+    const toc = document.getElementById("toc");
+    const meta = document.getElementById("meta");
+    const title = document.getElementById("title");
+    const lead = document.getElementById("lead");
+    const shot = document.getElementById("shot");
+    const facts = document.getElementById("facts");
+    const bar = document.getElementById("bar");
+    const pageLabel = document.getElementById("pageLabel");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const playBtn = document.getElementById("playBtn");
+
+    let index = 0;
+    let timer = null;
+
+    function tagHtml(tags = []) {
+      return tags.map((t) => `<span class="tag ${t}">${t}</span>`).join("");
+    }
+
+    function render() {
+      const s = slides[index];
+      toc.innerHTML = `<h2>Chapters</h2>` + slides.map((item, i) => `
+        <button type="button" class="${i === index ? "active" : ""}" data-i="${i}">
+          <span class="n">${String(i + 1).padStart(2, "0")}</span>
+          <span class="t">${item.title.replace(/^Step \d+ — /, "")}</span>
+        </button>
+      `).join("");
+
+      meta.innerHTML = `
+        <span class="pill step">Step ${index + 1} / ${slides.length}</span>
+        <span class="pill">${s.chapter}</span>
+        ${s.shot ? '<span class="pill">Screenshot attached</span>' : '<span class="pill warn">Screenshot after login</span>'}
+      `;
+      title.textContent = s.title;
+      lead.innerHTML = s.lead;
+
+      if (s.shot) {
+        shot.classList.toggle("multi", Boolean(s.shot2));
+        shot.innerHTML = `    
+          <span class="badge">${s.shotLabel || "Screenshot"}</span>
+          <img src="${s.shot}" alt="${s.title}" />
+          ${s.shot2 ? `<img src="${s.shot2}" alt="${s.title} (2)" />` : ""}
+        `;
+      } else {
+        shot.classList.remove("multi");
+        shot.innerHTML = `
+          <span class="badge">Pending capture</span>
+          <div class="placeholder">
+            <strong>${s.chapter}</strong>
+            ${s.shotNote || "Live screenshot will appear here after login."}
+          </div>
+        `;
+      }
+
+      facts.innerHTML = `
+        <h3>Step-by-step</h3>
+        <ol>${s.steps.map((x) => `<li>${x}</li>`).join("")}</ol>
+        <div class="source">
+          <div class="label">Where the data comes from</div>
+          <div>${s.source}</div>
+          <div class="tags">${tagHtml(s.tags)}</div>
+        </div>
+      `;
+
+      bar.style.width = `${((index + 1) / slides.length) * 100}%`;
+      pageLabel.textContent = `${index + 1} of ${slides.length}`;
+      prevBtn.disabled = index === 0;
+      nextBtn.disabled = index === slides.length - 1;
+
+      toc.querySelectorAll("button[data-i]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          index = Number(btn.dataset.i);
+          stopPlay();
+          render();
+        });
+      });
+    }
+
+    function stopPlay() {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+        playBtn.textContent = "▶ Auto-play";
+      }
+    }
+
+    function startPlay() {
+      stopPlay();
+      playBtn.textContent = "❚❚ Pause";
+      timer = setInterval(() => {
+        if (index >= slides.length - 1) {
+          stopPlay();
+          return;
+        }
+        index += 1;
+        render();
+      }, 8000);
+    }
+
+    prevBtn.addEventListener("click", () => {
+      stopPlay();
+      if (index > 0) { index -= 1; render(); }
+    });
+    nextBtn.addEventListener("click", () => {
+      stopPlay();
+      if (index < slides.length - 1) { index += 1; render(); }
+    });
+    playBtn.addEventListener("click", () => {
+      if (timer) stopPlay();
+      else startPlay();
+    });
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") nextBtn.click();
+      if (e.key === "ArrowLeft") prevBtn.click();
+    });
+
+    render();
+  </script>
+</body>
+</html>

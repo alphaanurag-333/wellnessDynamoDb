@@ -10,7 +10,6 @@ const { normalizeMediaField, resolvePublicUrl } = require("../utils/s3");
 const {
   listByPartitionKey,
   buildContainsFilter,
-  sortByCreatedAtDesc,
 } = require("../utils/dynamoList");
 
 const TABLE = "Supplement";
@@ -28,6 +27,28 @@ function normalizeNumber(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Case-insensitive uniqueness key for nutrition names. */
+function normalizeNameKey(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function sortByNameAsc(a, b) {
+  const byName = String(a?.name || "").localeCompare(String(b?.name || ""), undefined, {
+    sensitivity: "base",
+  });
+  if (byName !== 0) return byName;
+  return String(a?.id || "").localeCompare(String(b?.id || ""));
+}
+
+function duplicateNameError(name) {
+  const err = new Error(`A nutrition named "${String(name || "").trim()}" already exists`);
+  err.code = "DUPLICATE_SUPPLEMENT_NAME";
+  return err;
+}
+
 function withLegacyId(item) {
   if (!item) return null;
   return { ...item, _id: item.id };
@@ -40,6 +61,37 @@ function toPublicSupplement(item) {
   return row;
 }
 
+async function listAllSupplementsUnpaged() {
+  const { items } = await listByPartitionKey({
+    tableName: TABLE,
+    indexName: "StatusCreatedAtIndex",
+    partitionKeyValue: undefined,
+    scanIndexForward: true,
+    page: 1,
+    limit: Number.MAX_SAFE_INTEGER,
+    maxLimit: Number.MAX_SAFE_INTEGER,
+  });
+  return items || [];
+}
+
+async function findSupplementByName(name, { excludeId } = {}) {
+  const key = normalizeNameKey(name);
+  if (!key) return null;
+  const exclude = String(excludeId || "").trim();
+  const rows = await listAllSupplementsUnpaged();
+  return (
+    rows.find((row) => {
+      if (exclude && String(row.id || "") === exclude) return false;
+      return normalizeNameKey(row.name) === key;
+    }) || null
+  );
+}
+
+async function assertUniqueSupplementName(name, { excludeId } = {}) {
+  const existing = await findSupplementByName(name, { excludeId });
+  if (existing) throw duplicateNameError(name);
+}
+
 async function createSupplement({
   name,
   description,
@@ -49,10 +101,13 @@ async function createSupplement({
   image,
   status = "active",
 }) {
+  const trimmedName = String(name || "").trim();
+  await assertUniqueSupplementName(trimmedName);
+
   const now = new Date().toISOString();
   const item = {
     id: uuidv4(),
-    name: String(name || "").trim(),
+    name: trimmedName,
     description: String(description || "").trim(),
     packSize: normalizeNumber(packSize),
     unit: String(unit || "").trim(),
@@ -89,6 +144,11 @@ async function updateSupplement(id, updates) {
     ([k, v]) => !blockedFields.has(k) && v !== undefined
   );
   if (entries.length === 0) throw new Error("No valid fields provided for update");
+
+  const nameUpdate = entries.find(([k]) => k === "name");
+  if (nameUpdate) {
+    await assertUniqueSupplementName(nameUpdate[1], { excludeId: id });
+  }
 
   const exprNames = {};
   const exprValues = { ":updatedAt": new Date().toISOString() };
@@ -133,11 +193,11 @@ async function listActiveSupplements() {
     tableName: TABLE,
     indexName: "StatusCreatedAtIndex",
     partitionKeyValue: "active",
-    scanIndexForward: false,
+    scanIndexForward: true,
     page: 1,
     limit: 500,
     maxLimit: 500,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: sortByNameAsc,
   });
   return items.map((row) => toPublicSupplement(row)).filter(Boolean);
 }
@@ -174,11 +234,11 @@ async function listSupplements({ page = 1, limit = 10, status, search } = {}) {
     exprValues: searchFilter.exprValues,
     search: searchFilter.search,
     searchFields: searchFilter.searchFields,
-    scanIndexForward: false,
+    scanIndexForward: true,
     page,
     limit,
     maxLimit: 200,
-    sortFn: sortByCreatedAtDesc,
+    sortFn: sortByNameAsc,
   });
 
   return {
@@ -191,9 +251,11 @@ module.exports = {
   SUPPLEMENT_ALLOWED_STATUS,
   SUPPLEMENT_ALLOWED_UNITS,
   normalizeStatus,
+  normalizeNameKey,
   createSupplement,
   getSupplementById,
   getSupplementRecordById,
+  findSupplementByName,
   updateSupplement,
   deleteSupplement,
   listSupplements,

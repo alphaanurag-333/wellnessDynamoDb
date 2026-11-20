@@ -9,12 +9,15 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  hardDeleteArchivedUser,
   listUsers,
   listArchivedUsers,
   listUsersByParentCoachId,
   listUsersByAssignedCoachId,
   isPresentablePicsEnabled,
+  isDeletedUser,
 } = require("../../models/userModel");
+const { deleteReferralCodeRecord } = require("../../models/referralCodeModel");
 const { getAccountById, getMembership } = require("../../models/accountModel");
 const {
   syncHealthProgressAfterProfileSelections,
@@ -334,6 +337,43 @@ exports.deleteUserController = asyncHandler(async (req, res) => {
   }
 
   return res.status(200).json({ status: true, message: "User archived successfully" });
+});
+
+/** Admin-only: permanently remove an already-archived client from DynamoDB. */
+exports.permanentlyDeleteArchivedUserController = asyncHandler(async (req, res) => {
+  const current = await getUserById(req.params.id);
+  if (!current) throw new AppError("User not found", 404);
+  if (!isDeletedUser(current)) {
+    throw new AppError("Only archived users can be permanently deleted", 400);
+  }
+
+  if (current.profileImage) await deleteStoredMedia(current.profileImage);
+  if (current.presentablePic) await deleteStoredMedia(current.presentablePic);
+  if (Array.isArray(current.presentablePicHistory)) {
+    for (const item of current.presentablePicHistory) {
+      if (item?.url) await deleteStoredMedia(item.url);
+    }
+  }
+
+  const referralCode = String(current.referralCode || "").trim();
+  if (referralCode) {
+    try {
+      await deleteReferralCodeRecord(referralCode);
+    } catch (err) {
+      if (err?.name !== "ConditionalCheckFailedException") throw err;
+    }
+  }
+
+  try {
+    await hardDeleteArchivedUser(req.params.id);
+  } catch (err) {
+    if (err?.name === "ConditionalCheckFailedException") {
+      throw new AppError("Only archived users can be permanently deleted", 400);
+    }
+    throw err;
+  }
+
+  return res.status(200).json({ status: true, message: "Archived user permanently deleted" });
 });
 
 exports.patchPresentablePicsSettingsController = asyncHandler(async (req, res) => {

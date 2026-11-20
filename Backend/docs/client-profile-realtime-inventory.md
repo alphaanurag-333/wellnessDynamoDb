@@ -65,6 +65,11 @@ Maps Admin client-profile menu sections to fetch APIs, polling, write paths, and
 
 - `updateUserPersonalDetails` staff + user profile mutations affecting `fetchUser`
 
+### coach / welcomeVideo (mobile Profile Set Up)
+
+- Staff/coach intro writes: `controllers/accountController/accountAdminController.js` — `PATCH .../coach-content` and `PATCH .../me/coach-content` when intro fields change (upload, link, cover, live, gallery). Letter-only patches do not emit.
+- Fan-out: `notifyCoachWelcomeVideoUpdated` → `listUsersByParentCoachId` → one `clientProfile.changed` per client room (`domain: "coach"`, `action: "welcomeVideo.updated"`, `source: "staff"`).
+
 ## Event contract
 
 ```json

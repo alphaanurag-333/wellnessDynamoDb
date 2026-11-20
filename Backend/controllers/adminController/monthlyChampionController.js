@@ -14,8 +14,29 @@ const {
   getMonthlyChampionPostCommentRecordById,
   countCommentsForPost,
 } = require("../../models/monthlyChampionPostCommentModel");
-const { getUserById, toPublicUser } = require("../../models/userModel");
+const { getUserById, toPublicUser, isDeletedUser } = require("../../models/userModel");
 const { runMonthlyChampionJob } = require("../../services/monthlyChampionJobService");
+
+/** Live clients only — archived (deleted) users stay off champion lists. */
+function isLiveChampionUser(user) {
+  return Boolean(user) && !isDeletedUser(user);
+}
+
+function pageRows(rows, page, limit) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 10, 200));
+  const safePage = Math.max(1, Number(page) || 1);
+  const total = rows.length;
+  const start = (safePage - 1) * safeLimit;
+  return {
+    rows: rows.slice(start, start + safeLimit),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.max(1, Math.ceil(total / safeLimit) || 1),
+    },
+  };
+}
 
 async function enrichMonthlyChampionPost(post) {
   if (!post) return null;
@@ -46,25 +67,37 @@ exports.listMonthlyChampionPostsController = asyncHandler(async (req, res) => {
     }
   }
 
-  const data = await listMonthlyChampionPosts({ page, limit, status, monthYear });
+  // Load the full candidate set first so archived clients can be dropped before paging.
+  const data = await listMonthlyChampionPosts({
+    page: 1,
+    limit: 500,
+    status,
+    monthYear,
+  });
 
-  const monthlyChampionPosts = await Promise.all(
+  const enriched = await Promise.all(
     data.monthlyChampionPosts.map(async (post) => {
       const user = await getUserById(post.userId);
       const commentCount = await countCommentsForPost(post.id);
-      return {
-        ...post,
-        user: user ? toPublicUser(user) : null,
-        commentCount,
-      };
+      return { post, user, commentCount };
     })
   );
 
+  const eligible = enriched
+    .filter(({ user }) => isLiveChampionUser(user))
+    .map(({ post, user, commentCount }) => ({
+      ...post,
+      user: toPublicUser(user),
+      commentCount,
+    }));
+
+  const paged = pageRows(eligible, page, limit);
+
   return res.status(200).json({
     status: true,
-    monthlyChampionPosts,
+    monthlyChampionPosts: paged.rows,
     ...(isAdminLike ? {} : { monthYear: monthYear || null }),
-    pagination: data.pagination,
+    pagination: paged.pagination,
   });
 });
 

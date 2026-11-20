@@ -6,7 +6,10 @@ const {
   normalizeHealthProgressFeatures,
   isGeneralWellbeingConcernLabel,
 } = require("../utils/healthProgressHelpers");
-const { reconcileHealthProgressFeatures } = require("../services/healthProgressProgramTrackerService");
+const {
+  reconcileHealthProgressFeatures,
+  applyCoachHealthProgressFeatures,
+} = require("../services/healthProgressProgramTrackerService");
 
 describe("purchased program health trackers", () => {
   it("maps fat loss, diabetes, pcos, and hypertension programs", () => {
@@ -99,6 +102,40 @@ describe("purchased program health trackers", () => {
     assert.equal(next.glucose, false);
   });
 
+  it("keeps coach Live-in-app toggles when locked even if labels disagree", () => {
+    const user = {
+      gender: "female",
+      healthProgressFeaturesLockedByCoach: true,
+      healthProgressFeatures: normalizeHealthProgressFeatures({
+        weightPic: true,
+        glucose: false,
+        bloodPressure: true,
+        menstrualCycle: true,
+        conditionComparison: true,
+      }),
+    };
+    const next = reconcileHealthProgressFeatures(user, ["Diabetes Reversal"]);
+    assert.equal(next.weightPic, true);
+    assert.equal(next.glucose, false);
+    assert.equal(next.bloodPressure, true);
+    assert.equal(next.menstrualCycle, true);
+    assert.equal(next.conditionComparison, true);
+  });
+
+  it("still gender-gates menstrual when coach toggles are locked", () => {
+    const user = {
+      gender: "male",
+      healthProgressFeaturesLockedByCoach: true,
+      healthProgressFeatures: normalizeHealthProgressFeatures({
+        menstrualCycle: true,
+        glucose: true,
+      }),
+    };
+    const next = reconcileHealthProgressFeatures(user, ["PCOS & Hormonal Balance Program"]);
+    assert.equal(next.menstrualCycle, false);
+    assert.equal(next.glucose, true);
+  });
+
   it("turns on the concern and matching wellness-journey trackers after purchase", () => {
     assert.deepEqual(trackerFeatureKeysForProgramLabel("fat_loss"), ["weightPic"]);
     assert.deepEqual(trackerFeatureKeysForProgramLabel("diabetes_reversal"), ["glucose"]);
@@ -114,5 +151,35 @@ describe("purchased program health trackers", () => {
     assert.equal(next.bloodPressure, false);
     assert.equal(next.menstrualCycle, false);
     assert.equal(next.conditionComparison, false);
+  });
+
+  it("lets coach force-enable or force-disable any tracker except menstrual for non-girls", () => {
+    const enabled = applyCoachHealthProgressFeatures(
+      { gender: "female" },
+      {
+        weightPic: true,
+        glucose: false,
+        bloodPressure: false,
+        menstrualCycle: true,
+        conditionComparison: true,
+      }
+    );
+    assert.equal(enabled.weightPic, true);
+    assert.equal(enabled.glucose, false);
+    assert.equal(enabled.menstrualCycle, true);
+    assert.equal(enabled.conditionComparison, true);
+
+    const male = applyCoachHealthProgressFeatures(
+      { gender: "male" },
+      {
+        weightPic: false,
+        glucose: true,
+        menstrualCycle: true,
+        conditionComparison: false,
+      }
+    );
+    assert.equal(male.weightPic, false);
+    assert.equal(male.glucose, true);
+    assert.equal(male.menstrualCycle, false);
   });
 });
