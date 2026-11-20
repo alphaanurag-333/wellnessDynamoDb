@@ -71,6 +71,11 @@ function isFemaleUser(user) {
   return gender === "female" || gender === "girl";
 }
 
+/** Primary / journey labels that only apply to Girl clients (menstrual trackers). */
+function isGirlOnlyHealthConcernLabel(label) {
+  return /\b(pcod|pcos|pmos)\b/i.test(String(label || ""));
+}
+
 function resolveHealthProgressSettings(user) {
   const stored = normalizeHealthProgressFeatures(user?.healthProgressFeatures);
   const menstrualCycle =
@@ -124,7 +129,7 @@ function trackerFeatureKeysForProgramLabel(label) {
   const keys = [];
   if (/\b(fat loss|weight loss|fatloss)\b/.test(text)) keys.push("weightPic");
   if (/\bdiabetes\b/.test(text)) keys.push("glucose");
-  if (/\b(pcod|pcos|pmos)\b/.test(text)) keys.push("menstrualCycle");
+  if (isGirlOnlyHealthConcernLabel(text)) keys.push("menstrualCycle");
   if (/\b(hypertension|blood pressure|heart)\b/.test(text)) keys.push("bloodPressure");
   return keys;
 }
@@ -489,6 +494,7 @@ module.exports = {
   openHealthProgressClientUpload,
   isHealthProgressSaturday,
   isFemaleUser,
+  isGirlOnlyHealthConcernLabel,
   resolveHealthProgressSettings,
   isGeneralWellbeingConcernLabel,
   isBroadWellnessProgramLabel,

@@ -50,7 +50,11 @@ const { uploadFileFromRequest } = require("../../utils/s3");
 const { getClientIp } = require("../../utils/clientIp");
 const { ensureHealIfProgramPurchased } = require("../../models/userConversionModel");
 const { resolveRegistrationReferralFields } = require("../../services/registrationReferralService");
-const { syncHealthProgressAfterProfileSelections } = require("../../services/healthProgressProgramTrackerService");
+const {
+  syncHealthProgressAfterProfileSelections,
+  updatesAffectHealthProgressSelections,
+  applyNonFemaleGenderProfileCleanup,
+} = require("../../services/healthProgressProgramTrackerService");
 const { clearOtpSendState } = require("../../utils/otpSendGuard");
 
 function getSessionVersion(user) {
@@ -562,6 +566,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     allowStatus: false,
     req,
   });
+  await applyNonFemaleGenderProfileCleanup(current, updates);
 
   const password = String(body.password ?? body.newPassword ?? "").trim();
   if (password) {
@@ -583,12 +588,21 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     throw err;
   }
 
+  if (updatesAffectHealthProgressSelections(updates)) {
+    user = (await syncHealthProgressAfterProfileSelections(user)) || user;
+  }
+
   const profileMeta = {
     fields: Object.keys(updates),
     ...(updates.name != null ? { name: String(updates.name) } : {}),
   };
   notifyClientProfileFromReq(req, userId, "personal", "profile.updated", profileMeta);
   notifyClientProfileFromReq(req, userId, "glance", "profile.updated", profileMeta);
+  if (updates.gender !== undefined) {
+    notifyClientProfileFromReq(req, userId, "healthProgress", "profile.genderUpdated", {
+      gender: updates.gender,
+    });
+  }
   if (
     updates.presentablePic !== undefined
     || updates.presentablePicStatus !== undefined

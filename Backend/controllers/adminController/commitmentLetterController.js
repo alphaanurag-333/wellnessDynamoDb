@@ -23,6 +23,39 @@ const {
   markStepDone,
   computePaidOnboardingCompleted,
 } = require("../../utils/paidOnboardingHelpers");
+const { dispatchCommitmentLetterReviewedNotification } = require("../../services/notificationDispatchService");
+const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
+
+function resolveReviewCoachName(req, actor) {
+  return String(
+    actor?.displayName || req.user?.name || req.account?.name || "Your coach"
+  ).trim() || "Your coach";
+}
+
+function dispatchCommitmentLetterReviewNotification({
+  req,
+  record,
+  letterId,
+  action,
+  rejectionReason,
+  actor = null,
+}) {
+  dispatchCommitmentLetterReviewedNotification({
+    userId: record.userId,
+    letterId,
+    status: action,
+    rejectionReason,
+    coachName: resolveReviewCoachName(req, actor),
+    actorUserId: actor?.id || req.auth?.sub || null,
+  }).catch((err) => {
+    console.error("Commitment letter review notification failed:", err?.message || err);
+  });
+
+  notifyClientProfileFromReq(req, record.userId, "presentable", "commitmentLetter.reviewed", {
+    action,
+    letterId,
+  });
+}
 
 exports.listAdminCommitmentLettersController = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, approvalStatus, search, userId } = req.query;
@@ -85,6 +118,14 @@ exports.reviewAdminCommitmentLetterController = asyncHandler(async (req, res) =>
       });
     }
   }
+
+  dispatchCommitmentLetterReviewNotification({
+    req,
+    record,
+    letterId: id,
+    action,
+    rejectionReason: req.body.rejectionReason,
+  });
 
   return res.status(200).json({
     status: true,
@@ -201,6 +242,15 @@ exports.reviewCoachCommitmentLetterController = asyncHandler(async (req, res) =>
       });
     }
   }
+
+  dispatchCommitmentLetterReviewNotification({
+    req,
+    record,
+    letterId: id,
+    action,
+    rejectionReason: req.body.rejectionReason,
+    actor,
+  });
 
   return res.status(200).json({
     status: true,

@@ -409,6 +409,9 @@ export function PersonalDetailsSection({ user, onToast, onUserUpdated, showBack 
       payload.wellnessJourneyFor = resolveJourneyPayload(journey, goalOptions);
       if (form.healthConcernId) {
         payload.primaryHealthConcern = form.healthConcernId;
+      } else if (apiGenderForConcern !== "female") {
+        // Girl → Boy/Guess: persist clearing PMOS/PCOD so Profile + Health Progress stay in sync.
+        payload.primaryHealthConcern = null;
       }
     }
 

@@ -5,10 +5,13 @@ const {
   applyPurchasedProgramTrackers,
   normalizeHealthProgressFeatures,
   isGeneralWellbeingConcernLabel,
+  isGirlOnlyHealthConcernLabel,
 } = require("../utils/healthProgressHelpers");
 const {
   reconcileHealthProgressFeatures,
   applyCoachHealthProgressFeatures,
+  applyNonFemaleGenderProfileCleanup,
+  updatesAffectHealthProgressSelections,
 } = require("../services/healthProgressProgramTrackerService");
 
 describe("purchased program health trackers", () => {
@@ -181,5 +184,43 @@ describe("purchased program health trackers", () => {
     assert.equal(male.weightPic, false);
     assert.equal(male.glucose, true);
     assert.equal(male.menstrualCycle, false);
+  });
+
+  it("treats PMOS/PCOD/PCOS labels as girl-only", () => {
+    assert.equal(isGirlOnlyHealthConcernLabel("PMOS"), true);
+    assert.equal(isGirlOnlyHealthConcernLabel("PCOD / PCOS"), true);
+    assert.equal(isGirlOnlyHealthConcernLabel("Diabetes"), false);
+  });
+
+  it("syncs health progress when gender changes", () => {
+    assert.equal(updatesAffectHealthProgressSelections({ gender: "male" }), true);
+    assert.equal(updatesAffectHealthProgressSelections({ name: "Ada" }), false);
+  });
+
+  it("clears PMOS profile selections when gender becomes Boy", async () => {
+    const current = {
+      gender: "female",
+      primaryHealthConcern: "PMOS",
+      primaryHealthConcernOther: null,
+      healthConcerns: ["PMOS"],
+      wellnessJourneyFor: ["PMOS", "Fat Loss"],
+    };
+    const updates = { gender: "male" };
+    await applyNonFemaleGenderProfileCleanup(current, updates);
+    assert.equal(updates.primaryHealthConcern, null);
+    assert.equal(updates.healthConcerns, null);
+    assert.deepEqual(updates.wellnessJourneyFor, ["Fat Loss"]);
+  });
+
+  it("leaves girl-only selections alone when gender stays Girl", async () => {
+    const current = {
+      gender: "female",
+      primaryHealthConcern: "PMOS",
+      wellnessJourneyFor: ["PMOS"],
+    };
+    const updates = { gender: "female" };
+    await applyNonFemaleGenderProfileCleanup(current, updates);
+    assert.equal(updates.primaryHealthConcern, undefined);
+    assert.equal(updates.wellnessJourneyFor, undefined);
   });
 });

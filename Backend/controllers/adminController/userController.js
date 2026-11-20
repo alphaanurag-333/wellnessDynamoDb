@@ -22,6 +22,7 @@ const { getAccountById, getMembership } = require("../../models/accountModel");
 const {
   syncHealthProgressAfterProfileSelections,
   updatesAffectHealthProgressSelections,
+  applyNonFemaleGenderProfileCleanup,
 } = require("../../services/healthProgressProgramTrackerService");
 const { notifyClientProfileFromReq } = require("../../services/clientProfileRealtime");
 const {
@@ -283,6 +284,7 @@ exports.updateUserController = asyncHandler(async (req, res) => {
     allowStatus: true,
     req,
   });
+  await applyNonFemaleGenderProfileCleanup(current, updates);
 
   if (Object.keys(updates).length === 0) {
     throw new AppError("At least one field is required for update", 400);
@@ -308,6 +310,11 @@ exports.updateUserController = asyncHandler(async (req, res) => {
   };
   notifyClientProfileFromReq(req, req.params.id, "personal", "profile.updated", profileMeta);
   notifyClientProfileFromReq(req, req.params.id, "glance", "profile.updated", profileMeta);
+  if (updates.gender !== undefined) {
+    notifyClientProfileFromReq(req, req.params.id, "healthProgress", "profile.genderUpdated", {
+      gender: updates.gender,
+    });
+  }
 
   return res.status(200).json({
     status: true,

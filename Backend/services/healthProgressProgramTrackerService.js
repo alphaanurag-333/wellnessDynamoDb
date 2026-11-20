@@ -9,6 +9,7 @@ const {
   normalizeHealthProgressFeatures,
   applyPurchasedProgramTrackers,
   isFemaleUser,
+  isGirlOnlyHealthConcernLabel,
   isGeneralWellbeingConcernLabel,
   isBroadWellnessProgramLabel,
 } = require("../utils/healthProgressHelpers");
@@ -128,6 +129,7 @@ async function ensurePurchasedProgramTrackers(user) {
 }
 
 const PROFILE_SELECTION_SYNC_KEYS = new Set([
+  "gender",
   "wellnessJourneyFor",
   "primaryHealthConcern",
   "primaryHealthConcernOther",
@@ -144,6 +146,88 @@ async function syncHealthProgressAfterProfileSelections(user) {
   return ensurePurchasedProgramTrackers(user);
 }
 
+async function isGirlOnlyConcernToken(token, otherTitle = "") {
+  const raw = concernToken(token);
+  if (!raw) return false;
+  if (isGirlOnlyHealthConcernLabel(raw)) return true;
+  const label = await labelForConcernToken(raw, otherTitle);
+  return isGirlOnlyHealthConcernLabel(label);
+}
+
+/**
+ * When gender becomes Boy/Other, drop Girl-only PMOS/PCOD/PCOS profile selections
+ * so Profile + Health Progress menstrual stay in sync.
+ */
+async function applyNonFemaleGenderProfileCleanup(current, updates) {
+  if (!updates || updates.gender === undefined) return updates;
+  if (isFemaleUser({ gender: updates.gender })) return updates;
+
+  const otherTitle = String(
+    updates.primaryHealthConcernOther !== undefined
+      ? updates.primaryHealthConcernOther
+      : current?.primaryHealthConcernOther || ""
+  ).trim();
+
+  const effectiveConcern =
+    updates.primaryHealthConcern !== undefined
+      ? updates.primaryHealthConcern
+      : current?.primaryHealthConcern;
+  if (await isGirlOnlyConcernToken(effectiveConcern, otherTitle)) {
+    updates.primaryHealthConcern = null;
+    updates.healthConcerns = null;
+    updates.primaryHealthConcernOther = null;
+  } else {
+    const concernList = Array.isArray(updates.healthConcerns)
+      ? updates.healthConcerns
+      : Array.isArray(current?.healthConcerns)
+        ? current.healthConcerns
+        : null;
+    if (concernList) {
+      const kept = [];
+      let removed = false;
+      for (const entry of concernList) {
+        if (await isGirlOnlyConcernToken(entry, otherTitle)) {
+          removed = true;
+          continue;
+        }
+        kept.push(entry);
+      }
+      if (removed) {
+        updates.healthConcerns = kept.length ? kept : null;
+        if (!kept.length) {
+          updates.primaryHealthConcern = null;
+          updates.primaryHealthConcernOther = null;
+        } else if (
+          updates.primaryHealthConcern === undefined
+          && (await isGirlOnlyConcernToken(current?.primaryHealthConcern, otherTitle))
+        ) {
+          updates.primaryHealthConcern = kept[0];
+        }
+      }
+    }
+  }
+
+  const journey = normalizeWellnessJourneyFor(
+    updates.wellnessJourneyFor !== undefined
+      ? updates.wellnessJourneyFor
+      : current?.wellnessJourneyFor
+  ) || [];
+  const keptJourney = [];
+  let journeyChanged = false;
+  for (const token of journey) {
+    if (await isGirlOnlyConcernToken(token, otherTitle)) {
+      journeyChanged = true;
+      continue;
+    }
+    keptJourney.push(token);
+  }
+  if (journeyChanged) {
+    updates.wellnessJourneyFor = keptJourney.length ? keptJourney : null;
+  }
+
+  return updates;
+}
+
 async function withPurchasedProgramTrackers(user, features) {
   const labels = await trackerLabelsForUser(user);
   return applyPurchasedProgramTrackers(features, labels, user);
@@ -157,4 +241,5 @@ module.exports = {
   applyCoachHealthProgressFeatures,
   updatesAffectHealthProgressSelections,
   syncHealthProgressAfterProfileSelections,
+  applyNonFemaleGenderProfileCleanup,
 };

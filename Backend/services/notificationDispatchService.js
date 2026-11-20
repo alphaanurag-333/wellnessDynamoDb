@@ -65,6 +65,7 @@ const FCM_TYPE_BY_KIND = {
   presentable_pic_request: "presentable_pic_request_notification",
   presentable_pic_reviewed: "presentable_pic_reviewed_notification",
   progress_photo_reviewed: "progress_photo_reviewed_notification",
+  commitment_letter_reviewed: "commitment_letter_reviewed_notification",
   coach_assigned: "coach_assigned_notification",
   coach_reassigned: "coach_reassigned_notification",
 };
@@ -1145,6 +1146,37 @@ async function dispatchPresentablePicReviewedNotification({
   return notification;
 }
 
+async function dispatchCommitmentLetterReviewedNotification({
+  userId,
+  letterId = null,
+  status,
+  rejectionReason = "",
+  coachName,
+  actorUserId = null,
+}) {
+  const name = String(coachName || "Your coach").trim() || "Your coach";
+  const nextStatus = String(status || "").trim().toLowerCase();
+  const approved = nextStatus === "approved";
+  const reason = String(rejectionReason || "").trim();
+  const notification = await createTargetedNotification({
+    userId,
+    kind: "commitment_letter_reviewed",
+    message: approved
+      ? `${name} approved your commitment letter.`
+      : (reason
+        ? `${name} rejected your commitment letter. ${reason} Please upload a new one.`
+        : `${name} rejected your commitment letter. Please upload a new one.`),
+    referenceId: letterId ? String(letterId) : null,
+    referenceType: "commitment_letter",
+    actorUserId,
+    title: approved ? "Commitment letter approved" : "Commitment letter rejected",
+    comment: nextStatus,
+  });
+
+  runPushSafely(deliverTargetedPush(userId, notification));
+  return notification;
+}
+
 async function dispatchOnboardingMeetingConfirmedNotification({ userId, stepKey }) {
   const label = ONBOARDING_MEETING_TITLES[stepKey] || "onboarding";
   const notification = await createTargetedNotification({
@@ -1384,6 +1416,7 @@ module.exports = {
   dispatchProgramAssignedNotificationAsync,
   dispatchPresentablePicRequestNotification,
   dispatchPresentablePicReviewedNotification,
+  dispatchCommitmentLetterReviewedNotification,
   dispatchProgressPhotoReviewedNotification,
   dispatchOnboardingMeetingConfirmedNotification,
   dispatchOnboardingMeetingConfirmedNotificationAsync,
