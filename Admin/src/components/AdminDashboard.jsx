@@ -1442,8 +1442,10 @@ export function AdminDashboard({
 
   function isActiveTeamMember(member) {
     if (!member?.id) return false;
-    if (String(member.status || "").toLowerCase() === "inactive") return false;
-    return String(member.displayStatus || "").toLowerCase() !== "pending";
+    const status = String(member.status || "").toLowerCase();
+    // Match Teams / dashboard role counts: only soft-deleted or disabled staff are hidden.
+    // Pending approval members are still active accounts and must remain in the roster.
+    return status !== "inactive" && status !== "deleted";
   }
 
   async function openRemindAll(team) {

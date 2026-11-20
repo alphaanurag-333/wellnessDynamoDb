@@ -46,9 +46,10 @@ const {
   reviewConditionLogPhoto,
   toPublicConditionLog,
 } = require("../../models/healthProgressConditionModel");
+const { HEALTH_PROGRESS_FEATURE_KEYS } = require("../../utils/healthProgressHelpers");
 const {
   ensurePurchasedProgramTrackers,
-  withPurchasedProgramTrackers,
+  applyCoachHealthProgressFeatures,
 } = require("../../services/healthProgressProgramTrackerService");
 const {
   clientUploadWindows,
@@ -146,10 +147,17 @@ exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, r
     }
   }
 
-  if (body.healthProgressFeatures || !uploadEntries.length) {
+  const featureTouched = HEALTH_PROGRESS_FEATURE_KEYS.some(
+    (key) => body?.[key] !== undefined || body?.healthProgressFeatures?.[key] !== undefined,
+  ) || Boolean(body.healthProgressFeatures);
+
+  if (featureTouched || !uploadEntries.length) {
     const requested = parseCoachSettingsUpdate(body, updated);
-    const nextFeatures = await withPurchasedProgramTrackers(updated, requested);
-    updated = await updateUser(userId, { healthProgressFeatures: nextFeatures });
+    // Admin/coach Live-in-app toggles are authoritative (menstrual still gender-gated).
+    const nextFeatures = applyCoachHealthProgressFeatures(updated, requested);
+    const patch = { healthProgressFeatures: nextFeatures };
+    if (featureTouched) patch.healthProgressFeaturesLockedByCoach = true;
+    updated = await updateUser(userId, patch);
   }
 
   const uploadMessage = uploadEntries.length
@@ -168,6 +176,8 @@ exports.updateCoachHealthProgressSettingsController = asyncHandler(async (req, r
     settings: resolveHealthProgressSettings(updated),
     storedSettings: updated.healthProgressFeatures,
     clientUpload: clientUploadWindows(updated.healthProgressClientUpload).windows,
+    gender: updated.gender,
+    isFemale: isFemaleUser(updated),
     user: toPublicUser(updated),
   });
 });

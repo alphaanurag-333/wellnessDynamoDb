@@ -5,10 +5,44 @@ const {
   reconcileBodyAnalyticsStatus,
   progressPhotoSubmissionComplete,
   progressPhotos180ApprovedForOnboarding,
+  bodyMeasurementCompleteForOnboarding,
 } = require("../services/bodyAnalyticsOnboardingSyncService");
 const { normalizePaidOnboardingStepStatus } = require("../utils/paidOnboardingHelpers");
 
 describe("bodyAnalyticsOnboardingSync", () => {
+  it("does not count a rejected weight photo as a complete body measurement", () => {
+    assert.equal(bodyMeasurementCompleteForOnboarding([]), false);
+    assert.equal(bodyMeasurementCompleteForOnboarding([{ weightKg: 70 }]), true);
+    assert.equal(
+      bodyMeasurementCompleteForOnboarding([{ weightKg: 70, weightReviewStatus: "pending" }]),
+      true,
+    );
+    assert.equal(
+      bodyMeasurementCompleteForOnboarding([{ weightKg: 70, weightReviewStatus: "approved" }]),
+      true,
+    );
+    assert.equal(
+      bodyMeasurementCompleteForOnboarding([{ weightKg: 70, weightReviewStatus: "rejected" }]),
+      false,
+    );
+  });
+
+  it("keeps bodyMeasurement pending after weight reject even when a row still exists", () => {
+    const status = reconcileBodyAnalyticsStatus(
+      {
+        personalDetails: "done",
+        bodyAnalytics: "pending",
+        bodyMeasurement: "pending",
+        progressPhotos180: "done",
+        medicalConditions: "done",
+      },
+      { bodyMeasurement: false, progressPhotos180: true, medicalConditions: true },
+    );
+    const normalized = normalizePaidOnboardingStepStatus(status);
+    assert.equal(normalized.bodyMeasurement, "pending");
+    assert.equal(normalized.bodyAnalytics, "pending");
+  });
+
   it("marks Body Analytics done when all three data flags are true", () => {
     const status = buildSyncedBodyAnalyticsStatus(
       { personalDetails: "done", bodyMeasurement: "pending", progressPhotos180: "pending", medicalConditions: "pending" },

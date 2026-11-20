@@ -13,11 +13,12 @@ const {
   countCommentsForPost,
   currentMonthCreatedAtRange,
 } = require("../../models/monthlyChampionPostCommentModel");
-const { getUserById, toPublicUser } = require("../../models/userModel");
+const { getUserById, toPublicUser, isDeletedUser } = require("../../models/userModel");
 const { getCurrentMonthStandingForUser } = require("../../services/monthlyChampionScoreService");
 
 async function enrichPost(post, viewerUserId) {
   const user = await getUserById(post.userId);
+  if (!user || isDeletedUser(user)) return null;
   const [commentCount, ownComment] = await Promise.all([
     countCommentsForPost(post.id, currentMonthCreatedAtRange()),
     viewerUserId
@@ -26,7 +27,7 @@ async function enrichPost(post, viewerUserId) {
   ]);
   return {
     ...post,
-    user: user ? toPublicUser(user) : null,
+    user: toPublicUser(user),
     commentCount,
     hasCommented: Boolean(ownComment),
   };
@@ -55,9 +56,9 @@ exports.listUserMonthlyChampionsController = asyncHandler(async (req, res) => {
     status: "active",
   });
 
-  const monthlyChampions = await Promise.all(
-    monthlyChampionPosts.map((post) => enrichPost(post, userId))
-  );
+  const monthlyChampions = (
+    await Promise.all(monthlyChampionPosts.map((post) => enrichPost(post, userId)))
+  ).filter(Boolean);
 
   return res.status(200).json({
     status: true,
@@ -113,6 +114,9 @@ exports.getUserMonthlyChampionByIdController = asyncHandler(async (req, res) => 
   });
 
   const enriched = await enrichPost(post, userId);
+  if (!enriched) {
+    throw new AppError("Monthly champion post not found", 404);
+  }
 
   return res.status(200).json({
     status: true,

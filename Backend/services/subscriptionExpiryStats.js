@@ -1,6 +1,7 @@
 const {
   listActiveSubscriptionsEndingBefore,
 } = require("../models/energyExchangeSubscriptionModel");
+const { getUserById, isDeletedUser } = require("../models/userModel");
 
 const DEFAULT_WINDOW_DAYS = 15;
 
@@ -12,7 +13,9 @@ function daysUntil(endsAt, now = new Date()) {
 
 /**
  * Active subscriptions ending within the next `windowDays` (inclusive).
- * Counts unique users; `soonestDays` is the minimum days-left among them.
+ * Counts unique live users; `soonestDays` is the minimum days-left among them.
+ * Missing or archived clients (`status: "deleted"`) are excluded so dashboard
+ * cards match Users drill-down (which also drops those rows).
  */
 async function getSubscriptionExpiryStats({
   userIds = null,
@@ -35,6 +38,27 @@ async function getSubscriptionExpiryStats({
     if (daysLeft == null || daysLeft < 0 || daysLeft > window) continue;
     const prev = soonestByUser.get(userId);
     if (prev == null || daysLeft < prev) soonestByUser.set(userId, daysLeft);
+  }
+
+  if (soonestByUser.size) {
+    const lookups = await Promise.all(
+      [...soonestByUser.keys()].map(async (id) => {
+        try {
+          const user = await getUserById(id);
+          return { id, keep: Boolean(user) && !isDeletedUser(user) };
+        } catch (err) {
+          console.warn(
+            "[subscriptionExpiryStats] getUserById failed:",
+            id,
+            err?.message || err
+          );
+          return { id, keep: false };
+        }
+      })
+    );
+    for (const { id, keep } of lookups) {
+      if (!keep) soonestByUser.delete(id);
+    }
   }
 
   let soonestDays = null;

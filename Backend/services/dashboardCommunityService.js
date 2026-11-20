@@ -25,6 +25,11 @@ function isAdminLike(actor) {
   return actor?.role === "admin" || actor?.role === "support";
 }
 
+/** Dashboard community widgets only surface live active clients. */
+function isActiveDashboardUser(user) {
+  return String(user?.status || "").toLowerCase() === "active";
+}
+
 function currentMonthYear(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: IST_TZ,
@@ -102,6 +107,10 @@ function inferredTotalScore(row) {
 
 function userIdOf(row) {
   return String(row?.id || row?._id || row?.userId || "").trim();
+}
+
+function allowedIdSetFromUsers(users) {
+  return new Set((users || []).map(userIdOf).filter(Boolean));
 }
 
 function displayName(row) {
@@ -208,14 +217,16 @@ async function loadBirthdayUsers(actor) {
 }
 
 async function resolveAllowedUserIds(actor) {
+  // Admin/support: null = scan all scorers; enrichUsers keeps only status=active.
+  // (listScopedUsers/listUsers caps at 200, so an allow-set would hide real leaders.)
   if (isAdminLike(actor)) return null;
   const users = await listScopedUsers(actor);
-  return new Set((users || []).map(userIdOf).filter(Boolean));
+  return allowedIdSetFromUsers(users);
 }
 
 async function loadAllowedUserIds(actor, users) {
   if (isAdminLike(actor)) return null;
-  return new Set((users || []).map(userIdOf).filter(Boolean));
+  return allowedIdSetFromUsers(users);
 }
 
 async function enrichUsers(userIds) {
@@ -225,13 +236,41 @@ async function enrichUsers(userIds) {
     unique.map(async (id) => {
       try {
         const user = await getUserById(id);
-        if (user) byId.set(id, user);
+        if (user && isActiveDashboardUser(user)) byId.set(id, user);
       } catch {
         /* ignore missing users */
       }
     }),
   );
   return byId;
+}
+
+/**
+ * Walk score rows in rank order, keep only active users, stop once `needed` filled.
+ * Pulls ahead of the slice so deleted/inactive top scorers do not leave empty slots.
+ */
+async function rankActiveScoreRows(rows, needed) {
+  const ranked = [];
+  const usersById = new Map();
+  let offset = 0;
+  const batchSize = Math.max(needed * 3, COACH_RANK_SAMPLE);
+
+  while (ranked.length < needed && offset < (rows || []).length) {
+    const batch = rows.slice(offset, offset + batchSize);
+    offset += batch.length;
+    if (!batch.length) break;
+
+    const enriched = await enrichUsers(batch.map((row) => row.userId));
+    for (const [id, user] of enriched) usersById.set(id, user);
+
+    for (const row of batch) {
+      if (!enriched.has(row.userId)) continue;
+      ranked.push(row);
+      if (ranked.length >= needed) break;
+    }
+  }
+
+  return { ranked, usersById };
 }
 
 async function loadCoachNames(coachIds) {
@@ -328,7 +367,13 @@ async function loadChampionRankings(allowedIds, monthYear = currentMonthYear()) 
   try {
     const averaged = await computeUserAveragesForMonth(targetMonth);
     const rows = (averaged || [])
-      .filter((row) => row?.userId && (!allowedIds || allowedIds.has(String(row.userId).trim())))
+      .filter((row) => {
+        const userId = String(row?.userId || "").trim();
+        if (!userId) return false;
+        // null = unrestricted (tests); otherwise only active scoped clients.
+        if (allowedIds && !allowedIds.has(userId)) return false;
+        return true;
+      })
       .map((row) => ({
         userId: String(row.userId).trim(),
         totalScore: inferredTotalScore(row),
@@ -346,9 +391,8 @@ async function loadChampionRankings(allowedIds, monthYear = currentMonthYear()) 
 async function buildLeaderboardRows(allowedIds, monthYear) {
   const { monthYear: resolvedMonth, rows } = await loadChampionRankings(allowedIds, monthYear);
   const monthLbl = resolvedMonth ? formatMonthShort(resolvedMonth) || monthLabel(resolvedMonth) : "";
-  const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
-  const usersById = await enrichUsers(sample.map((row) => row.userId));
-  const ranked = sample.filter((row) => usersById.has(row.userId));
+  const needed = Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE);
+  const { ranked, usersById } = await rankActiveScoreRows(rows, needed);
   const leaderboardRows = await leaderboardRowsFromRanked(ranked, usersById);
 
   return {
@@ -361,9 +405,8 @@ async function buildLeaderboardRows(allowedIds, monthYear) {
 async function loadChampionsAndLeaderboard(allowedIds, monthYear = currentMonthYear()) {
   const { monthYear: resolvedMonth, rows } = await loadChampionRankings(allowedIds, monthYear);
   const monthLbl = resolvedMonth ? formatMonthShort(resolvedMonth) || monthLabel(resolvedMonth) : "";
-  const sample = rows.slice(0, Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE));
-  const usersById = await enrichUsers(sample.map((row) => row.userId));
-  const ranked = sample.filter((row) => usersById.has(row.userId));
+  const needed = Math.max(LEADERBOARD_LIMIT, COACH_RANK_SAMPLE);
+  const { ranked, usersById } = await rankActiveScoreRows(rows, needed);
   const topClients = ranked.slice(0, CLIENT_CARD_LIMIT);
   const coachNames = await loadCoachNames(
     ranked.flatMap((row) => wellnessCoachIdsForUser(usersById.get(row.userId))),
@@ -433,6 +476,7 @@ module.exports = {
   getDashboardLeaderboard,
   listUpcomingCommunityBirthdays,
   selectCommunityBirthdayUsers,
+  isActiveDashboardUser,
   formatBirthdayWhen,
   formatScoreDisplay,
   nextBirthdayFromDob,

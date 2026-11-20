@@ -1000,21 +1000,59 @@ exports.listAccessMembers = asyncHandler(async (req, res) => {
     const parentIsWcForTrainees =
       scopedParentId &&
       accountRoleFilter === "trainee" &&
+      (!selectedConsoleRole || isSystemConsoleRole(selectedConsoleRole)) &&
       (await getAccountById(scopedParentId))?.roleKeys?.includes("wellness_coach");
-    result = parentIsWcForTrainees
-      ? await listNestedTraineesForWellnessCoach(scopedParentId, {
-          search,
-          page: listPage,
-          limit: listLimit,
-        })
-      : await listAccounts({
-          status: "active",
-          search,
-          roleKey: accountRoleFilter,
-          parentAccountId: scopedParentId,
-          page: listPage,
-          limit: listLimit,
+    if (parentIsWcForTrainees) {
+      result = await listNestedTraineesForWellnessCoach(scopedParentId, {
+        search,
+        page: listPage,
+        limit: listLimit,
+      });
+    } else if (selectedConsoleRole) {
+      // Match memberCount / dashboard team cards: query by membership.roleId
+      // (not a roleKey pre-filter capped at 200 rows), and only active accounts.
+      const isSystem = isSystemConsoleRole(selectedConsoleRole);
+      let accounts = await listAccountsByConsoleRoleId(selectedConsoleRole.id, {
+        status: "active",
+        accountRoleKey: isSystem ? accountRoleFilter : null,
+        includeUnassigned: Boolean(isSystem && accountRoleFilter),
+      });
+      if (scopedParentId) {
+        const parentKey = String(scopedParentId);
+        accounts = accounts.filter((acc) => {
+          const roleKeys = Array.isArray(acc.roleKeys) ? acc.roleKeys : [];
+          const primary =
+            (acc.defaultRoleKey && roleKeys.includes(acc.defaultRoleKey) && acc.defaultRoleKey) ||
+            roleKeys[0] ||
+            null;
+          const parentId =
+            acc.parentAccountId ||
+            getMembership(acc, primary)?.parentAccountId ||
+            null;
+          return String(parentId || "") === parentKey;
         });
+      }
+      const searchTerm = String(search || "").trim().toLowerCase();
+      if (searchTerm) {
+        accounts = accounts.filter((acc) =>
+          ["name", "email", "phone", "specializationId", "designation"].some((field) =>
+            String(acc[field] || "")
+              .toLowerCase()
+              .includes(searchTerm)
+          )
+        );
+      }
+      result = { accounts };
+    } else {
+      result = await listAccounts({
+        status: "active",
+        search,
+        roleKey: accountRoleFilter,
+        parentAccountId: scopedParentId,
+        page: listPage,
+        limit: listLimit,
+      });
+    }
   } else {
     result = {
       accounts: await collectScopedTeamAccounts(req, {

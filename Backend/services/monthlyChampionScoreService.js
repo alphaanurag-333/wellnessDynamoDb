@@ -1,5 +1,6 @@
 const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { docClient } = require("../config/db");
+const { getUserById, isDeletedUser } = require("../models/userModel");
 
 const DAILY_REFLECTION_TABLE = "DailyReflection";
 
@@ -94,11 +95,31 @@ function assignCompetitionRanks(sortedRows) {
 }
 
 /**
- * Full pipeline: scan -> average -> keep only top scorers (ties included).
+ * Drop archived/missing clients so they cannot win or stay on champion boards.
+ */
+async function keepLiveChampionCandidates(rows) {
+  const live = [];
+  await Promise.all(
+    (rows || []).map(async (row) => {
+      try {
+        const user = await getUserById(row.userId);
+        if (user && !isDeletedUser(user)) live.push(row);
+      } catch {
+        /* ignore missing users */
+      }
+    })
+  );
+  live.sort(compareChampionRows);
+  return live;
+}
+
+/**
+ * Full pipeline: scan -> average -> drop archived clients -> keep only top scorers (ties included).
  */
 async function computeMonthlyRankings(monthYear) {
   const averaged = await computeUserAveragesForMonth(monthYear);
-  return assignCompetitionRanks(averaged);
+  const live = await keepLiveChampionCandidates(averaged);
+  return assignCompetitionRanks(live);
 }
 
 const STANDING_CACHE_TTL_MS = 5 * 60 * 1000;

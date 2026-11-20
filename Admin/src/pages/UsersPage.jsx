@@ -32,6 +32,7 @@ import { UPDATED_ADMIN_PATHS } from "../data/dashboardData.js";
 import {
   assignUserCoach,
   deleteUser,
+  permanentlyDeleteArchivedUser,
   unassignUserCoach,
   fetchArchivedUsers,
   fetchScopedUsers,
@@ -341,6 +342,7 @@ export function UsersPage() {
   const [disabledUsers, setDisabledUsers] = useState([]);
   const [deletedUsers, setDeletedUsers] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState(null);
   const [disableTarget, setDisableTarget] = useState(null);
   const [conversionAsk, setConversionAsk] = useState(null);
   const [reassignAsk, setReassignAsk] = useState(null);
@@ -388,10 +390,10 @@ export function UsersPage() {
   }, [search]);
 
   useEffect(() => {
-    if (disableTarget || deleteTarget || reassignAsk || conversionAsk) {
+    if (disableTarget || deleteTarget || permanentDeleteTarget || reassignAsk || conversionAsk) {
       document.activeElement?.blur?.();
     }
-  }, [disableTarget, deleteTarget, reassignAsk, conversionAsk]);
+  }, [disableTarget, deleteTarget, permanentDeleteTarget, reassignAsk, conversionAsk]);
 
   useEffect(() => {
     if (!canReassignAwc) {
@@ -1091,6 +1093,24 @@ export function UsersPage() {
     }
   };
 
+  const confirmPermanentDelete = async () => {
+    if (!canDelete || !permanentDeleteTarget) return;
+    const key = userOverrideKey(permanentDeleteTarget);
+    if (!key) return;
+    setActionBusy(true);
+    try {
+      await permanentlyDeleteArchivedUser(key);
+      setUsers((prev) => prev.filter((u) => userOverrideKey(u) !== key));
+      setPermanentDeleteTarget(null);
+      onToast(`${permanentDeleteTarget.name} permanently deleted`);
+      refreshUsers();
+    } catch (err) {
+      onToast(err?.message || "Could not permanently delete user");
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const askReassign = (user, kind, toId) => {
     const normalizedTo = String(toId || "").trim();
     const fromId = kind === "wc" ? resolveWcId(user) : resolveAwcId(user);
@@ -1343,7 +1363,7 @@ export function UsersPage() {
 
       <TableScroll>
         <div className={`ua-table-card ua-table-card--users${isArchivedTab ? " ua-table-card--users-archived" : ""}`}>
-          <div className={`ua-table ua-table--users${isArchivedTab ? " ua-table--users-archived" : ""}${showRowActions && !isArchivedTab ? "" : " ua-table--users-readonly"} ua-table__head`}>
+          <div className={`ua-table ua-table--users${isArchivedTab ? " ua-table--users-archived" : ""}${showRowActions && !isArchivedTab ? "" : " ua-table--users-readonly"}${isArchivedTab && canDelete ? " ua-table--users-archived-actions" : ""} ua-table__head`}>
             <div>#</div>
             <div>
               <SortButton
@@ -1365,7 +1385,7 @@ export function UsersPage() {
                     onClick={() => toggleSort("active")}
                   />
                 </div>
-                <div>
+                <div className="ua-archived-users__deleted-head">
                   <SortButton
                     label="Archived"
                     active={sort?.key === "archived"}
@@ -1373,6 +1393,7 @@ export function UsersPage() {
                     onClick={() => toggleSort("archived")}
                   />
                 </div>
+                {canDelete ? <div className="ua-users-row-actions" aria-hidden="true" /> : null}
               </>
             ) : (
               <>
@@ -1416,7 +1437,7 @@ export function UsersPage() {
               return (
                 <div
                   key={rowKey}
-                  className="ua-table ua-table--users ua-table--users-archived ua-table--users-readonly ua-table__row ua-table__row--readonly ua-table__row--clickable"
+                  className={`ua-table ua-table--users ua-table--users-archived${canDelete ? " ua-table--users-archived-actions" : " ua-table--users-readonly"} ua-table__row ua-table__row--readonly ua-table__row--clickable`}
                   onClick={() => openUser(u, { archived: true })}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -1462,6 +1483,19 @@ export function UsersPage() {
                       <span className="ua-archived-users__deleted-ago">{u.deletedAgo}</span>
                     ) : null}
                   </div>
+                  {canDelete ? (
+                    <div className="ua-users-row-actions" data-label="Actions" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="ua-users-row-actions__delete"
+                        title={`Permanently delete ${u.name}`}
+                        onClick={() => setPermanentDeleteTarget(u)}
+                        disabled={actionBusy}
+                      >
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               );
             })
@@ -1830,6 +1864,50 @@ export function UsersPage() {
               <button type="button" className="btn btn--outline" onClick={() => setDeleteTarget(null)} disabled={actionBusy}>Cancel</button>
               <button type="button" className="ua-dialog__btn-danger" onClick={confirmDelete} disabled={actionBusy}>
                 {actionBusy ? "Archiving…" : "Archive user"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {permanentDeleteTarget ? (
+        <div
+          className="ua-dialog-backdrop"
+          onClick={() => !actionBusy && setPermanentDeleteTarget(null)}
+          role="presentation"
+        >
+          <div
+            className="ua-dialog ua-dialog--danger"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="permanent-delete-user-title"
+          >
+            <div className="ua-dialog__head">
+              <div className="ua-dialog__icon ua-dialog__icon--danger"><TrashIcon /></div>
+              <div id="permanent-delete-user-title" className="ua-dialog__title">
+                Permanently delete {permanentDeleteTarget.name}?
+              </div>
+            </div>
+            <p className="ua-dialog__body">
+              This permanently removes the archived client record. This cannot be undone.
+            </p>
+            <div className="ua-dialog__actions">
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={() => setPermanentDeleteTarget(null)}
+                disabled={actionBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="ua-dialog__btn-danger"
+                onClick={confirmPermanentDelete}
+                disabled={actionBusy}
+              >
+                {actionBusy ? "Deleting…" : "Delete permanently"}
               </button>
             </div>
           </div>

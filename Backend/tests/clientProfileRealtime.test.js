@@ -7,6 +7,7 @@ const ioClient = require("socket.io-client");
 const { setRealtimeIo } = require("../services/realtimeIo");
 const {
   notifyClientProfileChanged,
+  emitWelcomeVideoUpdatedForUsers,
   EVENT_NAME,
 } = require("../services/clientProfileRealtime");
 
@@ -77,5 +78,53 @@ describe("clientProfile realtime", () => {
     assert.strictEqual(payload.action, "mealLog.created");
 
     client.close();
+  });
+
+  it("fans out welcomeVideo.updated as staff/coach domain", async () => {
+    const userA = "client-a";
+    const userB = "client-b";
+    const coachId = "coach-1";
+
+    const clientA = ioClient(`http://127.0.0.1:${port}`, { transports: ["websocket"] });
+    const clientB = ioClient(`http://127.0.0.1:${port}`, { transports: ["websocket"] });
+
+    await Promise.all([
+      new Promise((resolve, reject) => {
+        clientA.on("connect", resolve);
+        clientA.on("connect_error", reject);
+      }),
+      new Promise((resolve, reject) => {
+        clientB.on("connect", resolve);
+        clientB.on("connect_error", reject);
+      }),
+    ]);
+
+    const receivedA = new Promise((resolve) => {
+      clientA.on(EVENT_NAME, (payload) => resolve(payload));
+    });
+    const receivedB = new Promise((resolve) => {
+      clientB.on(EVENT_NAME, (payload) => resolve(payload));
+    });
+
+    clientA.emit("join-test", userA);
+    clientB.emit("join-test", userB);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    emitWelcomeVideoUpdatedForUsers([userA, userB], { coachId, live: true });
+
+    const [payloadA, payloadB] = await Promise.all([receivedA, receivedB]);
+    for (const payload of [payloadA, payloadB]) {
+      assert.strictEqual(payload.type, EVENT_NAME);
+      assert.strictEqual(payload.domain, "coach");
+      assert.strictEqual(payload.action, "welcomeVideo.updated");
+      assert.strictEqual(payload.source, "staff");
+      assert.strictEqual(payload.meta.coachId, coachId);
+      assert.strictEqual(payload.meta.live, true);
+    }
+    assert.strictEqual(payloadA.userId, userA);
+    assert.strictEqual(payloadB.userId, userB);
+
+    clientA.close();
+    clientB.close();
   });
 });

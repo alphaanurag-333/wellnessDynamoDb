@@ -70,6 +70,7 @@ const {
   upsertCoachUserSupplementFulfilmentOrderController,
   uploadCoachUserSupplementFulfilmentOrderBillController,
   deleteCoachUserSupplementFulfilmentOrderController,
+  clearCoachUserSupplementBillController,
 } = require("../../controllers/adminController/supplementRecommendationController");
 const {
   listCoachUserSupplementDosagesController,
@@ -316,25 +317,30 @@ const pe = staff("console.diet.view", { admin: "users.clientHub.wellness.physica
 const peWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.physical-exercises", coach: "clientTab.wellness.physical-exercises" });
 router.get("/:userId/physical-exercises", pe, listCoachUserPhysicalExercisesController);
 router.post("/:userId/physical-exercises", peWrite, createCoachUserPhysicalExercisesController);
-router.delete("/:userId/physical-exercises/:assignmentId", requireAdmin, deleteCoachUserPhysicalExerciseController);
+router.delete("/:userId/physical-exercises/:assignmentId", peWrite, deleteCoachUserPhysicalExerciseController);
 
 const mw = staff("console.diet.view", { admin: "users.clientHub.wellness.mental-wellbeing", coach: "clientTab.wellness.mental-wellbeing" });
 const mwWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.mental-wellbeing", coach: "clientTab.wellness.mental-wellbeing" });
 router.get("/:userId/mental-wellbeing", mw, listCoachUserMentalWellbeingController);
 router.post("/:userId/mental-wellbeing", mwWrite, createCoachUserMentalWellbeingController);
-router.delete("/:userId/mental-wellbeing/:assignmentId", requireAdmin, deleteCoachUserMentalWellbeingController);
+router.delete("/:userId/mental-wellbeing/:assignmentId", mwWrite, deleteCoachUserMentalWellbeingController);
 
 const yoga = staff("console.diet.view", { admin: "users.clientHub.wellness.yoga", coach: "clientTab.wellness.yoga" });
 const yogaWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.yoga", coach: "clientTab.wellness.yoga" });
 router.get("/:userId/wellness-yoga", yoga, listCoachUserWellnessYogaController);
 router.post("/:userId/wellness-yoga", yogaWrite, createCoachUserWellnessYogaController);
-router.delete("/:userId/wellness-yoga/:assignmentId", requireAdmin, deleteCoachUserWellnessYogaController);
+router.delete("/:userId/wellness-yoga/:assignmentId", yogaWrite, deleteCoachUserWellnessYogaController);
 
 const supp = staff("console.diet.view", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" });
 const suppWrite = staff("console.diet.create", { admin: "users.clientHub.wellness.supplement-recommendations", coach: "clientTab.wellness.supplement-recommendations" });
 router.get("/:userId/supplement-recommendations", supp, listCoachUserSupplementRecommendationsController);
 router.post("/:userId/supplement-recommendations", suppWrite, createCoachUserSupplementRecommendationController);
 router.delete("/:userId/supplement-recommendations/:recommendationId", requireAdmin, deleteCoachUserSupplementRecommendationController);
+router.delete(
+  "/:userId/supplement-recommendations/:recommendationId/bill",
+  suppWrite,
+  clearCoachUserSupplementBillController
+);
 router.post(
   "/:userId/supplement-recommendations/:recommendationId/fulfilment-orders",
   suppWrite,

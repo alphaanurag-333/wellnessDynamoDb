@@ -317,7 +317,7 @@ describe("applyBodyAnalyticsWeightPhotoReview", () => {
     },
   };
 
-  it("reopens body measurements when weight is rejected and coach has not disabled the app form", () => {
+  it("reopens body measurements when weight is rejected", () => {
     const result = applyBodyAnalyticsWeightPhotoReview(completedUser, completedUser.paidOnboardingStepStatus, {
       action: "rejected",
     });
@@ -327,15 +327,14 @@ describe("applyBodyAnalyticsWeightPhotoReview", () => {
     assert.equal(result.extraUserUpdates.paidOnboardingStep, "body");
   });
 
-  it("does nothing when coach disabled body measurements in the app", () => {
-    assert.equal(
-      applyBodyAnalyticsWeightPhotoReview(
-        { ...completedUser, bodyMeasurementEnabled: false },
-        completedUser.paidOnboardingStepStatus,
-        { action: "rejected" },
-      ),
-      null,
+  it("reopens Allowed in the app even after a prior mobile submit locked the form", () => {
+    const result = applyBodyAnalyticsWeightPhotoReview(
+      { ...completedUser, bodyMeasurementEnabled: false },
+      completedUser.paidOnboardingStepStatus,
+      { action: "rejected" },
     );
+    assert.equal(result.extraUserUpdates.bodyMeasurementEnabled, true);
+    assert.equal(result.stepStatus.bodyMeasurement, "pending");
   });
 
   it("ignores approvals", () => {
@@ -373,6 +372,16 @@ describe("buildProgressPhotosUploadAppLockUpdates", () => {
   });
 });
 
+describe("buildProgressPhotosRejectAppUnlockUpdates", () => {
+  const { buildProgressPhotosRejectAppUnlockUpdates } = require("../utils/paidOnboardingHelpers");
+
+  it("allows progress photo uploads in the client app after a 180 reject", () => {
+    assert.deepEqual(buildProgressPhotosRejectAppUnlockUpdates(), {
+      progressPhotosInAppEnabled: true,
+    });
+  });
+});
+
 describe("buildMedicalConditionsSubmitAppLockUpdates", () => {
   it("disables medical conditions in the client app after a mobile submit", () => {
     assert.deepEqual(buildMedicalConditionsSubmitAppLockUpdates(), {
@@ -385,6 +394,16 @@ describe("buildBodyMeasurementSubmitAppLockUpdates", () => {
   it("disables body measurements in the client app after a mobile submit", () => {
     assert.deepEqual(buildBodyMeasurementSubmitAppLockUpdates(), {
       bodyMeasurementEnabled: false,
+    });
+  });
+});
+
+describe("buildBodyMeasurementRejectAppUnlockUpdates", () => {
+  const { buildBodyMeasurementRejectAppUnlockUpdates } = require("../utils/paidOnboardingHelpers");
+
+  it("allows body measurements in the client app after a weight photo reject", () => {
+    assert.deepEqual(buildBodyMeasurementRejectAppUnlockUpdates(), {
+      bodyMeasurementEnabled: true,
     });
   });
 });

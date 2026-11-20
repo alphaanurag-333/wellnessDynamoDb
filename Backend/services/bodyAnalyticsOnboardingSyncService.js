@@ -31,6 +31,18 @@ function progressPhotos180ApprovedForOnboarding(photos) {
 }
 
 /**
+ * Latest body measurement counts toward onboarding only when its weight photo is not rejected.
+ * Rejecting weight reopens body measurements in the app; sync must not immediately mark the
+ * step done again while that rejected weight row is still the latest record.
+ */
+function bodyMeasurementCompleteForOnboarding(measurements) {
+  const latest = (measurements || [])[0];
+  if (!latest) return false;
+  const weightStatus = String(latest.weightReviewStatus || "").toLowerCase().trim();
+  return weightStatus !== "rejected";
+}
+
+/**
  * Align subkeys with stored client data. Demotes done/skipped subkeys when data is missing.
  * When promoteFromClient is true (default), pending subkeys become done once client data exists.
  */
@@ -78,7 +90,7 @@ async function loadBodyAnalyticsDataFlags(userId) {
   ]);
   const photos = photoResult?.items || [];
   return {
-    bodyMeasurement: (measurementResult?.items || []).length > 0,
+    bodyMeasurement: bodyMeasurementCompleteForOnboarding(measurementResult?.items),
     progressPhotos180: progressPhotos180ApprovedForOnboarding(photos),
     medicalConditions: Boolean(medical),
   };
@@ -135,6 +147,7 @@ module.exports = {
   isBodyAnalyticsClientDataReady,
   progressPhotoSubmissionComplete,
   progressPhotos180ApprovedForOnboarding,
+  bodyMeasurementCompleteForOnboarding,
   buildSyncedBodyAnalyticsStatus,
   reconcileBodyAnalyticsStatus,
 };

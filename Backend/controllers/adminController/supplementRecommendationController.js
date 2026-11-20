@@ -8,6 +8,7 @@ const {
   upsertFulfilmentOrder,
   saveFulfilmentOrderBill,
   deleteFulfilmentOrder,
+  clearBillPdf,
 } = require("../../models/coachRecommendedSupplementModel");
 const {
   dispatchSupplementRecommendedNotification,
@@ -301,6 +302,35 @@ exports.deleteCoachUserSupplementFulfilmentOrderController = asyncHandler(async 
   return res.status(200).json({
     status: true,
     message: "Fulfilment order removed successfully",
+    recommendation,
+  });
+});
+
+exports.clearCoachUserSupplementBillController = asyncHandler(async (req, res) => {
+  const actingCoachId = req.auth?.sub;
+  if (!actingCoachId) throw new AppError("Unauthorized", 401);
+
+  const userId = readUserIdParam(req);
+  const recommendationId = readRecommendationIdParam(req);
+  const user = await loadTargetUser(userId);
+  await assertStaffCanAccessUser(req, user);
+  assertHealTierUser(user);
+  await loadRecommendationForUser(recommendationId, userId);
+
+  let recommendation;
+  try {
+    recommendation = await clearBillPdf(recommendationId);
+  } catch (err) {
+    handleOrderError(err);
+  }
+
+  notifyClientProfileFromReq(req, userId, "nutritions", "supplementOrder.billCleared", {
+    recommendationId,
+  });
+
+  return res.status(200).json({
+    status: true,
+    message: "Bill cleared. Client can upload a new bill in the app.",
     recommendation,
   });
 });
